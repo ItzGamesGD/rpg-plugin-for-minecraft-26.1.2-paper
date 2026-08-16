@@ -1,0 +1,14 @@
+.gradle/
+build/
+builds/
+*.log
+.idea/
+*.iml
+.DS_Store
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
