@@ -37,7 +37,7 @@ public final class EffectService implements Listener {
     private final EffectConflictResolver conflicts = new EffectConflictResolver();
     private final TickManager tickManager;
     private final NamespacedKey legacyModifierCleanupKey;
-    private final Map<UUID, Map<String, ActiveEffectInstance>> active = new HashMap<>();
+    private final ActiveEffectStore active = new ActiveEffectStore();
     private final Map<UUID, List<AttributeModifier>> modifiers = new HashMap<>();
 
     public EffectService(JavaPlugin plugin, ConfigService config) {
@@ -102,8 +102,7 @@ public final class EffectService implements Listener {
                     definition.removeOnDeath(), definition.persistOnLogout(), definition.persistOnWorldChange(),
                     definition.handlerId(), definition.components());
         }
-        Map<String, ActiveEffectInstance> byId = active.computeIfAbsent(targetId, ignored -> new HashMap<>());
-        ActiveEffectInstance current = byId.get(definition.id());
+        ActiveEffectInstance current = active.get(targetId, definition.id());
         if (!conflicts.canApply(current, definition)) return false;
         long now = currentTick();
         if (current != null) {
@@ -119,27 +118,25 @@ public final class EffectService implements Listener {
         }
         ActiveEffectInstance instance = new ActiveEffectInstance(UUID.randomUUID(), targetId, definition,
                 context.source(), now + definition.durationTicks(), 1);
-        byId.put(definition.id(), instance);
+        active.put(targetId, instance);
         applyComponents(target, instance);
         if (handler != null) handler.onApply(targetId, instance);
         return true;
     }
 
     public synchronized boolean remove(UUID targetId, String effectId) {
-        Map<String, ActiveEffectInstance> byId = active.get(targetId);
-        ActiveEffectInstance instance = byId == null ? null : byId.remove(normalize(effectId));
+        ActiveEffectInstance instance = active.remove(targetId, effectId);
         if (instance == null) return false;
         Entity raw = Bukkit.getEntity(targetId);
         if (raw instanceof LivingEntity target) removeInternal(target, instance);
-        if (byId.isEmpty()) active.remove(targetId);
         return true;
     }
 
     public synchronized void clearTarget(UUID targetId) {
-        Map<String, ActiveEffectInstance> byId = active.remove(targetId);
+        List<ActiveEffectInstance> instances = active.removeAll(targetId);
         Entity raw = Bukkit.getEntity(targetId);
-        if (!(raw instanceof LivingEntity target) || byId == null) return;
-        byId.values().forEach(instance -> removeInternal(target, instance));
+        if (!(raw instanceof LivingEntity target)) return;
+        instances.forEach(instance -> removeInternal(target, instance));
     }
 
     public synchronized int clearAndReport(UUID targetId) {
@@ -149,12 +146,11 @@ public final class EffectService implements Listener {
     }
 
     public synchronized List<ActiveEffectInstance> getActive(UUID targetId) {
-        Map<String, ActiveEffectInstance> byId = active.get(targetId);
-        return byId == null ? List.of() : List.copyOf(byId.values());
+        return active.getActive(targetId);
     }
 
     public synchronized boolean isActive(UUID targetId, String effectId) {
-        return active.containsKey(targetId) && active.get(targetId).containsKey(normalize(effectId));
+        return active.contains(targetId, effectId);
     }
 
     /** Applies registered combat modifiers without exposing the active map to listeners. */
@@ -254,12 +250,10 @@ public final class EffectService implements Listener {
 
     private synchronized void tick() {
         long now = currentTick();
-        for (UUID targetId : new ArrayList<>(active.keySet())) {
+        for (UUID targetId : active.targetIds()) {
             Entity raw = Bukkit.getEntity(targetId);
             if (!(raw instanceof LivingEntity target) || !target.isValid() || target.isDead()) { clearTarget(targetId); continue; }
-            Map<String, ActiveEffectInstance> byId = active.get(targetId);
-            if (byId == null) continue;
-            for (ActiveEffectInstance instance : new ArrayList<>(byId.values())) {
+            for (ActiveEffectInstance instance : getActive(targetId)) {
                 if (instance.expiresAtTick() <= now) {
                     remove(targetId, instance.definition().id());
                     continue;
@@ -291,15 +285,13 @@ public final class EffectService implements Listener {
             boolean clear = worldChange ? !instance.definition().persistOnWorldChange()
                     : !instance.definition().persistOnLogout();
             if (!clear) continue;
-            Map<String, ActiveEffectInstance> byId = active.get(targetId);
-            if (byId != null) byId.remove(instance.definition().id());
+            active.remove(targetId, instance.definition().id());
             removeInternal(player, instance);
-            if (byId != null && byId.isEmpty()) active.remove(targetId);
         }
     }
 
     private synchronized void clearAllTargets() {
-        new ArrayList<>(active.keySet()).forEach(this::clearTarget);
+        new ArrayList<>(active.targetIds()).forEach(this::clearTarget);
     }
 
     private boolean allowed(CustomEffectDefinition definition, LivingEntity target, EffectContext context) {
@@ -367,5 +359,4 @@ public final class EffectService implements Listener {
     }
 
     private long currentTick() { return Bukkit.getCurrentTick(); }
-    private static String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(); }
 }
