@@ -1,0 +1,6 @@
+item_id,item_type,current_source,recommended_source,material_cost,coin_service_fee,expected_uses,notes
+enchant_book_blade_throw,enchant_book,shop magic_stone=1,shop magic_stone=3,3 magic_stone,0,one-time,"Defined purchase path; combat active"
+enchant_book_light_greatsword,enchant_book,shop magic_stone=1,shop magic_stone=5,5 magic_stone,0,one-time,"Defined purchase path; higher area value"
+enchant_book_laser_arrow,enchant_book,shop magic_stone=1,shop magic_stone=4,4 magic_stone,0,one-time,"Defined purchase path; ranged active"
+enchant_extraction_ticket,support_ticket,2 magic_stone + 2 promotion_stone,4 magic_stone + 4 promotion_stone,8 magic_stone + 4 basic_upgrade_stone,4000,per extraction,"Promotion stone is 1 magic_stone + 1 basic_upgrade_stone"
+promotion_option_reroll_ticket,support_ticket,no canonical recipe,2 magic_stone + 1 promotion_stone,3 magic_stone + 1 basic_upgrade_stone,1200,4-5 to reach top option from low roll,"Current-value retention makes each roll a no-loss choice"

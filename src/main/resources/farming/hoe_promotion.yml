@@ -1,0 +1,63 @@
+schema-version: 1
+enabled: true
+
+# This is the item-local hoe tier/star passive table. It is separate from
+# FarmingProfileService's player stage and permanent crop unlocks.
+default:
+  tier: 0
+  star: 0
+
+limits:
+  maximum-quality-density-shift: 4.0
+  maximum-abundance-point-multiplier: 1.25
+  maximum-rare-seed-chance: 0.10
+
+tiers:
+  0:
+    0:
+      quality-density-shift: 0.0
+      abundance-point-multiplier: 1.00
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00
+  1:
+    0:
+      quality-density-shift: 0.4
+      abundance-point-multiplier: 1.05
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00
+  2:
+    0:
+      quality-density-shift: 0.8
+      abundance-point-multiplier: 1.10
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00
+  3:
+    0:
+      quality-density-shift: 1.2
+      abundance-point-multiplier: 1.15
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00
+  4:
+    0:
+      quality-density-shift: 1.6
+      abundance-point-multiplier: 1.20
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00
+  5:
+    0:
+      quality-density-shift: 2.0
+      abundance-point-multiplier: 1.25
+      rare-seed-chance: 0.0
+      rare-seed-enabled: false
+      crop-drop-multiplier: 1.00
+      seed-drop-multiplier: 1.00

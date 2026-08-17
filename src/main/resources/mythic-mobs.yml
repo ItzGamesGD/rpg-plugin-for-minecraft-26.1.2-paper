@@ -1,0 +1,196 @@
+# MythicMobs is optional. HyunseoRPG keeps its existing mob path when it is absent.
+loot-crafting-schema-version: 1
+settings:
+  enabled: true
+  allow-mythic-native-drops: false
+
+# These IDs must match the MythicMobs mob type/internal name.
+# MythicMobs definitions themselves remain in the MythicMobs plugin folder.
+mobs:
+  zombie_fragment_soldier:
+    enabled: true
+    display-name: "좀비 파편 병사"
+    level: 1
+    category: starter
+    coin-reward: 3
+    exp-reward: 5
+    class-exp-reward: 0
+    boss: false
+    elite: false
+    drops:
+      - item-id: basic_upgrade_fragment
+        chance: 0.35
+        min: 1
+        max: 2
+      - item-id: zombie_fragment
+        chance: 0.45
+        min: 1
+        max: 1
+
+  skeleton_guard:
+    enabled: true
+    display-name: "스켈레톤 경비병"
+    level: 1
+    category: starter
+    coin-reward: 4
+    exp-reward: 6
+    class-exp-reward: 0
+    boss: false
+    elite: false
+    drops:
+      - item-id: basic_upgrade_fragment
+        chance: 0.25
+        min: 1
+        max: 2
+      - item-id: skeleton_seal
+        chance: 0.20
+        min: 1
+        max: 1
+
+  # HyunseoRPG custom behavior definitions. MythicMobs can use the same IDs;
+  # the plugin owns combat timing, hit detection, rewards, and cleanup.
+  frost_blaze:
+    enabled: true
+    base-type: BLAZE
+    display-name: "프로스트 블레이즈"
+    level: 12
+    category: frost
+    elite: false
+    boss: false
+    tags: [frost, ranged]
+    coin-reward: 12
+    exp-reward: 24
+    class-exp-reward: 8
+    stats:
+      max-health: 40.0
+      attack-damage: 3.0
+      movement-speed: 0.23
+      level-multiplier: 0.04
+    visual:
+      glowing: false
+    behavior:
+      disable-vanilla-projectiles: true
+      disable-vanilla-fire: true
+      attack-interval: 2.5
+      charge-ticks: 20
+      charge-particle-count: 8
+      recognition-range: 24.0
+      projectile-speed: 1.6
+      projectile-damage: 3.0
+      freeze:
+        max-stacks: 4
+        stack-timeout: 6.0
+        duration: 1.2
+        visual-freeze-seconds: 1.2
+        root-duration-seconds: 1.2
+        lock-horizontal: true
+        lock-vertical: false
+    spawn:
+      natural:
+        enabled: true
+        chance: 0.035
+        max-nearby: 8
+        requires-ground: true
+        min-player-distance: 0.0
+        max-player-distance: -1.0
+        min-y: 0
+        max-y: 256
+        biomes:
+          allow: [SNOWY_PLAINS, ICE_SPIKES, SNOWY_TAIGA, SNOWY_SLOPES, FROZEN_PEAKS, JAGGED_PEAKS, GROVE]
+          deny: [RIVER, FROZEN_RIVER, OCEAN, DEEP_OCEAN, FROZEN_OCEAN, BEACH]
+    drops:
+      - item-id: ice_fragment
+        chance: 1.0
+        min: 2
+        max: 4
+
+  explosive_breeze:
+    enabled: true
+    base-type: BREEZE
+    display-name: "폭발 브리즈"
+    level: 16
+    category: explosive
+    elite: true
+    boss: false
+    tags: [elite, ranged]
+    coin-reward: 20
+    exp-reward: 40
+    class-exp-reward: 12
+    stats:
+      max-health: 60.0
+      attack-damage: 5.0
+      movement-speed: 0.25
+      level-multiplier: 0.04
+    visual:
+      glowing: false
+    behavior:
+      disable-vanilla-projectiles: true
+      attack-interval: 4.0
+      recognition-range: 24.0
+      projectile-speed: 0.55
+      explosion:
+        damage: 5.0
+        radius: 2.5
+        knockback: 0.8
+        terrain: false
+        fire: false
+    spawn:
+      natural:
+        enabled: false
+        chance: 0.0
+        max-nearby: 4
+        requires-ground: false
+        min-player-distance: 0.0
+        max-player-distance: -1.0
+    drops:
+      - item-id: wind_fragment
+        chance: 1.0
+        min: 2
+        max: 4
+
+  riptide_drowned:
+    enabled: true
+    base-type: DROWNED
+    display-name: "급류 드라운드"
+    level: 18
+    category: riptide
+    elite: true
+    boss: false
+    tags: [elite, melee]
+    coin-reward: 24
+    exp-reward: 48
+    class-exp-reward: 14
+    stats:
+      max-health: 70.0
+      attack-damage: 7.0
+      movement-speed: 0.23
+      level-multiplier: 0.04
+    visual:
+      glowing: false
+    behavior:
+      disable-vanilla-projectiles: true
+      cooldown: 7.0
+      recognition-range: 24.0
+      dash:
+        min-distance: 5.0
+        max-distance: 18.0
+        warning-seconds: 0.8
+        speed: 1.0
+        max-travel: 16.0
+        max-duration-ticks: 30
+        damage: 7.0
+        knockback: 0.8
+        land-vertical-cap: 0.35
+    spawn:
+      natural:
+        enabled: false
+        chance: 0.0
+        max-nearby: 4
+        requires-ground: true
+        min-player-distance: 0.0
+        max-player-distance: -1.0
+    drops:
+      - item-id: water_fragment
+        chance: 1.0
+        min: 2
+        max: 4

@@ -1,0 +1,14 @@
+schema-version: 1
+inputs:
+  SWORD:
+    slot-1: RIGHT_CLICK
+    slot-2: OFFHAND_QUICK
+    slot-3: SHIFT_RIGHT_CLICK
+  BOW:
+    slot-1: LEFT_CLICK
+    slot-2: OFFHAND_QUICK
+    slot-3: SHIFT_LEFT_CLICK
+  TRIDENT:
+    slot-1: DISABLED
+    slot-2: DISABLED
+    slot-3: DISABLED

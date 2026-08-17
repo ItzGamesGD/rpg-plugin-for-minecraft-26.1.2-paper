@@ -1,0 +1,105 @@
+name: HyunseoRPG
+version: 0.1.0-SNAPSHOT
+main: com.hyunseo.hyunseorpg.HyunseoRPGPlugin
+api-version: '26.1.2'
+author: Hyunseo
+description: HyunseoRPG vanilla-plus progression plugin
+softdepend:
+  - MythicMobs
+
+commands:
+  rpg:
+    description: HyunseoRPG utility command
+    usage: /rpg <give|reload|doctor|migrate|debug>
+  rpgtest:
+    description: Operator-only testing utilities
+    usage: /rpgtest <give|coins|setcoins|hand|maxhand|boss|reload>
+  crafting:
+      description: Open crafting or edit the canonical crafting layout
+      usage: /crafting [edit <materials|equipment|special|consumables>]
+  weaponinfo:
+    description: Inspect weapon proficiency
+    usage: /weaponinfo [sword|bow|spear|axe|magic]
+    aliases: [weaponlevel]
+  rpgstat:
+    description: Admin stat command
+    usage: /rpgstat <get|set|add|reset|mana|modifier>
+    aliases: [statadmin]
+  rpgstatbalance:
+    description: Admin stat balance command
+    usage: /rpgstatbalance <list|max|skillmax|bonus>
+    aliases: [statbalance]
+  stats:
+    description: Open common stat menu
+    usage: /stats
+    aliases: [stat]
+  skillstats:
+    description: Open skill stat menu
+    usage: /skillstats
+    aliases: [skillstat]
+  weaponstats:
+    description: Open weapon stat menu
+    usage: /weaponstats
+    aliases: [classstats, weaponstat]
+  rpglevel:
+    description: Admin level command
+    usage: /rpglevel <get|addexp|addclassexp|setlevel|setexp|setclasslevel|setclassexp|points|refresh>
+    aliases: [leveladmin]
+  rpgcooldown:
+    description: Admin cooldown command
+    usage: /rpgcooldown <clear|get|set|list>
+    aliases: [cooldownadmin]
+  rpgmob:
+    description: RPG mob management command
+    usage: /rpgmob <info|spawn|spawncustom|clear|debug|scaling>
+  rpgquest:
+    description: RPG quest command
+    usage: /rpgquest <list|start|info|claim|cancel>
+    aliases: [quest]
+  shop:
+    description: Open shop menu
+    usage: /shop [shopId]
+  shopadmin:
+    description: Shop admin command
+    usage: /shopadmin <edit [shopId]|save [shopId]|reload>
+  specialequipment:
+    description: Late-game special equipment administration and testing
+    usage: /specialequipment <list|info|give|unlock|soul|craft|debug>
+
+permissions:
+  hyunseorpg.item.give:
+    description: Allows custom item commands
+    default: op
+  hyunseorpg.admin.test:
+    description: Allows test commands
+    default: op
+  hyunseorpg.quest:
+    description: Allows quest commands
+    default: true
+  hyunseorpg.shop.use:
+    description: Allows shop use
+    default: true
+  hyunseorpg.shop.admin:
+    description: Allows shop editing
+    default: op
+  hyunseorpg.crafting.admin:
+    description: Allows crafting menu editing
+    default: op
+  hyunseorpg.admin.vanilla-anvil:
+    description: Allows vanilla anvil use
+    default: false
+  hyunseorpg.admin:
+    description: Allows admin commands
+    default: op
+  hyunseorpg.special.admin:
+    description: Allows special equipment administration and testing
+    default: op
+  hyunseorpg.mob.spawn:
+    description: Allows RPG mob spawning
+    default: op
+  hyunseorpg.mob.info:
+    description: Allows RPG mob inspection
+    default: op
+  hyunseorpg.mob.scaling:
+    description: Allows mob scaling changes
+    default: op

@@ -1,0 +1,321 @@
+schema-version: 2
+
+# Canonical recipe source. The integrated crafting GUI and transaction
+# service read this section.
+crafting-recipes:
+  fire_core:
+    inputs: { fire_fragment: 9 }
+    output: { item-id: fire_heart, amount: 1 }
+  water_core:
+    inputs: { water_fragment: 9 }
+    output: { item-id: water_crystal, amount: 1 }
+  wind_core:
+    inputs: { wind_fragment: 9 }
+    output: { item-id: condensed_vortex, amount: 1 }
+  earth_core:
+    inputs: { earth_fragment: 9 }
+    output: { item-id: earth_heart, amount: 1 }
+  ice_core:
+    inputs: { ice_fragment: 9 }
+    output: { item-id: frozen_heart, amount: 1 }
+  magic_core:
+    inputs: { soul_stone: 9 }
+    output: { item-id: dead_soul, amount: 1 }
+  fireball:
+    inputs: { fire_fragment: 1, vanilla:FIRE_CHARGE: 1 }
+    output: { item-id: fireball, amount: 1 }
+  flame_spirit:
+    inputs: { fire_heart: 1, basic_upgrade_stone: 1 }
+    output: { item-id: flame_spirit, amount: 1 }
+  poseidon_spear:
+    inputs: { water_crystal: 64, vanilla:TRIDENT: 3 }
+    output: { item-id: poseidon_spear, amount: 1 }
+  poseidon_breath:
+    inputs: { water_fragment: 1, basic_upgrade_stone: 1 }
+    output: { item-id: poseidon_breath, amount: 1 }
+  earth_blessing:
+    inputs: { earth_heart: 1, earth_fragment: 1 }
+    output: { item-id: earth_blessing, amount: 1 }
+  basic_upgrade_stone:
+    inputs: { basic_upgrade_fragment: 10 }
+    output: { item-id: basic_upgrade_stone, amount: 1 }
+  magic_stone_from_fragments:
+    inputs: { magic_stone_fragment: 9 }
+    output: { item-id: magic_stone, amount: 1 }
+  basic_promotion_stone_from_magic:
+    inputs: { magic_stone: 1, basic_upgrade_stone: 1 }
+    output: { item-id: basic_promotion_stone, amount: 1 }
+  enchant_extraction_ticket:
+    inputs: { magic_stone: 4, basic_promotion_stone: 4 }
+    output: { item-id: enchant_extraction_ticket, amount: 1 }
+  promotion_option_reroll_ticket:
+    inputs: { magic_stone: 2, basic_promotion_stone: 1 }
+    output: { item-id: promotion_option_reroll_ticket, amount: 1 }
+  abundance_essence:
+    category: materials
+    farming-type: essence
+    required-farming-stage: expert
+    required-abundance-points: 100
+    output: { item-id: abundance_essence, amount: 1 }
+  corrosion_essence:
+    category: materials
+    farming-type: alchemy_essence
+    required-farming-stage: expert
+    inputs: { abundance_essence: 1, vanilla:ROTTEN_FLESH: 1 }
+    output: { item-id: corrosion_essence, amount: 1 }
+  potion_vampire:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { abundance_essence: 1, vanilla:SPIDER_EYE: 1, processed_garlic_concentrate_normal: 1 }
+    output: { item-id: potion_vampire, amount: 1 }
+  potion_berserk:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { abundance_essence: 1, vanilla:BLAZE_POWDER: 1, processed_chili_extract_normal: 1, vanilla:SUGAR: 1 }
+    output: { item-id: potion_berserk, amount: 1 }
+  potion_corrosion:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:SLIME_BALL: 1, vanilla:ROTTEN_FLESH: 1 }
+    output: { item-id: potion_corrosion, amount: 1 }
+  potion_frostbite:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:SNOWBALL: 1, vanilla:ICE: 1 }
+    output: { item-id: potion_frostbite, amount: 1 }
+  potion_shock:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:COPPER_INGOT: 1, vanilla:REDSTONE: 1 }
+    output: { item-id: potion_shock, amount: 1 }
+  potion_bleed:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:CACTUS: 1, processed_chili_extract_normal: 1 }
+    output: { item-id: potion_bleed, amount: 1 }
+  potion_vulnerability:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:ROTTEN_FLESH: 1, vanilla:SPIDER_EYE: 1 }
+    output: { item-id: potion_vulnerability, amount: 1 }
+  potion_necrosis:
+    category: materials
+    farming-type: alchemy_potion
+    required-farming-stage: expert
+    inputs: { corrosion_essence: 1, vanilla:WITHER_ROSE: 1, vanilla:SPIDER_EYE: 1 }
+    output: { item-id: potion_necrosis, amount: 1 }
+  process_corn_normal:
+    category: materials
+    farming-type: processing
+    inputs: { crop_corn: 20 }
+    output: { item-id: processed_corn_starch_normal, amount: 1 }
+  process_corn_basic:
+    category: materials
+    farming-type: processing
+    inputs: { crop_corn_quality_basic: 20 }
+    output: { item-id: processed_corn_starch_basic, amount: 1 }
+  process_corn_proficient:
+    category: materials
+    farming-type: processing
+    inputs: { crop_corn_quality_proficient: 20 }
+    output: { item-id: processed_corn_starch_proficient, amount: 1 }
+  process_corn_advanced:
+    category: materials
+    farming-type: processing
+    inputs: { crop_corn_quality_advanced: 20 }
+    output: { item-id: processed_corn_starch_advanced, amount: 1 }
+  process_corn_supreme:
+    category: materials
+    farming-type: processing
+    inputs: { crop_corn_quality_supreme: 20 }
+    output: { item-id: processed_corn_starch_supreme, amount: 1 }
+  process_onion_normal:
+    category: materials
+    farming-type: processing
+    inputs: { crop_onion: 20 }
+    output: { item-id: processed_onion_concentrate_normal, amount: 1 }
+  process_onion_basic:
+    category: materials
+    farming-type: processing
+    inputs: { crop_onion_quality_basic: 20 }
+    output: { item-id: processed_onion_concentrate_basic, amount: 1 }
+  process_onion_proficient:
+    category: materials
+    farming-type: processing
+    inputs: { crop_onion_quality_proficient: 20 }
+    output: { item-id: processed_onion_concentrate_proficient, amount: 1 }
+  process_onion_advanced:
+    category: materials
+    farming-type: processing
+    inputs: { crop_onion_quality_advanced: 20 }
+    output: { item-id: processed_onion_concentrate_advanced, amount: 1 }
+  process_onion_supreme:
+    category: materials
+    farming-type: processing
+    inputs: { crop_onion_quality_supreme: 20 }
+    output: { item-id: processed_onion_concentrate_supreme, amount: 1 }
+  process_chili_normal:
+    category: materials
+    farming-type: processing
+    inputs: { crop_chili: 20 }
+    output: { item-id: processed_chili_extract_normal, amount: 1 }
+  process_chili_basic:
+    category: materials
+    farming-type: processing
+    inputs: { crop_chili_quality_basic: 20 }
+    output: { item-id: processed_chili_extract_basic, amount: 1 }
+  process_chili_proficient:
+    category: materials
+    farming-type: processing
+    inputs: { crop_chili_quality_proficient: 20 }
+    output: { item-id: processed_chili_extract_proficient, amount: 1 }
+  process_chili_advanced:
+    category: materials
+    farming-type: processing
+    inputs: { crop_chili_quality_advanced: 20 }
+    output: { item-id: processed_chili_extract_advanced, amount: 1 }
+  process_chili_supreme:
+    category: materials
+    farming-type: processing
+    inputs: { crop_chili_quality_supreme: 20 }
+    output: { item-id: processed_chili_extract_supreme, amount: 1 }
+  process_garlic_normal:
+    category: materials
+    farming-type: processing
+    inputs: { crop_garlic: 20 }
+    output: { item-id: processed_garlic_concentrate_normal, amount: 1 }
+  process_garlic_basic:
+    category: materials
+    farming-type: processing
+    inputs: { crop_garlic_quality_basic: 20 }
+    output: { item-id: processed_garlic_concentrate_basic, amount: 1 }
+  process_garlic_proficient:
+    category: materials
+    farming-type: processing
+    inputs: { crop_garlic_quality_proficient: 20 }
+    output: { item-id: processed_garlic_concentrate_proficient, amount: 1 }
+  process_garlic_advanced:
+    category: materials
+    farming-type: processing
+    inputs: { crop_garlic_quality_advanced: 20 }
+    output: { item-id: processed_garlic_concentrate_advanced, amount: 1 }
+  process_garlic_supreme:
+    category: materials
+    farming-type: processing
+    inputs: { crop_garlic_quality_supreme: 20 }
+    output: { item-id: processed_garlic_concentrate_supreme, amount: 1 }
+
+# Archived legacy merchant data is retained only as a migration reference.
+legacy-craft2:
+  enabled: false
+  title: "거래 제작"
+  recipes:
+    - fire_core
+    - water_core
+    - wind_core
+    - earth_core
+    - ice_core
+    - magic_core
+    - fireball
+    - flame_spirit
+    - poseidon_spear
+    - poseidon_breath
+    - earth_blessing
+    - basic_upgrade_stone
+    - magic_stone_from_fragments
+    - basic_promotion_stone_from_magic
+
+# The editor writes crafting.layout and keeps these lists as a readable fallback.
+crafting:
+  # Main-menu category definitions are data-driven. A new category can be
+  # added here together with a layout section without Java changes.
+  menu-categories:
+    materials: { display-name: "재료", icon: CHEST, slot: 10 }
+    equipment: { display-name: "장비", icon: DIAMOND_SWORD, slot: 12 }
+    special: { display-name: "특수 장비", icon: NETHER_STAR, slot: 14 }
+    consumables: { display-name: "소모품", icon: BLAZE_POWDER, slot: 16 }
+  categories:
+    materials:
+      - fire_core
+      - water_core
+      - wind_core
+      - earth_core
+      - ice_core
+      - magic_core
+      - fireball
+      - flame_spirit
+      - poseidon_breath
+      - earth_blessing
+      - basic_upgrade_stone
+      - magic_stone_from_fragments
+      - basic_promotion_stone_from_magic
+      - enchant_extraction_ticket
+      - promotion_option_reroll_ticket
+      - abundance_essence
+    equipment:
+       - poseidon_spear
+  # Canonical player/editor placement. Positions are absolute content slots; every 45 slots is one page.
+  layout:
+    materials:
+      fire_core: 0
+      water_core: 1
+      wind_core: 2
+      earth_core: 3
+      ice_core: 4
+      magic_core: 5
+      fireball: 9
+      flame_spirit: 10
+      poseidon_breath: 11
+      earth_blessing: 12
+      basic_upgrade_stone: 18
+      magic_stone_from_fragments: 19
+      basic_promotion_stone_from_magic: 20
+      enchant_extraction_ticket: 21
+      promotion_option_reroll_ticket: 22
+      abundance_essence: 44
+      process_corn_normal: 24
+      process_corn_basic: 25
+      process_corn_proficient: 26
+      process_corn_advanced: 27
+      process_corn_supreme: 28
+      process_onion_normal: 29
+      process_onion_basic: 30
+      process_onion_proficient: 31
+      process_onion_advanced: 32
+      process_onion_supreme: 33
+      process_chili_normal: 34
+      process_chili_basic: 35
+      process_chili_proficient: 36
+      process_chili_advanced: 37
+      process_chili_supreme: 38
+      process_garlic_normal: 39
+      process_garlic_basic: 40
+      process_garlic_proficient: 41
+      process_garlic_advanced: 42
+      process_garlic_supreme: 43
+    equipment:
+      poseidon_spear: 3
+    special:
+      special_fireball_consumable: 0
+      special_spirit_of_flame: 1
+      special_breath_of_poseidon: 2
+      special_blessing_of_earth: 3
+      special_burning_sword: 9
+      special_flowing_water_sword: 10
+      special_wind_cutting_sword: 11
+      special_earth_special_sword: 12
+      special_ice_special_sword: 13
+      special_dark_energy_sword: 14
+      special_burning_bow: 18
+      special_wind_archers_bow: 19
+      special_earth_heavy_bow: 20
+      special_freezing_bow: 21
+      special_dark_energy_bow: 22
+    consumables: {}

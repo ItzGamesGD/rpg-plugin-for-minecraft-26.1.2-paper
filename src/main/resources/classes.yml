@@ -1,0 +1,118 @@
+class-stats:
+  swordmaster:
+    blade_count:
+      display-name: "칼날 투척 수"
+      icon: IRON_SWORD
+      max-level: 8
+      point-cost: 1
+      skill-id: blade_throw
+      target-value: blade_count
+      bonus-per-level: 2.0
+    blade_duration:
+      display-name: "칼날 투척 지속시간"
+      icon: CLOCK
+      max-level: 8
+      point-cost: 1
+      skill-id: blade_throw
+      target-value: duration_seconds
+      bonus-per-level: 1.0
+    blade_active_throws:
+      display-name: "활성 칼날 최대 중첩"
+      icon: NETHER_STAR
+      max-level: 3
+      point-cost: 1
+      skill-id: blade_throw
+      target-value: active_throws
+      bonus-per-level: 1.0
+  bowmaster:
+    laser_range:
+      display-name: "레이저 화살 사거리"
+      icon: SPECTRAL_ARROW
+      max-level: 8
+      point-cost: 1
+      skill-id: laser_arrow
+      target-value: range_blocks
+      bonus-per-level: 5.0
+    arrow_rain_count:
+      display-name: "화살 비 발사 수"
+      icon: ARROW
+      max-level: 8
+      point-cost: 1
+      skill-id: arrow_rain
+      target-value: arrow_count
+      bonus-per-level: 2.0
+  lancer:
+    spear_throw_damage:
+      display-name: "창 투척 피해"
+      icon: TRIDENT
+      max-level: 8
+      point-cost: 1
+      skill-id: spear_throw
+      target-value: damage
+      bonus-per-level: 1.0
+    charge_speed:
+      display-name: "돌진 속도"
+      icon: FEATHER
+      max-level: 8
+      point-cost: 1
+      skill-id: charge
+      target-value: speed
+      bonus-per-level: 0.08
+    charge_distance:
+      display-name: "돌진 거리"
+      icon: TRIDENT
+      max-level: 8
+      point-cost: 1
+      skill-id: charge
+      target-value: distance_blocks
+      bonus-per-level: 1.0
+    spear_breakthrough_count:
+      display-name: "창 돌파 수"
+      icon: TRIDENT
+      max-level: 8
+      point-cost: 1
+      skill-id: spear_breakthrough
+      target-value: spear_count
+      bonus-per-level: 1.0
+    spear_breakthrough_charge_speed:
+      display-name: "창 돌파 돌진 속도"
+      icon: FEATHER
+      max-level: 8
+      point-cost: 1
+      skill-id: spear_breakthrough
+      target-value: charge_speed
+      bonus-per-level: 0.08
+  assassin:
+    stealth_duration:
+      display-name: "은신 지속시간"
+      icon: ENDER_EYE
+      max-level: 8
+      point-cost: 1
+      skill-id: stealth
+      target-value: duration_seconds
+      bonus-per-level: 1.0
+    assassination_damage:
+      display-name: "암살 피해"
+      icon: IRON_SWORD
+      max-level: 8
+      point-cost: 1
+      skill-id: assassination
+      target-value: damage
+      bonus-per-level: 2.0
+  wizard:
+    meteor_radius:
+      display-name: "운석 범위"
+      icon: FIRE_CHARGE
+      max-level: 8
+      point-cost: 1
+      skill-id: meteor
+      target-value: radius_blocks
+      bonus-per-level: 1.0
+    golem_duration:
+      display-name: "골렘 소환 지속시간"
+      icon: IRON_BLOCK
+      max-level: 8
+      point-cost: 1
+      skill-id: golem_summon
+      target-value: duration_seconds
+      bonus-per-level: 5.0

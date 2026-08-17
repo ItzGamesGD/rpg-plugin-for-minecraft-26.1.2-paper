@@ -1,0 +1,58 @@
+schema-version: 1
+enabled: true
+
+# Stage 7 quality uses one roll and probability density. Values are temporary balance inputs.
+roll:
+  random-minimum: 0.0
+  random-maximum: 100.0
+
+quality:
+  normal:
+    display-name: 일반
+    minimum-score: 0.0
+  basic:
+    display-name: 초급
+    minimum-score: 25.0
+  proficient:
+    display-name: 중급
+    minimum-score: 50.0
+  advanced:
+    display-name: 고급
+    minimum-score: 75.0
+  supreme:
+    display-name: 최고급
+    minimum-score: 95.0
+
+# Every harvest rolls exactly once from this normalized distribution.
+base-distribution:
+  normal: 55.0
+  basic: 25.0
+  proficient: 12.0
+  advanced: 6.0
+  supreme: 2.0
+
+items:
+  corn:
+    normal: crop_corn
+    basic: crop_corn_quality_basic
+    proficient: crop_corn_quality_proficient
+    advanced: crop_corn_quality_advanced
+    supreme: crop_corn_quality_supreme
+  onion:
+    normal: crop_onion
+    basic: crop_onion_quality_basic
+    proficient: crop_onion_quality_proficient
+    advanced: crop_onion_quality_advanced
+    supreme: crop_onion_quality_supreme
+  chili:
+    normal: crop_chili
+    basic: crop_chili_quality_basic
+    proficient: crop_chili_quality_proficient
+    advanced: crop_chili_quality_advanced
+    supreme: crop_chili_quality_supreme
+  garlic:
+    normal: crop_garlic
+    basic: crop_garlic_quality_basic
+    proficient: crop_garlic_quality_proficient
+    advanced: crop_garlic_quality_advanced
+    supreme: crop_garlic_quality_supreme

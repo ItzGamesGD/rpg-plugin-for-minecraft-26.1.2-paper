@@ -1,0 +1,48 @@
+record_type,id,category,source_recipe,lower_materials,expected_actions,source_shop_price,external_shop_status,source_execution_coin_cost,external_execution_coin_cost,first_roll_mean,reroll_target,reroll_expected_attempts,notes
+enchant_book,blade_chain,combat_function,none,unknown,unknown,8 magic_stone,purchasable_false,unknown,unknown,unknown,unknown,unknown,source shop only; live acquisition path missing
+enchant_book,light_greatsword,combat_function,none,unknown,unknown,10 magic_stone,purchasable_false,unknown,unknown,unknown,unknown,unknown,source shop only; live acquisition path missing
+enchant_book,laser_arrow,combat_function,none,unknown,unknown,9 magic_stone,purchasable_false,unknown,unknown,unknown,unknown,unknown,source shop only; live acquisition path missing
+enchant_book,axe_heavy_strike,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,handler exists; live acquisition missing
+enchant_book,titans_wrath,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,handler exists; live acquisition missing
+enchant_book,protection,defensive,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_4
+enchant_book,fire_protection,defensive,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_4
+enchant_book,blast_protection,defensive,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_4
+enchant_book,projectile_protection,defensive,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_4
+enchant_book,skill_protection,defensive,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_4
+enchant_book,thorns,combat_support,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,rolling_landing,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,respiration,utility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,aqua_affinity,utility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,swift_sneak,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,depth_strider,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,soul_speed,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,frost_walker,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_2
+enchant_book,wind_arrow,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,fire_arrow_rain,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,crossbow_barrage,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,unbreaking,gather_support,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,book_id_durability_save_pickaxe
+enchant_book,mining_bonus_drop,gather_profit,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,chance_0.12
+enchant_book,area_excavation,gather_convenience,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,radius_1
+enchant_book,auto_replant,gather_convenience,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,auto_smelt,gather_convenience,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,chain_logging,gather_convenience,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,maximum_blocks_48
+enchant_book,treasure_finder,gather_profit,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,chance_0.15
+enchant_book,multi_catch,gather_profit,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,extra_catches_1
+enchant_book,elytra_launch,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,live test required
+enchant_book,precision_flight,mobility,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,max_level_3
+enchant_book,explosive_mace,combat_function,none,unknown,unknown,not purchasable,0,false,unknown,unknown,unknown,unknown,maximum_targets_20
+ticket,enchant_extraction_ticket,support,magic_stone_4+promotion_stone_4,magic_fragment_36+upgrade_fragment_40,900,12_magic_stone,6000,0,unknown,not_applicable,not_applicable,external support currency cost mismatch
+ticket,promotion_option_reroll_ticket,support,magic_stone_2+promotion_stone_1,magic_fragment_27+upgrade_fragment_10,337.5,6_magic_stone,2000,0,unknown,not_applicable,not_applicable,external support currency cost mismatch
+promotion_option,attack-damage,combat_flat,0.2-0.6_step_0.1,none,none,none,none,none,none,0.3625,0.4,3.2,weighted_halves_3_to_1
+promotion_option,thrust-damage,combat_flat,0.2-0.6_step_0.1,none,none,none,none,none,none,0.3625,0.4,3.2,weighted_halves_3_to_1
+promotion_option,projectile-damage,combat_flat,0.2-0.6_step_0.1,none,none,none,none,none,none,0.3625,0.4,3.2,weighted_halves_3_to_1
+promotion_option,mining-speed,gather_flat,0.25-1.0_step_0.25,none,none,none,none,none,none,0.5,0.5,2.6,weighted_halves_3_to_1
+promotion_option,excavation-speed,gather_flat,0.25-1.0_step_0.25,none,none,none,none,none,none,0.5,0.5,2.6,weighted_halves_3_to_1
+promotion_option,logging-speed,gather_flat,0.25-1.0_step_0.25,none,none,none,none,none,none,0.5,0.5,2.6,weighted_halves_3_to_1
+promotion_option,farming-speed,gather_flat,0.25-1.0_step_0.25,none,none,none,none,none,none,0.5,0.5,2.6,weighted_halves_3_to_1
+promotion_option,bonus-drop-chance,gather_profit,0.01-0.03_step_0.01,none,none,none,none,none,none,0.01875,0.02,2.6,weighted_halves_3_to_1
+promotion_option,durability-save-chance,gather_support,0.01-0.03_step_0.01,none,none,none,none,none,none,0.01875,0.02,2.6,weighted_halves_3_to_1
+promotion_option,max-health-bonus,defensive_flat,1.0-2.0_step_1.0,none,none,none,none,none,none,1.25,2.0,4.0,weighted_halves_3_to_1
+promotion_option,critical-chance,combat_percent,0.01-0.03_step_0.01,none,none,none,none,none,none,0.01875,0.02,2.6,weighted_halves_3_to_1
+promotion_option,skill-damage,combat_percent,0.02-0.06_step_0.01,none,none,none,none,none,none,0.03625,0.04,3.2,weighted_halves_3_to_1
+promotion_option,damage-reduction,defensive_percent,0.005-0.02_step_0.005,none,none,none,none,none,none,0.01,0.01,2.6,weighted_halves_3_to_1

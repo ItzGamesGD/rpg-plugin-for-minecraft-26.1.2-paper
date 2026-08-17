@@ -1,0 +1,12 @@
+schema-version: 1
+components:
+  attribute:
+    enabled: true
+    code-limit:
+      amount: 1.0
+      max-duration-ticks: 72000
+  potion-effect:
+    enabled: true
+    code-limit:
+      max-duration-ticks: 72000
+

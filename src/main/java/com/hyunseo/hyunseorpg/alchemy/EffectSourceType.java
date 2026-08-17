@@ -1,0 +1,6 @@
+package com.hyunseo.hyunseorpg.alchemy;
+
+public enum EffectSourceType {
+    POTION_DRINK, POTION_SPLASH, POTION_LINGERING, EQUIPMENT, ENCHANTMENT,
+    MONSTER_SKILL, BOSS_SKILL, ENVIRONMENT, COMMAND, OTHER
+}

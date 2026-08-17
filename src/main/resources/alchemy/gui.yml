@@ -1,0 +1,10 @@
+schema-version: 1
+enabled: true
+status: IMPLEMENTED_RUNTIME
+gui:
+  immediate-craft-only: true
+  block-actions: [SHIFT, NUMBER_KEY, SWAP_OFFHAND, DRAG, DOUBLE_CLICK, COLLECT_TO_CURSOR, HOPPER]
+  transaction:
+    check-output-capacity-first: true
+    atomic-consume-and-give: true
+    return-uncommitted-on-close: true

@@ -1,0 +1,262 @@
+package com.hyunseo.hyunseorpg.command;
+
+import com.hyunseo.hyunseorpg.boss.BossSessionManager;
+import com.hyunseo.hyunseorpg.boss.BossType;
+import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
+import com.hyunseo.hyunseorpg.economy.CoinService;
+import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
+import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
+import com.hyunseo.hyunseorpg.equipment.EquipmentData;
+import com.hyunseo.hyunseorpg.equipment.EquipmentDefinition;
+import com.hyunseo.hyunseorpg.equipment.EquipmentMetadataService;
+import com.hyunseo.hyunseorpg.equipment.EquipmentRegistry;
+import com.hyunseo.hyunseorpg.item.RPGItemRegistry;
+import com.hyunseo.hyunseorpg.item.RPGItemService;
+import com.hyunseo.hyunseorpg.crafting.SoulboundItemService;
+import com.hyunseo.hyunseorpg.weapon.WeaponItemService;
+import com.hyunseo.hyunseorpg.weapon.WeaponType;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
+
+public final class RPGTestCommand implements CommandExecutor, TabCompleter {
+    private static final String PERMISSION = "hyunseorpg.admin.test";
+    private final CoinService coins;
+    private final RPGItemRegistry itemRegistry;
+    private final RPGItemService items;
+    private final SoulboundItemService soulbound;
+    private final WeaponItemService weapons;
+    private final EquipmentEnhancementService enhancement;
+    private final EquipmentPromotionService promotion;
+    private final EquipmentMetadataService equipmentMetadata;
+    private final EquipmentRegistry equipmentRegistry;
+    private final BossSessionManager bosses;
+    private final RPGReloadService reload;
+
+    public RPGTestCommand(CoinService coins, RPGItemRegistry itemRegistry, RPGItemService items,
+                          SoulboundItemService soulbound, WeaponItemService weapons,
+                          EquipmentEnhancementService enhancement, EquipmentPromotionService promotion,
+                          BossSessionManager bosses, RPGReloadService reload,
+                          EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry) {
+        this.coins = coins;
+        this.itemRegistry = itemRegistry;
+        this.items = items;
+        this.soulbound = soulbound;
+        this.weapons = weapons;
+        this.enhancement = enhancement;
+        this.promotion = promotion;
+        this.equipmentMetadata = equipmentMetadata;
+        this.equipmentRegistry = equipmentRegistry;
+        this.bosses = bosses;
+        this.reload = reload;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission(PERMISSION)) { sender.sendMessage("관리자 테스트 권한이 필요합니다."); return true; }
+        if (args.length == 0) { usage(sender, label); return true; }
+        switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "give", "item" -> give(sender, args, label);
+            case "coins" -> adjustCoins(sender, args, false, label);
+            case "setcoins" -> adjustCoins(sender, args, true, label);
+            case "hand", "inspect" -> inspect(sender, args);
+            case "maxhand", "maxgrowth" -> maxHand(sender, args);
+            case "option-roll" -> optionRoll(sender, args);
+            case "boss" -> boss(sender, args, label);
+            case "reload" -> sender.sendMessage(reload.reload(args.length > 1 ? args[1] : "all").message());
+            default -> usage(sender, label);
+        }
+        return true;
+    }
+
+    private void give(CommandSender sender, String[] args, String label) {
+        if (args.length < 3) { sender.sendMessage("/" + label + " give <player> <itemId> [amount]"); return; }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
+        int amount;
+        try { amount = Math.max(1, Math.min(2304, args.length > 3 ? Integer.parseInt(args[3]) : 1)); }
+        catch (NumberFormatException exception) { sender.sendMessage("수량은 숫자여야 합니다."); return; }
+        if (itemRegistry.get(args[2]).filter(data -> data.legacyProfessionItem()).isPresent()) {
+            sender.sendMessage("직업 레거시 아이템은 호환성 보존용이라 새로 지급하지 않습니다.");
+            return;
+        }
+        ItemStack prototype = createItem(args[2]);
+        if (prototype == null) { sender.sendMessage("등록되지 않은 아이템입니다: " + args[2]); return; }
+        for (int remaining = amount; remaining > 0;) {
+            int stackAmount = Math.min(remaining, prototype.getMaxStackSize());
+            ItemStack stack = prototype.clone();
+            stack.setAmount(stackAmount);
+            if (soulbound.requiresBinding(stack)) soulbound.bind(stack, target.getUniqueId());
+            Map<Integer, ItemStack> leftovers = target.getInventory().addItem(stack);
+            leftovers.values().forEach(item -> target.getWorld().dropItemNaturally(target.getLocation(), item));
+            remaining -= stackAmount;
+        }
+        sender.sendMessage(target.getName() + "에게 " + args[2] + " x" + amount + " 지급 완료");
+    }
+
+    private void adjustCoins(CommandSender sender, String[] args, boolean set, String label) {
+        if (args.length < 3) { sender.sendMessage("/" + label + " " + (set ? "setcoins" : "coins") + " <player> <amount>"); return; }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        try {
+            long amount = Long.parseLong(args[2]);
+            if (target == null || amount < 0) throw new NumberFormatException();
+            if (set) coins.setCoins(target, amount); else coins.addCoins(target, amount);
+            sender.sendMessage("코인 처리 완료: " + coins.getCoins(target));
+        } catch (NumberFormatException exception) { sender.sendMessage("플레이어 또는 수량이 올바르지 않습니다."); }
+    }
+
+    private void inspect(CommandSender sender, String[] args) {
+        Player target = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player player ? player : null;
+        if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
+        ItemStack item = target.getInventory().getItemInMainHand();
+        equipmentMetadata.read(item).ifPresent(data -> {
+            EquipmentDefinition definition = equipmentRegistry.find(item).orElse(null);
+            sender.sendMessage(formatEquipmentData(data));
+            if (definition != null) sender.sendMessage("equipment-definition=" + definition);
+        });
+        if (item.getType().isAir()) { sender.sendMessage("주손 장비가 없습니다."); return; }
+        sender.sendMessage("강화=" + enhancement.getLevel(item) + " 승급=" + promotion.getStage(item)
+                + " 인챈트 슬롯=" + promotion.getUnlockedEnchantSlots(item));
+        sender.sendMessage("일반 옵션=" + promotion.getGeneralOptions(item));
+        sender.sendMessage("특수 옵션=" + promotion.getSpecialOptions(item));
+    }
+
+    private String formatEquipmentData(EquipmentData data) {
+        return "equipment-data=id=" + data.itemId()
+                + ",type=" + data.equipmentType()
+                + ",grade=" + data.grade().value()
+                + ",upgrade=" + data.upgradeLevel()
+                + ",promotion=" + data.promotionLevel()
+                + ",enchants=" + data.enchantData()
+                + ",kills=" + data.killCount()
+                + ",data-version=" + data.dataVersion();
+    }
+
+    private void maxHand(CommandSender sender, String[] args) {
+        Player target = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player player ? player : null;
+        if (target == null) { sender.sendMessage("Player not found."); return; }
+        ItemStack item = target.getInventory().getItemInMainHand();
+        if (item.getType().isAir()) { sender.sendMessage("Main hand is empty."); return; }
+
+        int promotionsApplied = 0;
+        for (int attempts = 0; attempts < 64; attempts++) {
+            enhancement.forceEnhancementLevel(item, enhancement.getMaximumLevel(item));
+            var preview = promotion.preview(item);
+            if (preview.isEmpty()) break;
+            promotion.apply(item, preview.get());
+            promotionsApplied++;
+        }
+        int finalEnhancement = enhancement.forceEnhancementLevel(item, enhancement.getMaximumLevel(item));
+        target.getInventory().setItemInMainHand(item);
+        sender.sendMessage("main-hand max growth applied: player=" + target.getName()
+                + ", enhancement=+" + finalEnhancement
+                + ", promotion=" + promotion.getStage(item)
+                + ", promotions-applied=" + promotionsApplied
+                + ", enchant-slots=" + promotion.getUnlockedEnchantSlots(item));
+        sender.sendMessage("general-options=" + promotion.getGeneralOptions(item));
+        sender.sendMessage("special-options=" + promotion.getSpecialOptions(item));
+    }
+
+    private void optionRoll(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("/rpgtest option-roll <optionId> [count]");
+            return;
+        }
+        int count = 1000;
+        if (args.length >= 3) {
+            try { count = Math.max(1, Math.min(100_000, Integer.parseInt(args[2]))); }
+            catch (NumberFormatException exception) { sender.sendMessage("count는 숫자여야 합니다."); return; }
+        }
+        var definition = promotion.getOptionDefinition(args[1]).orElse(null);
+        if (definition == null || !definition.promotionEligible()) {
+            sender.sendMessage("승급 수치형 옵션을 찾을 수 없습니다: " + args[1]);
+            return;
+        }
+        Random random = new Random(0x48595250474CL);
+        int lower = 0, upper = 0, minimum = 0, maximum = 0;
+        double sum = 0.0D;
+        for (int index = 0; index < count; index++) {
+            double value = promotion.simulateFirstOptionRoll(definition.id(), random).orElseThrow();
+            sum += value;
+            if (Math.abs(value - definition.minimum()) < 0.000001D) minimum++;
+            if (Math.abs(value - definition.maximum()) < 0.000001D) maximum++;
+            if (value <= definition.minimum() + (definition.maximum() - definition.minimum()) * 0.5D) lower++;
+            else upper++;
+        }
+        sender.sendMessage("option-roll simulation: " + definition.id() + " count=" + count);
+        sender.sendMessage("range=" + definition.minimum() + ".." + definition.maximum()
+                + " step=" + definition.step() + " average=" + (sum / count));
+        sender.sendMessage("lower-half=" + lower + " upper-half=" + upper
+                + " minimum=" + minimum + " maximum=" + maximum);
+    }
+
+    private void boss(CommandSender sender, String[] args, String label) {
+        if (args.length < 3) { sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]"); return; }
+        BossType type = BossType.fromInput(args[2]).orElse(null);
+        if (type == null) { sender.sendMessage("보스 종류는 wither 또는 dragon입니다."); return; }
+        Player target = args.length > 3 ? Bukkit.getPlayerExact(args[3]) : sender instanceof Player player ? player : null;
+        if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "start" -> sender.sendMessage("보스 세션 시작: " + bosses.startTest(target, type));
+            case "end" -> sender.sendMessage("보스 세션 종료: " + bosses.endFor(target, type));
+            case "complete" -> sender.sendMessage("보스 강제 완료: " + bosses.forceComplete(target, type));
+            case "status" -> sender.sendMessage(type.configId() + ": " + bosses.status(type));
+            default -> sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
+        }
+    }
+
+    private ItemStack createItem(String rawId) {
+        ItemStack item = items.create(rawId, 1).orElse(null);
+        if (item != null) return item;
+        if (rawId.toLowerCase(Locale.ROOT).startsWith("basic_")) {
+            return WeaponType.fromInput(rawId.substring(6)).map(weapons::create).orElse(null);
+        }
+        return null;
+    }
+
+    private void usage(CommandSender sender, String label) {
+        sender.sendMessage("/" + label + " give <player> <itemId> [amount]");
+        sender.sendMessage("/" + label + " coins|setcoins <player> <amount>");
+        sender.sendMessage("/" + label + " maxhand [player]");
+        sender.sendMessage("/" + label + " option-roll <optionId> [count]");
+        sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
+        sender.sendMessage("/" + label + " reload [all|bosses|recipes|mobs]");
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "option-roll", "boss", "reload"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("boss")) return filter(List.of("start", "end", "complete", "status"), args[1]);
+        if (args.length == 3 && args[0].equalsIgnoreCase("boss")) return filter(List.of("wither", "dragon"), args[2]);
+        if (args.length == 4 && args[0].equalsIgnoreCase("boss")) return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[3]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("reload")) return filter(List.of(reload.ids()), args[1]);
+        if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("hand")
+                || args[0].equalsIgnoreCase("inspect") || args[0].equalsIgnoreCase("maxhand")
+                || args[0].equalsIgnoreCase("maxgrowth"))) {
+            return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
+            List<String> ids = new ArrayList<>(itemRegistry.getAll().stream()
+                    .filter(data -> !data.legacyProfessionItem())
+                    .map(data -> data.itemId()).toList());
+            for (WeaponType type : WeaponType.values()) ids.add("basic_" + type.id());
+            return filter(ids, args[2]);
+        }
+        return List.of();
+    }
+
+    private List<String> filter(List<String> values, String prefix) {
+        String normalized = prefix.toLowerCase(Locale.ROOT);
+        return values.stream().filter(value -> value.toLowerCase(Locale.ROOT).startsWith(normalized)).toList();
+    }
+}

@@ -1,0 +1,61 @@
+schema-version: 2
+# 촉매 수치와 허용 조합은 밸런스 단계에서 재검토한다. 현재 값은 런타임 검증용 기준값이다.
+catalysts:
+  redstone:
+    enabled: true
+    mode: DURATION
+    vanilla-material: REDSTONE
+    duration-multiplier-percent: 100 # BALANCE_PENDING
+  glowstone_dust:
+    enabled: true
+    mode: AMPLIFIER
+    vanilla-material: GLOWSTONE_DUST
+    amplifier-delta: 1 # BALANCE_PENDING
+    duration-multiplier-percent: 100 # BALANCE_PENDING
+  gunpowder:
+    enabled: true
+    mode: DELIVERY
+    vanilla-material: GUNPOWDER
+    delivery: SPLASH
+  dragon_breath:
+    enabled: true
+    mode: DELIVERY
+    vanilla-material: DRAGON_BREATH
+    delivery: LINGERING
+  fermented_spider_eye:
+    enabled: true
+    mode: INVERSION
+    vanilla-material: FERMENTED_SPIDER_EYE
+    allowed-potions: [potion_vulnerability]
+    # 명시된 조합만 허용하는 임시 기준. 최종 반전 조합은 BALANCE_PENDING.
+    inversion-effect-ids:
+      potion_vulnerability: effect_corrosion
+  sculk:
+    enabled: true
+    mode: SPECIAL
+    kind: SCULK
+    vanilla-material: SCULK
+    max-propagation-count: 8
+    radius: 8.0
+    attenuation: 0.5 # BALANCE_PENDING
+  echo_shard:
+    enabled: true
+    mode: SPECIAL
+    kind: ECHO
+    vanilla-material: ECHO_SHARD
+    delay-ticks: 10
+  slime:
+    enabled: true
+    mode: SPECIAL
+    kind: SLIME
+    vanilla-material: SLIME_BALL
+    max-propagation-count: 4
+    radius: 5.0
+    lifetime-ticks: 40
+  wind_charge:
+    enabled: true
+    mode: SPECIAL
+    kind: WIND_CHARGE
+    vanilla-material: WIND_CHARGE
+    max-distance: 16.0
+    lifetime-ticks: 40

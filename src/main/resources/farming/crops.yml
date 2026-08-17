@@ -1,0 +1,41 @@
+schema-version: 1
+enabled: true
+
+# Stage 2 enables corn's same-chunk two-block representation.
+crops:
+  corn:
+    enabled: true
+    seed-item-id: seed_corn
+    crop-item-id: crop_corn
+    display-block: WHEAT
+    stages: 4
+    two-block: true
+    soil: [FARMLAND]
+    data-version: 1
+  onion:
+    enabled: true
+    seed-item-id: seed_onion
+    crop-item-id: crop_onion
+    display-block: CARROTS
+    stages: 4
+    two-block: false
+    soil: [FARMLAND]
+    data-version: 1
+  chili:
+    enabled: true
+    seed-item-id: seed_chili
+    crop-item-id: crop_chili
+    display-block: BEETROOTS
+    stages: 4
+    two-block: false
+    soil: [FARMLAND]
+    data-version: 1
+  garlic:
+    enabled: true
+    seed-item-id: seed_garlic
+    crop-item-id: crop_garlic
+    display-block: POTATOES
+    stages: 4
+    two-block: false
+    soil: [FARMLAND]
+    data-version: 1

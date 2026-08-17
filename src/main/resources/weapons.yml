@@ -1,0 +1,42 @@
+# Weapon combat progression is independent from the selected lifestyle profession.
+proficiency:
+  max-level: 100
+  base-exp: 100
+  exp-per-level: 35
+  combat-exp-per-hit: 1
+
+weapons:
+  sword:
+    material: IRON_SWORD
+    display-name: "기본 검"
+  bow:
+    material: BOW
+    display-name: "기본 활"
+  spear:
+    material: TRIDENT
+    display-name: "기본 창"
+    recipe:
+      enabled: true
+      shape:
+        - "  P"
+        - " I "
+        - "S  "
+      ingredients:
+        P: PRISMARINE_SHARD
+        I: IRON_INGOT
+        S: STICK
+  axe:
+    material: IRON_AXE
+    display-name: "기본 도끼"
+  magic:
+    material: BLAZE_ROD
+    display-name: "기본 마법 지팡이"
+    recipe:
+      enabled: true
+      shape:
+        - " A "
+        - " S "
+        - " S "
+      ingredients:
+        A: AMETHYST_SHARD
+        S: STICK

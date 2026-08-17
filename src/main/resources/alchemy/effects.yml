@@ -1,0 +1,121 @@
+schema-version: 1
+effects:
+  effect_test_speed:
+    enabled: true
+    display-name: "테스트 속도"
+    priority: 10
+    duration-ticks: 1200
+    amplifier: 1
+    max-stacks: 1
+    target-policy: PLAYER
+    handler-id: ""
+    components:
+      - id: attribute
+        enabled: true
+        priority: 10
+        attribute: MOVEMENT_SPEED
+        operation: MULTIPLY_SCALAR_1
+        amount: 0.10
+    policies:
+      stack: REFRESH_DURATION
+      remove-on-death: true
+      persist-on-logout: false
+      persist-on-world-change: false
+      pvp-multiplier: 1.0
+      boss-multiplier: 1.0
+  effect_vampire:
+    enabled: true
+    display-name: "흡혈"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: vampirism
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { heal-ratio: 0.05 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_berserk:
+    enabled: true
+    display-name: "광폭화"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: berserk
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { outgoing-multiplier: 1.10, incoming-multiplier: 1.05 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_corrosion:
+    enabled: true
+    display-name: "부식"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: corrosion
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { incoming-multiplier: 1.10 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_frostbite:
+    enabled: true
+    display-name: "동상"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: frostbite
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { movement-multiplier: -0.15 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_shock:
+    enabled: true
+    display-name: "감전"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: shock
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { tick-interval: 20, damage: 1.0 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_bleed:
+    enabled: true
+    display-name: "출혈"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: bleed
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { tick-interval: 20, damage: 1.0 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_vulnerability:
+    enabled: true
+    display-name: "취약"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: vulnerability
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { incoming-multiplier: 1.20 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
+  effect_necrosis:
+    enabled: true
+    display-name: "괴사"
+    duration-ticks: 1200
+    amplifier: 0
+    max-stacks: 1
+    target-policy: LIVING_ENTITY
+    handler-id: necrosis
+    status: IMPLEMENTED_RUNTIME
+    balance: BALANCE_PENDING
+    baseline: { max-health-multiplier: -0.10 }
+    policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }

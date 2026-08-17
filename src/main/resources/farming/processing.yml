@@ -1,0 +1,8 @@
+schema-version: 1
+enabled: true
+
+# Processing definitions remain in crafting.yml so the existing CraftingRecipeRegistry
+# and GUI stay the single execution path. This file is the farming processing contract.
+authoritative-source: crafting.yml
+recipe-category: processing
+bulk-crafting-enabled: false

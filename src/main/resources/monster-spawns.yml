@@ -1,0 +1,218 @@
+# 모든 자연/추가 스폰은 이 파일에서 관리합니다.
+# REPLACEMENT: 바닐라 자연 스폰을 취소하고 같은 위치에 RPG 몬스터를 생성합니다.
+# ADDITIVE: 바닐라 스폰을 유지하고 플레이어 주변에 별도로 생성합니다.
+settings:
+  enabled: true
+  direct-spawn-interval-ticks: 40
+  direct-spawn-chance: 0.02
+  direct-spawn-max-nearby: 8
+  nearby-player-radius: 96
+  level-calculation: AVERAGE
+
+spawns:
+  mining_giant:
+    base-mob: ZOMBIE_VILLAGER
+    mode: ADDITIVE
+    enabled: true
+    weight: 4
+    chance: 0.08
+    min-rpg-level: 8
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    min-y: -64
+    max-y: 320
+    min-distance: 12.0
+    max-distance: 28.0
+    max-nearby: 2
+    nearby-radius: 32.0
+    max-per-chunk: 1
+    global-cap: 20
+    require-solid-ground: true
+    require-open-space: true
+    despawn-with-distance: true
+    # 이전 키와의 호환성을 위해 유지합니다.
+    direct-spawn: true
+    replace-vanilla: false
+    spawn-enabled: true
+
+  lava_cube:
+    base-mob: MAGMA_CUBE
+    mode: REPLACEMENT
+    enabled: false
+    weight: 5
+    chance: 0.10
+    min-rpg-level: 8
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world_nether]
+    biomes: []
+    min-light: 0
+    max-light: 15
+    min-y: -64
+    max-y: 320
+    max-nearby: 8
+    nearby-radius: 32.0
+    replace-vanilla: true
+    replacement-chance: 0.10
+    direct-spawn: false
+    spawn-enabled: true
+
+  explosive_breeze:
+    base-mob: BREEZE
+    mode: ADDITIVE
+    enabled: false
+    weight: 1
+    chance: 0.0
+    min-rpg-level: 16
+    max-rpg-level: 60
+    level-source: NEARBY_AVERAGE
+    nearby-player-radius: 96.0
+    allowed-worlds: [world]
+    biomes: [PLAINS, WINDSWEPT_HILLS]
+    min-light: 0
+    max-light: 15
+    require-solid-ground: true
+    require-open-space: true
+    direct-spawn: true
+    spawn-enabled: false
+
+  riptide_drowned:
+    base-mob: DROWNED
+    mode: REPLACEMENT
+    enabled: false
+    weight: 1
+    chance: 0.0
+    replacement-chance: 0.0
+    min-rpg-level: 18
+    max-rpg-level: 60
+    level-source: NEARBY_AVERAGE
+    nearby-player-radius: 96.0
+    allowed-worlds: [world, world_nether]
+    biomes: [RIVER, OCEAN, DEEP_OCEAN]
+    min-light: 0
+    max-light: 15
+    replace-vanilla: false
+    direct-spawn: false
+    spawn-enabled: false
+
+  stone_armored_zombie:
+    base-mob: HUSK
+    mode: ADDITIVE
+    enabled: true
+    weight: 5
+    chance: 0.12
+    min-rpg-level: 5
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world, world_nether]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    min-y: -64
+    max-y: 320
+    min-distance: 12.0
+    max-distance: 28.0
+    max-nearby: 3
+    nearby-radius: 32.0
+    max-per-chunk: 2
+    global-cap: 30
+    require-solid-ground: true
+    require-open-space: true
+    despawn-with-distance: true
+    direct-spawn: true
+    replace-vanilla: false
+    spawn-enabled: true
+
+  fake_explosion_creeper:
+    base-mob: CREEPER
+    mode: REPLACEMENT
+    enabled: true
+    weight: 3
+    chance: 0.06
+    min-rpg-level: 8
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    replace-vanilla: true
+    replacement-chance: 0.06
+    direct-spawn: false
+    spawn-enabled: true
+
+  swapping_witch:
+    base-mob: WITCH
+    mode: REPLACEMENT
+    enabled: true
+    weight: 3
+    chance: 0.08
+    min-rpg-level: 10
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    replace-vanilla: true
+    replacement-chance: 0.08
+    direct-spawn: false
+    spawn-enabled: true
+
+  charging_zombie:
+    base-mob: ZOMBIE
+    mode: REPLACEMENT
+    enabled: true
+    weight: 4
+    chance: 0.10
+    min-rpg-level: 8
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    replace-vanilla: true
+    replacement-chance: 0.10
+    direct-spawn: false
+    spawn-enabled: true
+
+  rapid_shooter:
+    base-mob: SKELETON
+    mode: REPLACEMENT
+    enabled: true
+    weight: 4
+    chance: 0.10
+    min-rpg-level: 8
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    replace-vanilla: true
+    replacement-chance: 0.10
+    direct-spawn: false
+    spawn-enabled: true
+
+  splitting_creeper:
+    base-mob: CREEPER
+    mode: REPLACEMENT
+    enabled: true
+    weight: 2
+    chance: 0.04
+    min-rpg-level: 12
+    max-rpg-level: 60
+    level-source: NEAREST_PLAYER
+    allowed-worlds: [world]
+    biomes: []
+    min-light: 0
+    max-light: 7
+    replace-vanilla: true
+    replacement-chance: 0.04
+    direct-spawn: false
+    spawn-enabled: true

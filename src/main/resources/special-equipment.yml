@@ -1,0 +1,308 @@
+schema-version: 1
+
+# Late-game equipment is separate from the existing profession recipes.
+# Unlock conditions and ability values are YAML-owned.
+special-equipment:
+  enabled: true
+  soul-storage: EQUIPMENT
+  require-recipe-discovery: false
+  items:
+    fireball_consumable:
+      item-id: fireball_consumable
+      display: { name: "파이어볼" }
+      attribute: { element: FIRE, equipment-type: CONSUMABLE }
+      unlock: { required-rpg-level: 20 }
+      crafting: { enabled: true, amount: 1, inputs: { "fire_fragment": 1, "vanilla:FIRE_CHARGE": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      abilities:
+        active-1:
+          id: fireball
+          display-name: "파이어볼"
+          trigger: RIGHT_CLICK
+          description: "작은 화염구를 발사합니다."
+          enabled: true
+          cooldown-seconds: 3.0
+          projectile-speed: 1.2
+          direct-damage: 0.5
+          impact-radius: 2.6
+          impact-damage: 1.0
+          explosion-radius: 3.5
+          explosion-damage: 1.0
+          explosion-knockback: 1.75
+          propulsion-radius: 4.0
+          full-force-radius: 1.5
+          minimum-force-radius: 4.0
+          self-knockback: 1.95
+          # Self propulsion follows the blast angle. Horizontal/downward shots keep
+          # the jump assist, while upward shots no longer fall back to sideways force.
+          self-horizontal-knockback: 2.35
+          self-min-horizontal-knockback: 0.95
+          self-vertical-boost: 0.55
+          vertical-boost: 0.55
+          self-damage: false
+          fire-ticks: 60
+          consume-on-use: true
+          particle-enabled: true
+          sound-enabled: true
+    spirit_of_flame:
+      item-id: spirit_of_flame
+      display: { name: "불꽃의 정신" }
+      attribute: { element: FIRE, equipment-type: BUFF }
+      unlock: { required-rpg-level: 20 }
+      crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 1, "basic_upgrade_stone": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      abilities:
+        active-1:
+          id: flame_spirit
+          display-name: "불꽃의 정신"
+          trigger: RIGHT_CLICK
+          description: "화염 저항과 불 원소 피해 보너스를 부여합니다."
+          enabled: true
+          duration-seconds: 60
+          fire-resistance-amplifier: 0
+          fire-damage-bonus-percent: 0.15
+          consume-on-use: true
+          allow-refresh: true
+          allow-stack: false
+          particle-enabled: true
+          sound-enabled: true
+    breath_of_poseidon:
+      item-id: breath_of_poseidon
+      display: { name: "포세이돈의 숨결" }
+      attribute: { element: WATER, equipment-type: BUFF }
+      unlock: { required-rpg-level: 20 }
+      crafting: { enabled: true, amount: 1, inputs: { "water_fragment": 1, "basic_upgrade_stone": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      abilities:
+        water-breathing: { enabled: true, duration-ticks: 1200, amplifier: 0 }
+        dolphins-grace: { enabled: true, duration-ticks: 1200, amplifier: 0 }
+        conduit-power: { enabled: true, duration-ticks: 1200, amplifier: 0 }
+    blessing_of_earth:
+      item-id: blessing_of_earth
+      display: { name: "대지의 축복" }
+      attribute: { element: EARTH, equipment-type: BUFF }
+      unlock: { required-rpg-level: 20 }
+      crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 1, "earth_fragment": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      abilities: { haste: { enabled: true, duration-ticks: 1200, amplifier: 0 } }
+    burning_sword:
+      item-id: burning_sword
+      display: { name: "불꽃검" }
+      attribute: { element: FIRE, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 40
+        vanilla-progress: { required-worlds: [NETHER] }
+        required-custom-mob-kills: { frost_blaze: 25 }
+      crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 64, "vanilla:GOLDEN_SWORD": 8 } }
+      grade: 4
+      final-gear-material-allowed: true
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      abilities:
+        passive:
+          id: fire_blade
+          display-name: "불꽃 칼날"
+          trigger: MELEE_HIT
+          description: "근접 공격에 불 원소 피해와 발화를 추가합니다."
+          enabled: true
+          extra-damage: 1.0
+          fire-ticks: 80
+          activation-chance: 1.0
+          particle-enabled: true
+          sound-enabled: true
+        active-1:
+          id: fire_slash
+          display-name: "화염 베기"
+          trigger: RIGHT_CLICK
+          description: "전방의 적에게 불 원소 피해를 줍니다."
+          enabled: true
+          cooldown-seconds: 8.0
+          damage: 4.0
+          range: 5.0
+          radius-or-angle: 0.70
+          hit-radius: 0.85
+          fire-ticks: 60
+          particle-enabled: true
+          sound-enabled: true
+        active-2:
+          id: heat_wave
+          display-name: "폭염 파동"
+          trigger: DROP_KEY
+          description: "주변 적에게 불 원소 범위 피해를 줍니다."
+          enabled: true
+          cooldown-seconds: 20.0
+          damage: 6.0
+          range: 2.0
+          radius: 4.0
+          fire-ticks: 80
+          knockback: 0.25
+          particle-enabled: true
+          sound-enabled: true
+        last-flame: { enabled: true, trigger-health-ratio: 0.20, cooldown-ticks: 2400 }
+      future-promotion:
+        enabled: true
+        max-stage: mythic-5
+        cost-multiplier: 3.0
+        success-chance: 1.0
+        options:
+          general-option-pool: [attack-damage]
+          special-option-pool: [skill-damage, critical-chance]
+        soul-requirements:
+          normal-1: { frost_blaze: 10 }
+          normal-2: { frost_blaze: 25 }
+    flowing_water_sword:
+      item-id: flowing_water_sword
+      display: { name: "흐르는 물의 검" }
+      attribute: { element: WATER, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 40
+        vanilla-progress: { required-worlds: [NETHER] }
+        required-custom-mob-kills: { riptide_drowned: 25 }
+      crafting: { enabled: true, amount: 1, inputs: { "water_crystal": 64, "vanilla:DIAMOND_SWORD": 8 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities:
+        attack-speed-multiplier: 1.75
+        on-kill: { heal-ratio: 0.05, speed-duration-ticks: 100, speed-amplifier: 1 }
+    wind_cutting_sword:
+      item-id: wind_cutting_sword
+      display: { name: "바람을 가르는 검" }
+      attribute: { element: WIND, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 40
+        vanilla-progress: { required-worlds: [NETHER] }
+        required-custom-mob-kills: { explosive_breeze: 25 }
+      crafting: { enabled: true, amount: 1, inputs: { "condensed_vortex": 64, "vanilla:IRON_SWORD": 8 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { slash: { range: 7.0, damage: 1.0 } }
+    earth_special_sword:
+      item-id: earth_special_sword
+      display: { name: "대지의 검" }
+      attribute: { element: EARTH, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 40
+        vanilla-progress: { required-worlds: [OVERWORLD] }
+        required-custom-mob-kills: { mining_giant: 25 }
+      crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 64, "vanilla:WOODEN_SWORD": 8 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { on-hit: { slowness: { amplifier: 1, duration-ticks: 40 }, knockback: { enabled: true, strength: 0.35 } } }
+    ice_special_sword:
+      item-id: ice_special_sword
+      display: { name: "얼음검" }
+      attribute: { element: ICE, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 40
+        vanilla-progress: { required-worlds: [NETHER] }
+        required-custom-mob-kills: { frost_blaze: 25 }
+      crafting: { enabled: true, amount: 1, inputs: { "frozen_heart": 64, "vanilla:DIAMOND_SWORD": 8 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { ice-stacks: { maximum: 5, duration-ticks: 80, slowness-duration-ticks: 40, freeze-ticks: 60 } }
+    dark_energy_sword:
+      item-id: dark_energy_sword
+      display: { name: "마기가 깃든 검" }
+      attribute: { element: DARK_ENERGY, equipment-type: SWORD }
+      unlock:
+        required-rpg-level: 50
+        vanilla-progress: { required-worlds: [NETHER] }
+        required-boss-kills: { WITHER: 1 }
+      crafting: { enabled: true, amount: 1, inputs: { "dead_soul": 64, "vanilla:NETHERITE_SWORD": 5 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { life-steal: { damage-ratio: 0.05 }, weakness: { duration-ticks: 60, amplifier: 0 } }
+    burning_bow:
+      item-id: burning_bow
+      display: { name: "불타는 활" }
+      attribute: { element: FIRE, equipment-type: BOW }
+      unlock: { required-rpg-level: 40, required-custom-mob-kills: { lava_cube: 25 } }
+      crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 64, "vanilla:BOW": 1, "fire_fragment": 64 } }
+      grade: 4
+      final-gear-material-allowed: true
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      abilities:
+        passive:
+          id: fire_arrow
+          display-name: "불꽃 화살"
+          trigger: PROJECTILE_HIT
+          description: "화살 적중 시 불 원소 피해와 발화를 추가합니다."
+          enabled: true
+          extra-damage: 1.0
+          fire-ticks: 80
+          activation-chance: 1.0
+          particle-trail-enabled: true
+          sound-enabled: true
+        active-1:
+          id: condensed_flame_arrow
+          display-name: "응축 화염 화살"
+          trigger: SHIFT_RIGHT_CLICK
+          description: "다음 화살을 폭발하는 화염 화살로 강화합니다."
+          enabled: true
+          cooldown-seconds: 12.0
+          empowered-duration-seconds: 10
+          impact-damage: 5.0
+          impact-radius: 2.0
+          fire-ticks: 80
+          particle-enabled: true
+          sound-enabled: true
+        active-2:
+          id: fire_rain
+          display-name: "불비"
+          trigger: DROP_KEY
+          description: "전방 지정 범위에 지연 화염 범위 피해를 줍니다."
+          enabled: true
+          cooldown-seconds: 25.0
+          target-range: 8.0
+          radius: 4.0
+          damage: 5.0
+          delay-ticks: 15
+          visual-arrow-count: 8
+          fire-ticks: 80
+          particle-enabled: true
+          sound-enabled: true
+      future-promotion:
+        enabled: true
+        max-stage: mythic-5
+        cost-multiplier: 3.0
+        success-chance: 1.0
+        options:
+          general-option-pool: [projectile-damage]
+          special-option-pool: [skill-damage, critical-chance]
+        soul-requirements:
+          normal-1: { lava_cube: 10 }
+          normal-2: { lava_cube: 25 }
+    wind_archers_bow:
+      item-id: wind_archers_bow
+      display: { name: "바람궁수의 활" }
+      attribute: { element: WIND, equipment-type: BOW }
+      unlock: { required-rpg-level: 40, required-custom-mob-kills: { explosive_breeze: 25 } }
+      crafting: { enabled: true, amount: 1, inputs: { "condensed_vortex": 64, "vanilla:BOW": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { homing: { enabled: true, range: 12.0, turn-rate: 0.12 } }
+    earth_heavy_bow:
+      item-id: earth_heavy_bow
+      display: { name: "대지의 활" }
+      attribute: { element: EARTH, equipment-type: BOW }
+      unlock: { required-rpg-level: 40, required-custom-mob-kills: { mining_giant: 25 } }
+      crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 64, "vanilla:BOW": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { slowness: { duration-ticks: 60, amplifier: 1 }, knockback: 0.45 }
+    freezing_bow:
+      item-id: freezing_bow
+      display: { name: "빙결의 활" }
+      attribute: { element: ICE, equipment-type: BOW }
+      unlock: { required-rpg-level: 40, required-custom-mob-kills: { frost_blaze: 25 } }
+      crafting: { enabled: true, amount: 1, inputs: { "frozen_heart": 64, "vanilla:BOW": 1 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { ice-stacks: { maximum: 5, duration-ticks: 80, slowness-duration-ticks: 40, freeze-ticks: 60 } }
+    dark_energy_bow:
+      item-id: dark_energy_bow
+      display: { name: "마기가 깃든 활" }
+      attribute: { element: DARK_ENERGY, equipment-type: BOW }
+      unlock: { required-rpg-level: 50, required-boss-kills: { WITHER: 1 } }
+      crafting: { enabled: true, amount: 1, inputs: { "dead_soul": 64, "vanilla:BOW": 1, "vanilla:NETHERITE_INGOT": 3 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { wither: { duration-ticks: 60, amplifier: 0 }, weakness: { duration-ticks: 80, amplifier: 0 } }
+    poseidons_spear:
+      item-id: poseidon_spear
+      display: { name: "포세이돈의 창" }
+      attribute: { element: WATER, equipment-type: SPEAR }
+      unlock: { required-rpg-level: 50, required-custom-mob-kills: { riptide_drowned: 50 } }
+      crafting: { enabled: true, amount: 1, inputs: { "water_crystal": 64, "vanilla:TRIDENT": 3 } }
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      abilities: { mode-1: { lightning: true }, mode-2: { riptide: true }, life-steal: { damage-ratio: 0.005 } }

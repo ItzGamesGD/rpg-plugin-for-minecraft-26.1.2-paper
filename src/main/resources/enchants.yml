@@ -1,0 +1,569 @@
+schema-version: 1
+config-version: 5
+
+# Custom enchant definitions. Gameplay numbers live under each settings node so
+# they can be adjusted without recompiling. Custom enchants default to level I;
+# vanilla-style families use their familiar maximum level instead.
+enchant-slots:
+  baseline:
+    ARMOR: 1
+    SHIELD: 1
+    FISHING_ROD: 2
+    ELYTRA: 2
+
+enchants:
+  blade_chain:
+    display-name: "칼날 연쇄"
+    book-item-id: enchant_book_blade_throw
+    legacy-aliases: [blade_throw]
+    handler-id: content
+    weapon-type: SWORD
+    source-scope: MAIN_HAND
+    cooldown-seconds: 0.0
+    triggers:
+      - { type: INPUT, input: OFFHAND_QUICK, phase: CONFIRMED }
+    # Blade throw/launch values are owned by swordmaster.yml.
+    # This enchant only routes the original Swordmaster behaviour.
+    settings:
+      uses-swordmaster-service: true
+
+  light_greatsword:
+    display-name: "빛의 대검"
+    book-item-id: enchant_book_light_greatsword
+    executor-id: light_greatsword
+    handler-id: skill
+    weapon-type: SWORD
+    source-scope: MAIN_HAND
+    input-conflict-group: sword-shift-right
+    priority: 100
+    triggers:
+      - { type: INPUT, input: SHIFT_RIGHT_CLICK, phase: CONFIRMED }
+
+  laser_arrow:
+    display-name: "레이저 화살"
+    book-item-id: enchant_book_laser_arrow
+    executor-id: laser_arrow
+    handler-id: skill
+    weapon-type: BOW
+    source-scope: MAIN_HAND
+    input-conflict-group: bow-left
+    priority: 100
+    triggers:
+      - { type: INPUT, input: LEFT_CLICK, phase: CONFIRMED }
+
+  axe_heavy_strike:
+    display-name: "강타"
+    book-item-id: enchant_book_axe_heavy_strike
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_AXE"]
+    source-scope: MAIN_HAND
+    input-conflict-group: axe-q
+    cooldown-seconds: 14.0
+    triggers:
+      - { type: INPUT, input: DROP_KEY, phase: CONFIRMED }
+      - { type: ATTACK_HIT, phase: CONFIRMED }
+    settings:
+      prepare-duration-ticks: 200
+      prepare-slowness-amplifier: 0
+      bonus-damage-multiplier: 1.0
+      stun-radius: 4.0
+      stun-duration-ticks: 40
+      boss-stun-duration-multiplier: 0.25
+
+  titans_wrath:
+    display-name: "타이탄의 분노"
+    book-item-id: enchant_book_titans_wrath
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_AXE"]
+    source-scope: MAIN_HAND
+    input-conflict-group: axe-f
+    cooldown-seconds: 30.0
+    triggers:
+      - { type: INPUT, input: OFFHAND_QUICK, phase: CONFIRMED }
+    settings:
+      duration-ticks: 160
+      scale-add: 0.5
+      strength-amplifier: 0
+
+  protection:
+    display-name: "보호"
+    book-item-id: enchant_book_protection
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 4
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      reduction-per-level: 0.04
+      final-reduction-cap: 0.80
+
+  fire_protection:
+    display-name: "화염 보호"
+    book-item-id: enchant_book_fire_protection
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 4
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { reduction-per-level: 0.04 }
+
+  blast_protection:
+    display-name: "폭발 보호"
+    book-item-id: enchant_book_blast_protection
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 4
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { reduction-per-level: 0.04 }
+
+  projectile_protection:
+    display-name: "투사체 보호"
+    book-item-id: enchant_book_projectile_protection
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 4
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { reduction-per-level: 0.04 }
+
+  skill_protection:
+    display-name: "스킬 보호"
+    book-item-id: enchant_book_skill_protection
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 4
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { reduction-per-level: 0.04 }
+
+  thorns:
+    display-name: "가시"
+    book-item-id: enchant_book_thorns
+    handler-id: content
+    equipment-category: ARMOR
+    source-scope: ARMOR
+    max-level: 3
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      chance: 0.15
+      damage-per-level: 1.0
+
+  rolling_landing:
+    display-name: "구르기 착지"
+    book-item-id: enchant_book_rolling_landing
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_BOOTS"]
+    source-scope: FEET
+    cooldown-seconds: 1.0
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      minimum-fall-distance: 4.0
+      chance: 0.25
+      roll-horizontal-speed: 0.9
+
+  respiration:
+    display-name: "호흡"
+    book-item-id: enchant_book_respiration
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_HELMET"]
+    source-scope: HEAD
+    max-level: 3
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      restore-air-to-maximum: true
+
+  aqua_affinity:
+    display-name: "친수성"
+    book-item-id: enchant_book_aqua_affinity
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_HELMET"]
+    source-scope: HEAD
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      effect-duration-ticks: 12
+      effect-amplifier-per-level: 1
+
+  swift_sneak:
+    display-name: "신속한 잠행"
+    book-item-id: enchant_book_swift_sneak
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_LEGGINGS"]
+    source-scope: LEGS
+    max-level: 3
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { speed-multiplier-per-level: 0.15 }
+
+  depth_strider:
+    display-name: "물갈퀴"
+    book-item-id: enchant_book_depth_strider
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_BOOTS"]
+    source-scope: FEET
+    max-level: 3
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      effect-duration-ticks: 12
+      effect-amplifier-per-level: 1
+
+  soul_speed:
+    display-name: "영혼 가속"
+    book-item-id: enchant_book_soul_speed
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_BOOTS"]
+    source-scope: FEET
+    max-level: 3
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings:
+      effect-duration-ticks: 12
+      effect-amplifier-per-level: 1
+
+  frost_walker:
+    display-name: "얼음 걸음"
+    book-item-id: enchant_book_frost_walker
+    handler-id: content
+    equipment-category: ARMOR
+    material-patterns: ["*_BOOTS"]
+    source-scope: FEET
+    max-level: 2
+    triggers:
+      - { type: DAMAGED, phase: CONFIRMED }
+    settings: { ice-duration-ticks: 80 }
+
+  wind_arrow:
+    display-name: "바람 화살"
+    book-item-id: enchant_book_wind_arrow
+    handler-id: content
+    equipment-category: RANGED
+    material-patterns: [BOW]
+    source-scope: MAIN_HAND
+    input-conflict-group: bow-shift-left
+    cooldown-seconds: 8.0
+    triggers:
+      - { type: INPUT, input: OFFHAND_QUICK, phase: CONFIRMED }
+    settings:
+      arm-duration-ticks: 200
+      minimum-force: 0.95
+      maximum-charge-ticks: 20
+      impact-radius: 4.0
+      impact-knockback: 1.8
+      direct-knockback: 2.8
+      maximum-targets: 20
+      impact-particle-count: 18
+
+  fire_arrow_rain:
+    display-name: "불화살 비"
+    book-item-id: enchant_book_fire_arrow_rain
+    executor-id: arrow_rain
+    handler-id: skill
+    weapon-type: BOW
+    source-scope: MAIN_HAND
+    input-conflict-group: bow-shift-left
+    priority: 110
+    triggers:
+      - { type: INPUT, input: SHIFT_LEFT_CLICK, phase: CONFIRMED }
+
+  crossbow_barrage:
+    display-name: "쇠뇌 연발"
+    book-item-id: enchant_book_crossbow_barrage
+    handler-id: content
+    equipment-category: RANGED
+    material-patterns: [CROSSBOW]
+    source-scope: MAIN_HAND
+    input-conflict-group: crossbow-q
+    cooldown-seconds: 12.0
+    triggers:
+      - { type: INPUT, input: DROP_KEY, phase: CONFIRMED }
+    settings:
+      maximum-stacks: 3
+      stack-timeout-ticks: 400
+      shot-interval-ticks: 4
+      projectile-speed: 2.6
+      maximum-lifetime-ticks: 100
+      damage: 3.0
+      charge-particle-count: 4
+      charge-sound-volume: 0.45
+      charge-sound-pitch-1: 0.75
+      charge-sound-pitch-2: 0.95
+      charge-sound-pitch-3: 1.15
+      muzzle-particle-count: 3
+      shot-sound-volume: 0.55
+
+  unbreaking:
+    display-name: "내구도 보존"
+    book-item-id: enchant_book_durability_save_pickaxe
+    legacy-aliases: [durability_save_pickaxe]
+    handler-id: content
+    source-scope: ALL_EQUIPPED
+    triggers:
+      - { type: GATHER_ATTEMPT, phase: PRE }
+    settings: { chance: 0.20 }
+
+  mining_bonus_drop:
+    display-name: "광맥 추가 채굴"
+    book-item-id: enchant_book_mining_bonus_drop
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_PICKAXE"]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: GATHER_SUCCESS, phase: CONFIRMED }
+    settings: { chance: 0.12 }
+
+  area_excavation:
+    display-name: "광역 채굴"
+    book-item-id: enchant_book_area_mining_pickaxe
+    legacy-aliases: [area_mining_pickaxe]
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_PICKAXE", "*_SHOVEL", "*_HOE"]
+    source-scope: MAIN_HAND
+    input-conflict-group: tool-right
+    cooldown-seconds: 0.25
+    triggers:
+      - { type: GATHER_SUCCESS, phase: CONFIRMED }
+      - { type: INPUT, input: RIGHT_CLICK, phase: CONFIRMED }
+    settings:
+      radius: 1
+      target-range: 5
+
+  auto_replant:
+    display-name: "자동 심기"
+    book-item-id: enchant_book_auto_replant
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_HOE"]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: GATHER_SUCCESS, phase: CONFIRMED }
+    settings:
+      allowed-crops: [WHEAT, CARROTS, POTATOES, BEETROOTS, NETHER_WART]
+
+  auto_smelt:
+    display-name: "자동 제련"
+    book-item-id: enchant_book_auto_smelt
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_PICKAXE"]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: GATHER_ATTEMPT, phase: PRE }
+    settings:
+      smelt-results:
+        IRON_ORE: IRON_INGOT
+        DEEPSLATE_IRON_ORE: IRON_INGOT
+        GOLD_ORE: GOLD_INGOT
+        DEEPSLATE_GOLD_ORE: GOLD_INGOT
+        COPPER_ORE: COPPER_INGOT
+        DEEPSLATE_COPPER_ORE: COPPER_INGOT
+
+  chain_logging:
+    display-name: "연쇄 벌목"
+    book-item-id: enchant_book_chain_logging
+    handler-id: content
+    equipment-category: TOOL
+    material-patterns: ["*_AXE"]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: GATHER_SUCCESS, phase: CONFIRMED }
+    settings:
+      maximum-blocks: 48
+      search-radius: 8
+      abort-if-log-count-exceeds: 64
+
+  treasure_finder:
+    display-name: "보물 찾기"
+    book-item-id: enchant_book_treasure_finder
+    handler-id: content
+    equipment-category: FISHING_ROD
+    material-patterns: [FISHING_ROD]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: FISH_SUCCESS, phase: CONFIRMED }
+    settings:
+      chance: 0.15
+      rewards:
+        magic_stone_fragment: 1
+
+  multi_catch:
+    display-name: "다중 낚시"
+    book-item-id: enchant_book_multi_catch
+    handler-id: content
+    equipment-category: FISHING_ROD
+    material-patterns: [FISHING_ROD]
+    source-scope: MAIN_HAND
+    triggers:
+      - { type: FISH_SUCCESS, phase: CONFIRMED }
+    settings: { extra-catches: 1 }
+
+  elytra_launch:
+    display-name: "겉날개 발사"
+    book-item-id: enchant_book_elytra_launch
+    handler-id: content
+    equipment-category: ELYTRA
+    material-patterns: [ELYTRA]
+    source-scope: CHEST
+    input-conflict-group: elytra-shift-jump
+    cooldown-seconds: 6.0
+    triggers:
+      - { type: INPUT, input: SHIFT_JUMP, phase: CONFIRMED }
+    settings:
+      forward-speed: 1.35
+      vertical-speed: 0.85
+      minimum-ceiling-clearance: 2.0
+      allow-water: false
+      allow-lava: false
+
+  precision_flight:
+    display-name: "정밀 비행"
+    book-item-id: enchant_book_precision_flight
+    handler-id: content
+    equipment-category: ELYTRA
+    material-patterns: [ELYTRA]
+    source-scope: CHEST
+    max-level: 3
+    triggers:
+      - { type: ELYTRA_BOOST, phase: CONFIRMED }
+    settings:
+      firework-consume-interval-ticks: 200
+      durability-consume-interval-ticks: 200
+      recovery-interval-ticks-level-1: 120
+      recovery-interval-ticks-level-2: 100
+      recovery-interval-ticks-level-3: 80
+      acceleration: 0.20
+      hotbar-speed:
+        "1": 0.45
+        "2": 0.60
+        "3": 0.75
+        "4": 0.88
+        "5": 1.00
+        "6": 1.30
+        "7": 1.60
+        "8": 1.90
+        "9": 2.20
+      debug: false
+
+  explosive_mace:
+    display-name: "폭발 철퇴"
+    book-item-id: enchant_book_explosive_mace
+    handler-id: content
+    equipment-category: WEAPON
+    material-patterns: [MACE]
+    source-scope: MAIN_HAND
+    cooldown-seconds: 2.0
+    triggers:
+      - { type: ATTACK_HIT, phase: CONFIRMED }
+    settings:
+      minimum-fall-distance: 2.0
+      radius: 4.5
+      area-damage: 2.0
+      knockback: 1.0
+      maximum-targets: 20
+      chain-enabled: true
+      chain-delay-ticks: 15
+      chain-radius: 3.5
+      chain-damage: 1.0
+      chain-knockback: 0.75
+      particle-count: 1
+      chain-particle-count: 1
+      maximum-centers: 20
+      debug-timing: false
+
+# Player-facing lore is intentionally centralized here. Books and equipped
+# items both read this data through EnchantRegistry.
+enchant-lore-version: 3
+enchant-lore:
+  blade_chain:
+    description: ["F키로 칼날을 투척합니다. 활성 칼날이 준비되면 같은 F키로 사출합니다."]
+    input-description: ["F키: 칼날 투척 또는 준비된 칼날 사출"]
+  light_greatsword:
+    description: ["지정 위치에 빛의 대검을 떨어뜨립니다."]
+    input-description: ["Shift + 우클릭: 빛의 대검"]
+  laser_arrow:
+    description: ["직선으로 관통하는 레이저 화살을 발사합니다."]
+    input-description: ["좌클릭: 레이저 화살"]
+  axe_heavy_strike:
+    description: ["다음 공격으로 주변 적을 짧게 제압합니다."]
+    input-description: ["Q키: 강타 준비"]
+  titans_wrath:
+    description: ["잠시 거대화하여 강한 힘을 얻고 약화 효과를 해제합니다."]
+    input-description: ["보조 손 전환키: 타이탄의 분노"]
+  protection:
+    description: ["받는 모든 피해를 감소시킵니다."]
+  fire_protection:
+    description: ["화염과 용암 피해를 추가로 감소시킵니다."]
+  blast_protection:
+    description: ["폭발 피해를 추가로 감소시킵니다."]
+  projectile_protection:
+    description: ["투사체 피해를 추가로 감소시킵니다."]
+  skill_protection:
+    description: ["커스텀 스킬 피해를 추가로 감소시킵니다."]
+  thorns:
+    description: ["공격자에게 반사 피해를 줍니다."]
+  rolling_landing:
+    description: ["웅크린 채 착지하면 낙하 피해를 굴러서 흡수합니다."]
+  respiration:
+    description: ["물속에서 산소를 지속적으로 보충합니다."]
+  aqua_affinity:
+    description: ["물속 채굴 속도를 높입니다."]
+  swift_sneak:
+    description: ["웅크리는 동안 이동 속도가 증가합니다."]
+  depth_strider:
+    description: ["물속 이동이 빨라집니다."]
+  soul_speed:
+    description: ["영혼 모래와 영혼 흙 위에서 빨라집니다."]
+  frost_walker:
+    description: ["물 위를 잠시 얼음으로 바꿉니다."]
+  wind_arrow:
+    description: ["F키로 장전한 뒤 충분히 차징한 실제 화살이 충돌 지점의 적을 밀어냅니다."]
+    input-description: ["F키: 바람 화살 장전"]
+  fire_arrow_rain:
+    description: ["기존 보우마스터의 불화살 비를 사용합니다."]
+    input-description: ["Shift + 좌클릭: 불화살 비"]
+  crossbow_barrage:
+    description: ["화살을 모아 연속으로 발사합니다."]
+    input-description: ["Q키: 연발 화살 장전 및 발사"]
+  unbreaking:
+    description: ["내구도가 있는 장비의 내구도 감소를 일정 확률로 막습니다."]
+  mining_bonus_drop:
+    description: ["채굴 시 일정 확률로 추가 전리품을 얻습니다."]
+  area_excavation:
+    description: ["채굴과 굴착 범위를 작은 범위로 확장합니다."]
+    input-description: ["우클릭: 범위 굴착"]
+  auto_replant:
+    description: ["작물을 수확하거나 부순 자리에 보유한 씨앗을 다시 심습니다."]
+  auto_smelt:
+    description: ["광물을 채굴 즉시 제련된 형태로 얻습니다."]
+  chain_logging:
+    description: ["연결된 나무를 한 번에 벌목합니다."]
+  treasure_finder:
+    description: ["낚시 성공 시 일정 확률로 추가 보물을 얻습니다."]
+  multi_catch:
+    description: ["낚은 아이템 수량과 경험치를 한 번만 증가시킵니다."]
+  elytra_launch:
+    description: ["지상에서 웅크린 채 점프하면 활공을 시작합니다."]
+    input-description: ["Shift + 점프: 활공 발사"]
+  precision_flight:
+    description: ["선택한 핫바 칸에 따라 활공 목표 속도를 조절합니다."]
+  explosive_mace:
+    description: ["강타 공격 시 블록을 부수지 않는 폭발과 제한된 연쇄 폭발을 일으킵니다."]

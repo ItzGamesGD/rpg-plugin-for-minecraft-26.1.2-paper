@@ -1,0 +1,11 @@
+data_version: 1
+potions:
+  potion_test_speed: { enabled: false, display-name: "테스트 속도 물약", delivery: DRINK, effect-id: effect_test_speed, output-item-id: potion_test_speed, reason-disabled: "개발 테스트 전용" }
+  potion_vampire: { enabled: true, display-name: "흡혈 물약", delivery: DRINK, effect-id: effect_vampire, output-item-id: potion_vampire, balance: BALANCE_PENDING }
+  potion_berserk: { enabled: true, display-name: "광폭화 물약", delivery: DRINK, effect-id: effect_berserk, output-item-id: potion_berserk, balance: BALANCE_PENDING }
+  potion_corrosion: { enabled: true, display-name: "부식 물약", delivery: DRINK, effect-id: effect_corrosion, output-item-id: potion_corrosion, balance: BALANCE_PENDING }
+  potion_frostbite: { enabled: true, display-name: "동상 물약", delivery: DRINK, effect-id: effect_frostbite, output-item-id: potion_frostbite, balance: BALANCE_PENDING }
+  potion_shock: { enabled: true, display-name: "감전 물약", delivery: DRINK, effect-id: effect_shock, output-item-id: potion_shock, balance: BALANCE_PENDING }
+  potion_bleed: { enabled: true, display-name: "출혈 물약", delivery: DRINK, effect-id: effect_bleed, output-item-id: potion_bleed, balance: BALANCE_PENDING }
+  potion_vulnerability: { enabled: true, display-name: "취약 물약", delivery: DRINK, effect-id: effect_vulnerability, output-item-id: potion_vulnerability, balance: BALANCE_PENDING }
+  potion_necrosis: { enabled: true, display-name: "괴사 물약", delivery: DRINK, effect-id: effect_necrosis, output-item-id: potion_necrosis, balance: BALANCE_PENDING }

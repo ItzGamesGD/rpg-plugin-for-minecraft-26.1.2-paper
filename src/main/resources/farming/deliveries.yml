@@ -1,0 +1,68 @@
+schema-version: 1
+enabled: true
+
+# Seconds between a completed/expired delivery and the next generated delivery.
+refresh-seconds: 1200
+# Seconds an ACTIVE delivery remains submit-able before it becomes EXPIRED.
+time-limit-seconds: 1200
+
+# Stage 9 reward coefficients remain balance-pending. Existing external server
+# values remain authoritative when this file is not explicitly migrated.
+reward:
+  quality-multipliers:
+    normal: 1.0
+    basic: 1.0
+    proficient: 1.0
+    advanced: 1.0
+    supreme: 1.0
+
+definitions:
+  farmer_crops:
+    provider: farmer
+    display-name: 농부
+    item-families:
+      - crop_corn
+      - crop_onion
+      - crop_chili
+      - crop_garlic
+    amount-min: 1
+    amount-max: 1
+    # Definition selection weight. Keep at 1 until live balance is approved.
+    weight: 1
+    preview-base-points: 0
+    reward-multiplier: 1.0
+  farmer_processed:
+    provider: farmer
+    display-name: 농부
+    item-families:
+      - processed_corn
+      - processed_onion
+      - processed_chili
+      - processed_garlic
+    amount-min: 1
+    amount-max: 1
+    weight: 1
+    preview-base-points: 0
+    reward-multiplier: 1.0
+  alchemist_processed:
+    provider: alchemist
+    display-name: 연금술사
+    item-families:
+      - processed_corn
+      - processed_onion
+      - processed_chili
+      - processed_garlic
+    amount-min: 1
+    amount-max: 1
+    weight: 1
+    preview-base-points: 0
+    reward-multiplier: 1.0
+  estate_reserved:
+    provider: estate_reserved
+    display-name: 영지 의뢰(예약됨)
+    item-families: []
+    amount-min: 1
+    amount-max: 1
+    weight: 1
+    preview-base-points: 0
+    reward-multiplier: 1.0

@@ -1,0 +1,14 @@
+schema-version: 1
+enabled: true
+
+# Stage 4 basic harvest only. Quality, hoe bonuses, and multipliers are later stages.
+direct:
+  crop-amount: 1
+  seed-amount: 1
+  # Balance placeholder. Direct harvest points are configurable but not finalized.
+  abundance-points: 1
+
+# Indirect destruction never grants seeds or farming progress.
+indirect:
+  crop-drop-chance: 0.10
+  crop-amount: 1

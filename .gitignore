@@ -1,0 +1,12 @@
+.gradle/
+build/
+tools/
+.agents/
+.codex/
+
+*.class
+*.log
+
+# Generated plugin artifacts are kept locally under builds/.
+builds/**/*.jar
+builds/**/*.zip

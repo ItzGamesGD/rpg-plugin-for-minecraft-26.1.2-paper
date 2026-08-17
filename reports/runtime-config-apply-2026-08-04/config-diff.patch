@@ -1,0 +1,35 @@
+--- a/src/main/resources/progression-loop.yml
++++ b/src/main/resources/progression-loop.yml
+@@
+-      coins: 25
++      coins: 50
+@@
+-      coins: 15
++      coins: 0
+
+--- a/src/main/resources/shops.yml
++++ b/src/main/resources/shops.yml
+@@
+-        buy-price: 350
+-        sell-price: 60
+-        purchasable: true
+-        sellable: true
++        buy-price: 0
++        sell-price: 0
++        purchasable: false
++        sellable: false
+@@
++  active enchant books: 32 entries, buy-price=9, currency-item-id=magic_stone, sellable=false
+@@
+-        buy-price: 12/6
+-        purchasable: true
++        buy-price: 0
++        purchasable: false
++        currency-item-id: coin
+
+--- a/src/main/java/com/hyunseo/hyunseorpg/core/config/ConfigMigrationService.java
++++ b/src/main/java/com/hyunseo/hyunseorpg/core/config/ConfigMigrationService.java
+@@
++  economy/enchant policy migration is applied during configs/all migration
++  and normalizes activity coins, support fees, recipes, and shop products.
+

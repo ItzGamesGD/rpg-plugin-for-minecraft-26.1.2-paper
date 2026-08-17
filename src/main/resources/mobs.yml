@@ -1,0 +1,683 @@
+loot-crafting-schema-version: 1
+
+vanilla-fragment-drops:
+  enabled: true
+  chance: 1.0
+  min-amount: 1
+  max-amount: 1
+  item-ids:
+    - fire_fragment
+    - water_fragment
+    - wind_fragment
+    - earth_fragment
+    - ice_fragment
+    - soul_stone
+
+# Only explicitly registered elemental mobs may drop matching elemental fragments.
+# Ordinary vanilla and ordinary RPG mobs never use the legacy random list above.
+elemental-fragments:
+  enabled: true
+  default-min-rpg-level: 1
+  mobs:
+    frost_blaze: { enabled: true, item-id: ice_fragment, min-rpg-level: 12 }
+    explosive_breeze: { enabled: true, item-id: wind_fragment, min-rpg-level: 16 }
+    riptide_drowned: { enabled: true, item-id: water_fragment, min-rpg-level: 18 }
+    mining_giant: { enabled: true, item-id: earth_fragment, min-rpg-level: 8 }
+    lava_cube: { enabled: true, item-id: fire_fragment, min-rpg-level: 8 }
+
+admin:
+  max-radius: 32
+  default-radius: 8
+
+defaults:
+  mob-level: 1
+  mob-id: ""
+
+reward:
+  normal-base-exp: 1
+  normal-coins: 0
+  rpg-base-exp: 5
+  rpg-class-exp: 3
+  rpg-coin-base: 1
+  rpg-coin-per-level: 0.5
+
+level-scaling:
+  enabled: true
+  health-base: 20.0
+  health-per-level: 1.0
+  attack-base: 3.0
+  attack-per-level: 0.12
+  low-level-bias-chance: 0.35
+  random-level-variation: 15
+  max-level: 100
+
+natural-rpg-spawn:
+  enabled: true
+  chance: 0.7
+  include-spawner: false
+  include-command-spawned: false
+  include-plugin-spawned: false
+  include-raid-mobs: false
+  # Empty allowed-types means every living mob type is allowed unless excluded below.
+  allowed-types: []
+  excluded-types:
+    - VILLAGER
+    - WANDERING_TRADER
+    - ENDER_DRAGON
+    - WITHER
+    - WARDEN
+
+zombie-variants:
+  enabled: true
+  spawn-reasons:
+    natural: true
+    reinforcements: false
+  worlds:
+    whitelist: []
+    blacklist:
+  total-custom-chance: 15.0
+  variants:
+    bomb:
+      enabled: true
+      weight: 50.0
+      helmet:
+        material: TNT
+        replace-existing: true
+        drop-chance: 0.0
+      death-explosion:
+        delay-ticks: 30
+        radius: 3.0
+        base-damage: 4.0
+        damage-per-level: 0.15
+        knockback: 0.6
+        damage-players: true
+        damage-mobs: false
+        block-damage: false
+        fire: false
+    leap:
+      enabled: true
+      weight: 50.0
+      trigger:
+        minimum-range: 3.5
+        maximum-range: 8.0
+        warning-ticks: 10
+        cooldown-ticks: 120
+      movement:
+        horizontal-strength: 1.1
+        vertical-strength: 0.65
+        disable-air-steering: true
+        fall-damage-immunity-ticks: 40
+      landing:
+        enabled: true
+        radius: 1.8
+        base-damage: 2.0
+        damage-per-level: 0.08
+        knockback: 0.4
+        damage-players: true
+        damage-mobs: false
+        recovery-ticks: 10
+
+forced-rpg-zones:
+  example_zone:
+    enabled: false
+    world: world
+    min:
+      x: -100
+      y: -64
+      z: -100
+    max:
+      x: 100
+      y: 320
+      z: 100
+    mob-level: 3
+    mob-id-prefix: zone
+    tags:
+      - rpg_mob
+
+# The same four Mythic-compatible IDs are also registered in the core RPG
+# registry so they work without MythicMobs and use the normal RPG reward path.
+custom-mobs:
+  frost_blaze:
+    display-name: 서리 블레이즈
+    vanilla-type: BLAZE
+    level: 12
+    hp: 40.0
+    damage: 3.0
+    exp: 24
+    class-exp: 8
+    coin: 12
+    drop-table: ice_common
+    region: cold
+    tags: [rpg_mob, mythic, custom, frost, ranged]
+    attributes:
+      movement-speed: 0.23
+    behavior:
+      disable-vanilla-projectiles: true
+      disable-vanilla-fire: true
+      attack-interval: 2.5
+      charge-ticks: 20
+      charge-particle-count: 8
+      recognition-range: 24.0
+      projectile-speed: 1.6
+      projectile-damage: 3.0
+      freeze:
+        max-stacks: 4
+        stack-timeout: 6.0
+        duration: 1.2
+        visual-freeze-seconds: 1.2
+        root-duration-seconds: 1.2
+        lock-horizontal: true
+        lock-vertical: false
+    stats:
+      max-health: 40.0
+      attack-damage: 3.0
+      movement-speed: 0.23
+      level-multiplier: 0.04
+    visual:
+      glowing: false
+    spawn:
+      natural:
+        enabled: true
+        chance: 0.035
+        max-nearby: 8
+        min-y: 0
+        max-y: 256
+        biomes:
+          allow: [SNOWY_PLAINS, ICE_SPIKES, SNOWY_TAIGA, SNOWY_SLOPES, FROZEN_PEAKS, JAGGED_PEAKS, GROVE]
+          deny: [RIVER, FROZEN_RIVER, OCEAN, DEEP_OCEAN, FROZEN_OCEAN, BEACH]
+
+  explosive_breeze:
+    display-name: 폭발 브리즈
+    vanilla-type: BREEZE
+    level: 16
+    hp: 60.0
+    damage: 5.0
+    exp: 40
+    class-exp: 12
+    coin: 20
+    drop-table: wind_common
+    tags: [rpg_mob, mythic, custom, elite, ranged]
+    elite: true
+    behavior:
+      disable-vanilla-projectiles: true
+      attack-interval: 4.0
+      recognition-range: 24.0
+      projectile-speed: 0.55
+      explosion: {damage: 5.0, radius: 2.5, knockback: 0.8, terrain: false, fire: false}
+    stats: {max-health: 60.0, attack-damage: 5.0, movement-speed: 0.25, level-multiplier: 0.04}
+    visual: {glowing: false}
+    spawn: {natural: {enabled: false, chance: 0.0, max-nearby: 4, requires-ground: false, min-player-distance: 0.0, max-player-distance: -1.0}}
+
+  riptide_drowned:
+    display-name: 급류 드라운드
+    vanilla-type: DROWNED
+    level: 18
+    hp: 70.0
+    damage: 7.0
+    exp: 48
+    class-exp: 14
+    coin: 24
+    drop-table: water_common
+    tags: [rpg_mob, mythic, custom, elite, melee]
+    elite: true
+    behavior:
+      disable-vanilla-projectiles: true
+      cooldown: 7.0
+      recognition-range: 24.0
+      dash: {min-distance: 5.0, max-distance: 18.0, warning-seconds: 0.8, speed: 1.0, max-travel: 16.0, damage: 7.0, knockback: 0.8}
+    stats: {max-health: 70.0, attack-damage: 7.0, movement-speed: 0.23, level-multiplier: 0.04}
+    visual: {glowing: false}
+    spawn: {natural: {enabled: false, chance: 0.0, max-nearby: 4, requires-ground: true, min-player-distance: 0.0, max-player-distance: -1.0}}
+
+  mining_giant:
+    display-name: 채굴 거인
+    vanilla-type: ZOMBIE_VILLAGER
+    level: 8
+    hp: 140.0
+    damage: 12.0
+    exp: 60
+    class-exp: 18
+    coin: 20
+    drop-table: earth_common
+    region: overworld
+    tags: [rpg_mob, giant, earth, melee]
+    attributes:
+      movement-speed: {mode: MULTIPLIER, value: 1.75}
+      movement-speed-mode: MULTIPLIER
+      movement-speed-value: 1.75
+      armor: 8.0
+      knockback-resistance: 0.35
+      scale: 2.0
+    behavior-id: mining_giant
+    behavior:
+      custom-ai: true
+      recognition-range: 24.0
+      approach-speed: 0.20
+      path-recalc-interval-ticks: 8
+      rock-cooldown-ticks: 100
+      rock-height: 7.0
+      rock-thickness: BASE
+      rock-count: 1
+      rock-spawn-interval-ticks: 2
+      rock-spawn-radius: 1.5
+      rock-scale: 1.6
+      rock-speed: 0.35
+      rock-gravity: 0.035
+      rock-lifetime-ticks: 80
+      rock-collision-radius: 1.0
+      rock-prediction-factor: 0.35
+      rock-damage: 6.0
+      rock-knockback: 0.35
+      rock-radius: 2.0
+  lava_cube:
+    display-name: 용암 큐브
+    vanilla-type: MAGMA_CUBE
+    level: 8
+    hp: 65.0
+    damage: 8.0
+    exp: 45
+    class-exp: 14
+    coin: 14
+    drop-table: fire_common
+    region: nether
+    tags: [rpg_mob, fire, melee]
+    attributes: {movement-speed: 0.22, armor: 2.0, scale: 1.25}
+    behavior-id: lava_cube
+    behavior: {recognition-range: 24.0, jump-cooldown-ticks: 50, jump-strength: 0.7, jump-damage: 7.0, lava-duration-ticks: 60, lava-radius: 2.5}
+  stone_armored_zombie:
+    display-name: 돌갑옷 좀비
+    vanilla-type: HUSK
+    level: 5
+    hp: 90.0
+    damage: 7.0
+    exp: 35
+    class-exp: 10
+    coin: 10
+    drop-table: soul_common
+    region: overworld
+    tags: [rpg_mob, earth, undead, melee]
+    attributes:
+      movement-speed: {mode: MULTIPLIER, value: 1.75}
+      movement-speed-mode: MULTIPLIER
+      movement-speed-value: 1.75
+      armor: 12.0
+      knockback-resistance: 0.8
+    behavior-id: stone_armored_zombie
+    behavior:
+      custom-ai: true
+      recognition-range: 24.0
+      approach-speed: 0.18
+      bind-duration-ticks: 40
+      knockback-resistance: 0.8
+  fake_explosion_creeper:
+    display-name: 위장 폭발 크리퍼
+    vanilla-type: CREEPER
+    level: 8
+    hp: 36.0
+    damage: 12.0
+    exp: 45
+    class-exp: 13
+    coin: 12
+    drop-table: fire_common
+    region: overworld
+    tags: [rpg_mob, fire, explosive]
+    attributes: {movement-speed: 0.28}
+    behavior-id: fake_explosion_creeper
+    behavior:
+      custom-ai: true
+      recognition-range: 24.0
+      fake-radius: 3.0
+      approach-speed: 0.20
+      flee-speed: 0.32
+      flee-distance: 9.0
+      fake-duration-ticks: 20
+      path-recalc-interval-ticks: 8
+      explode-radius: 3.0
+  swapping_witch:
+    display-name: 위치 교환 마녀
+    vanilla-type: WITCH
+    level: 10
+    hp: 50.0
+    damage: 5.0
+    exp: 50
+    class-exp: 15
+    coin: 15
+    drop-table: soul_common
+    region: overworld
+    tags: [rpg_mob, wind, ranged]
+    attributes: {movement-speed: 0.25}
+    behavior-id: swapping_witch
+    behavior:
+      custom-ai: true
+      recognition-range: 20.0
+      attack-cooldown-ticks: 100
+      projectile-speed: 1.25
+      projectile-lifetime-ticks: 50
+      projectile-gravity: false
+      projectile-range: 32.0
+      virtual-hitbox-radius: 1.1
+      prediction-strength: 0.45
+      aim-error: 0.02
+      min-swap-distance: 3.0
+      max-swap-distance: 32.0
+      projectile-ignore-source: true
+  charging_zombie:
+    display-name: 돌진 좀비
+    vanilla-type: ZOMBIE
+    level: 8
+    hp: 48.0
+    damage: 8.0
+    exp: 40
+    class-exp: 12
+    coin: 12
+    drop-table: soul_common
+    region: overworld
+    tags: [rpg_mob, earth, undead, melee]
+    attributes: {movement-speed: 0.23}
+    behavior-id: charging_zombie
+    behavior:
+      custom-ai: true
+      recognition-range: 24.0
+      approach-speed: 0.24
+      path-recalc-interval-ticks: 8
+      target-range: 24.0
+      charge-min-distance: 6.0
+      charge-max-distance: 18.0
+      charge-speed: 1.15
+      charge-duration-ticks: 18
+      charge-cooldown-ticks: 60
+      dash-recovery-delay-ticks: 2
+      stun-duration-ticks: 40
+      charge-damage: 8.0
+  rapid_shooter:
+    display-name: 속사 해골
+    vanilla-type: SKELETON
+    level: 8
+    hp: 34.0
+    damage: 3.0
+    exp: 42
+    class-exp: 12
+    coin: 12
+    drop-table: soul_common
+    region: overworld
+    tags: [rpg_mob, wind, ranged]
+    attributes: {movement-speed: 0.23}
+    behavior-id: rapid_shooter
+    behavior:
+      custom-ai: true
+      recognition-range: 28.0
+      attack-cooldown-ticks: 80
+      projectile-count: 3
+      projectile-interval-ticks: 2
+      projectile-speed: 1.6
+      damage-per-arrow: 2.0
+      spread: 0.06
+      max-range: 32.0
+      bypass-hurt-immunity: true
+  splitting_creeper:
+    display-name: 분열 크리퍼
+    vanilla-type: CREEPER
+    level: 12
+    hp: 60.0
+    damage: 14.0
+    exp: 65
+    class-exp: 20
+    coin: 20
+    drop-table: fire_common
+    region: overworld
+    tags: [rpg_mob, fire, explosive, elite]
+    elite: true
+    attributes: {movement-speed: 0.25}
+    behavior-id: splitting_creeper
+    behavior:
+      custom-ai: true
+      recognition-range: 24.0
+      child-count: 3
+      child-level-offset: -2
+ability-profiles:
+  skeleton_king:
+    abilities:
+      summon_guards:
+        type: SUMMON_MINIONS
+        trigger: TIMER
+        cooldown-ticks: 200
+        parameters:
+          mob-id: skeleton_guard
+          count: "3"
+          radius: "4"
+      bone_barrage:
+        type: PROJECTILE_BURST
+        trigger: TIMER
+        cooldown-ticks: 120
+        parameters:
+          projectile: ARROW
+          count: "8"
+          spread: "30"
+      weakness_curse:
+        type: DEBUFF
+        trigger: NEARBY_PLAYER
+        cooldown-ticks: 160
+        parameters:
+          effect: WEAKNESS
+          duration-ticks: "100"
+          amplifier: "0"
+  elite_zombie_revival:
+    abilities:
+      delayed_revive:
+        type: REVIVE
+        trigger: DEATH
+        cooldown-ticks: 0
+        parameters:
+          delay-ticks: "100"
+          revive-health-percent: "0.5"
+          max-revives: "1"
+      heavy_slam:
+        type: AREA_DAMAGE
+        trigger: TIMER
+        cooldown-ticks: 140
+        parameters:
+          radius: "3"
+          damage: "6"
+
+drop-tables:
+  earth_common:
+    entries:
+      - item-id: earth_fragment
+        material: COBBLESTONE
+        display-name: "땅의 파편"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  fire_common:
+    entries:
+      - item-id: fire_fragment
+        material: MAGMA_CREAM
+        display-name: "불의 파편"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  wind_common:
+    entries:
+      - item-id: wind_fragment
+        material: FEATHER
+        display-name: "돌풍 파편"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  water_common:
+    entries:
+      - item-id: water_fragment
+        material: PRISMARINE_SHARD
+        display-name: "물의 파편"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  ice_common:
+    entries:
+      - item-id: ice_fragment
+        material: SNOWBALL
+        display-name: "얼어붙은 파편"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  soul_common:
+    entries:
+      - item-id: soul_stone
+        material: ECHO_SHARD
+        display-name: "영혼석"
+        chance: 1.0
+        min-amount: 2
+        max-amount: 4
+  zombie_basic:
+    entries:
+      - item-id: zombie_fragment
+        material: ROTTEN_FLESH
+        display-name: 좀비 파편
+        chance: 0.25
+        min-amount: 1
+        max-amount: 2
+      - item-id: basic_upgrade_stone
+        material: AMETHYST_SHARD
+        display-name: "기본 강화석"
+        chance: 0.03
+        min-amount: 1
+        max-amount: 1
+  elite_zombie:
+    entries:
+      - item-id: elite_zombie_core
+        material: ECHO_SHARD
+        display-name: 엘리트 좀비 코어
+        chance: 0.35
+        min-amount: 1
+        max-amount: 1
+  forest_wolf:
+    entries:
+      - item-id: forest_fang
+        material: BONE
+        display-name: 숲 늑대 송곳니
+        chance: 0.3
+        min-amount: 1
+        max-amount: 2
+  skeleton_guard:
+    entries:
+      - item-id: guard_bone
+        material: BONE
+        display-name: 경비병의 뼈
+        chance: 0.3
+        min-amount: 1
+        max-amount: 2
+  skeleton_king:
+    entries:
+      - item-id: skeleton_king_sigil
+        material: PAPER
+        display-name: 스켈레톤 킹 인장
+        chance: 1.0
+        min-amount: 1
+        max-amount: 1
+      - item-id: basic_promotion_stone
+        material: PRISMARINE_CRYSTALS
+        display-name: 기본 승급석
+        chance: 1.0
+        min-amount: 1
+        max-amount: 1
+        boss-only: true
+
+mob-definitions:
+  forest_wolf:
+    display-name: 숲 늑대
+    vanilla-type: WOLF
+    level: 5
+    hp: 40.0
+    damage: 6.0
+    exp: 15
+    class-exp: 6
+    coin: 4
+    drop-table: forest_wolf
+    region: forest
+    boss: false
+    elite: false
+    tags:
+      - rpg_mob
+      - beast
+    attributes:
+      movement-speed: 0.32
+  zombie_basic:
+    display-name: 기본 좀비
+    vanilla-type: ZOMBIE
+    level: 1
+    hp: 20.0
+    damage: 3.0
+    exp: 5
+    class-exp: 3
+    coin: 1
+    drop-table: zombie_basic
+    region: overworld
+    boss: false
+    elite: false
+    tags:
+      - rpg_mob
+      - undead
+    attributes:
+      movement-speed: 0.23
+  elite_zombie:
+    display-name: 엘리트 좀비
+    vanilla-type: ZOMBIE
+    level: 5
+    hp: 60.0
+    damage: 6.0
+    exp: 30
+    class-exp: 15
+    coin: 8
+    drop-table: elite_zombie
+    region: overworld
+    boss: false
+    elite: true
+    ability-profile: elite_zombie_revival
+    tags:
+      - rpg_mob
+      - elite
+      - undead
+    attributes:
+      movement-speed: 0.25
+      armor: 4.0
+  skeleton_guard:
+    display-name: 스켈레톤 경비병
+    vanilla-type: SKELETON
+    level: 3
+    hp: 28.0
+    damage: 4.0
+    exp: 12
+    class-exp: 6
+    coin: 3
+    drop-table: skeleton_guard
+    region: overworld
+    boss: false
+    elite: false
+    tags:
+      - rpg_mob
+      - minion
+      - undead
+    attributes:
+      movement-speed: 0.25
+  skeleton_king:
+    display-name: 스켈레톤 킹
+    vanilla-type: SKELETON
+    level: 10
+    hp: 200.0
+    damage: 10.0
+    exp: 100
+    class-exp: 50
+    coin: 30
+    drop-table: skeleton_king
+    region: boss
+    boss: true
+    elite: false
+    ability-profile: skeleton_king
+    tags:
+      - rpg_mob
+      - boss
+      - undead
+    attributes:
+      movement-speed: 0.22
+      armor: 8.0
+      scale: 1.25

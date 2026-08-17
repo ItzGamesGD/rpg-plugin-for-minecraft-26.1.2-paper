@@ -1,0 +1,11 @@
+schema-version: 1
+limits:
+  duration-ticks: 72000
+  amplifier: 10
+  stacks: 16
+  minimum-tick-interval: 1
+  priority: 1000
+multiplier:
+  pvp: 1.0
+  boss: 1.0
+

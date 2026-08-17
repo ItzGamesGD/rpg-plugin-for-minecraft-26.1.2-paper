@@ -1,0 +1,174 @@
+schema-version: 1
+
+# Canonical natural-world growth loop. No dungeon or hunting-ground stage exists.
+stages:
+  activity:
+    display-name: "바닐라 활동"
+    outputs:
+      - type: ITEM
+        id: basic_upgrade_fragment
+    next:
+      - crafting
+
+  hunt:
+    display-name: "사냥"
+    outputs:
+      - type: COINS
+    next:
+      - shop
+      - crafting
+
+  crafting:
+    display-name: "재료 제작"
+    inputs:
+      - type: ITEM
+        id: basic_upgrade_fragment
+    outputs:
+      - type: ITEM
+        id: basic_upgrade_stone
+    recipes:
+      - basic_upgrade_stone
+    next:
+      - enhancement
+
+  shop:
+    display-name: "상점"
+    inputs:
+      - type: COINS
+    outputs:
+      - type: ITEM
+        id: basic_upgrade_stone
+    next:
+      - enhancement
+
+  enhancement:
+    display-name: "강화"
+    inputs:
+      - type: ITEM
+        id: basic_upgrade_stone
+    outputs:
+      - type: EQUIPMENT_LEVEL
+    next:
+      - boss
+
+  boss:
+    display-name: "보스"
+    inputs: []
+    outputs:
+      - type: ITEM
+        id: basic_promotion_stone
+      - type: ITEM
+        id: magic_stone
+    next:
+      - promotion
+      - enchant
+
+  promotion:
+    display-name: "승급"
+    inputs:
+      - type: ITEM
+        id: basic_promotion_stone
+    outputs:
+      - type: EQUIPMENT_TIER
+      - type: ENCHANT_SLOT
+    next:
+      - enchant
+
+  enchant:
+    display-name: "인챈트"
+    inputs:
+      - type: ITEM
+        id: magic_stone
+    outputs:
+      - type: ENCHANTED_EQUIPMENT
+    next: []
+
+sources:
+  vanilla-activities:
+    outputs:
+      - type: ITEM
+        id: basic_upgrade_fragment
+  rpg-mob-rewards:
+    outputs:
+      - type: COINS
+      - type: LOOT_TABLE
+
+access-materials:
+  enabled: true
+  fragment-item-id: basic_upgrade_fragment
+  amount: 1
+  activities:
+    MINING: 0.20
+    LOGGING: 0.15
+    FARMING: 0.15
+    HUNTING: 0.15
+    FISHING: 0.10
+
+magic-stone-fragments:
+  enabled: true
+  item-id: magic_stone_fragment
+  sources:
+    MINING: { chance: 0.08, min-amount: 1, max-amount: 1 }
+    LOGGING: { chance: 0.05, min-amount: 1, max-amount: 1 }
+    FARMING: { chance: 0.05, min-amount: 1, max-amount: 1 }
+    HUNTING: { chance: 0.05, min-amount: 1, max-amount: 1 }
+    FISHING: { chance: 0.03, min-amount: 1, max-amount: 1 }
+
+activity-coins:
+  enabled: true
+  feedback:
+    actionbar: true
+    chat: false
+    aggregate-window-ticks: 40
+  activities:
+    MINING:
+      enabled: true
+      # Fixed baseline until an activity-specialization registry exists.
+      coins: 50
+      chance: 1.0
+      allow-adventure: true
+      require-pickaxe: true
+      allowed-worlds: []
+      cooldown-ticks: 2
+      stone-blocks: [STONE, TUFF, ANDESITE, DIORITE, GRANITE, DEEPSLATE, CALCITE, DRIPSTONE_BLOCK, SMOOTH_BASALT, COBBLESTONE, MOSSY_COBBLESTONE, STONE_BRICKS, MOSSY_STONE_BRICKS, CRACKED_STONE_BRICKS, CHISELED_STONE_BRICKS]
+    LOGGING:
+      enabled: true
+      coins: 20
+      chance: 1.0
+      require-natural-tree: false
+      allowed-worlds: []
+      cooldown-ticks: 2
+    FARMING:
+      enabled: true
+      # Farming earns coins by selling crops, not by block-break activity.
+      coins: 0
+      chance: 1.0
+      require-mature-crop: true
+      allowed-worlds: []
+      cooldown-ticks: 0
+      allowed-crops: [WHEAT, CARROTS, POTATOES, BEETROOTS, NETHER_WART, COCOA, MELON, PUMPKIN, SUGAR_CANE, CACTUS]
+    HUNTING:
+      enabled: true
+      coins: 0
+      chance: 1.0
+      allowed-worlds: []
+      cooldown-ticks: 0
+    FISHING:
+      enabled: true
+      coins: 10
+      chance: 1.0
+      allowed-worlds: []
+      cooldown-ticks: 0
+      tiers:
+        FISH: { enabled: true, coins: 10 }
+        TREASURE: { enabled: true, coins: 35 }
+        JUNK: { enabled: true, coins: 3 }
+    HUSBANDRY:
+      enabled: true
+      coins: 8
+      chance: 1.0
+      allowed-worlds: []
+      cooldown-ticks: 0
+      tiers:
+        BREED: { enabled: true, coins: 12 }
+        SLAUGHTER: { enabled: true, coins: 6 }
