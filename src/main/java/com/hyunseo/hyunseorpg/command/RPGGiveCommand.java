@@ -906,6 +906,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(Component.text("좀비 변종 적용: " + variant, NamedTextColor.GREEN));
     }
 
+    /*
     private void handleEffectDebugHarness(CommandSender sender, String[] args) {
         if (!sender.hasPermission("hyunseorpg.admin")) {
             sender.sendMessage("\uAD00\uB9AC\uC790 \uAD8C\uD55C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
@@ -952,6 +953,8 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("\uC0AC\uC6A9\uBC95: /rpg effect <list|apply|remove|clear|debug|reload>");
     }
 
+    }
+    */
     private void handleAlchemy(CommandSender sender, String[] args) {
         if (!sender.hasPermission("hyunseorpg.admin")) {
             sender.sendMessage("관리자 권한이 필요합니다.");
