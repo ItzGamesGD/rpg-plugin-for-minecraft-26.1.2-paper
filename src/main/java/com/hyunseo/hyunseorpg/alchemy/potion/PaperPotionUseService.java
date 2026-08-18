@@ -61,16 +61,19 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
             case SPLASH -> EffectSourceType.POTION_SPLASH;
             case LINGERING -> EffectSourceType.POTION_LINGERING;
         };
+        if (effectiveDelivery != PotionDefinition.Delivery.DRINK) return UseResult.INVALID_PDC;
         String effectId = pdc.readEffectOverride(item);
+        int durationPercent = pdc.readDurationPercent(item);
         if (pdc.readInverted(item) && effectId.isBlank()) return UseResult.INVALID_PDC;
+        if (catalystId.isBlank() && (durationPercent != 100 || pdc.readAmplifierDelta(item) != 0
+                || pdc.readInverted(item) || !effectId.isBlank())) return UseResult.INVALID_PDC;
         if (effectId.isBlank()) effectId = definition.effectId();
         var effectDefinition = effects.registry().get(effectId).orElse(null);
         if (effectDefinition == null || !effectDefinition.enabled()) return UseResult.EFFECT_DISABLED;
         int duration = effectDefinition.durationTicks();
-        int durationPercent = pdc.readDurationPercent(item);
         if (durationPercent < 1 || durationPercent > 1000) return UseResult.INVALID_PDC;
         int amplifier = Math.max(0, effectDefinition.amplifier() + pdc.readAmplifierDelta(item));
-        boolean transformed = !catalystId.isBlank() && (durationPercent != 100 || amplifier != effectDefinition.amplifier()
+        boolean transformed = !catalystId.isBlank() && (durationPercent != 100 || pdc.readAmplifierDelta(item) != 0
                 || !effectId.equals(definition.effectId()));
         boolean applied = transformed
                 ? effects.applyWithOverrides(playerId, effectId, new EffectContext(playerId, source, definition.id(), playerId, null),
@@ -87,6 +90,12 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
         PotionDefinition definition = potions.find(id).orElse(null);
         if (definition == null || !definition.enabled()) return UseResult.UNKNOWN_POTION;
         if (items != null && !items.isItem(item, definition.outputItemId())) return UseResult.INVALID_ITEM;
+        String catalystId = pdc.readCatalystId(item);
+        if (catalystId.isBlank() || catalysts == null) return UseResult.INVALID_PDC;
+        CatalystDefinition catalyst = catalysts.find(catalystId).orElse(null);
+        if (catalyst == null || !catalyst.enabled() || catalyst.mode() == CatalystDefinition.Mode.SPECIAL) {
+            return UseResult.INVALID_PDC;
+        }
         String delivery = pdc.readDelivery(item);
         if (delivery.isBlank() || "ORIGINAL".equalsIgnoreCase(delivery)) return UseResult.INVALID_PDC;
         PotionDefinition.Delivery parsed;
@@ -104,7 +113,8 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
         if (effectDefinition == null || !effectDefinition.enabled()) return UseResult.EFFECT_DISABLED;
         int durationPercent = pdc.readDurationPercent(item);
         if (durationPercent < 1 || durationPercent > 1000) return UseResult.INVALID_PDC;
-        int amplifier = Math.max(0, effectDefinition.amplifier() + pdc.readAmplifierDelta(item));
+        int amplifierDelta = pdc.readAmplifierDelta(item);
+        int amplifier = Math.max(0, effectDefinition.amplifier() + amplifierDelta);
         boolean applied = effects.applyWithOverrides(targetId, effectId,
                 new EffectContext(sourceId, source, definition.id(), targetId, null),
                 Math.max(1, Math.round(effectDefinition.durationTicks() * durationPercent / 100.0F)), amplifier);

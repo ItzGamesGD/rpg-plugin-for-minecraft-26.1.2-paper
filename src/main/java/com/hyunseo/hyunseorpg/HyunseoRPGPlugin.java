@@ -383,7 +383,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.specialCatalystRegistry.reload();
         this.specialCatalystExecutionService = new BoundedSpecialCatalystExecutionService(
                 this, specialCatalystRegistry, potionRegistry, effectService, 128);
-        this.potionUseListener = new PaperPotionUseListener(potionPdc,
+        this.potionUseListener = new PaperPotionUseListener(this, potionPdc,
                 new PaperPotionUseService(potionRegistry, potionPdc, effectService, itemService, 1,
                         catalystRegistry, specialCatalystExecutionService));
         this.catalystApplicationService = new CatalystApplicationService(

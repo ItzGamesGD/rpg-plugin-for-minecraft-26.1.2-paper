@@ -5,6 +5,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.ThrownPotion;
+import org.bukkit.entity.AreaEffectCloud;
+import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.LingeringPotionSplashEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.event.EventHandler;
@@ -15,15 +17,28 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.inventory.ItemStack;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 /** Routes only canonical PDC potions through PotionUseService before vanilla consumption. */
 public final class PaperPotionUseListener implements Listener {
     private final PotionPdcContract<ItemStack> pdc;
     private final PotionUseService<ItemStack> useService;
     private final PaperPotionUseService paperService;
+    private final JavaPlugin plugin;
+    private final Map<UUID, LingeringPayload> lingering = new HashMap<>();
+    private final Map<UUID, BukkitTask> lingeringCleanup = new HashMap<>();
 
     public PaperPotionUseListener(PotionPdcContract<ItemStack> pdc,
                                   PotionUseService<ItemStack> useService) {
+        this(null, pdc, useService);
+    }
+
+    public PaperPotionUseListener(JavaPlugin plugin, PotionPdcContract<ItemStack> pdc,
+                                  PotionUseService<ItemStack> useService) {
+        this.plugin = plugin;
         this.pdc = pdc;
         this.useService = useService;
         this.paperService = useService instanceof PaperPotionUseService service ? service : null;
@@ -49,7 +64,7 @@ public final class PaperPotionUseListener implements Listener {
         if (pdc.readPotionId(item).isBlank() || !"SPLASH".equalsIgnoreCase(pdc.readDelivery(item))) return;
         event.setCancelled(true);
         UUID source = potion.getShooter() instanceof Player player ? player.getUniqueId() : null;
-        for (LivingEntity target : potion.getLocation().getNearbyLivingEntities(4.0D, 2.0D, 4.0D)) {
+        for (LivingEntity target : event.getAffectedEntities()) {
             paperService.useOnTarget(source, target.getUniqueId(), item);
         }
     }
@@ -61,11 +76,36 @@ public final class PaperPotionUseListener implements Listener {
         ItemStack item = potion.getItem();
         if (pdc.readPotionId(item).isBlank() || !"LINGERING".equalsIgnoreCase(pdc.readDelivery(item))) return;
         UUID source = potion.getShooter() instanceof Player player ? player.getUniqueId() : null;
-        Bukkit.getScheduler().runTaskLater((org.bukkit.plugin.java.JavaPlugin) potion.getServer().getPluginManager()
-                .getPlugin("HyunseoRPG"), () -> {
-            for (LivingEntity target : potion.getLocation().getNearbyLivingEntities(3.5D, 2.0D, 3.5D)) {
-                paperService.useOnTarget(source, target.getUniqueId(), item);
-            }
-        }, 1L);
+        AreaEffectCloud cloud = event.getAreaEffectCloud();
+        if (cloud == null) return;
+        synchronized (lingering) {
+            lingering.put(cloud.getUniqueId(), new LingeringPayload(source, item.clone()));
+        }
+        if (plugin != null) {
+            BukkitTask cleanup = Bukkit.getScheduler().runTaskLater(plugin, () -> removeCloud(cloud.getUniqueId()),
+                    Math.max(20L, cloud.getDuration() + 40L));
+            synchronized (lingering) { lingeringCleanup.put(cloud.getUniqueId(), cleanup); }
+        }
     }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onLingeringApply(AreaEffectCloudApplyEvent event) {
+        LingeringPayload payload;
+        synchronized (lingering) { payload = lingering.get(event.getEntity().getUniqueId()); }
+        if (payload == null || paperService == null) return;
+        event.setCancelled(true);
+        for (LivingEntity target : event.getAffectedEntities()) {
+            paperService.useOnTarget(payload.sourceId(), target.getUniqueId(), payload.item());
+        }
+    }
+
+    private void removeCloud(UUID cloudId) {
+        synchronized (lingering) {
+            lingering.remove(cloudId);
+            BukkitTask task = lingeringCleanup.remove(cloudId);
+            if (task != null && !task.isCancelled()) task.cancel();
+        }
+    }
+
+    private record LingeringPayload(UUID sourceId, ItemStack item) { }
 }

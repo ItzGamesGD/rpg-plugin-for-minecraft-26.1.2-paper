@@ -27,6 +27,7 @@ public final class YamlCatalystRegistry implements CatalystRegistry {
                 if (!id.matches("[a-z0-9]+(_[a-z0-9]+)*") || mode.isBlank()) return false;
                 String material = config.getAlchemyCatalystString(path + ".vanilla-material",
                         config.getAlchemyCatalystString(path + ".material", id.toUpperCase(Locale.ROOT)));
+                String itemId = config.getAlchemyCatalystString(path + ".item-id", "");
                 List<String> allowed = config.getAlchemyCatalystStringList(path + ".allowed-potions")
                         .stream().map(YamlCatalystRegistry::normalize).filter(value -> !value.isBlank()).toList();
                 Map<String, String> inversion = new LinkedHashMap<>();
@@ -40,6 +41,7 @@ public final class YamlCatalystRegistry implements CatalystRegistry {
                 candidate.put(id, new CatalystDefinition(id,
                         config.getAlchemyCatalystBoolean(path + ".enabled", false),
                         CatalystDefinition.Mode.valueOf(mode.toUpperCase(Locale.ROOT)), material,
+                        itemId,
                         allowed, inversion,
                         config.getAlchemyCatalystInt(path + ".duration-multiplier-percent", 100),
                         config.getAlchemyCatalystInt(path + ".amplifier-delta", 0),

@@ -42,7 +42,8 @@ class AlchemyU11BalanceContractTest {
         assertNotNull(catalystSection);
         for (String id : catalystSection.getKeys(false)) {
             String path = "catalysts." + id;
-            assertTrue(catalysts.getBoolean(path + ".enabled", false), id);
+            if (id.equals("slime")) assertFalse(catalysts.getBoolean(path + ".enabled", true), id);
+            else assertTrue(catalysts.getBoolean(path + ".enabled", false), id);
         }
     }
 

@@ -18,7 +18,8 @@ class CatalystRuntimeBehaviorTest {
         assertNotNull(section);
         for (String id : section.getKeys(false)) {
             String path = "catalysts." + id;
-            assertTrue(yaml.getBoolean(path + ".enabled", false), id);
+            if (id.equals("slime")) assertFalse(yaml.getBoolean(path + ".enabled", true), id);
+            else assertTrue(yaml.getBoolean(path + ".enabled", false), id);
             assertFalse(yaml.getString(path + ".vanilla-material", "").isBlank(), id);
             if ("SPECIAL".equalsIgnoreCase(yaml.getString(path + ".mode", ""))) {
                 assertTrue(yaml.getString(path + ".kind", "").length() > 0, id);

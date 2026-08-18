@@ -35,6 +35,8 @@ public final class YamlSpecialCatalystRegistry implements SpecialCatalystRegistr
                         config.getAlchemyCatalystInt(path + ".delay-ticks", 10),
                         config.getAlchemyCatalystInt(path + ".lifetime-ticks", 40),
                         config.getAlchemyCatalystDouble(path + ".max-distance", 16.0D),
+                        config.getAlchemyCatalystDouble(path + ".max-total-distance",
+                                config.getAlchemyCatalystDouble(path + ".max-distance", 16.0D) * 8.0D),
                         config.getAlchemyCatalystDouble(path + ".attenuation", 0.5D)));
             }
         } catch (IllegalArgumentException invalid) { return false; }

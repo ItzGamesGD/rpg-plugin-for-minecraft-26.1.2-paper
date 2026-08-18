@@ -37,6 +37,7 @@ catalysts:
     vanilla-material: SCULK
     max-propagation-count: 8
     radius: 8.0
+    max-total-distance: 64.0
     attenuation: 0.5 # BALANCE_PENDING
   echo_shard:
     enabled: true
@@ -45,7 +46,7 @@ catalysts:
     vanilla-material: ECHO_SHARD
     delay-ticks: 10
   slime:
-    enabled: true
+    enabled: false # DEFERRED_COMPLEX_RUNTIME: physical projectile bounce is not implemented
     mode: SPECIAL
     kind: SLIME
     vanilla-material: SLIME_BALL
@@ -59,3 +60,10 @@ catalysts:
     vanilla-material: WIND_CHARGE
     max-distance: 16.0
     lifetime-ticks: 40
+  fireball:
+    enabled: true
+    mode: SPECIAL
+    kind: FIREBALL
+    item-id: fireball
+    vanilla-material: FIRE_CHARGE
+    radius: 4.0 # BALANCE_PENDING

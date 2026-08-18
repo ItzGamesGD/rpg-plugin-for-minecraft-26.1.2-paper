@@ -7,6 +7,7 @@ import java.util.Objects;
 /** Immutable catalyst policy. Item matching is explicit and never inferred from lore. */
 public final class CatalystDefinition {
     private final String catalystId;
+    private final String itemId;
     private final boolean enabled;
     private final Mode mode;
     private final String materialId;
@@ -24,7 +25,15 @@ public final class CatalystDefinition {
     public CatalystDefinition(String catalystId, boolean enabled, Mode mode, String materialId,
                                List<String> allowedPotions, Map<String, String> inversionEffectIds,
                                int durationMultiplierPercent, int amplifierDelta, String delivery) {
+        this(catalystId, enabled, mode, materialId, "", allowedPotions, inversionEffectIds,
+                durationMultiplierPercent, amplifierDelta, delivery);
+    }
+
+    public CatalystDefinition(String catalystId, boolean enabled, Mode mode, String materialId,
+                               String itemId, List<String> allowedPotions, Map<String, String> inversionEffectIds,
+                               int durationMultiplierPercent, int amplifierDelta, String delivery) {
         this.catalystId = Objects.requireNonNull(catalystId, "catalystId");
+        this.itemId = itemId == null ? "" : itemId.trim().toLowerCase();
         this.enabled = enabled;
         this.mode = Objects.requireNonNull(mode, "mode");
         this.materialId = materialId == null ? "" : materialId.trim().toUpperCase();
@@ -36,6 +45,7 @@ public final class CatalystDefinition {
     }
 
     public String catalystId() { return catalystId; }
+    public String itemId() { return itemId; }
     public boolean enabled() { return enabled; }
     public Mode mode() { return mode; }
     public String materialId() { return materialId; }

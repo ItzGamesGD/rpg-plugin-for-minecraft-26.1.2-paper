@@ -182,7 +182,7 @@ public final class AlchemyCatalystGuiService implements Listener {
         if (target == POTION_SLOT && items.getItemId(clicked).map(id -> !id.startsWith("potion_")).orElse(true)) {
             target = CATALYST_SLOT;
         }
-        if (target == CATALYST_SLOT && catalysts.findByItem(clicked).isEmpty()) return;
+        if (target == CATALYST_SLOT && catalysts.findByItem(clicked, items).isEmpty()) return;
         ItemStack existing = inventory.getItem(target);
         if (existing != null && !existing.isSimilar(clicked)) return;
         if (existing == null) {

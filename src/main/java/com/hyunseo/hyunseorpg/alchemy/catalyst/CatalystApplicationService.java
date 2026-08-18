@@ -45,7 +45,7 @@ public final class CatalystApplicationService {
             return Result.rejected(Status.INVALID_POTION_ITEM);
         }
         if (!pdc.readCatalystId(source).isBlank()) return Result.rejected(Status.DUPLICATE_CATALYST);
-        CatalystDefinition catalyst = catalysts.findByItem(catalystItem).orElse(null);
+        CatalystDefinition catalyst = catalysts.findByItem(catalystItem, items).orElse(null);
         if (catalyst == null || !catalyst.enabled()) return Result.rejected(Status.CATALYST_DISABLED);
         if (!catalyst.allowsPotion(potion.id())) return Result.rejected(Status.INCOMPATIBLE_CATALYST);
 
