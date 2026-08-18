@@ -30,28 +30,16 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
     }
     @Override public UseResult use(UUID playerId, ItemStack item) {
         String id = pdc.readPotionId(item); if (id.isBlank()) return UseResult.NOT_A_POTION;
+        if (pdc.readDataVersion(item) != supportedVersion) return UseResult.UNSUPPORTED_DATA_VERSION;
         PotionDefinition definition = potions.find(id).orElse(null); if (definition == null) return UseResult.UNKNOWN_POTION;
         if (!definition.enabled()) return UseResult.DISABLED_POTION;
         if (items != null && !items.isItem(item, definition.outputItemId())) return UseResult.INVALID_ITEM;
-        // Crafting and older give paths may preserve the canonical item ID while
-        // dropping the optional potion metadata. Recover that original potion
-        // instead of rejecting a valid canonical item as INVALID_PDC.
-        if (pdc.readDataVersion(item) != supportedVersion) {
-            pdc.write(item, definition, "", supportedVersion);
-        }
         String catalystId = pdc.readCatalystId(item);
         CatalystDefinition catalyst = null;
         if (!catalystId.isBlank()) {
-            if (catalysts == null) {
-                pdc.write(item, definition, "", supportedVersion);
-                catalystId = "";
-            }
-            catalyst = catalysts == null || catalystId.isBlank() ? null : catalysts.find(catalystId).orElse(null);
-            if (!catalystId.isBlank() && (catalyst == null || !catalyst.enabled())) {
-                pdc.write(item, definition, "", supportedVersion);
-                catalystId = "";
-                catalyst = null;
-            }
+            if (catalysts == null) return UseResult.INVALID_PDC;
+            catalyst = catalysts.find(catalystId).orElse(null);
+            if (catalyst == null || !catalyst.enabled()) return UseResult.INVALID_PDC;
             if (catalyst.mode() == CatalystDefinition.Mode.SPECIAL) {
                 if (specialExecutions == null) return UseResult.EFFECT_REJECTED;
                 return specialExecutions.start(playerId, definition.id(), catalyst.catalystId())
@@ -60,6 +48,7 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
             }
         }
         String delivery = pdc.readDelivery(item);
+        if (delivery.isBlank()) delivery = "ORIGINAL";
         if (catalystId.isBlank() && !delivery.isBlank() && !"ORIGINAL".equalsIgnoreCase(delivery)) {
             return UseResult.INVALID_PDC;
         }
@@ -87,6 +76,38 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
                 ? effects.applyWithOverrides(playerId, effectId, new EffectContext(playerId, source, definition.id(), playerId, null),
                 Math.max(1, Math.round(duration * Math.max(1, durationPercent) / 100.0F)), amplifier)
                 : effects.apply(playerId, effectId, new EffectContext(playerId, source, definition.id(), playerId, null));
+        return applied ? UseResult.USED : UseResult.EFFECT_REJECTED;
+    }
+
+    /** Applies a transformed potion to an entity hit by a splash/lingering delivery. */
+    public UseResult useOnTarget(UUID sourceId, UUID targetId, ItemStack item) {
+        String id = pdc.readPotionId(item);
+        if (id.isBlank()) return UseResult.NOT_A_POTION;
+        if (pdc.readDataVersion(item) != supportedVersion) return UseResult.UNSUPPORTED_DATA_VERSION;
+        PotionDefinition definition = potions.find(id).orElse(null);
+        if (definition == null || !definition.enabled()) return UseResult.UNKNOWN_POTION;
+        if (items != null && !items.isItem(item, definition.outputItemId())) return UseResult.INVALID_ITEM;
+        String delivery = pdc.readDelivery(item);
+        if (delivery.isBlank() || "ORIGINAL".equalsIgnoreCase(delivery)) return UseResult.INVALID_PDC;
+        PotionDefinition.Delivery parsed;
+        try { parsed = PotionDefinition.Delivery.valueOf(delivery.toUpperCase(java.util.Locale.ROOT)); }
+        catch (IllegalArgumentException ignored) { return UseResult.INVALID_PDC; }
+        EffectSourceType source = switch (parsed) {
+            case DRINK -> EffectSourceType.POTION_DRINK;
+            case SPLASH -> EffectSourceType.POTION_SPLASH;
+            case LINGERING -> EffectSourceType.POTION_LINGERING;
+        };
+        String effectId = pdc.readEffectOverride(item);
+        if (pdc.readInverted(item) && effectId.isBlank()) return UseResult.INVALID_PDC;
+        if (effectId.isBlank()) effectId = definition.effectId();
+        var effectDefinition = effects.registry().get(effectId).orElse(null);
+        if (effectDefinition == null || !effectDefinition.enabled()) return UseResult.EFFECT_DISABLED;
+        int durationPercent = pdc.readDurationPercent(item);
+        if (durationPercent < 1 || durationPercent > 1000) return UseResult.INVALID_PDC;
+        int amplifier = Math.max(0, effectDefinition.amplifier() + pdc.readAmplifierDelta(item));
+        boolean applied = effects.applyWithOverrides(targetId, effectId,
+                new EffectContext(sourceId, source, definition.id(), targetId, null),
+                Math.max(1, Math.round(effectDefinition.durationTicks() * durationPercent / 100.0F)), amplifier);
         return applied ? UseResult.USED : UseResult.EFFECT_REJECTED;
     }
 }

@@ -65,6 +65,8 @@ public final class CatalystApplicationService {
             return Result.rejected(Status.INCOMPATIBLE_CATALYST);
         }
         ItemStack converted = source.clone();
+        if ("SPLASH".equals(delivery)) converted.setType(org.bukkit.Material.SPLASH_POTION);
+        else if ("LINGERING".equals(delivery)) converted.setType(org.bukkit.Material.LINGERING_POTION);
         pdc.write(converted, potion, catalyst.catalystId(), supportedDataVersion);
         pdc.writeTransformation(converted, delivery, catalyst.durationMultiplierPercent(),
                 catalyst.amplifierDelta(), catalyst.mode() == CatalystDefinition.Mode.INVERSION, effectOverride);
