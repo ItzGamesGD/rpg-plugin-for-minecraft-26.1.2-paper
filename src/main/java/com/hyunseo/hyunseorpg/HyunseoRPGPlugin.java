@@ -146,6 +146,7 @@ import com.hyunseo.hyunseorpg.alchemy.CorrosionEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.FrostbiteEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.NecrosisEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.ProductionEffectListener;
+import com.hyunseo.hyunseorpg.alchemy.EffectListGuiService;
 import com.hyunseo.hyunseorpg.alchemy.ShockEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VampirismEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VulnerabilityEffectHandler;
@@ -332,6 +333,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private ConfigMigrationService configMigrationService;
     private EffectService effectService;
     private ProductionEffectListener productionEffectListener;
+    private EffectListGuiService effectListGuiService;
     private com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter alchemyCombatAdapter;
     private PotionRegistry potionRegistry;
     private PaperPotionPdcContract potionPdc;
@@ -354,6 +356,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.configService.loadDefaults();
         new EquipmentGrowthConfigValidator(configService).validate();
         this.effectService = new EffectService(this, configService);
+        this.effectListGuiService = new EffectListGuiService(this, effectService);
         this.alchemyCombatAdapter = new com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter(effectService);
         registerProductionEffectHandlers();
         if (!effectService.load()) {
@@ -874,6 +877,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             giveCommand.setDeliveryGuiService(deliveryGuiService);
             giveCommand.setFarmingHubGuiService(farmingHubGuiService);
             giveCommand.setEffectService(effectService);
+            giveCommand.setEffectListGuiService(effectListGuiService);
             giveCommand.setAlchemyServices(potionRegistry,
                     potionPdc,
                     specialCatalystExecutionService, alchemyGuiController, alchemyAuditLog);
@@ -1483,6 +1487,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService, statService), this);
         getServer().getPluginManager().registerEvents(effectService, this);
         getServer().getPluginManager().registerEvents(productionEffectListener, this);
+        getServer().getPluginManager().registerEvents(effectListGuiService, this);
         getServer().getPluginManager().registerEvents(potionUseListener, this);
         getServer().getPluginManager().registerEvents(alchemyGuiController, this);
         getServer().getPluginManager().registerEvents(alchemyCatalystGui, this);

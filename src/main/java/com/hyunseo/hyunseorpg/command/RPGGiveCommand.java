@@ -27,6 +27,7 @@ import com.hyunseo.hyunseorpg.farming.CropQualityService;
 import com.hyunseo.hyunseorpg.alchemy.ActiveEffectInstance;
 import com.hyunseo.hyunseorpg.alchemy.EffectContext;
 import com.hyunseo.hyunseorpg.alchemy.EffectService;
+import com.hyunseo.hyunseorpg.alchemy.EffectListGuiService;
 import com.hyunseo.hyunseorpg.alchemy.EffectSourceType;
 import com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog;
 import com.hyunseo.hyunseorpg.alchemy.catalyst.BoundedSpecialCatalystExecutionService;
@@ -85,6 +86,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private Consumer<Inventory> inventoryNormalizer = inventory -> { };
     private Consumer<String> farmingAuditLogger = ignored -> { };
     private EffectService effectService;
+    private EffectListGuiService effectListGuiService;
     private PotionRegistry potionRegistry;
     private PaperPotionPdcContract potionPdc;
     private PotionFactory potionFactory;
@@ -168,6 +170,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
 
     public void setEffectService(EffectService effectService) {
         this.effectService = effectService;
+    }
+
+    public void setEffectListGuiService(EffectListGuiService service) {
+        this.effectListGuiService = service;
     }
 
     public void setAlchemyServices(PotionRegistry potionRegistry, PaperPotionPdcContract potionPdc,
@@ -1035,6 +1041,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (action.equals("debug") || action.equals("list")) {
+            if (action.equals("list") && effectListGuiService != null) {
+                effectListGuiService.open(player);
+                return;
+            }
             List<ActiveEffectInstance> active = effectService.getActive(player.getUniqueId());
             player.sendMessage("[상태효과] 활성 " + active.size() + "개");
             for (ActiveEffectInstance instance : active) {

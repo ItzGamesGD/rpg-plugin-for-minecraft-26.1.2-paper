@@ -358,5 +358,5 @@ public final class EffectService implements Listener {
         return removed;
     }
 
-    private long currentTick() { return Bukkit.getCurrentTick(); }
+    public long currentTick() { return Bukkit.getCurrentTick(); }
 }

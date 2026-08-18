@@ -30,16 +30,28 @@ public final class PaperPotionUseService implements PotionUseService<ItemStack> 
     }
     @Override public UseResult use(UUID playerId, ItemStack item) {
         String id = pdc.readPotionId(item); if (id.isBlank()) return UseResult.NOT_A_POTION;
-        if (pdc.readDataVersion(item) != supportedVersion) return UseResult.UNSUPPORTED_DATA_VERSION;
         PotionDefinition definition = potions.find(id).orElse(null); if (definition == null) return UseResult.UNKNOWN_POTION;
         if (!definition.enabled()) return UseResult.DISABLED_POTION;
         if (items != null && !items.isItem(item, definition.outputItemId())) return UseResult.INVALID_ITEM;
+        // Crafting and older give paths may preserve the canonical item ID while
+        // dropping the optional potion metadata. Recover that original potion
+        // instead of rejecting a valid canonical item as INVALID_PDC.
+        if (pdc.readDataVersion(item) != supportedVersion) {
+            pdc.write(item, definition, "", supportedVersion);
+        }
         String catalystId = pdc.readCatalystId(item);
         CatalystDefinition catalyst = null;
         if (!catalystId.isBlank()) {
-            if (catalysts == null) return UseResult.INVALID_PDC;
-            catalyst = catalysts.find(catalystId).orElse(null);
-            if (catalyst == null || !catalyst.enabled()) return UseResult.INVALID_PDC;
+            if (catalysts == null) {
+                pdc.write(item, definition, "", supportedVersion);
+                catalystId = "";
+            }
+            catalyst = catalysts == null || catalystId.isBlank() ? null : catalysts.find(catalystId).orElse(null);
+            if (!catalystId.isBlank() && (catalyst == null || !catalyst.enabled())) {
+                pdc.write(item, definition, "", supportedVersion);
+                catalystId = "";
+                catalyst = null;
+            }
             if (catalyst.mode() == CatalystDefinition.Mode.SPECIAL) {
                 if (specialExecutions == null) return UseResult.EFFECT_REJECTED;
                 return specialExecutions.start(playerId, definition.id(), catalyst.catalystId())
