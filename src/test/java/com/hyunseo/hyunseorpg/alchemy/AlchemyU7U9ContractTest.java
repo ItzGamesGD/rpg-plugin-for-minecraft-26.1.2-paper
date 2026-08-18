@@ -30,6 +30,9 @@ class AlchemyU7U9ContractTest {
         assertEquals("SPLASH", yaml.getString("catalysts.slime.delivery"));
         assertTrue(yaml.getBoolean("catalysts.fireball.enabled", false));
         assertEquals("fireball", yaml.getString("catalysts.fireball.item-id"));
+        assertEquals("SPLASH", yaml.getString("catalysts.echo_shard.delivery"));
+        assertEquals("SPLASH", yaml.getString("catalysts.slime.delivery"));
+        assertEquals("SCULK_CATALYST", yaml.getString("catalysts.sculk.vanilla-material"));
         assertTrue(yaml.getStringList("catalysts.fermented_spider_eye.allowed-potions").contains("potion_vulnerability"));
     }
 

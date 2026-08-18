@@ -29,6 +29,14 @@ class AlchemyEffectEngineContractTest {
     }
 
     @Test
+    void shockPulseUsesConfiguredThreeSecondIntervalAndFortyTickRoot() {
+        YamlConfiguration effects = load("alchemy/effects.yml");
+        assertEquals(60, effects.getInt("effects.effect_shock.baseline.tick-interval"));
+        assertEquals(1.0D, effects.getDouble("effects.effect_shock.baseline.damage"));
+        assertEquals(40, effects.getInt("effects.effect_shock.baseline.stun-duration-ticks"));
+    }
+
+    @Test
     void effectSourcePreservesApplicationTypeAndIdentity() {
         UUID source = UUID.randomUUID();
         EffectSource value = new EffectSource(source, EffectSourceType.COMMAND, "Effect_Test_Speed");

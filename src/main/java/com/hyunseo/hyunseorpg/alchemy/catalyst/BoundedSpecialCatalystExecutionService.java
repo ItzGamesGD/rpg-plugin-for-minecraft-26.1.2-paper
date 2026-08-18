@@ -92,7 +92,8 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         SpecialCatalystDefinition definition = registry.find(catalystId).orElse(null);
         if (source == null || !source.isOnline() || potion == null || !potion.enabled()
                 || definition == null || !definition.enabled()) return Result.REJECTED_POLICY;
-        if (definition.kind() == SpecialCatalystDefinition.Kind.SLIME) return Result.REJECTED_POLICY;
+        if (definition.kind() == SpecialCatalystDefinition.Kind.SLIME
+                || definition.kind() == SpecialCatalystDefinition.Kind.ECHO) return Result.REJECTED_POLICY;
 
         UUID executionId = UUID.randomUUID();
         Request request = new Request(executionId, potion.id(), definition.catalystId(),
@@ -136,6 +137,53 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 () -> finish(executionId), Math.max(20L,
                         (long) definition.lifetimeTicks() * definition.maxCount() + 20L)));
         processSlimeSplash(state, potionEntity, affected);
+    }
+
+    /** Applies echo twice to the exact entities affected by one real splash collision. */
+    public synchronized void handleEchoSplash(String potionId, UUID sourceId,
+                                               Collection<LivingEntity> affected) {
+        if (plugin == null || potions == null || effects == null || potionId == null || potionId.isBlank()) return;
+        SpecialCatalystDefinition definition = registry.find("echo_shard").orElse(null);
+        PotionDefinition potion = potions.find(potionId).orElse(null);
+        if (definition == null || !definition.enabled() || definition.kind() != SpecialCatalystDefinition.Kind.ECHO
+                || potion == null || !potion.enabled()) return;
+
+        UUID executionId = UUID.randomUUID();
+        Player source = sourceId == null ? null : Bukkit.getPlayer(sourceId);
+        UUID worldId = source == null ? null : source.getWorld().getUID();
+        if (worldId == null && affected != null) {
+            worldId = affected.stream().filter(entity -> entity != null && entity.getWorld() != null)
+                    .map(entity -> entity.getWorld().getUID()).findFirst().orElse(null);
+        }
+        if (worldId == null) return;
+        Request request = new Request(executionId, potion.id(), definition.catalystId(), worldId, Set.of(), sourceId);
+        if (execute(request) != Result.STARTED) return;
+        Location origin = source == null && affected != null && !affected.isEmpty()
+                ? affected.iterator().next().getLocation().clone()
+                : source == null ? null : source.getLocation().clone();
+        if (origin == null) { active.remove(executionId); return; }
+        RuntimeState state = new RuntimeState(request, potion, definition, origin);
+        if (affected != null) {
+            for (LivingEntity target : affected) {
+                if (target == null || target.isDead() || !target.isValid()
+                        || (sourceId != null && sourceId.equals(target.getUniqueId()))) continue;
+                if (apply(state, target)) state.visited.add(target.getUniqueId());
+            }
+        }
+        if (state.visited.isEmpty()) { active.remove(executionId); return; }
+        runtimes.put(executionId, state);
+        tasks.put(executionId, Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            synchronized (BoundedSpecialCatalystExecutionService.this) {
+                RuntimeState current = runtimes.get(executionId);
+                if (current == null) return;
+                for (UUID targetId : new HashSet<>(current.visited)) {
+                    Entity entity = Bukkit.getEntity(targetId);
+                    if (entity instanceof LivingEntity target && target.isValid() && !target.isDead()
+                            && target.getWorld().equals(current.origin.getWorld())) apply(current, target);
+                }
+                finish(executionId);
+            }
+        }, definition.delayTicks()));
     }
 
     private void processSlimeSplash(RuntimeState state, ThrownPotion potionEntity,
@@ -208,16 +256,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskTimer(plugin,
                         () -> tickSculk(state.request.executionId()), 1L, 5L));
             }
-            case ECHO -> {
-                apply(state, source(state));
-                tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    RuntimeState current = runtimes.get(state.request.executionId());
-                    if (current != null) {
-                        apply(current, source(current));
-                        finish(current.request.executionId());
-                    }
-                }, definition.delayTicks()));
-            }
+            case ECHO -> { /* Driven by PotionSplashEvent via handleEchoSplash. */ }
             case FIREBALL -> launchFireball(state);
             case WIND_CHARGE -> tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskTimer(plugin,
                     new Runnable() {
@@ -396,20 +435,21 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         return null;
     }
 
-    private void apply(RuntimeState state, LivingEntity target) { apply(state, target, 1.0D); }
+    private boolean apply(RuntimeState state, LivingEntity target) { return apply(state, target, 1.0D); }
 
-    private void apply(RuntimeState state, LivingEntity target, double factor) {
-        if (effects == null || target == null || target.isDead()) return;
+    private boolean apply(RuntimeState state, LivingEntity target, double factor) {
+        if (effects == null || target == null || target.isDead()) return false;
         var definition = effects.registry().get(state.potion.effectId()).orElse(null);
-        if (definition == null || !definition.enabled()) return;
+        if (definition == null || !definition.enabled()) return false;
         EffectSourceType sourceType = switch (state.definition.kind()) {
             case SCULK -> EffectSourceType.POTION_LINGERING;
+            case ECHO, SLIME -> EffectSourceType.POTION_SPLASH;
             case FIREBALL -> EffectSourceType.POTION_FIREBALL;
             default -> EffectSourceType.POTION_DRINK;
         };
         int duration = Math.max(1, (int) Math.round(definition.durationTicks() * factor));
         int amplifier = Math.max(0, (int) Math.floor(definition.amplifier() * factor));
-        effects.applyWithOverrides(target.getUniqueId(), state.potion.effectId(),
+        return effects.applyWithOverrides(target.getUniqueId(), state.potion.effectId(),
                 new EffectContext(state.request.sourceId(), sourceType, state.potion.id(),
                         target.getUniqueId(), state.request.executionId().toString()), duration, amplifier);
     }

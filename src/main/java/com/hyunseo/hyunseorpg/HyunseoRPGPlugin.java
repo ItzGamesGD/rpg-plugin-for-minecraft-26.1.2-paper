@@ -333,6 +333,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
     private EffectService effectService;
+    private com.hyunseo.hyunseorpg.alchemy.EffectMovementLockService effectMovementLockService;
     private ProductionEffectListener productionEffectListener;
     private EffectListGuiService effectListGuiService;
     private com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter alchemyCombatAdapter;
@@ -687,6 +688,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (alchemyCatalystGui != null) alchemyCatalystGui.closeAll();
         if (specialCatalystExecutionService != null) specialCatalystExecutionService.cancelAll(
                 com.hyunseo.hyunseorpg.alchemy.catalyst.SpecialCatalystExecution.CancelReason.SERVER_RESTART);
+        if (effectMovementLockService != null) effectMovementLockService.clearAll();
         if (specialEquipmentEffectListener != null) {
             specialEquipmentEffectListener.clearAllStates();
         }
@@ -1140,11 +1142,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     }
 
     private void registerProductionEffectHandlers() {
+        this.effectMovementLockService = new com.hyunseo.hyunseorpg.alchemy.EffectMovementLockService(this);
         effectService.handlers().register("vampirism", new VampirismEffectHandler(configService));
         effectService.handlers().register("berserk", new BerserkEffectHandler(configService));
         effectService.handlers().register("corrosion", new CorrosionEffectHandler(configService));
         effectService.handlers().register("frostbite", new FrostbiteEffectHandler(configService));
-        effectService.handlers().register("shock", new ShockEffectHandler(configService));
+        effectService.handlers().register("shock", new ShockEffectHandler(configService, effectMovementLockService));
         effectService.handlers().register("bleed", new BleedEffectHandler(configService));
         effectService.handlers().register("vulnerability", new VulnerabilityEffectHandler(configService));
         effectService.handlers().register("necrosis", new NecrosisEffectHandler(configService));
@@ -1496,6 +1499,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService, statService), this);
         getServer().getPluginManager().registerEvents(effectService, this);
+        getServer().getPluginManager().registerEvents(effectMovementLockService, this);
         getServer().getPluginManager().registerEvents(productionEffectListener, this);
         getServer().getPluginManager().registerEvents(effectListGuiService, this);
         getServer().getPluginManager().registerEvents(potionUseListener, this);

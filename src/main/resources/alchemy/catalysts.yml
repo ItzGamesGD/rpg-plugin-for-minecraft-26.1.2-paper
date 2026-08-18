@@ -44,6 +44,7 @@ catalysts:
     mode: SPECIAL
     kind: ECHO
     vanilla-material: ECHO_SHARD
+    delivery: SPLASH
     delay-ticks: 10
   slime:
     enabled: true

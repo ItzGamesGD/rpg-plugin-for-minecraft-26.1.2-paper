@@ -77,6 +77,10 @@ public final class PaperPotionUseListener implements Listener {
             specialExecutions.handleSlimeSplash(potion, pdc.readPotionId(item), source, event.getAffectedEntities());
             return;
         }
+        if ("echo_shard".equalsIgnoreCase(pdc.readCatalystId(item)) && specialExecutions != null) {
+            specialExecutions.handleEchoSplash(pdc.readPotionId(item), source, event.getAffectedEntities());
+            return;
+        }
         for (LivingEntity target : event.getAffectedEntities()) {
             paperService.useOnTarget(source, target.getUniqueId(), item);
         }
