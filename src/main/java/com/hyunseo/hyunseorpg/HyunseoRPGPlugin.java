@@ -147,6 +147,7 @@ import com.hyunseo.hyunseorpg.alchemy.FrostbiteEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.NecrosisEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.ProductionEffectListener;
 import com.hyunseo.hyunseorpg.alchemy.EffectListGuiService;
+import com.hyunseo.hyunseorpg.command.EffectCommand;
 import com.hyunseo.hyunseorpg.alchemy.ShockEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VampirismEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VulnerabilityEffectHandler;
@@ -885,6 +886,15 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             giveCommand.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
             rpgCommand.setExecutor(giveCommand);
             rpgCommand.setTabCompleter(giveCommand);
+        }
+
+        PluginCommand effectCommand = getCommand("effectlist");
+        if (effectCommand == null) {
+            getLogger().severe("Command 'effectlist' is missing from plugin.yml.");
+        } else {
+            EffectCommand executor = new EffectCommand(effectListGuiService);
+            effectCommand.setExecutor(executor);
+            effectCommand.setTabCompleter(executor);
         }
 
         PluginCommand rpgTestCommand = getCommand("rpgtest");

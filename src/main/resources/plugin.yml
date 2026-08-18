@@ -11,6 +11,9 @@ commands:
   rpg:
     description: HyunseoRPG utility command
     usage: /rpg <give|reload|doctor|migrate|debug>
+  effectlist:
+    description: Open the active status effect list
+    usage: /effectlist
   rpgtest:
     description: Operator-only testing utilities
     usage: /rpgtest <give|coins|setcoins|hand|maxhand|boss|reload>

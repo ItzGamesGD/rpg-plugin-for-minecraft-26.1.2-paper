@@ -288,7 +288,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("effect")) {
-            handleEffectDebugHarness(sender, args);
+            handleEffect(sender, args);
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("alchemy")) {
@@ -1016,6 +1016,19 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleEffect(CommandSender sender, String[] args) {
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
+        if (action.equals("list")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage("플레이어만 사용할 수 있습니다.");
+                return;
+            }
+            if (effectListGuiService == null) {
+                sender.sendMessage("상태효과 목록 GUI가 준비되지 않았습니다.");
+                return;
+            }
+            effectListGuiService.open(player);
+            return;
+        }
         if (!sender.hasPermission("hyunseorpg.admin")) {
             sender.sendMessage("관리자 권한이 필요합니다.");
             return;
@@ -1024,7 +1037,6 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("상태효과 서비스가 준비되지 않았습니다.");
             return;
         }
-        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
         if (action.equals("reload")) {
             boolean loaded = effectService.load();
             sender.sendMessage(loaded ? "상태효과 설정을 다시 불러왔습니다: " + effectService.registry().getAll().size() + "개"
