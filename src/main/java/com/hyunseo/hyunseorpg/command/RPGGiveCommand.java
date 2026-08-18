@@ -999,7 +999,15 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (action.equals("inspect")) {
-            if (args.length < 3) { sender.sendMessage("사용법: /rpg alchemy inspect <player>"); return; }
+            if (args.length >= 3 && args[2].equalsIgnoreCase("catalysts")) {
+                if (specialCatalystExecutions == null) {
+                    sender.sendMessage("특수 촉매 레지스트리가 준비되지 않았습니다.");
+                } else {
+                    sender.sendMessage("[촉매 진단] " + specialCatalystExecutions.catalystDiagnostic("sculk"));
+                }
+                return;
+            }
+            if (args.length < 3) { sender.sendMessage("사용법: /rpg alchemy inspect <player|catalysts>"); return; }
             Player target = Bukkit.getPlayerExact(args[2]);
             if (target == null || potionPdc == null) { sender.sendMessage("온라인 플레이어를 찾을 수 없습니다."); return; }
             ItemStack item = target.getInventory().getItemInMainHand();
@@ -1246,7 +1254,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("alchemy")
                 && (args[1].equalsIgnoreCase("give") || args[1].equalsIgnoreCase("inspect"))) {
-            return filterCompletion(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[2]);
+            List<String> values = new java.util.ArrayList<>(Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName).toList());
+            if (args[1].equalsIgnoreCase("inspect")) values.add("catalysts");
+            return filterCompletion(values, args[2]);
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("alchemy") && args[1].equalsIgnoreCase("give")
                 && potionRegistry != null) {

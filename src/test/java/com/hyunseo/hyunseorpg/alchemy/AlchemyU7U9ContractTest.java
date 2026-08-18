@@ -27,6 +27,11 @@ class AlchemyU7U9ContractTest {
             assertFalse(yaml.getString("catalysts." + id + ".vanilla-material", "").isBlank(), id);
         }
         assertEquals("SCULK_CATALYST", yaml.getString("catalysts.sculk.vanilla-material"));
+        assertEquals(1.25D, yaml.getDouble("catalysts.sculk.visual-radius"));
+        assertEquals(10, yaml.getInt("catalysts.sculk.propagation-delay-ticks"));
+        assertEquals(10, yaml.getInt("catalysts.sculk.visual-color.red"));
+        assertEquals(70, yaml.getInt("catalysts.sculk.visual-color.green"));
+        assertEquals(80, yaml.getInt("catalysts.sculk.visual-color.blue"));
         assertEquals("SPLASH", yaml.getString("catalysts.slime.delivery"));
         assertTrue(yaml.getBoolean("catalysts.fireball.enabled", false));
         assertEquals("fireball", yaml.getString("catalysts.fireball.item-id"));

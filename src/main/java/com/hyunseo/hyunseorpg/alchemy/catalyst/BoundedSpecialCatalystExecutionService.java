@@ -6,6 +6,7 @@ import com.hyunseo.hyunseorpg.alchemy.EffectSourceType;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionDefinition;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionRegistry;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -189,16 +190,40 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     private void processSlimeSplash(RuntimeState state, ThrownPotion potionEntity,
                                      Collection<LivingEntity> affected) {
         if (state == null || !active.containsKey(state.request.executionId())) return;
-        if (affected != null) {
-            for (LivingEntity target : affected) {
-                if (target != null && !target.isDead() && target.isValid()) apply(state, target);
-            }
-        }
-        if (state.bounceCount >= state.definition.maxCount()) {
+        if (state.slimePhase == CatalystRuntimePhase.Slime.FINAL_SPLASH) {
+            applyAffected(state, affected);
+            playFinalSplash(potionEntity.getLocation());
+            state.slimePhase = CatalystRuntimePhase.Slime.FINISHED;
             finish(state.request.executionId());
             return;
         }
+        if (state.bounceCount >= state.definition.maxCount()) {
+            // The projectile that reached the configured count is the final splash.
+            // Do not delete it before its collision is processed.
+            state.slimePhase = CatalystRuntimePhase.slimeAfterCollision(
+                    state.slimePhase, state.bounceCount, state.definition.maxCount());
+            applyAffected(state, affected);
+            playFinalSplash(potionEntity.getLocation());
+            state.slimePhase = CatalystRuntimePhase.Slime.FINISHED;
+            finish(state.request.executionId());
+            return;
+        }
+        applyAffected(state, affected);
+        state.slimePhase = CatalystRuntimePhase.Slime.BOUNCE;
         spawnSlimeBounce(state, potionEntity);
+    }
+
+    private void applyAffected(RuntimeState state, Collection<LivingEntity> affected) {
+        if (affected == null) return;
+        for (LivingEntity target : affected) {
+            if (target != null && !target.isDead() && target.isValid()) apply(state, target);
+        }
+    }
+
+    private void playFinalSplash(Location location) {
+        if (location == null || location.getWorld() == null) return;
+        location.getWorld().spawnParticle(Particle.SPLASH, location, 12, 0.35D, 0.15D, 0.35D, 0.05D);
+        location.getWorld().playSound(location, Sound.ENTITY_SLIME_SQUISH, 0.8F, 1.15F);
     }
 
     private void spawnSlimeBounce(RuntimeState state, ThrownPotion previous) {
@@ -248,13 +273,22 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     public synchronized int activeCount() { return active.size(); }
 
+    public String catalystDiagnostic(String catalystId) {
+        if (registry instanceof YamlSpecialCatalystRegistry yaml) return yaml.diagnostic(catalystId);
+        SpecialCatalystDefinition definition = registry.find(catalystId).orElse(null);
+        return "catalyst=" + catalystId + " loaded-material="
+                + (definition == null ? "MISSING" : definition.materialId());
+    }
+
     private void schedule(RuntimeState state) {
         SpecialCatalystDefinition definition = state.definition;
         switch (definition.kind()) {
             case SCULK -> {
                 spawnCloud(state, state.origin);
+                state.nextSculkPropagationAt = Bukkit.getCurrentTick()
+                        + Math.max(1, state.definition.delayTicks());
                 tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskTimer(plugin,
-                        () -> tickSculk(state.request.executionId()), 1L, 5L));
+                        () -> tickSculk(state.request.executionId()), 1L, 1L));
             }
             case ECHO -> { /* Driven by PotionSplashEvent via handleEchoSplash. */ }
             case FIREBALL -> launchFireball(state);
@@ -287,7 +321,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         RuntimeState state = runtimes.get(executionId);
         if (state == null || state.origin.getWorld() == null) { finish(executionId); return; }
         if (state.spawnedClouds >= state.definition.maxCount()) { finish(executionId); return; }
-        boolean propagated = false;
+        if (!CatalystRuntimePhase.sculkPropagationDue(Bukkit.getCurrentTick(), state.nextSculkPropagationAt)) return;
         for (UUID cloudId : new HashSet<>(state.clouds)) {
             Entity entity = Bukkit.getEntity(cloudId);
             if (!(entity instanceof AreaEffectCloud cloud) || !cloud.isValid()) {
@@ -297,22 +331,30 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
             for (Entity nearby : cloud.getWorld().getNearbyEntities(cloud.getLocation(),
                     state.definition.radius(), state.definition.radius(), state.definition.radius())) {
                 if (!(nearby instanceof LivingEntity target) || target.isDead() || !target.isValid()) continue;
-                if (!state.visited.add(target.getUniqueId())) continue;
                 if (state.origin.getWorld() != target.getWorld()
                         || state.origin.distance(target.getLocation()) > state.definition.maxTotalDistance()) continue;
-                propagated = true;
+                if (!state.visited.add(target.getUniqueId())) continue;
                 apply(state, target, attenuation(state, cloud.getLocation(), target.getLocation()));
-                if (state.spawnedClouds < state.definition.maxCount()) spawnCloud(state, target.getLocation());
+                if (state.spawnedClouds < state.definition.maxCount()) {
+                    spawnCloud(state, target.getLocation());
+                    state.nextSculkPropagationAt = Bukkit.getCurrentTick()
+                            + Math.max(1, state.definition.delayTicks());
+                    return;
+                }
             }
         }
-        if (!propagated) finish(executionId);
+        finish(executionId);
     }
 
     private AreaEffectCloud spawnCloud(RuntimeState state, Location location) {
         if (location == null || location.getWorld() == null
                 || state.spawnedClouds >= state.definition.maxCount()) return null;
         AreaEffectCloud cloud = location.getWorld().spawn(location, AreaEffectCloud.class);
-        cloud.setRadius((float) state.definition.radius());
+        cloud.setRadius((float) state.definition.visualRadius());
+        Color color = Color.fromRGB(state.definition.visualColorRed(),
+                state.definition.visualColorGreen(), state.definition.visualColorBlue());
+        cloud.setColor(color);
+        cloud.setParticle(Particle.DUST, new Particle.DustOptions(color, 1.0F));
         cloud.setDuration(Math.max(20, state.definition.lifetimeTicks()));
         cloud.setWaitTime(0);
         cloud.setDurationOnUse(0);
@@ -507,6 +549,8 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         private final Set<UUID> bounceProjectiles = new HashSet<>();
         private int spawnedClouds;
         private int bounceCount;
+        private long nextSculkPropagationAt;
+        private CatalystRuntimePhase.Slime slimePhase = CatalystRuntimePhase.Slime.BOUNCE;
         private UUID projectileId;
         private boolean delivered;
 
@@ -519,4 +563,5 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
             this.visited.addAll(request.visitedTargets());
         }
     }
+
 }

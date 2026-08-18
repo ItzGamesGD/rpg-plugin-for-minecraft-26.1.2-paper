@@ -1079,6 +1079,30 @@ public final class ConfigService {
     public double getAlchemyCatalystDouble(String path, double fallback) { return alchemyCatalystsConfig.getDouble(path, fallback); }
     public List<String> getAlchemyCatalystStringList(String path) { return List.copyOf(alchemyCatalystsConfig.getStringList(path)); }
 
+    /** Migrates the known legacy sculk material in the live external config without restoring deleted keys. */
+    public synchronized String normalizeAlchemyCatalystMaterial(String catalystId, String canonicalMaterial) {
+        String path = "catalysts." + catalystId + ".vanilla-material";
+        String current = alchemyCatalystsConfig.getString(path, canonicalMaterial);
+        if (!"SCULK".equalsIgnoreCase(current)) return current;
+        alchemyCatalystsConfig.set(path, canonicalMaterial);
+        File target = new File(plugin.getDataFolder(), "alchemy/catalysts.yml");
+        File temporary = new File(plugin.getDataFolder(), "alchemy/catalysts.yml.tmp");
+        try {
+            temporary.getParentFile().mkdirs();
+            alchemyCatalystsConfig.save(temporary);
+            try {
+                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.WARNING,
+                    "Failed to persist legacy alchemy catalyst migration for " + catalystId, exception);
+        }
+        return canonicalMaterial;
+    }
+
     public ConfigurationSection getAlchemyGuiSection(String path) { return alchemyGuiConfig.getConfigurationSection(path); }
     public boolean getAlchemyGuiBoolean(String path, boolean fallback) { return alchemyGuiConfig.getBoolean(path, fallback); }
 

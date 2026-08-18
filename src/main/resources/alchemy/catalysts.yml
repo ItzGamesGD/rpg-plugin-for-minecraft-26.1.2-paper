@@ -36,7 +36,13 @@ catalysts:
     kind: SCULK
     vanilla-material: SCULK_CATALYST
     max-propagation-count: 8
-    radius: 8.0
+    radius: 8.0 # propagation search radius
+    visual-radius: 1.25
+    propagation-delay-ticks: 10
+    visual-color:
+      red: 10
+      green: 70
+      blue: 80
     max-total-distance: 64.0
     attenuation: 0.5 # BALANCE_PENDING
   echo_shard:

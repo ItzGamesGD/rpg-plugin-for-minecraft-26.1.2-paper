@@ -1,18 +1,14 @@
 package com.hyunseo.hyunseorpg.alchemy;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,43 +16,52 @@ import java.util.UUID;
 
 /** Shared short-lived movement lock used by effects that pulse a root/stun state. */
 public final class EffectMovementLockService implements Listener {
-    private final JavaPlugin plugin;
-    private final Map<UUID, LockState> locks = new HashMap<>();
+    private final Map<UUID, RootState> roots = new HashMap<>();
 
-    public EffectMovementLockService(JavaPlugin plugin) { this.plugin = plugin; }
+    public EffectMovementLockService(JavaPlugin plugin) { }
 
     public synchronized void lock(LivingEntity target, long durationTicks) {
-        if (target == null || target.isDead() || !target.isValid() || durationTicks <= 0) return;
-        clear(target.getUniqueId());
-        Location anchor = target.getLocation().clone();
-        long expiresAt = Bukkit.getCurrentTick() + durationTicks;
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> tick(target, anchor, expiresAt), 0L, 1L);
-        locks.put(target.getUniqueId(), new LockState(anchor, expiresAt, task));
+        if (!(target instanceof org.bukkit.entity.Player player)
+                || player.isDead() || !player.isValid() || durationTicks <= 0) return;
+        roots.put(player.getUniqueId(), new RootState(org.bukkit.Bukkit.getCurrentTick() + durationTicks));
     }
 
-    private synchronized void tick(LivingEntity target, Location anchor, long expiresAt) {
-        LockState state = locks.get(target.getUniqueId());
-        if (state == null || state.expiresAt() != expiresAt || !target.isValid()
-                || target.isDead() || Bukkit.getCurrentTick() >= expiresAt) {
-            clear(target.getUniqueId());
+    /** Returns whether the player is currently rooted, expiring stale state at the boundary tick. */
+    public synchronized boolean isLocked(UUID entityId) {
+        RootState state = roots.get(entityId);
+        if (state == null) return false;
+        if (org.bukkit.Bukkit.getCurrentTick() >= state.expiresAt()) {
+            roots.remove(entityId);
+            return false;
+        }
+        return true;
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onMove(PlayerMoveEvent event) {
+        if (!isLocked(event.getPlayer().getUniqueId())) return;
+        if (event.getTo() == null || !event.getFrom().getWorld().equals(event.getTo().getWorld())) {
+            clear(event.getPlayer().getUniqueId());
             return;
         }
-        if (target.getWorld().equals(anchor.getWorld())
-                && target.getLocation().distanceSquared(anchor) > 0.0001D) {
-            target.teleport(anchor);
-        }
-        target.setVelocity(new Vector());
-        target.setFallDistance(0.0F);
+        if (event.getFrom().getX() == event.getTo().getX()
+                && event.getFrom().getY() == event.getTo().getY()
+                && event.getFrom().getZ() == event.getTo().getZ()) return;
+
+        // Root only blocks positional movement. Preserve yaw/pitch so the camera remains usable.
+        org.bukkit.Location constrained = event.getFrom().clone();
+        constrained.setYaw(event.getTo().getYaw());
+        constrained.setPitch(event.getTo().getPitch());
+        event.setTo(constrained);
     }
 
     public synchronized void clear(UUID entityId) {
         if (entityId == null) return;
-        LockState state = locks.remove(entityId);
-        if (state != null && !state.task().isCancelled()) state.task().cancel();
+        roots.remove(entityId);
     }
 
     public synchronized void clearAll() {
-        new HashMap<>(locks).keySet().forEach(this::clear);
+        roots.clear();
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -68,5 +73,5 @@ public final class EffectMovementLockService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onWorldChange(PlayerChangedWorldEvent event) { clear(event.getPlayer().getUniqueId()); }
 
-    private record LockState(Location anchor, long expiresAt, BukkitTask task) { }
+    private record RootState(long expiresAt) { }
 }
