@@ -385,7 +385,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 this, specialCatalystRegistry, potionRegistry, effectService, 128);
         this.potionUseListener = new PaperPotionUseListener(this, potionPdc,
                 new PaperPotionUseService(potionRegistry, potionPdc, effectService, itemService, 1,
-                        catalystRegistry, specialCatalystExecutionService));
+                        catalystRegistry, specialCatalystExecutionService), specialCatalystExecutionService);
         this.catalystApplicationService = new CatalystApplicationService(
                 potionRegistry, potionPdc, catalystRegistry, itemService, 1);
         this.alchemyAuditLog = new com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog(this);

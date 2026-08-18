@@ -34,7 +34,7 @@ catalysts:
     enabled: true
     mode: SPECIAL
     kind: SCULK
-    vanilla-material: SCULK
+    vanilla-material: SCULK_CATALYST
     max-propagation-count: 8
     radius: 8.0
     max-total-distance: 64.0
@@ -46,10 +46,11 @@ catalysts:
     vanilla-material: ECHO_SHARD
     delay-ticks: 10
   slime:
-    enabled: false # DEFERRED_COMPLEX_RUNTIME: physical projectile bounce is not implemented
+    enabled: true
     mode: SPECIAL
     kind: SLIME
     vanilla-material: SLIME_BALL
+    delivery: SPLASH
     max-propagation-count: 4
     radius: 5.0
     lifetime-ticks: 40

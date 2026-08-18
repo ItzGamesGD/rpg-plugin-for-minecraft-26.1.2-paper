@@ -18,8 +18,7 @@ class AlchemyU10ContractTest {
         }
         YamlConfiguration catalysts = load("alchemy/catalysts.yml");
         for (String id : catalysts.getConfigurationSection("catalysts").getKeys(false)) {
-            if (id.equals("slime")) assertFalse(catalysts.getBoolean("catalysts." + id + ".enabled", true), id);
-            else assertTrue(catalysts.getBoolean("catalysts." + id + ".enabled", false), id);
+            assertTrue(catalysts.getBoolean("catalysts." + id + ".enabled", false), id);
         }
     }
 

@@ -23,10 +23,11 @@ class AlchemyU7U9ContractTest {
     @Test void productionCatalystsAreEnabledOnlyAfterRuntimeCompletionB() {
         YamlConfiguration yaml = load("alchemy/catalysts.yml");
         for (String id : new String[]{"redstone", "glowstone_dust", "gunpowder", "dragon_breath", "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge"}) {
-            if (id.equals("slime")) assertFalse(yaml.getBoolean("catalysts." + id + ".enabled", true), id);
-            else assertTrue(yaml.getBoolean("catalysts." + id + ".enabled", false), id);
+            assertTrue(yaml.getBoolean("catalysts." + id + ".enabled", false), id);
             assertFalse(yaml.getString("catalysts." + id + ".vanilla-material", "").isBlank(), id);
         }
+        assertEquals("SCULK_CATALYST", yaml.getString("catalysts.sculk.vanilla-material"));
+        assertEquals("SPLASH", yaml.getString("catalysts.slime.delivery"));
         assertTrue(yaml.getBoolean("catalysts.fireball.enabled", false));
         assertEquals("fireball", yaml.getString("catalysts.fireball.item-id"));
         assertTrue(yaml.getStringList("catalysts.fermented_spider_eye.allowed-potions").contains("potion_vulnerability"));

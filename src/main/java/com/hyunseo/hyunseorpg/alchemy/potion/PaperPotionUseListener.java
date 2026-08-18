@@ -21,27 +21,36 @@ import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import com.hyunseo.hyunseorpg.alchemy.catalyst.BoundedSpecialCatalystExecutionService;
 
 /** Routes only canonical PDC potions through PotionUseService before vanilla consumption. */
 public final class PaperPotionUseListener implements Listener {
     private final PotionPdcContract<ItemStack> pdc;
     private final PotionUseService<ItemStack> useService;
     private final PaperPotionUseService paperService;
+    private final BoundedSpecialCatalystExecutionService specialExecutions;
     private final JavaPlugin plugin;
     private final Map<UUID, LingeringPayload> lingering = new HashMap<>();
     private final Map<UUID, BukkitTask> lingeringCleanup = new HashMap<>();
 
     public PaperPotionUseListener(PotionPdcContract<ItemStack> pdc,
                                   PotionUseService<ItemStack> useService) {
-        this(null, pdc, useService);
+        this(null, pdc, useService, null);
     }
 
     public PaperPotionUseListener(JavaPlugin plugin, PotionPdcContract<ItemStack> pdc,
                                   PotionUseService<ItemStack> useService) {
+        this(plugin, pdc, useService, null);
+    }
+
+    public PaperPotionUseListener(JavaPlugin plugin, PotionPdcContract<ItemStack> pdc,
+                                  PotionUseService<ItemStack> useService,
+                                  BoundedSpecialCatalystExecutionService specialExecutions) {
         this.plugin = plugin;
         this.pdc = pdc;
         this.useService = useService;
         this.paperService = useService instanceof PaperPotionUseService service ? service : null;
+        this.specialExecutions = specialExecutions;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -64,6 +73,10 @@ public final class PaperPotionUseListener implements Listener {
         if (pdc.readPotionId(item).isBlank() || !"SPLASH".equalsIgnoreCase(pdc.readDelivery(item))) return;
         event.setCancelled(true);
         UUID source = potion.getShooter() instanceof Player player ? player.getUniqueId() : null;
+        if ("slime".equalsIgnoreCase(pdc.readCatalystId(item)) && specialExecutions != null) {
+            specialExecutions.handleSlimeSplash(potion, pdc.readPotionId(item), source, event.getAffectedEntities());
+            return;
+        }
         for (LivingEntity target : event.getAffectedEntities()) {
             paperService.useOnTarget(source, target.getUniqueId(), item);
         }

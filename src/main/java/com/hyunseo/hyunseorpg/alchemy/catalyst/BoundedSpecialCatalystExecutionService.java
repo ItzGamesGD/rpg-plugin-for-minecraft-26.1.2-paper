@@ -15,6 +15,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SmallFireball;
+import org.bukkit.entity.ThrownPotion;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -34,6 +36,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -102,6 +105,77 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         return result;
     }
 
+    /** Handles the initial and subsequent splash events for the bounded slime bounce delivery. */
+    public synchronized void handleSlimeSplash(ThrownPotion potionEntity, String potionId,
+                                                UUID sourceId, Collection<LivingEntity> affected) {
+        if (plugin == null || potions == null || effects == null || potionEntity == null
+                || potionId == null || potionId.isBlank() || executionKey == null) return;
+
+        String raw = potionEntity.getPersistentDataContainer().get(executionKey, PersistentDataType.STRING);
+        RuntimeState state = raw == null ? null : runtimes.get(parseUuid(raw));
+        if (state != null) {
+            if (!state.processedProjectiles.add(potionEntity.getUniqueId())) return;
+            processSlimeSplash(state, potionEntity, affected);
+            return;
+        }
+
+        SpecialCatalystDefinition definition = registry.find("slime").orElse(null);
+        PotionDefinition potion = potions.find(potionId).orElse(null);
+        if (definition == null || !definition.enabled() || definition.kind() != SpecialCatalystDefinition.Kind.SLIME
+                || potion == null || !potion.enabled()) return;
+
+        UUID executionId = UUID.randomUUID();
+        Request request = new Request(executionId, potion.id(), definition.catalystId(),
+                potionEntity.getWorld().getUID(), Set.of(), sourceId);
+        if (execute(request) != Result.STARTED) return;
+        state = new RuntimeState(request, potion, definition, potionEntity.getLocation().clone());
+        state.bounceCount = 1;
+        state.processedProjectiles.add(potionEntity.getUniqueId());
+        runtimes.put(executionId, state);
+        tasks.put(executionId, Bukkit.getScheduler().runTaskLater(plugin,
+                () -> finish(executionId), Math.max(20L,
+                        (long) definition.lifetimeTicks() * definition.maxCount() + 20L)));
+        processSlimeSplash(state, potionEntity, affected);
+    }
+
+    private void processSlimeSplash(RuntimeState state, ThrownPotion potionEntity,
+                                     Collection<LivingEntity> affected) {
+        if (state == null || !active.containsKey(state.request.executionId())) return;
+        if (affected != null) {
+            for (LivingEntity target : affected) {
+                if (target != null && !target.isDead() && target.isValid()) apply(state, target);
+            }
+        }
+        if (state.bounceCount >= state.definition.maxCount()) {
+            finish(state.request.executionId());
+            return;
+        }
+        spawnSlimeBounce(state, potionEntity);
+    }
+
+    private void spawnSlimeBounce(RuntimeState state, ThrownPotion previous) {
+        Location location = previous.getLocation().clone().add(0.0D, 0.18D, 0.0D);
+        World world = location.getWorld();
+        if (world == null) { finish(state.request.executionId()); return; }
+        ThrownPotion bounce = world.spawn(location, ThrownPotion.class);
+        bounce.setItem(previous.getItem().clone());
+        Player source = source(state);
+        if (source != null) bounce.setShooter(source);
+        Vector velocity = previous.getVelocity().clone();
+        if (velocity.lengthSquared() < 0.01D) {
+            velocity = source == null ? new Vector(0.0D, 0.45D, 0.0D)
+                    : source.getLocation().getDirection().normalize();
+        }
+        velocity.setY(Math.max(0.28D, Math.abs(velocity.getY()) * 0.72D + 0.18D));
+        velocity.setX(velocity.getX() * 0.78D);
+        velocity.setZ(velocity.getZ() * 0.78D);
+        bounce.setVelocity(velocity);
+        bounce.getPersistentDataContainer().set(executionKey, PersistentDataType.STRING,
+                state.request.executionId().toString());
+        state.bounceProjectiles.add(bounce.getUniqueId());
+        state.bounceCount++;
+    }
+
     @Override public synchronized void cancel(UUID executionId, CancelReason reason) { finish(executionId); }
 
     @Override
@@ -166,7 +240,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                             }
                         }
                     }, 1L, 1L));
-            case SLIME -> finish(state.request.executionId());
+            case SLIME -> { /* Driven by PotionSplashEvent via handleSlimeSplash. */ }
         }
     }
 
@@ -239,8 +313,16 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onFireballDirectDamage(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof SmallFireball fireball && hasExecutionIdentity(fireball)) {
+            event.setDamage(0.0D);
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onFireballExplode(EntityExplodeEvent event) {
-        if (!(event.getEntity() instanceof SmallFireball fireball) || !hasExecution(fireball)) return;
+        if (!(event.getEntity() instanceof SmallFireball fireball) || !hasExecutionIdentity(fireball)) return;
         String raw = fireball.getPersistentDataContainer().get(executionKey, PersistentDataType.STRING);
         RuntimeState state = runtimes.get(parseUuid(raw));
         if (state != null) {
@@ -254,12 +336,12 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onFireballIgnite(BlockIgniteEvent event) {
-        if (event.getIgnitingEntity() instanceof SmallFireball fireball && hasExecution(fireball)) event.setCancelled(true);
+        if (event.getIgnitingEntity() instanceof SmallFireball fireball && hasExecutionIdentity(fireball)) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onFireballCombust(EntityCombustEvent event) {
-        if (event.getEntity() instanceof SmallFireball fireball && hasExecution(fireball)) event.setCancelled(true);
+        if (event.getEntity() instanceof SmallFireball fireball && hasExecutionIdentity(fireball)) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -270,9 +352,19 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     }
 
     private boolean hasExecution(SmallFireball fireball) {
-        if (executionKey == null) return false;
+        UUID executionId = executionId(fireball);
+        return executionId != null && runtimes.containsKey(executionId);
+    }
+
+    private boolean hasExecutionIdentity(SmallFireball fireball) {
+        return executionId(fireball) != null;
+    }
+
+    private UUID executionId(SmallFireball fireball) {
+        if (executionKey == null) return null;
         String raw = fireball.getPersistentDataContainer().get(executionKey, PersistentDataType.STRING);
-        return raw != null && runtimes.containsKey(parseUuid(raw));
+        if (raw == null) return null;
+        try { return UUID.fromString(raw); } catch (IllegalArgumentException ignored) { return null; }
     }
 
     private void deliverFireball(RuntimeState state, Location impact) {
@@ -337,6 +429,10 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 Entity entity = Bukkit.getEntity(cloudId);
                 if (entity instanceof AreaEffectCloud cloud) cloud.remove();
             }
+            for (UUID bounceId : state.bounceProjectiles) {
+                Entity entity = Bukkit.getEntity(bounceId);
+                if (entity != null) entity.remove();
+            }
             if (state.projectileId != null) {
                 Entity projectile = Bukkit.getEntity(state.projectileId);
                 if (projectile != null) projectile.remove();
@@ -367,7 +463,10 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         private final Location origin;
         private final Set<UUID> visited = new HashSet<>();
         private final Set<UUID> clouds = new HashSet<>();
+        private final Set<UUID> processedProjectiles = new HashSet<>();
+        private final Set<UUID> bounceProjectiles = new HashSet<>();
         private int spawnedClouds;
+        private int bounceCount;
         private UUID projectileId;
         private boolean delivered;
 
