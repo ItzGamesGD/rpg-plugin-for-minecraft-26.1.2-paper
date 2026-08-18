@@ -155,26 +155,36 @@ public final class EffectService implements Listener {
 
     /** Applies registered combat modifiers without exposing the active map to listeners. */
     public synchronized double modifyDamage(UUID sourceId, UUID targetId, double damage) {
-        if (!Double.isFinite(damage) || damage < 0.0D) return damage;
-        double modified = damage;
+        return traceDamage(sourceId, targetId, damage).finalDamage();
+    }
+
+    /** Returns stage values for admin diagnostics without mutating the combat event. */
+    public synchronized DamageTrace traceDamage(UUID sourceId, UUID targetId, double damage) {
+        if (!Double.isFinite(damage) || damage < 0.0D) return new DamageTrace(damage, damage, damage, damage);
+        double afterOutgoing = damage;
         if (sourceId != null) {
             for (ActiveEffectInstance instance : getActive(sourceId)) {
                 CombatEffectHandler handler = handlerFor(instance.definition());
                 if (handler instanceof CombatEffectModifier modifier) {
-                    modified = modifier.modifyOutgoing(sourceId, targetId, modified);
+                    afterOutgoing = modifier.modifyOutgoing(sourceId, targetId, afterOutgoing);
                 }
             }
         }
+        double afterIncoming = afterOutgoing;
         if (targetId != null) {
             for (ActiveEffectInstance instance : getActive(targetId)) {
                 CombatEffectHandler handler = handlerFor(instance.definition());
                 if (handler instanceof CombatEffectModifier modifier) {
-                    modified = modifier.modifyIncoming(sourceId, targetId, modified);
+                    afterIncoming = modifier.modifyIncoming(sourceId, targetId, afterIncoming);
                 }
             }
         }
-        return Math.max(0.0D, Double.isFinite(modified) ? modified : damage);
+        double finalDamage = Math.max(0.0D, Double.isFinite(afterIncoming) ? afterIncoming : damage);
+        return new DamageTrace(damage, afterOutgoing, afterIncoming, finalDamage);
     }
+
+    public record DamageTrace(double baseDamage, double afterOutgoing,
+                              double afterIncoming, double finalDamage) { }
 
     /** Sends the final event amount through the normal registered handler callback. */
     public synchronized void notifyDamage(UUID sourceId, UUID targetId, double amount,

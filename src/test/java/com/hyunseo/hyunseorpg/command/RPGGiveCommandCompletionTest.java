@@ -27,6 +27,12 @@ class RPGGiveCommandCompletionTest {
     }
 
     @Test
+    void exposesCanonicalEffectCommandActions() {
+        assertTrue(RPGGiveCommand.effectActionCompletion("").containsAll(
+                List.of("list", "apply", "remove", "clear", "debug", "reload")));
+    }
+
+    @Test
     void exposesStage9FarmingAdminActions() {
         List<String> actions = RPGGiveCommand.farmingActionCompletion("");
         assertTrue(actions.containsAll(List.of(

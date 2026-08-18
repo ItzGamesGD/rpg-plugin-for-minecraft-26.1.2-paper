@@ -81,7 +81,7 @@ effects:
     handler-id: shock
     status: IMPLEMENTED_RUNTIME
     balance: BALANCE_PENDING
-    baseline: { tick-interval: 60, damage: 1.0, stun-duration-ticks: 40 }
+    baseline: { tick-interval: 60, damage: 1.0, stun-duration-ticks: 20 }
     policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
   effect_bleed:
     enabled: true

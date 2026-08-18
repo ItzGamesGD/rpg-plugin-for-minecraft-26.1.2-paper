@@ -44,6 +44,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -1015,6 +1016,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         try { return Integer.valueOf(value); } catch (NumberFormatException ignored) { return null; }
     }
 
+    private Double parseEffectDouble(String value) {
+        try { return Double.valueOf(value); } catch (NumberFormatException ignored) { return null; }
+    }
+
     private void handleEffect(CommandSender sender, String[] args) {
         String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "list";
         if (action.equals("list")) {
@@ -1043,43 +1048,183 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                     : "상태효과 설정을 적용하지 않았습니다: " + String.join("; ", effectService.registry().lastErrors()));
             return;
         }
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("list, reload는 플레이어 실행이 필요합니다.");
-            return;
-        }
-        if (action.equals("clear")) {
-            effectService.clearTarget(player.getUniqueId());
-            player.sendMessage("현재 상태효과를 모두 제거했습니다.");
-            return;
-        }
-        if (action.equals("debug") || action.equals("list")) {
-            if (action.equals("list") && effectListGuiService != null) {
-                effectListGuiService.open(player);
-                return;
-            }
-            List<ActiveEffectInstance> active = effectService.getActive(player.getUniqueId());
-            player.sendMessage("[상태효과] 활성 " + active.size() + "개");
-            for (ActiveEffectInstance instance : active) {
-                player.sendMessage("- " + instance.definition().id() + " / 출처="
-                        + instance.source().type() + ":" + instance.source().sourceId()
-                        + " / 스택=" + instance.stacks() + " / 만료틱=" + instance.expiresAtTick());
-            }
-            return;
-        }
         if (action.equals("apply")) {
-            if (args.length < 3) { player.sendMessage("사용법: /rpg effect apply <effect_id>"); return; }
-            boolean applied = effectService.apply(player.getUniqueId(), args[2],
-                    new EffectContext(player.getUniqueId(), EffectSourceType.COMMAND, "rpg_effect", player.getUniqueId(), null));
-            player.sendMessage(applied ? "상태효과를 적용했습니다." : "상태효과 적용에 실패했습니다.");
+            handleEffectApply(sender, args);
             return;
         }
         if (action.equals("remove")) {
-            if (args.length < 3) { player.sendMessage("사용법: /rpg effect remove <effect_id>"); return; }
-            player.sendMessage(effectService.remove(player.getUniqueId(), args[2])
-                    ? "상태효과를 제거했습니다." : "해당 상태효과가 없습니다.");
+            handleEffectRemove(sender, args);
             return;
         }
-        player.sendMessage("사용법: /rpg effect <list|apply|remove|clear|debug|reload>");
+        if (action.equals("clear")) {
+            handleEffectClear(sender, args);
+            return;
+        }
+        if (action.equals("debug")) {
+            handleEffectDebug(sender, args);
+            return;
+        }
+        sender.sendMessage("사용법: /rpg effect <list|apply|remove|clear|debug|reload>");
+    }
+
+    private void handleEffectApply(CommandSender sender, String[] args) {
+        Player commandPlayer = sender instanceof Player player ? player : null;
+        Player target;
+        String effectId;
+        int durationIndex;
+        int amplifierIndex;
+        if (args.length == 3) {
+            if (commandPlayer == null) {
+                sender.sendMessage("사용법: /rpg effect apply <player> <effect_id> [duration_ticks] [amplifier]");
+                return;
+            }
+            target = commandPlayer;
+            effectId = args[2];
+            durationIndex = -1;
+            amplifierIndex = -1;
+        } else {
+            if (args.length < 4) {
+                sender.sendMessage("사용법: /rpg effect apply <player> <effect_id> [duration_ticks] [amplifier]");
+                return;
+            }
+            target = Bukkit.getPlayerExact(args[2]);
+            if (target == null) {
+                sender.sendMessage("대상 플레이어를 찾을 수 없습니다: " + args[2]);
+                return;
+            }
+            effectId = args[3];
+            durationIndex = args.length >= 5 ? 4 : -1;
+            amplifierIndex = args.length >= 6 ? 5 : -1;
+            if (args.length > 6) {
+                sender.sendMessage("사용법: /rpg effect apply <player> <effect_id> [duration_ticks] [amplifier]");
+                return;
+            }
+        }
+        var definition = effectService.registry().get(effectId).orElse(null);
+        if (definition == null) {
+            sender.sendMessage("등록되지 않았거나 비활성 상태효과입니다: " + effectId);
+            return;
+        }
+        Integer duration = durationIndex < 0 ? definition.durationTicks() : parseEffectInteger(args[durationIndex]);
+        Integer amplifier = amplifierIndex < 0 ? definition.amplifier() : parseEffectInteger(args[amplifierIndex]);
+        if (duration == null || duration < 1 || duration > 72000) {
+            sender.sendMessage("duration_ticks는 1-72000 범위의 정수여야 합니다.");
+            return;
+        }
+        if (amplifier == null || amplifier < 0 || amplifier > 10) {
+            sender.sendMessage("amplifier는 0-10 범위의 정수여야 합니다.");
+            return;
+        }
+        UUID source = commandPlayer == null ? target.getUniqueId() : commandPlayer.getUniqueId();
+        boolean applied = durationIndex < 0 && amplifierIndex < 0
+                ? effectService.apply(target.getUniqueId(), effectId,
+                new EffectContext(source, EffectSourceType.COMMAND, "rpg_effect", target.getUniqueId(), null))
+                : effectService.applyDebug(target.getUniqueId(), effectId,
+                new EffectContext(source, EffectSourceType.COMMAND, "rpg_effect", target.getUniqueId(), null), duration, amplifier);
+        sender.sendMessage(applied ? "상태효과를 적용했습니다: " + target.getName() + " / " + effectId
+                : "상태효과 적용에 실패했습니다: " + effectId);
+    }
+
+    private void handleEffectRemove(CommandSender sender, String[] args) {
+        Player commandPlayer = sender instanceof Player player ? player : null;
+        Player target;
+        String effectId;
+        if (args.length == 3 && commandPlayer != null) {
+            target = commandPlayer;
+            effectId = args[2];
+        } else if (args.length == 4) {
+            target = Bukkit.getPlayerExact(args[2]);
+            effectId = args[3];
+            if (target == null) {
+                sender.sendMessage("대상 플레이어를 찾을 수 없습니다: " + args[2]);
+                return;
+            }
+        } else {
+            sender.sendMessage("사용법: /rpg effect remove <player> <effect_id>");
+            return;
+        }
+        sender.sendMessage(effectService.remove(target.getUniqueId(), effectId)
+                ? "상태효과를 제거했습니다: " + target.getName() + " / " + effectId
+                : "해당 상태효과가 없습니다: " + effectId);
+    }
+
+    private void handleEffectClear(CommandSender sender, String[] args) {
+        Player commandPlayer = sender instanceof Player player ? player : null;
+        Player target;
+        if (args.length == 2 && commandPlayer != null) {
+            target = commandPlayer;
+        } else if (args.length == 3) {
+            target = Bukkit.getPlayerExact(args[2]);
+            if (target == null) {
+                sender.sendMessage("대상 플레이어를 찾을 수 없습니다: " + args[2]);
+                return;
+            }
+        } else {
+            sender.sendMessage("사용법: /rpg effect clear <player>");
+            return;
+        }
+        int cleared = effectService.clearAndReport(target.getUniqueId());
+        sender.sendMessage(target.getName() + "의 상태효과 " + cleared + "개를 제거했습니다.");
+    }
+
+    private void handleEffectDebug(CommandSender sender, String[] args) {
+        if (args.length >= 5) {
+            Player source = Bukkit.getPlayerExact(args[2]);
+            Player target = Bukkit.getPlayerExact(args[3]);
+            Double baseDamage = parseEffectDouble(args[4]);
+            if (source == null || target == null) {
+                sender.sendMessage("source와 target 플레이어를 찾을 수 없습니다.");
+                return;
+            }
+            if (baseDamage == null || !Double.isFinite(baseDamage) || baseDamage < 0.0D) {
+                sender.sendMessage("base_damage는 0 이상인 숫자여야 합니다.");
+                return;
+            }
+            EffectService.DamageTrace trace = effectService.traceDamage(
+                    source.getUniqueId(), target.getUniqueId(), baseDamage);
+            double vampirismHeal = effectService.getActive(source.getUniqueId()).stream()
+                    .anyMatch(instance -> instance.definition().id().equalsIgnoreCase("effect_vampire"))
+                    ? trace.finalDamage() * 0.05D : 0.0D;
+            sender.sendMessage("[상태효과 전투 미리보기] source=" + source.getName()
+                    + ", target=" + target.getName()
+                    + ", base=" + trace.baseDamage()
+                    + ", after-outgoing=" + trace.afterOutgoing()
+                    + ", after-incoming=" + trace.afterIncoming()
+                    + ", final=" + trace.finalDamage()
+                    + ", vampirism-heal=" + vampirismHeal);
+            return;
+        }
+        Player target;
+        if (args.length == 2 && sender instanceof Player player) {
+            target = player;
+        } else if (args.length == 3) {
+            target = Bukkit.getPlayerExact(args[2]);
+            if (target == null) {
+                sender.sendMessage("대상 플레이어를 찾을 수 없습니다: " + args[2]);
+                return;
+            }
+        } else {
+            sender.sendMessage("사용법: /rpg effect debug [player]");
+            return;
+        }
+        List<ActiveEffectInstance> active = effectService.getActive(target.getUniqueId());
+        sender.sendMessage("[상태효과 디버그] target=" + target.getName() + ", active=" + active.size());
+        for (ActiveEffectInstance instance : active) {
+            boolean attributePresent = false;
+            for (Attribute attribute : Attribute.values()) {
+                var attributeInstance = target.getAttribute(attribute);
+                if (attributeInstance != null && attributeInstance.getModifiers().stream()
+                        .anyMatch(modifier -> modifier.getName().equals("hyunseorpg_alchemy_" + instance.definition().id()))) {
+                    attributePresent = true;
+                    break;
+                }
+            }
+            sender.sendMessage("- effect=" + instance.definition().id()
+                    + ", source=" + instance.source().type() + ":" + instance.source().sourceId()
+                    + ", active=true, expires=" + instance.expiresAtTick()
+                    + ", attribute-modifier=" + attributePresent);
+        }
+        if (active.isEmpty()) sender.sendMessage("활성 상태효과가 없습니다.");
     }
 
     @Override
@@ -1091,7 +1236,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return pendingCompletion(args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("effect")) {
-            return filterCompletion(List.of("list", "apply", "remove", "clear", "debug", "reload"), args[1]);
+            return effectActionCompletion(args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("alchemy")) {
             return filterCompletion(List.of("reload", "give", "inspect", "clearjobs"), args[1]);
@@ -1110,6 +1255,15 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[0].equalsIgnoreCase("effect")
                 && (args[1].equalsIgnoreCase("apply") || args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("clear"))) {
             return filterCompletion(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("debug")) {
+            return filterCompletion(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[2]);
+        }
+        if (args.length == 4 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("debug")) {
+            return filterCompletion(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[3]);
+        }
+        if (args.length == 5 && args[0].equalsIgnoreCase("effect") && args[1].equalsIgnoreCase("debug")) {
+            return List.of("1", "5", "10", "20");
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("effect")
                 && (args[1].equalsIgnoreCase("apply") || args[1].equalsIgnoreCase("remove"))
@@ -1215,6 +1369,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
 
     static List<String> pendingCompletion(String prefix) {
         return filterCompletion(List.of("claim"), prefix);
+    }
+
+    static List<String> effectActionCompletion(String prefix) {
+        return filterCompletion(List.of("list", "apply", "remove", "clear", "debug", "reload"), prefix);
     }
 
     static List<String> reloadCompletion(String prefix, String[] ids) {
