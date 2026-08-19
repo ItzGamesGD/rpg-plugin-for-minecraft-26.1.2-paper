@@ -1,0 +1,501 @@
+HyunseoRPG 탐험 구현/설계 대응 및 누락·테스트 정리본
+작성일: 2026-08-19
+
+요약
+현재 GitHub 기준 상태는 “탐험 E1~E8 엔진/계약 + 제한 프로토타입 일부 구현, 영지는 아직 설계 범위”로 보는 것이 맞다.
+즉, 코드 쪽으로는 탐험 모듈의 뼈대, 구조물 Registry, 구조물 감지 계약, 런타임, 이벤트 컴포넌트 계약, 상태 기록, objective 추적 골격이 들어가 있다.
+반면 설계 문서에 있는 실제 구조물별 콘텐츠, 퍼즐, 보상, 커스텀 몹, 연출, 영지 연계는 대부분 아직 구현되지 않았거나 live test required 상태로 분리해야 한다.
+
+기준 소스
+- GitHub 브랜치: codex/exploration-pre-territory-freeze-audit
+- 기준 브랜치: codex/exploration-e8-structure-content-prototype
+- 주요 GitHub 문서:
+  - builds/exploration/19-pre-territory-freeze-and-regression-audit.md
+  - builds/exploration/exploration-gap-map.md
+  - builds/exploration/final-verification-and-implementation-order.md
+- 주요 설계 문서:
+  - 3차 영지-탐험 확정안
+  - 추가 아이디어 / 최신 콘텐츠 정리
+
+
+1. 현재 구현 기능과 설계 기능 대응
+
+1-1. 코드/엔진 기준 대응표
+
+설계상 기능: 탐험 모듈 진입점 / 설정 게이트
+- 현재 구현 상태: exploration 패키지와 리소스 존재, 기본 enabled=false
+- 판정: 구현됨 / 비활성 안전값
+
+설계상 기능: 구조물 Registry
+- 현재 구현 상태: 구조물 key, RPG variant, selector, record 구조 존재
+- 판정: 정적 구현됨
+
+설계상 기능: 구조물 감지
+- 현재 구현 상태: Paper 구조물 API 어댑터 / 인덱스 골격 존재
+- 판정: 구현 골격 / live test required
+
+설계상 기능: RPG 구조물 최초 판정
+- 현재 구현 상태: selection chance와 record 저장 구조 존재
+- 판정: 구현됨 / chance 0.0
+
+설계상 기능: 중복 재선정 방지
+- 현재 구현 상태: persistence / repository / index 존재
+- 판정: 정적 구현됨 / live test required
+
+설계상 기능: 접근 trigger / activation
+- 현재 구현 상태: trigger policy, runtime manager 존재
+- 판정: 정적 구현됨 / live test required
+
+설계상 기능: 이벤트 엔진
+- 현재 구현 상태: component API, context, phase, registry 존재
+- 판정: 계약 구현됨
+
+설계상 기능: 최소 실행 콘텐츠
+- 현재 구현 상태: swamp hut witch prototype, outpost scout wave prototype
+- 판정: 제한 구현됨 / 비활성 또는 프로토타입
+
+설계상 기능: objective 추적
+- 현재 구현 상태: runtime object tracker, heartbeat cleanup 존재
+- 판정: 정적 구현됨 / live test required
+
+설계상 기능: 상태 관측
+- 현재 구현 상태: status snapshot, end reason 구조 존재
+- 판정: 정적 구현됨
+
+설계상 기능: 보상
+- 현재 구현 상태: hook / adapter 경계 수준
+- 판정: 미구현
+
+설계상 기능: 퍼즐 / 상호작용
+- 현재 구현 상태: 설계만 존재
+- 판정: 미구현
+
+설계상 기능: 구조물별 실제 이벤트 카탈로그
+- 현재 구현 상태: 대부분 없음
+- 판정: 미구현
+
+설계상 기능: 운영 / debug 명령
+- 현재 구현 상태: 최소 연결 수준, 완성된 운영 명령 아님
+- 판정: 미구현 / 부분
+
+설계상 기능: 영지
+- 현재 구현 상태: 설계 문서 존재, 현재 기준 브랜치 소스에는 territory 패키지 확인 안 됨
+- 판정: 별도 스코프 / 미구현
+
+
+1-2. 현재 structures.yml 기준 구조물 등록 상태
+
+- swamp_hut
+  - enabled: true
+  - selection-chance: 0.0
+  - trigger-radius-blocks: 32
+  - abandon-radius-blocks: 64
+  - abandon-grace-ticks: 100
+  - variant: elite_witch_prototype
+  - prototype content: vanilla:witch 1마리 objective spawn
+  - 판정: 구조물 등록 + 제한 전투 프로토타입 있음. 실제 오두막 콘텐츠는 미구현.
+
+- pillager_outpost
+  - enabled: false
+  - selection-chance: 0.0
+  - trigger-radius-blocks: 40
+  - abandon-radius-blocks: 80
+  - abandon-grace-ticks: 100
+  - variant: scout_wave_prototype
+  - prototype content: vanilla:pillager 2마리 objective spawn
+  - 판정: 구조물 등록 + 제한 전투 프로토타입 있음. 실제 전초기지 콘텐츠는 미구현.
+
+- desert_pyramid
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- trial_chambers
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- ocean_monument / minecraft:monument
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- shipwreck
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- nether_fortress / minecraft:fortress
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- bastion_remnant
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+- end_city
+  - enabled: false
+  - selection-chance: 0.0
+  - variants: 없음
+  - 판정: 구조물 항목만 존재. 실제 콘텐츠 미구현.
+
+
+2. 구조물 / 콘텐츠 단위 대응
+
+2-1. 주요 구조물 콘텐츠 대응표
+
+구조물 / 콘텐츠 단위: 마녀 오두막
+- 설계상 콘텐츠: 상징 3개 입력 → 가마솥 연출 → 수렁 주술사 전투 → 보상 지점 개방
+- 현재 구현: swamp_hut 정의, vanilla:witch 1마리 scripted spawn 프로토타입
+- 판정: 부분 구현. 실제 수렁 주술사, 상징 퍼즐, 보상은 미구현.
+
+구조물 / 콘텐츠 단위: 약탈자 전초기지
+- 설계상 콘텐츠: 내부 진입 또는 핵심 상자 트리거 → 깃발 연출 → 외곽 병력 접근 → 균열 사수 합류 → 보상
+- 현재 구현: pillager_outpost 정의, vanilla:pillager 2마리 scout wave 프로토타입
+- 판정: 부분 구현. 깃발, 균열 사수, 루팅 트리거, 보상은 미구현.
+
+구조물 / 콘텐츠 단위: 사막 피라미드
+- 설계상 콘텐츠: 퍼즐 상자, 시한폭탄, 아재개그 퀴즈 Variant, 입구 임시 봉쇄, 지하 보물방
+- 현재 구현: desert_pyramid 구조물 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 바다 신전
+- 설계상 콘텐츠: 3봉인, 경고, 상층 전투장 이동, 심해의 파도술사, 수중 병력, 봉인 연출
+- 현재 구현: ocean_monument 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 난파선
+- 설계상 콘텐츠: RPG 난파선 접근 시 급류 드라운드 계열 이벤트 후보
+- 현재 구현: shipwreck 항목만 있음, variant 없음
+- 판정: 설계 후보 / 미구현.
+
+구조물 / 콘텐츠 단위: 시련의 회당
+- 설계상 콘텐츠: 짧은 열쇠 맞추기, 성공 시 RPG 보상 추가 가능
+- 현재 구현: trial_chambers 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 네더 요새
+- 설계상 콘텐츠: 구조 변화 없이 커스텀 네더 몹 스폰 중심
+- 현재 구현: nether_fortress 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 보루 잔해
+- 설계상 콘텐츠: 탐욕 카운터. 상자를 많이 털수록 위험 상승, 피글린 강화 / 특수몹
+- 현재 구현: bastion_remnant 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 엔드 도시
+- 설계상 콘텐츠: 저중력 환경 + 셜커 수직 전투 강화 + 후속 엔드 몹
+- 현재 구현: end_city 항목만 있음, variant 없음
+- 판정: 콘텐츠 미구현.
+
+구조물 / 콘텐츠 단위: 엔드 함선
+- 설계상 콘텐츠: 선장급 짧은 엘리트 이벤트 후보
+- 현재 구현: 별도 구현 확인 안 됨
+- 판정: 후보 / 미구현.
+
+구조물 / 콘텐츠 단위: 삼림 대저택
+- 설계상 콘텐츠: 방 단위 웨이브 / 퍼즐 / 확률 이벤트 후보
+- 현재 구현: 구조물 항목 확인 안 됨
+- 판정: 후보 / 미구현.
+
+구조물 / 콘텐츠 단위: 정글 사원
+- 설계상 콘텐츠: 바닐라 유지
+- 현재 구현: 구현 대상 아님
+- 판정: 의도적 배제.
+
+구조물 / 콘텐츠 단위: 폐광
+- 설계상 콘텐츠: 판별 복잡도 때문에 바닐라 유지 가능
+- 현재 구현: 구현 대상 아님
+- 판정: 보류 / 배제.
+
+구조물 / 콘텐츠 단위: 엔드 포탈 요새
+- 설계상 콘텐츠: 엔드 포탈 목적 유지, RPG 이벤트 없음
+- 현재 구현: 구현 대상 아님
+- 판정: 의도적 배제.
+
+구조물 / 콘텐츠 단위: 고대 도시
+- 설계상 콘텐츠: 전용 아이디어 부족, 보류
+- 현재 구현: 구현 대상 아님
+- 판정: 보류.
+
+구조물 / 콘텐츠 단위: 흔적 폐허
+- 설계상 콘텐츠: 고고학 바닐라 목적 유지
+- 현재 구현: 구현 대상 아님
+- 판정: 의도적 배제.
+
+구조물 / 콘텐츠 단위: 해저 폐허
+- 설계상 콘텐츠: 바다 신전 / 난파선과 역할 중복
+- 현재 구현: 구현 대상 아님
+- 판정: 의도적 배제.
+
+구조물 / 콘텐츠 단위: 네더 화석
+- 설계상 콘텐츠: RPG화하지 않음
+- 현재 구현: 구현 대상 아님
+- 판정: 의도적 배제.
+
+
+2-2. 현재 실제 구현된 콘텐츠만 엄격히 분리
+
+- 오두막: vanilla:witch 1 objective spawn prototype
+- 전초기지: vanilla:pillager 2 objective spawn prototype
+
+위 두 항목은 “최종 콘텐츠 구현”이 아니라 엔진 검증용 제한 프로토타입으로 보는 것이 안전하다.
+
+
+3. 명백한 미구현 항목
+
+3-1. 시스템 공통 미구현
+
+- 구조물별 실제 RPG 이벤트
+- 구조물별 clear condition
+- 실패 / abandon 결과 처리
+- 실제 커스텀 몹 ID, 스탯, 배치
+- 실제 reward item, 지급 / drop 정책
+- 보상 중복 수령 방지의 최종 정책
+- 바닐라 chest / loot와 RPG 보상의 최종 관계
+- Puzzle Chest
+- Timed Bomb
+- Quiz Gate
+- Key Match
+- Greed Counter
+- Environment Modifier
+- Display / Interaction / 사운드 / 파티클 연출
+- 운영용 inspect / status / force / clear 명령
+- 구조물별 전체 콘텐츠 카탈로그
+- 영지 T1~T9 전체 구현
+- 영지-탐험 연계
+- territory shop / delivery / raid / protection 구현
+
+
+3-2. 구조물별 content_missing
+
+마녀 오두막 content_missing
+- 상징 3개 표시
+- 상징 순서 입력
+- 가마솥 파티클 / 사운드
+- 수렁 주술사 커스텀 몹
+- 독성 진흙 웅덩이
+- 하수인 소환
+- 독성 투사체
+- 체력 절반 이하 회복 패턴
+- 보상 지점 개방
+
+약탈자 전초기지 content_missing
+- 내부 진입 / 상자 루팅 트리거 확정
+- 깃발 유형 3종
+- 외곽 병력 접근 연출
+- 스폰 위치 바닥 / 시야 검사
+- 균열 사수
+- 조준선 표시 후 투사체
+- 전멸 후 보상 개방
+- 깃발별 확률 / 보상 수치
+
+사막 피라미드 content_missing
+- 지하 공간
+- 고대 문자 3개
+- 순서 입력 퍼즐
+- 퍼즐 상자
+- 시한폭탄 Variant
+- 퀴즈 게이트 Variant
+- 임시 봉쇄
+- 비밀 통로 / 보물방
+- 실패 시 소형 몹 추가 또는 입력 초기화
+
+바다 신전 content_missing
+- 봉인 3개 배치
+- 봉인 파괴 판정
+- 마지막 봉인 경고
+- 상층 전투장 이동
+- 천장 / 개방 연출
+- 심해의 파도술사
+- 해류 창병 / 드라운드 / 가디언 조합
+- 파도 밀어내기
+- 바닥 유황 구름식 상승 공격
+- 끌어당김 공격
+- 수중 전투 cleanup
+
+기타 구조물 content_missing
+- 난파선: 급류 드라운드 이벤트
+- 시련의 회당: 열쇠 맞추기
+- 네더 요새: 커스텀 네더 몹 Variant
+- 보루 잔해: 탐욕 카운터
+- 엔드 도시: 저중력 구역
+- 삼림 대저택: 방 단위 웨이브 / 퍼즐 후보
+
+
+4. 의도적 배제 / 보류로 분리해야 할 항목
+
+의도적 배제
+- 정글 사원: 바닐라 유지
+- 엔드 포탈 요새: 엔드 포탈 목적 유지, RPG 이벤트 없음
+- 흔적 폐허: 고고학 바닐라 목적 유지
+- 해저 폐허: 바다 신전 / 난파선과 역할 중복
+- 네더 화석: RPG화하지 않음
+
+보류 / 후순위
+- 폐광: 판별 복잡도 때문에 바닐라 유지 가능
+- 고대 도시: 전용 아이디어 부족, 보류
+- 삼림 대저택: 후보이나 현재 구조물 등록 / 구현 확인 안 됨
+- 엔드 함선: 후보이나 현재 별도 구현 확인 안 됨
+
+
+5. 테스트 목록
+
+5-1. 정적 검증
+
+- Gradle clean build
+- 전체 unit test
+- exploration 테스트 클래스 전체 실행
+- structures.yml 파싱 검증
+- 중복 structure key 검증
+- 알 수 없는 component 안전 처리 검증
+- enabled=false일 때 자동 실행 없음 검증
+- selection chance 0.0 상태에서 자동 RPG 구조물 생성 없음 검증
+- E1~E8 브랜치별 변경 범위 회귀 대조
+- 기존 양조 / 농사 / 아이템 PDC / 명령 회귀 영향 확인
+- legacy branch와 최신 branch 간 구조물 key / config / event contract 차이 확인
+- error-detected / fix branch의 후속 오류 수정 반영 여부 확인
+
+
+5-2. 라이브 서버 검증
+
+- 실제 Paper 구조물 key 감지
+- 실제 swamp hut / pillager outpost 인식
+- 접근 전 runtime 미생성
+- 접근 후 runtime 1개만 생성
+- 같은 구조물 중복 activation 없음
+- entity objective 추적
+- objective 사망 / 무효화 / 수동 제거 cleanup
+- clear 처리
+- abandon radius + grace 처리
+- reload 후 record / variant 불변
+- 서버 재시작 후 persistence 복원
+- reconnect 후 중복 실행 없음
+- plugin disable / world unload cleanup
+- admin clear / end reason 확인
+- 기본 설정 복구 후 운영 자동 실행 없음
+- 바닐라 chest / loot 비변경 확인
+
+
+5-3. 콘텐츠 구현 후 공통 테스트
+
+- 구조물별 이벤트 정상 실행
+- 구조물별 보상 1회 지급
+- 실패 / 이탈 / 재접속 시 보상 중복 없음
+- 퍼즐 / 상호작용별 완료 조건
+- 커스텀 몹 스폰 / 정리 / 중복 방지
+- 구조물별 밸런스 수치
+- 멀티플레이어 참여 / 이탈 정책
+- 영지 구현 시: 후보 마을 감지, anchor, 소유권, 보호, shop / delivery / raid
+
+
+5-4. 구조물별 콘텐츠 테스트
+
+마녀 오두막
+- 접근 시 이벤트 1회 시작
+- witch / objective 생성
+- 처치 후 CLEARED 처리
+- 이탈 시 ABANDONED 처리
+- 재접근 시 재실행 없음
+- 향후 구현 후: 상징 입력, 가마솥 연출, 수렁 주술사 패턴, 보상 지점 개방 검증
+
+약탈자 전초기지
+- 접근 / 루팅 트리거
+- pillager 2마리 spawn
+- 중복 spawn 없음
+- objective 추적
+- 클리어 / 도주 cleanup
+- 향후 구현 후: 깃발 3종, 균열 사수, 외곽 병력 접근, 보상 개방 검증
+
+사막 피라미드
+- 퍼즐 입력 순서
+- 실패 처리
+- 임시 봉쇄 해제
+- 보물방 개방
+- TNT / 바닐라 구조 악영향 없음
+- 시한폭탄 Variant와 퀴즈 게이트 Variant 분기 검증
+
+바다 신전
+- 봉인 위치 생성
+- 3봉인 파괴 순서
+- 텔레포트 면제
+- 수중 전투장 cleanup
+- 강제 낙사 / 비정상 이탈 방지
+- 심해의 파도술사와 수중 병력 전투 검증
+
+난파선
+- 접근 시 드라운드 이벤트 시작 여부
+- 수중 스폰 위치
+- 보상 / cleanup
+
+시련의 회당
+- 열쇠 맞추기 입력
+- 실패 꽝 처리
+- 바닐라 보상 흐름 훼손 없음
+
+네더 요새
+- 커스텀 네더 몹 스폰
+- 지형 끼임 방지
+- 바닐라 블레이즈 / 위더스켈레톤 흐름 보존
+
+보루 잔해
+- 상자 약탈 카운트
+- 위험도 단계 상승
+- 도주 가능성
+- 보상 중복 방지
+
+엔드 도시
+- 저중력 적용 / 해제
+- 셜커 전투와 충돌 여부
+- 낙사 위험 구역 제한
+
+
+6. 이후 작업 순서 정리
+
+현재 합의된 작업 방식
+- 작업 단위마다 브랜치를 분리한다.
+- 브랜치마다 코드 변경과 함께 누락 보고서 / 구현 보류 항목 / live test required 항목을 같이 남긴다.
+- 프롬프트별 구현은 진행하되, 작업 환경상 구현할 수 없거나 의도적으로 누락한 부분은 반드시 보고서에 남긴다.
+- E2 이후 구현에서는 E1 충돌이나 오류 발생 체크와 수정까지 포함한다.
+- 실제 GitHub 작업에서는 모든 브랜치를 한 번에 통합하지 않아도 된다. 필요한 부분만 선별해서 오류 수정 브랜치를 새로 만들고, 테스트와 검증을 반복한다.
+
+검증 / 구현 순서
+1. 최신 탐험 브랜치 기준으로 정적 검증을 수행한다.
+2. E1~E8 또는 이후 브랜치 단위 변경이 최신 기준에서 충돌하지 않는지 확인한다.
+3. live test required 항목을 별도 목록으로 유지한다.
+4. 제한 프로토타입 콘텐츠를 먼저 라이브 테스트한다.
+5. content_missing을 제외한 엔진 / 구조 / 런타임 / persistence / cleanup 항목을 먼저 검증한다.
+6. 위 항목이 통과하면 구조물별 실제 콘텐츠를 구현한다.
+7. 실제 콘텐츠 구현 후 구조물 단위 live test를 수행한다.
+8. 오류 발생 시 legacy branch, error-detected branch, fix branch, 최신 branch를 대조해 원인을 특정한다.
+9. 필요한 경우 legacy branch의 일부 소스만 선별 반영하거나 별도 fix branch에서 수정한다.
+10. 검증 통과 후 최신 브랜치에 반영하고 main 반영 대상으로 둔다.
+
+브랜치 해석
+- error-detected: Codex 작업 중 발생한 오류 수정본
+- fix/alchemy...: 이후 후속 오류 처리 작업 포함
+- exploration 관련 브랜치: 시간순으로 패키지 → 다음 프롬프트 → 그 다음 프롬프트 흐름
+- 최신 탐험 기준: 최신 branch 우선 적용
+- legacy branch: live test 중 오류가 발생했을 때 원인 특정용 참조 자료. 필요 시 일부 코드 선별 이식 가능.
+
+
+7. 최종 결론
+
+현재 구현된 쪽은 탐험 엔진, 구조물 런타임, 이벤트 계약, 상태 기록, 제한 프로토타입이다.
+설계상 실제 콘텐츠 쪽은 오두막, 전초기지, 피라미드, 바다 신전이 1차 주요 구현 대상이고, 난파선, 시련의 회당, 네더 요새, 보루 잔해, 엔드 도시는 후속 구현 대상으로 분리된다.
+정글 사원, 엔드 포탈 요새, 흔적 폐허, 해저 폐허, 네더 화석은 의도적 배제 또는 바닐라 유지로 봐야 한다.
+영지는 설계 문서상 존재하지만 현재 기준에서는 탐험 이후 별도 스코프이며, 영지까지 확장할 경우 T1~T9 전체 구현과 탐험 연계 검증을 별도 단계로 분리해야 한다.
+
+따라서 현재 단계에서 보고해야 할 핵심은 다음 세 가지다.
+1. 구현됨: 탐험 엔진 / 계약 / 구조물 런타임 / 제한 프로토타입
+2. 미구현: 구조물별 실제 콘텐츠 / 보상 / 퍼즐 / 커스텀 몹 / 연출 / 영지
+3. 검증 필요: 정적 빌드·테스트, live server 구조물 감지·activation·cleanup·persistence, 콘텐츠 구현 후 구조물별 live test
