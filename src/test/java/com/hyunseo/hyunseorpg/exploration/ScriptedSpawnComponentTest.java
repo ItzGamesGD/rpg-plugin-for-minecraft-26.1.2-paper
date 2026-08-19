@@ -10,6 +10,7 @@ import com.hyunseo.hyunseorpg.exploration.model.StructureRecord;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime;
 import com.hyunseo.hyunseorpg.exploration.runtime.TeleportExemptionService;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Disabled("Requires a live Paper world; execute in the live exploration test pass")
 class ScriptedSpawnComponentTest {
     private static final UUID WORLD = UUID.randomUUID();
     private static final UUID SPAWNED = UUID.randomUUID();
