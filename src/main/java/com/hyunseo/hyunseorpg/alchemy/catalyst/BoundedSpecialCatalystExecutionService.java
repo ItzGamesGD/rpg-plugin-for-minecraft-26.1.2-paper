@@ -252,7 +252,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                     if (entity instanceof LivingEntity target && target.isValid() && !target.isDead()
                             && target.getWorld().equals(current.origin.getWorld())) apply(current, target);
                 }
-                finish(executionId);
+                finish(executionId, FinishReason.FINAL_SPLASH);
             }
         }, definition.delayTicks()));
     }
@@ -382,7 +382,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                             ticks++;
                             if (ticks > definition.lifetimeTicks()
                                     || current.distance(state.origin) > definition.maxDistance()) {
-                                finish(state.request.executionId());
+                                finish(state.request.executionId(), FinishReason.MAX_DISTANCE);
                                 return;
                             }
                             current.add(direction.clone().multiply(0.75D));
@@ -400,8 +400,8 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     private void tickSculk(UUID executionId) {
         RuntimeState state = runtimes.get(executionId);
-        if (state == null || state.origin.getWorld() == null) { finish(executionId); return; }
-        if (state.spawnedClouds >= state.definition.maxCount()) { finish(executionId); return; }
+        if (state == null || state.origin.getWorld() == null) { finish(executionId, FinishReason.WORLD_UNLOAD); return; }
+        if (state.spawnedClouds >= state.definition.maxCount()) { finish(executionId, FinishReason.FINAL_SPLASH); return; }
         if (!CatalystRuntimePhase.sculkPropagationDue(Bukkit.getCurrentTick(), state.nextSculkPropagationAt)) return;
         for (UUID cloudId : new HashSet<>(state.clouds)) {
             Entity entity = Bukkit.getEntity(cloudId);
@@ -424,7 +424,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 }
             }
         }
-        finish(executionId);
+        finish(executionId, FinishReason.FINAL_SPLASH);
     }
 
     private AreaEffectCloud spawnCloud(RuntimeState state, Location location) {
@@ -450,7 +450,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     private void launchFireball(RuntimeState state) {
         Player source = source(state);
-        if (source == null || executionKey == null) { finish(state.request.executionId()); return; }
+        if (source == null || executionKey == null) { finish(state.request.executionId(), FinishReason.INVALID_ENTITY); return; }
         SmallFireball fireball = source.launchProjectile(SmallFireball.class);
         fireball.setIsIncendiary(false);
         fireball.setYield(0.0F);
@@ -458,7 +458,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 state.request.executionId().toString());
         state.projectileId = fireball.getUniqueId();
         tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskLater(plugin,
-                () -> finish(state.request.executionId()), Math.max(20, state.definition.lifetimeTicks())));
+                () -> finish(state.request.executionId(), FinishReason.SAFETY_TIMEOUT), Math.max(20, state.definition.lifetimeTicks())));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -471,7 +471,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         Location impact = event.getHitEntity() instanceof LivingEntity target
                 ? target.getLocation() : fireball.getLocation();
         deliverFireball(state, impact);
-        finish(state.request.executionId());
+        finish(state.request.executionId(), FinishReason.TARGET_HIT);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -489,7 +489,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         RuntimeState state = runtimes.get(parseUuid(raw));
         if (state != null) {
             deliverFireball(state, fireball.getLocation());
-            finish(state.request.executionId());
+            finish(state.request.executionId(), FinishReason.FINAL_SPLASH);
         }
         event.blockList().clear();
         event.setYield(0.0F);
