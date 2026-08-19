@@ -163,6 +163,9 @@ import com.hyunseo.hyunseorpg.alchemy.potion.PaperPotionUseService;
 import com.hyunseo.hyunseorpg.alchemy.potion.YamlPotionRegistry;
 import com.hyunseo.hyunseorpg.alchemy.recipe.AlchemyRecipeRegistry;
 import com.hyunseo.hyunseorpg.alchemy.recipe.YamlAlchemyRecipeRegistry;
+import com.hyunseo.hyunseorpg.exploration.ExplorationModule;
+import com.hyunseo.hyunseorpg.exploration.integration.ExistingHyunseoRpgAdapters;
+import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
 import com.hyunseo.hyunseorpg.activity.MiningActivityListener;
 import com.hyunseo.hyunseorpg.activity.MiningActivityService;
 import com.hyunseo.hyunseorpg.crafting.CraftingService;
@@ -345,6 +348,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private AlchemyCatalystGuiService alchemyCatalystGui;
     private AlchemyGuiControllerService alchemyGuiController;
     private com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog alchemyAuditLog;
+    private ExplorationModule explorationModule;
 
     @Override
     public void onEnable() {
@@ -652,10 +656,25 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.alchemyGuiController.setCatalystOpener(player -> alchemyCatalystGui.open(player, alchemyGuiController::openInventory));
         this.rpgMenuService.setAlchemyGuiController(alchemyGuiController);
 
+        this.explorationModule = new ExplorationModule(this,
+                new ExplorationPorts(
+                        ExistingHyunseoRpgAdapters.mobPort(mobService),
+                        null,
+                        null,
+                        null,
+                        null,
+                        ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
+                        null),
+                null);
+
         configureReloadService();
+        reloadService.register("exploration", explorationModule::reload);
 
         registerCommandsSafe();
         registerListeners();
+        if (!explorationModule.start()) {
+            getLogger().severe("Exploration module failed to start; keeping it disabled for this boot.");
+        }
         loadCurrentlyOnlinePlayers();
         cropGrowthService.start();
         playerDataService.startAutosave();
@@ -736,6 +755,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (monsterBehaviorService != null) {
             monsterBehaviorService.stop();
+        }
+        if (explorationModule != null) {
+            explorationModule.stop();
         }
         if (playerDataService != null) {
             playerDataService.stopAutosave();
