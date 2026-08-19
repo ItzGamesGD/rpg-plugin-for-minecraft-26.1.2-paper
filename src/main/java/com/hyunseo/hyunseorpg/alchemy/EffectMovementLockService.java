@@ -16,25 +16,44 @@ import java.util.UUID;
 
 /** Shared short-lived movement lock used by effects that pulse a root/stun state. */
 public final class EffectMovementLockService implements Listener {
+    private final JavaPlugin plugin;
     private final Map<UUID, RootState> roots = new HashMap<>();
 
-    public EffectMovementLockService(JavaPlugin plugin) { }
+    public EffectMovementLockService(JavaPlugin plugin) { this.plugin = plugin; }
 
     public synchronized void lock(LivingEntity target, long durationTicks) {
         if (!(target instanceof org.bukkit.entity.Player player)
                 || player.isDead() || !player.isValid() || durationTicks <= 0) return;
-        roots.put(player.getUniqueId(), new RootState(org.bukkit.Bukkit.getCurrentTick() + durationTicks));
+        UUID id = player.getUniqueId();
+        long start = org.bukkit.Bukkit.getCurrentTick();
+        long end = start + durationTicks;
+        clear(id);
+        UUID generation = UUID.randomUUID();
+        RootState state = new RootState(start, end, generation);
+        roots.put(id, state);
+        if (plugin != null) {
+            state.unlockTask = org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                synchronized (EffectMovementLockService.this) {
+                    RootState current = roots.get(id);
+                    if (current != null && current.generation.equals(generation)) {
+                        roots.remove(id);
+                    }
+                }
+            }, durationTicks);
+        }
     }
 
     /** Returns whether the player is currently rooted, expiring stale state at the boundary tick. */
     public synchronized boolean isLocked(UUID entityId) {
         RootState state = roots.get(entityId);
         if (state == null) return false;
-        if (org.bukkit.Bukkit.getCurrentTick() >= state.expiresAt()) {
+        long currentTick = org.bukkit.Bukkit.getCurrentTick();
+        if (currentTick >= state.endTick) {
             roots.remove(entityId);
+            if (state.unlockTask != null) state.unlockTask.cancel();
             return false;
         }
-        return true;
+        return currentTick >= state.startTick;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -57,10 +76,14 @@ public final class EffectMovementLockService implements Listener {
 
     public synchronized void clear(UUID entityId) {
         if (entityId == null) return;
-        roots.remove(entityId);
+        RootState state = roots.remove(entityId);
+        if (state != null && state.unlockTask != null) state.unlockTask.cancel();
     }
 
     public synchronized void clearAll() {
+        for (RootState state : roots.values()) {
+            if (state.unlockTask != null) state.unlockTask.cancel();
+        }
         roots.clear();
     }
 
@@ -73,5 +96,25 @@ public final class EffectMovementLockService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onWorldChange(PlayerChangedWorldEvent event) { clear(event.getPlayer().getUniqueId()); }
 
-    private record RootState(long expiresAt) { }
+    public synchronized String debug(UUID entityId, long currentTick) {
+        RootState state = roots.get(entityId);
+        boolean active = state != null && currentTick >= state.startTick && currentTick < state.endTick;
+        return "shockRootActive=" + active
+                + " shockRootStart=" + (state == null ? -1 : state.startTick)
+                + " shockRootEnd=" + (state == null ? -1 : state.endTick)
+                + " currentTick=" + currentTick;
+    }
+
+    private static final class RootState {
+        private final long startTick;
+        private final long endTick;
+        private final UUID generation;
+        private org.bukkit.scheduler.BukkitTask unlockTask;
+
+        private RootState(long startTick, long endTick, UUID generation) {
+            this.startTick = startTick;
+            this.endTick = endTick;
+            this.generation = generation;
+        }
+    }
 }
