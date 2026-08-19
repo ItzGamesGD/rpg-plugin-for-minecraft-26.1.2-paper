@@ -142,7 +142,7 @@ public final class ExplorationRuntimeManager {
             recordEnd(structureId, ExplorationEndReason.ABANDON_GRACE);
             return true;
         } catch (IOException exception) {
-            recordEnd(structureId, ExplorationEndReason.COMPLETION_FAILURE);
+            recordEnd(structureId, ExplorationEndReason.ABANDON_FAILURE);
             plugin.getLogger().log(Level.SEVERE, "Exploration abandon persistence failed for " + structureId, exception);
             return false;
         }
