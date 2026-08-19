@@ -48,11 +48,16 @@ public final class YamlStructureStorage implements StructureStorage {
         List<StructureRecord> result = new ArrayList<>();
         for (String rawId : records.getKeys(false)) {
             ConfigurationSection section = records.getConfigurationSection(rawId);
-            if (section == null) continue;
+            if (section == null) {
+                throw new IOException("Malformed exploration record section: " + rawId);
+            }
             try {
                 result.add(read(UUID.fromString(rawId), worldId, section));
             } catch (RuntimeException exception) {
-                plugin.getLogger().warning("Skipping corrupt exploration record " + rawId + ": " + exception.getMessage());
+                // Do not silently drop a record: a later save must never erase data
+                // merely because one persisted record is malformed.
+                throw new IOException("Corrupt exploration record " + rawId
+                        + " in " + file.getName(), exception);
             }
         }
         return List.copyOf(result);

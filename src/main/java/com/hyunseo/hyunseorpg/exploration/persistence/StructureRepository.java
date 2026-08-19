@@ -21,8 +21,13 @@ public final class StructureRepository {
     }
 
     public synchronized void ensureWorldLoaded(UUID worldId) throws IOException {
-        if (!loadedWorlds.add(worldId)) return;
-        for (StructureRecord record : storage.loadWorld(worldId)) index.upsert(record);
+        if (loadedWorlds.contains(worldId)) return;
+
+        // Mark the world loaded only after the complete snapshot is read and indexed.
+        // A failed load must remain retryable after the underlying file is repaired.
+        List<StructureRecord> records = storage.loadWorld(worldId);
+        for (StructureRecord record : records) index.upsert(record);
+        loadedWorlds.add(worldId);
     }
 
     public synchronized Optional<StructureRecord> get(UUID id) { return index.get(id); }
