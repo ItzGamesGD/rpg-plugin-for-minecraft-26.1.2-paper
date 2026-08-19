@@ -4,6 +4,10 @@
 - Base HEAD: `dc407bd8c58d69eeaddaa58e30e3c6df2c99f079`
 - Work branch: `fix/alchemy-live-contracts`
 - Status: `LIVE_SERVER_VERIFICATION_REQUIRED`
+- Current HEAD: `1ce9cdd3aeda972f6e57b71f8e45cb3a25bf55dd`
+- Automated test inventory: 45 test classes / 158 `@Test` methods (inventory from source; execution not completed).
+- Gradle clean build/test: **NOT EXECUTED**. The GitHub connector has no build runner, and an unauthenticated local clone was rejected; no pass/fail result is being claimed.
+- JAR: **NOT BUILT**; SHA-256: **N/A**.
 - Server JAR: do not overwrite the existing JAR automatically.
 
 ## Code-contract changes in this branch
