@@ -36,6 +36,15 @@ class CatalystRuntimeBehaviorTest {
         assertEquals("SPLASH", yaml.getString("catalysts.wind_charge.delivery", ""));
     }
 
+    @Test
+    void specialCatalystMaterialsRemainCanonical() {
+        YamlConfiguration yaml = load("alchemy/catalysts.yml");
+        assertEquals("SCULK_CATALYST", yaml.getString("catalysts.sculk.vanilla-material", ""));
+        assertEquals("SCULK", yaml.getString("catalysts.sculk.kind", ""));
+        assertEquals("WIND_CHARGE", yaml.getString("catalysts.wind_charge.vanilla-material", ""));
+        assertEquals("WIND_CHARGE", yaml.getString("catalysts.wind_charge.kind", ""));
+    }
+
     private YamlConfiguration load(String path) {
         var stream = getClass().getClassLoader().getResourceAsStream(path);
         assertNotNull(stream, path);
