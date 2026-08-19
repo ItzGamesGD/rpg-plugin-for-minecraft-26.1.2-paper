@@ -22,6 +22,7 @@ import com.hyunseo.hyunseorpg.exploration.persistence.YamlStructureStorage;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationRegistry;
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationHeartbeatTask;
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntimeManager;
+import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationStatusSnapshot;
 import com.hyunseo.hyunseorpg.exploration.runtime.TeleportExemptionService;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
@@ -106,6 +107,8 @@ public final class ExplorationModule {
     public ExplorationRegistry registry() { return registry; }
     public StructureRepository repository() { return repository; }
     public ExplorationRuntimeManager runtimes() { return runtimes; }
+    public java.util.Optional<ExplorationStatusSnapshot> status(UUID structureId) { return runtimes.status(structureId); }
+    public java.util.List<ExplorationStatusSnapshot> statuses() { return runtimes.statuses(); }
 
     private ExplorationComponentRegistry defaultComponents() {
         return new ExplorationComponentRegistry()
