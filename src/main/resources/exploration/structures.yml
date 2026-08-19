@@ -40,7 +40,19 @@ structures:
     trigger-radius: 40.0
     abandon-radius: 80.0
     abandon-grace-ticks: 100
-    variants: {}
+    variants:
+      scout_wave_prototype:
+        enabled: true
+        weight: 1.0
+        prototype: true
+        components:
+          - type: scripted_spawn
+            mob-id: vanilla:pillager
+            count: 2
+            objective: true
+            dx: 0
+            dy: 1
+            dz: 0
 
   desert_pyramid:
     minecraft-key: minecraft:desert_pyramid
