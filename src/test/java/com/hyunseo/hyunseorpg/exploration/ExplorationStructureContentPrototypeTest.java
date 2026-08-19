@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -28,13 +30,15 @@ final class ExplorationStructureContentPrototypeTest {
         assertTrue(yaml.getBoolean(variant + ".prototype", false));
         assertEquals(1.0D, yaml.getDouble(variant + ".weight"), 0.000001D);
 
-        String component = variant + ".components.0";
-        assertEquals("scripted_spawn", yaml.getString(component + ".type"));
-        assertEquals("vanilla:pillager", yaml.getString(component + ".mob-id"));
-        assertEquals(2, yaml.getInt(component + ".count"));
-        assertTrue(yaml.getBoolean(component + ".objective", false));
-        assertEquals(0, yaml.getInt(component + ".dx"));
-        assertEquals(1, yaml.getInt(component + ".dy"));
-        assertEquals(0, yaml.getInt(component + ".dz"));
+        List<Map<?, ?>> components = yaml.getMapList(variant + ".components");
+        assertEquals(1, components.size());
+        Map<?, ?> component = components.get(0);
+        assertEquals("scripted_spawn", component.get("type"));
+        assertEquals("vanilla:pillager", component.get("mob-id"));
+        assertEquals(2, ((Number) component.get("count")).intValue());
+        assertEquals(Boolean.TRUE, component.get("objective"));
+        assertEquals(0, ((Number) component.get("dx")).intValue());
+        assertEquals(1, ((Number) component.get("dy")).intValue());
+        assertEquals(0, ((Number) component.get("dz")).intValue());
     }
 }
