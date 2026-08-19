@@ -38,12 +38,10 @@ public final class YamlStructureStorage implements StructureStorage {
         if (!file.isFile()) return List.of();
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         if (yaml.getInt("schema-version", 0) != SCHEMA_VERSION) {
-            plugin.getLogger().warning("Unsupported exploration world schema: " + file.getName());
-            return List.of();
+            throw new IOException("Unsupported exploration world schema: " + file.getName());
         }
         if (!worldId.toString().equalsIgnoreCase(yaml.getString("world-uuid", ""))) {
-            plugin.getLogger().warning("Exploration world UUID mismatch: " + file.getName());
-            return List.of();
+            throw new IOException("Exploration world UUID mismatch: " + file.getName());
         }
         ConfigurationSection records = yaml.getConfigurationSection("records");
         if (records == null) return List.of();
