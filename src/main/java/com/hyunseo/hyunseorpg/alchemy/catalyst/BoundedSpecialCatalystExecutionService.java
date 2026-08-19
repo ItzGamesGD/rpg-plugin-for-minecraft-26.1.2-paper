@@ -270,14 +270,9 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
             return;
         }
         if (state.bounceCount >= state.definition.maxCount()) {
-            // The projectile that reached the configured count is the final splash.
-            // Do not delete it before its collision is processed.
-            state.slimePhase = CatalystRuntimePhase.slimeAfterCollision(
-                    state.slimePhase, state.bounceCount, state.definition.maxCount());
-            applyAffected(state, affected);
-            playFinalSplash(potionEntity.getLocation());
-            state.slimePhase = CatalystRuntimePhase.Slime.FINISHED;
-            finish(state.request.executionId());
+            // The Nth bounce is the final projectile. Keep it in flight; only its
+            // next collision enters the final splash branch above.
+            state.slimePhase = CatalystRuntimePhase.Slime.FINAL_PROJECTILE;
             return;
         }
         applyAffected(state, affected);
@@ -672,10 +667,19 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
         private RuntimeState(Request request, PotionDefinition potion,
                              SpecialCatalystDefinition definition, Location origin) {
+            this(request, potion, definition, origin,
+                    origin == null ? new Vector(0.0D, 0.0D, 1.0D) : origin.getDirection());
+        }
+
+        private RuntimeState(Request request, PotionDefinition potion,
+                             SpecialCatalystDefinition definition, Location origin, Vector direction) {
             this.request = request;
             this.potion = potion;
             this.definition = definition;
             this.origin = origin;
+            this.direction = direction == null || direction.lengthSquared() < 0.0001D
+                    ? new Vector(0.0D, 0.0D, 1.0D) : direction.clone().normalize();
+            this.lastProjectileLocation = origin == null ? null : origin.clone();
             this.visited.addAll(request.visitedTargets());
         }
     }
