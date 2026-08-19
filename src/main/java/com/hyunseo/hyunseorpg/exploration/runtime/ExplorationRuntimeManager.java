@@ -78,7 +78,16 @@ public final class ExplorationRuntimeManager {
         } catch (Exception exception) {
             ExplorationRuntime failed = active.remove(record.structureId());
             if (failed != null) safeCleanup(failed);
-            plugin.getLogger().log(Level.SEVERE, "Exploration activation failed for " + record.structureId(), exception);
+            // A failed ACTIVATE phase must not strand a persisted ACTIVE record with no runtime.
+            if (record.state() == StructureEventState.UNDISCOVERED) {
+                try {
+                    repository.save(record);
+                } catch (IOException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
+            }
+            plugin.getLogger().log(Level.SEVERE, "Exploration activation failed for " + record.structureId()
+                    + "; persistent state rolled back when activation had not completed", exception);
             return false;
         }
     }
