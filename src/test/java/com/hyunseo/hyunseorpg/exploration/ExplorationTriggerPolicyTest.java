@@ -1,5 +1,6 @@
 package com.hyunseo.hyunseorpg.exploration;
 
+import com.hyunseo.hyunseorpg.exploration.model.StructureAnchor;
 import com.hyunseo.hyunseorpg.exploration.model.StructureBounds;
 import com.hyunseo.hyunseorpg.exploration.model.StructureEventState;
 import com.hyunseo.hyunseorpg.exploration.model.StructureRecord;
@@ -7,6 +8,8 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinitio
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationTriggerPolicy;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,26 +57,34 @@ class ExplorationTriggerPolicyTest {
     }
 
     private static StructureRecord record(StructureEventState state) {
+        boolean selected = state != StructureEventState.VANILLA;
         return new StructureRecord(
                 UUID.randomUUID(),
                 WORLD,
                 "test-structure",
-                state,
+                "minecraft:test_structure",
+                new StructureAnchor(WORLD, 0, 64, 0),
                 new StructureBounds(-4, 60, -4, 4, 70, 4),
-                List.of(),
+                selected,
+                selected ? "test_variant" : "",
+                state,
+                Map.of(),
+                false,
+                Instant.EPOCH,
                 null,
-                0L
+                1
         );
     }
 
     private static ExplorationStructureDefinition definition(boolean enabled) {
         return new ExplorationStructureDefinition(
                 "test-structure",
+                "minecraft:test_structure",
                 enabled,
-                32.0,
                 0.0,
-                List.of(),
-                List.of(),
+                32.0,
+                48.0,
+                20L,
                 List.of()
         );
     }
