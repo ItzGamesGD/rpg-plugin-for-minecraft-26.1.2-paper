@@ -34,6 +34,7 @@ public final class ExplorationRuntimeManager {
     private final ExplorationPorts ports;
     private final TeleportExemptionService teleportExemptions;
     private final Map<UUID, ExplorationRuntime> active = new LinkedHashMap<>();
+    private final Map<UUID, ExplorationEndReason> lastEndReasons = new LinkedHashMap<>();
 
     public ExplorationRuntimeManager(JavaPlugin plugin, ExplorationRegistry registry,
                                      StructureRepository repository, ExplorationComponentRegistry components,
@@ -54,12 +55,26 @@ public final class ExplorationRuntimeManager {
         return java.util.List.copyOf(active.values());
     }
 
+    /**
+     * Returns the latest lifecycle outcome observed for a structure.
+     * The value is diagnostic state only and is not persisted as gameplay state.
+     */
+    public synchronized Optional<ExplorationEndReason> lastEndReason(UUID structureId) {
+        return Optional.ofNullable(lastEndReasons.get(structureId));
+    }
+
+    /** Returns a stable snapshot for an administrative/debug surface. */
+    public synchronized Map<UUID, ExplorationEndReason> lastEndReasons() {
+        return Map.copyOf(lastEndReasons);
+    }
+
     public synchronized boolean activate(StructureRecord record, Player trigger, long currentTick) {
         if (record.state().terminal()) return false;
         ExplorationRuntime existing = active.get(record.structureId());
         if (existing != null) {
             existing.addParticipant(trigger.getUniqueId());
             existing.clearPhysicalExit();
+            lastEndReasons.remove(record.structureId());
             return true;
         }
         StructureRecord persistent = record;
@@ -73,11 +88,13 @@ public final class ExplorationRuntimeManager {
             ExplorationRuntime runtime = new ExplorationRuntime(persistent.structureId(), persistent.variantId());
             runtime.addParticipant(trigger.getUniqueId());
             active.put(persistent.structureId(), runtime);
+            lastEndReasons.remove(persistent.structureId());
             executePhase(persistent, runtime, ExplorationComponentPhase.ACTIVATE, currentTick);
             return true;
         } catch (Exception exception) {
             ExplorationRuntime failed = active.remove(record.structureId());
             if (failed != null) safeCleanup(failed);
+            recordEnd(record.structureId(), ExplorationEndReason.ACTIVATION_FAILURE);
             // A failed ACTIVATE phase must not strand a persisted ACTIVE record with no runtime.
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 try {
@@ -104,8 +121,10 @@ public final class ExplorationRuntimeManager {
             active.remove(structureId);
             teleportExemptions.clear(structureId);
             safeCleanup(runtime);
+            recordEnd(structureId, ExplorationEndReason.FINAL_CLEAR);
             return true;
         } catch (Exception exception) {
+            recordEnd(structureId, ExplorationEndReason.COMPLETION_FAILURE);
             plugin.getLogger().log(Level.SEVERE, "Exploration completion failed for " + structureId + "; state stays ACTIVE", exception);
             return false;
         }
@@ -120,8 +139,10 @@ public final class ExplorationRuntimeManager {
             active.remove(structureId);
             teleportExemptions.clear(structureId);
             safeCleanup(runtime);
+            recordEnd(structureId, ExplorationEndReason.ABANDON_GRACE);
             return true;
         } catch (IOException exception) {
+            recordEnd(structureId, ExplorationEndReason.COMPLETION_FAILURE);
             plugin.getLogger().log(Level.SEVERE, "Exploration abandon persistence failed for " + structureId, exception);
             return false;
         }
@@ -133,6 +154,7 @@ public final class ExplorationRuntimeManager {
             if (record == null || record.state() != StructureEventState.ACTIVE) {
                 active.remove(runtime.structureId());
                 safeCleanup(runtime);
+                recordEnd(runtime.structureId(), ExplorationEndReason.STATE_INVALID);
                 continue;
             }
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
@@ -202,7 +224,11 @@ public final class ExplorationRuntimeManager {
     }
 
     public synchronized void shutdown() {
-        for (ExplorationRuntime runtime : java.util.List.copyOf(active.values())) safeCleanup(runtime);
+        for (ExplorationRuntime runtime : java.util.List.copyOf(active.values())) {
+            safeCleanup(runtime);
+            teleportExemptions.clear(runtime.structureId());
+            recordEnd(runtime.structureId(), ExplorationEndReason.PLUGIN_DISABLE);
+        }
         active.clear();
     }
 
@@ -232,6 +258,10 @@ public final class ExplorationRuntimeManager {
 
     private double distanceSquared(StructureRecord record, Location location) {
         return record.bounds().distanceSquaredTo(location.getX(), location.getY(), location.getZ());
+    }
+
+    private void recordEnd(UUID structureId, ExplorationEndReason reason) {
+        if (structureId != null && reason != null) lastEndReasons.put(structureId, reason);
     }
 
     private void safeCleanup(ExplorationRuntime runtime) {
