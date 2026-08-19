@@ -1,0 +1,155 @@
+HyunseoRPG 탐험 정적 구조 회귀 검증 보고서
+작성일: 2026-08-19
+
+검증 범위
+- 저장소: ItzGamesGD/rpg-plugin-for-minecraft-26.1.2-paper
+- 기준 브랜치: codex/exploration-pre-territory-freeze-audit
+- 기준 범위: 탐험 E1~E8, 영지 이전
+- 이번 단계: GitHub 원격 소스 정적 대조
+- 실제 Gradle 빌드·JUnit 실행·Paper 서버 라이브 테스트: 아직 실행하지 않음
+
+1. 정적 구조 확인 결과
+
+- 탐험 운영 코드: 43개 Java 파일 확인
+- 탐험 테스트: 10개 Java 테스트 확인
+- 구조물 설정: 9개 등록
+- 설정 최상위 enabled: false
+- 등록 구조물의 selection-chance: 모두 0.0
+- 실제 variant가 있는 구조물: swamp_hut, pillager_outpost
+- 나머지 구조물: 등록 키와 안전 기본값만 있으며 variants는 비어 있음
+
+판정: 안전 기본값과 구조물 등록 범위는 보고서의 분류와 일치한다. 현재 설정만으로는 자동 탐험 콘텐츠가 시작되지 않는다.
+
+2. 구현됨과 콘텐츠 미구현의 경계
+
+다음은 코드에 존재하는 공통 계약·포트 어댑터다.
+
+- PuzzleComponent: puzzle-id를 받아 PuzzlePort로 위임
+- RewardDropComponent: reward-id를 받아 RewardPort로 위임하고 참여자별 전달 실패를 fail-closed 처리
+- TemporarySealComponent: WorldMutationPort로 임시 변경과 복구를 추적
+- ForcedRelocationComponent: 이동 포트와 tracker 경계
+- DisplayTargetComponent, InteractionTargetComponent: 표시·상호작용 포트 경계
+- ScriptedSpawnComponent: scripted_spawn 정의와 objective entity 추적
+- ExplorationRuntimeManager: activate, complete, abandon, heartbeat, shutdown lifecycle
+- ReflectivePaperStructureCandidateProvider: Paper 구조물 감지 어댑터
+- StructureIndex, StructureRepository, YamlStructureStorage: persistent record/index 경계
+
+중요: 위 항목은 실제 콘텐츠의 완성 판정이 아니다. 포트의 구체적인 퍼즐, 보상, 월드 연출, 커스텀 몹 구현이 구조물 variant에 연결되어야 콘텐츠 구현으로 판정한다.
+
+3. 현재 실제 콘텐츠 구현으로 판정 가능한 범위
+
+오두막 / swamp_hut
+- elite_witch_prototype variant가 enabled
+- vanilla:witch 1마리 scripted_spawn
+- objective=true
+- 실제 RPG 보스·퍼즐·보상·연출: 미구현
+
+약탈자 전초기지 / pillager_outpost
+- scout_wave_prototype variant 정의
+- vanilla:pillager 2마리 scripted_spawn
+- objective=true
+- 구조물 자체 enabled=false, selection-chance=0.0
+- 실제 배너·외곽 웨이브·균열 궁수·보상: 미구현
+
+사막 피라미드 / desert_pyramid
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- Puzzle Chest, Timed Bomb, Quiz Gate, 임시 봉인, 지하 보물: 미구현
+
+바다신전 / ocean_monument
+- minecraft:monument 등록과 안전 기본값만 존재
+- variants={}
+- 3개 봉인, 경고, 상부 경기장, 수중 웨이브·시전자·보상: 미구현
+
+난파선 / shipwreck
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- Riptide Drowned 이벤트와 결과 처리: 미구현
+
+시험장 / trial_chambers
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- Key Match 퍼즐과 보상: 미구현
+
+네더 요새 / nether_fortress
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- 네더 커스텀 몹 콘텐츠: 미구현
+
+보루 잔해 / bastion_remnant
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- Greed Counter와 피글린 강화 흐름: 미구현
+
+엔드 시티 / end_city
+- 구조 key와 안전 기본값만 존재
+- variants={}
+- 저중력·셜커 수직 전투: 미구현
+
+4. 테스트 코드로 확인되는 범위
+
+정적 테스트가 확인하는 항목
+
+- structures.yml 리소스 로드
+- 최상위 enabled=false
+- swamp_hut의 0.0 chance와 prototype objective
+- pillager_outpost의 disabled/0.0 chance
+- pillager scout wave의 vanilla:pillager 2마리 정의
+- namespaced Minecraft key 형식
+- 중복 Minecraft key 방지
+- chance 값의 0..1 범위
+- deterministic selector
+- trigger policy
+- structure record transition
+- repository/index 동작
+- status snapshot 및 end reason
+- scripted spawn의 objective ID 추적과 빈 spawn fail-closed
+
+테스트에 아직 포함되지 않은 항목
+
+- 실제 Paper 서버에서 structure key 감지
+- 실제 Bukkit entity spawn과 objective 제거
+- 실제 reward 지급 및 중복 수령 방지
+- 실제 puzzle/seal/display/interaction port 동작
+- reload/restart/reconnect persistence 라이브 검증
+- world unload/plugin disable의 실제 서버 정리
+- 실제 abandon radius/grace 경과
+- 실제 구조물별 콘텐츠 완료·실패·재진입 정책
+
+5. 회귀 판정
+
+PASS
+- E1~E8 탐험 패키지의 공통 클래스·계약·설정·정적 테스트가 기준 브랜치에 존재
+- 기본 비활성 및 chance 0.0 안전장치가 설정과 테스트 양쪽에 존재
+- 오두막과 전초기지 프로토타입의 설정 계약이 소스와 테스트에 대응
+- 구조물별 콘텐츠 누락은 variants={} 또는 prototype 표기로 식별 가능
+
+LIVE_SERVER_VERIFICATION_REQUIRED
+- 모든 Paper/Bukkit 실제 연동
+- runtime activation/cleanup/persistence
+- objective entity lifecycle
+- reward 및 포트 구현 결과
+- 구조물 감지와 실제 위치/월드 동작
+
+CONTENT_MISSING
+- 피라미드·바다신전·난파선·시험장·네더 요새·보루·엔드 시티 실제 variant
+- 오두막·전초기지 최종 콘텐츠
+- 구조물별 퍼즐·커스텀 몹·보상·연출·밸런스
+
+6. 다음 작업 순서
+
+1) 최신 데스크톱 소스에서 Gradle clean build와 전체 JUnit 실행
+2) 실패 시 실패 작업 단위만 error-fix 브랜치로 분리
+3) 탐험 테스트 전용 설정에서 swamp_hut prototype을 먼저 라이브 검증
+4) pillager_outpost는 별도 활성화 설정으로 감지·spawn·objective·cleanup 검증
+5) 두 프로토타입의 live 통과 전에는 content_missing 구현으로 넘어가지 않음
+6) 라이브 실패 시 로그, runtime ID, entity UUID, end reason으로 원인을 특정
+7) legacy/error-detected/fix 브랜치에서 필요한 부분만 선택 반영
+8) 최신 기준 브랜치에서 관련 회귀를 반복한 뒤 다음 콘텐츠 단위로 이동
+
+최종 판정
+- 정적 구조: 보고서 분류와 대체로 일치
+- 공통 계약: 구현됨
+- 실제 구조물 콘텐츠: 오두막·전초기지 제한 프로토타입만 존재
+- 실제 서버 검증: 미실행
+- 영지 구현: 이번 범위에 포함하지 않음
