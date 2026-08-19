@@ -112,3 +112,20 @@
 7. 통합 검증 완료 후에만 E7 콘텐츠와 별도 영지 패키지 착수
 
 현재 결론: **탐험 엔진과 실제 구현 로드맵은 충분히 준비되어 있으며, 영지와 구조물별 콘텐츠는 아직 후속 구현 범위다.**
+
+
+## 7. 2026-08-19 최신 동기화 및 소스 편입
+
+원본 패키지의 기준일은 2026-08-13 설계이며, 이 브랜치에서 최신 3차 확정안과 최근 대화 변경사항을 다시 대조했다.
+
+- 탐험 코어 E1-E6의 월드 공용 1회성 상태 전이는 최신안과 일치한다.
+- E7 순서는 사막 피라미드 → 시련의 회당 → 보루 잔해 → 바다 신전 → 엔드 도시로 고정한다.
+- 구조물은 단순 보상만 추가하지 않고 실제 이벤트를 하나 이상 가져야 한다.
+- 영지 T1-T9는 탐험 엔진에 섞지 않는다. 종/우물 Anchor, 물리적 해방 납품, 현장 상점·농사 납품, 보호구역, 선택적 Raid와 5코어는 별도 범위다.
+- 영지 Raid 실패·미참여는 폐허화·재건·경제 손실을 만들지 않는다.
+- 영지 Display/Interaction과 상점 갱신은 실제 진입·GUI 열기 시 lazy 처리하며 상시 영지별 scheduler를 만들지 않는다.
+- 기존 farming GUI/command는 물리적 영지 납품 인터페이스가 안정화될 때까지 유지한다.
+
+이번 브랜치는 위 경계를 `builds/exploration-package-v1/latest-design-sync.md`에 고정하고, package의 Java/resource/test를 실제 `src/` 트리에 편입했다. `HyunseoRPGPlugin`에는 탐험 모듈 bootstrap, 기존 Mob/Item/Inventory adapter, exploration reload, disable flush를 최소 변경으로 연결했다. `structures.yml`의 안전 기본값은 유지했다.
+
+영지 구현, E7 실제 콘텐츠, 운영 월드 활성화, Paper live test는 아직 완료로 표시하지 않는다.
