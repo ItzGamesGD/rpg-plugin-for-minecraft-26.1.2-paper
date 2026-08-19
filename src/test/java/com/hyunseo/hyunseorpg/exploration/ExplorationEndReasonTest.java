@@ -11,12 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ExplorationEndReasonTest {
     @Test
     void exposesDistinctOperationalLifecycleReasons() {
-        assertEquals(6, ExplorationEndReason.values().length);
+        assertEquals(7, ExplorationEndReason.values().length);
         assertTrue(EnumSet.of(
                 ExplorationEndReason.FINAL_CLEAR,
                 ExplorationEndReason.ABANDON_GRACE,
                 ExplorationEndReason.ACTIVATION_FAILURE,
                 ExplorationEndReason.COMPLETION_FAILURE,
+                ExplorationEndReason.ABANDON_FAILURE,
                 ExplorationEndReason.STATE_INVALID,
                 ExplorationEndReason.PLUGIN_DISABLE
         ).containsAll(EnumSet.allOf(ExplorationEndReason.class)));
