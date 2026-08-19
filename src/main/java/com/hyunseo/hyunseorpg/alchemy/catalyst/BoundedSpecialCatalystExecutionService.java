@@ -390,7 +390,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                             if (target != null) {
                                 state.visited.add(target.getUniqueId());
                                 apply(state, target);
-                                finish(state.request.executionId());
+                                finish(state.request.executionId(), FinishReason.TARGET_HIT);
                             }
                         }
                     }, 1L, 1L));
