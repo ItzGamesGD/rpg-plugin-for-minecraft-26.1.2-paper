@@ -12,7 +12,7 @@ E4의 objective spawn 안전성 위에, 런타임이 왜 종료되었거나 종�
 
 - `ExplorationEndReason`을 추가했다.
 - `ExplorationRuntimeManager`가 구조물 UUID별 최신 lifecycle outcome을 메모리에서 보관한다.
-- `FINAL_CLEAR`, `ABANDON_GRACE`, `ACTIVATION_FAILURE`, `COMPLETION_FAILURE`, `STATE_INVALID`, `PLUGIN_DISABLE`을 구분한다.
+- `FINAL_CLEAR`, `ABANDON_GRACE`, `ACTIVATION_FAILURE`, `COMPLETION_FAILURE`, `ABANDON_FAILURE`, `STATE_INVALID`, `PLUGIN_DISABLE`을 구분한다.
 - `lastEndReason(UUID)`과 snapshot `lastEndReasons()`를 제공해 이후 관리자 debug/inspect surface가 동일한 진단값을 사용할 수 있게 했다.
 - plugin shutdown에서 teleport exemption도 구조물별로 함께 정리하도록 보강했다.
 
