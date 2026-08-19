@@ -14,6 +14,7 @@ public final class ExplorationHeartbeatTask implements Runnable {
     private final StructureRepository repository;
     private final ExplorationRuntimeManager runtimes;
     private final AtomicLong tickCounter;
+    private final ExplorationTriggerPolicy triggerPolicy = new ExplorationTriggerPolicy();
 
     public ExplorationHeartbeatTask(ExplorationRegistry registry, StructureRepository repository,
                                     ExplorationRuntimeManager runtimes, AtomicLong tickCounter) {
@@ -32,9 +33,9 @@ public final class ExplorationHeartbeatTask implements Runnable {
             for (var record : repository.index().nearby(player.getWorld().getUID(), location.getX(), location.getZ(), search)) {
                 if (record.state() != StructureEventState.UNDISCOVERED && record.state() != StructureEventState.ACTIVE) continue;
                 var definition = registry.get(record.structureType()).orElse(null);
-                if (definition == null || !definition.enabled()) continue;
-                double limit = definition.triggerRadius() * definition.triggerRadius();
-                if (record.bounds().distanceSquaredTo(location.getX(), location.getY(), location.getZ()) <= limit) {
+                if (definition == null) continue;
+                if (triggerPolicy.isEligible(record, definition, player.getWorld().getUID(),
+                        location.getX(), location.getY(), location.getZ())) {
                     runtimes.activate(record, player, tick);
                 }
             }
