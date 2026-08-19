@@ -55,6 +55,29 @@ public final class ExplorationRuntimeManager {
         return java.util.List.copyOf(active.values());
     }
 
+    /** Builds a non-mutating diagnostic view for one persistent structure. */
+    public synchronized Optional<ExplorationStatusSnapshot> status(UUID structureId) {
+        StructureRecord record = repository.get(structureId).orElse(null);
+        if (record == null) return Optional.empty();
+        ExplorationRuntime runtime = active.get(structureId);
+        return Optional.of(new ExplorationStatusSnapshot(
+                record.structureId(),
+                record.structureType(),
+                record.variantId(),
+                record.state(),
+                runtime != null,
+                runtime == null ? 0 : runtime.participants().size(),
+                runtime == null ? 0 : runtime.objectiveEntities().size(),
+                lastEndReasons.get(structureId)));
+    }
+
+    /** Returns snapshots for runtimes or structures with a recorded lifecycle outcome. */
+    public synchronized java.util.List<ExplorationStatusSnapshot> statuses() {
+        java.util.LinkedHashSet<UUID> ids = new java.util.LinkedHashSet<>(active.keySet());
+        ids.addAll(lastEndReasons.keySet());
+        return ids.stream().map(this::status).flatMap(Optional::stream).toList();
+    }
+
     /**
      * Returns the latest lifecycle outcome observed for a structure.
      * The value is diagnostic state only and is not persisted as gameplay state.
