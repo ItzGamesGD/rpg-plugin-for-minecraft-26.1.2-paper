@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,8 +24,11 @@ final class ExplorationConfigDataTest {
             assertFalse(yaml.getBoolean("enabled", true));
             assertEquals(0.0D, yaml.getDouble("structures.swamp_hut.selection-chance", 1.0D));
             assertTrue(yaml.getBoolean("structures.swamp_hut.balance-pending", false));
-            assertTrue(yaml.getBoolean(
-                    "structures.swamp_hut.variants.elite_witch_prototype.components.0.objective", false));
+
+            List<Map<?, ?>> components = yaml.getMapList(
+                    "structures.swamp_hut.variants.elite_witch_prototype.components");
+            assertEquals(1, components.size());
+            assertEquals(Boolean.TRUE, components.get(0).get("objective"));
         } catch (Exception exception) {
             throw new AssertionError(exception);
         }
