@@ -1219,6 +1219,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return;
         }
         List<ActiveEffectInstance> active = effectService.getActive(target.getUniqueId());
+        sender.sendMessage("[감전 펄스] " + effectService.shockDebug(target.getUniqueId()));
         sender.sendMessage("[상태효과 디버그] target=" + target.getName() + ", active=" + active.size());
         for (ActiveEffectInstance instance : active) {
             boolean attributePresent = false;
