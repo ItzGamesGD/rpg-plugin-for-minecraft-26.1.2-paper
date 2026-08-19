@@ -42,10 +42,16 @@ public final class StructureDetectionService {
             int created = 0;
             for (StructureCandidate candidate : candidates) {
                 ExplorationStructureDefinition definition = registry.byMinecraftKey(candidate.minecraftKey()).orElse(null);
-                if (definition == null || !definition.enabled()) continue;
+                if (definition == null) continue;
+
                 UUID id = selector.stableId(candidate);
                 if (repository.get(id).isPresent()) continue;
-                boolean selected = selector.selected(id, definition.selectionChance());
+
+                // E1 fixes the first observation even when the per-structure feature is disabled.
+                // Disabled or zero-chance definitions become permanent VANILLA records instead
+                // of being skipped and potentially re-rolled after a later config change.
+                boolean selected = definition.enabled()
+                        && selector.selected(id, definition.selectionChance());
                 String variantId = "";
                 StructureEventState state = StructureEventState.VANILLA;
                 if (selected) {
@@ -53,14 +59,18 @@ public final class StructureDetectionService {
                     variantId = variant.id();
                     state = StructureEventState.UNDISCOVERED;
                 }
-                StructureRecord record = new StructureRecord(id, candidate.worldId(), definition.id(),
-                        candidate.minecraftKey(), candidate.anchor(), candidate.bounds(), selected, variantId, state,
-                        java.util.Map.of(), false, Instant.now(), null, StructureRecord.CURRENT_DATA_VERSION);
+
+                StructureRecord record = new StructureRecord(
+                        id, candidate.worldId(), definition.id(), candidate.minecraftKey(),
+                        candidate.anchor(), candidate.bounds(), selected, variantId, state,
+                        java.util.Map.of(), false, Instant.now(), null,
+                        StructureRecord.CURRENT_DATA_VERSION);
                 if (repository.createIfAbsent(record)) created++;
             }
             return created;
         } catch (IOException | RuntimeException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Exploration chunk scan failed safely at " + chunkX + "," + chunkZ, exception);
+            plugin.getLogger().log(Level.SEVERE,
+                    "Exploration chunk scan failed safely at " + chunkX + "," + chunkZ, exception);
             return 0;
         }
     }
