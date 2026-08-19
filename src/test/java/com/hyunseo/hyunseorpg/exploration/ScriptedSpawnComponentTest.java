@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.exploration;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ScriptedSpawnComponent;
 import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
+import com.hyunseo.hyunseorpg.exploration.model.StructureAnchor;
 import com.hyunseo.hyunseorpg.exploration.model.StructureBounds;
 import com.hyunseo.hyunseorpg.exploration.model.StructureEventState;
 import com.hyunseo.hyunseorpg.exploration.model.StructureRecord;
@@ -11,6 +12,7 @@ import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime;
 import com.hyunseo.hyunseorpg.exploration.runtime.TeleportExemptionService;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +45,7 @@ class ScriptedSpawnComponentTest {
         ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "elite_witch_prototype");
         ExplorationPorts ports = new ExplorationPorts(
                 (mobId, location, count, options) -> List.of(),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
 
         assertThrows(IllegalStateException.class,
                 () -> new ScriptedSpawnComponent().execute(context(runtime, ports), spec(true)));
@@ -56,11 +58,17 @@ class ScriptedSpawnComponentTest {
                 runtime.structureId(),
                 WORLD,
                 "swamp_hut",
-                StructureEventState.ACTIVE,
+                "minecraft:swamp_hut",
+                new StructureAnchor(WORLD, 0, 64, 0),
                 new StructureBounds(-4, 60, -4, 4, 70, 4),
-                List.of(),
+                true,
                 "elite_witch_prototype",
-                0L);
+                StructureEventState.ACTIVE,
+                Map.of(),
+                false,
+                Instant.EPOCH,
+                null,
+                1);
         return new ExplorationEventContext(
                 null, record, runtime, ports, new TeleportExemptionService(), 0L);
     }
