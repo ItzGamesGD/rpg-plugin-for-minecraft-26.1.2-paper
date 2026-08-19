@@ -6,6 +6,7 @@ public enum ExplorationEndReason {
     ABANDON_GRACE,
     ACTIVATION_FAILURE,
     COMPLETION_FAILURE,
+    ABANDON_FAILURE,
     STATE_INVALID,
     PLUGIN_DISABLE
 }
