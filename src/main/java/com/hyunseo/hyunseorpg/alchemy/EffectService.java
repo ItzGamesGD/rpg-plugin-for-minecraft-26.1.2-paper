@@ -369,4 +369,15 @@ public final class EffectService implements Listener {
     }
 
     public long currentTick() { return Bukkit.getCurrentTick(); }
+
+    public synchronized String shockDebug(UUID targetId) {
+        long now = currentTick();
+        for (ActiveEffectInstance instance : getActive(targetId)) {
+            CombatEffectHandler handler = handlerFor(instance.definition());
+            if (handler instanceof ShockEffectHandler shock) {
+                return shock.debug(targetId, instance.instanceId(), now);
+            }
+        }
+        return "shockNextPulse=-1 shockRootActive=false shockRootStart=-1 shockRootEnd=-1 currentTick=" + now;
+    }
 }
