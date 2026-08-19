@@ -317,14 +317,16 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         state.bounceCount++;
     }
 
-    @Override public synchronized void cancel(UUID executionId, CancelReason reason) { finish(executionId); }
+    @Override public synchronized void cancel(UUID executionId, CancelReason reason) {
+        finish(executionId, finishReason(reason));
+    }
 
     @Override
     public synchronized void cancelWorld(UUID worldId, CancelReason reason) {
         if (worldId == null) return;
         new ArrayList<>(active.entrySet()).stream()
                 .filter(entry -> worldId.equals(entry.getValue().worldId()))
-                .map(Map.Entry::getKey).forEach(this::finish);
+                .map(Map.Entry::getKey).forEach(id -> finish(id, finishReason(reason)));
     }
 
     public synchronized void cancelPlayer(UUID playerId, CancelReason reason) {
@@ -332,11 +334,22 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         new ArrayList<>(active.entrySet()).stream()
                 .filter(entry -> playerId.equals(entry.getValue().sourceId())
                         || entry.getValue().visitedTargets().contains(playerId))
-                .map(Map.Entry::getKey).forEach(this::finish);
+                .map(Map.Entry::getKey).forEach(id -> finish(id, finishReason(reason)));
     }
 
     public synchronized void cancelAll(CancelReason reason) {
-        new ArrayList<>(active.keySet()).forEach(this::finish);
+        new ArrayList<>(active.keySet()).forEach(id -> finish(id, finishReason(reason)));
+    }
+
+    private FinishReason finishReason(CancelReason reason) {
+        if (reason == null) return FinishReason.NORMAL;
+        return switch (reason) {
+            case WORLD_UNLOAD -> FinishReason.WORLD_UNLOAD;
+            case SERVER_RESTART -> FinishReason.PLUGIN_DISABLE;
+            case ADMIN_CANCEL -> FinishReason.ADMIN_CLEAR;
+            case TIMEOUT -> FinishReason.SAFETY_TIMEOUT;
+            case CHUNK_UNLOAD, ENTITY_REMOVED -> FinishReason.INVALID_ENTITY;
+        };
     }
 
     public synchronized int activeCount() { return active.size(); }
@@ -575,8 +588,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         var definition = effects.registry().get(state.potion.effectId()).orElse(null);
         if (definition == null || !definition.enabled()) return false;
         EffectSourceType sourceType = switch (state.definition.kind()) {
-            case SCULK -> EffectSourceType.POTION_LINGERING;
-            case ECHO, SLIME -> EffectSourceType.POTION_SPLASH;
+            case SCULK, ECHO, SLIME, WIND_CHARGE -> EffectSourceType.POTION_SPLASH;
             case FIREBALL -> EffectSourceType.POTION_FIREBALL;
             default -> EffectSourceType.POTION_DRINK;
         };
