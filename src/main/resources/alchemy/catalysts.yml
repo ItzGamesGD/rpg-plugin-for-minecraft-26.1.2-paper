@@ -35,6 +35,7 @@ catalysts:
     mode: SPECIAL
     kind: SCULK
     vanilla-material: SCULK_CATALYST
+    delivery: SPLASH
     max-propagation-count: 8
     radius: 8.0 # propagation search radius
     visual-radius: 1.25
@@ -66,6 +67,7 @@ catalysts:
     mode: SPECIAL
     kind: WIND_CHARGE
     vanilla-material: WIND_CHARGE
+    delivery: SPLASH
     max-distance: 16.0
     lifetime-ticks: 40
   fireball:
