@@ -29,9 +29,9 @@ class AlchemyEffectEngineContractTest {
     }
 
     @Test
-    void shockPulseUsesConfiguredFourSecondIntervalAndTwentyTickRoot() {
+    void shockPulseUsesConfiguredSixteenSecondIntervalAndTwentyTickRoot() {
         YamlConfiguration effects = load("alchemy/effects.yml");
-        assertEquals(80, effects.getInt("effects.effect_shock.baseline.tick-interval"));
+        assertEquals(320, effects.getInt("effects.effect_shock.baseline.tick-interval"));
         assertEquals(1.0D, effects.getDouble("effects.effect_shock.baseline.damage"));
         assertEquals(20, effects.getInt("effects.effect_shock.baseline.root-duration-ticks"));
         assertEquals(20, effects.getInt("effects.effect_shock.baseline.stun-duration-ticks"));

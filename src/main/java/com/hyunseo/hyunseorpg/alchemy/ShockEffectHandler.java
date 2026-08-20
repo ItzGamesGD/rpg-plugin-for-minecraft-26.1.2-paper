@@ -24,7 +24,7 @@ public final class ShockEffectHandler extends AbstractProductionEffectHandler {
     @Override
     public void onApply(UUID targetId, ActiveEffectInstance instance) {
         long interval = ShockTimingPolicy.interval(
-                longValue(instance.definition().id(), "tick-interval", 80L));
+                longValue(instance.definition().id(), "tick-interval", 320L));
         nextPulseAt.put(instance.instanceId(), ShockTimingPolicy.firstPulseAt(
                 Bukkit.getCurrentTick(), interval));
         debug("apply target=" + targetId
@@ -43,7 +43,7 @@ public final class ShockEffectHandler extends AbstractProductionEffectHandler {
     @Override
     public void onTick(UUID targetId, ActiveEffectInstance instance, long currentTick) {
         long interval = ShockTimingPolicy.interval(
-                longValue(instance.definition().id(), "tick-interval", 80L));
+                longValue(instance.definition().id(), "tick-interval", 320L));
         long next = nextPulseAt.getOrDefault(instance.instanceId(),
                 ShockTimingPolicy.firstPulseAt(currentTick, interval));
         if (currentTick < next) return;

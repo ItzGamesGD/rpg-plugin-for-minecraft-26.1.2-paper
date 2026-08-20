@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.entity.AreaEffectCloud;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.LingeringPotionSplashEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
@@ -32,6 +33,7 @@ public final class PaperPotionUseListener implements Listener {
     private final JavaPlugin plugin;
     private final Map<UUID, LingeringPayload> lingering = new HashMap<>();
     private final Map<UUID, BukkitTask> lingeringCleanup = new HashMap<>();
+    private final Map<UUID, BukkitTask> lingeringApplyTasks = new HashMap<>();
 
     public PaperPotionUseListener(PotionPdcContract<ItemStack> pdc,
                                   PotionUseService<ItemStack> useService) {
@@ -101,7 +103,13 @@ public final class PaperPotionUseListener implements Listener {
         if (plugin != null) {
             BukkitTask cleanup = Bukkit.getScheduler().runTaskLater(plugin, () -> removeCloud(cloud.getUniqueId()),
                     Math.max(20L, cloud.getDuration() + 40L));
-            synchronized (lingering) { lingeringCleanup.put(cloud.getUniqueId(), cleanup); }
+            BukkitTask applyTask = Bukkit.getScheduler().runTaskTimer(plugin,
+                    () -> applyLingeringCloud(cloud.getUniqueId()),
+                    Math.max(1L, cloud.getWaitTime()), 10L);
+            synchronized (lingering) {
+                lingeringCleanup.put(cloud.getUniqueId(), cleanup);
+                lingeringApplyTasks.put(cloud.getUniqueId(), applyTask);
+            }
         }
     }
 
@@ -111,7 +119,22 @@ public final class PaperPotionUseListener implements Listener {
         synchronized (lingering) { payload = lingering.get(event.getEntity().getUniqueId()); }
         if (payload == null || paperService == null) return;
         event.setCancelled(true);
-        for (LivingEntity target : event.getAffectedEntities()) {
+    }
+
+    /** Applies custom effects even when the cloud has no vanilla PotionMeta effects to trigger a native event. */
+    private void applyLingeringCloud(UUID cloudId) {
+        LingeringPayload payload;
+        synchronized (lingering) { payload = lingering.get(cloudId); }
+        if (payload == null || paperService == null) return;
+
+        Entity entity = Bukkit.getEntity(cloudId);
+        if (!(entity instanceof AreaEffectCloud cloud) || !cloud.isValid() || cloud.getDuration() <= 0) {
+            removeCloud(cloudId);
+            return;
+        }
+        double radius = Math.max(0.1D, cloud.getRadius());
+        for (Entity nearby : cloud.getWorld().getNearbyEntities(cloud.getLocation(), radius, radius, radius)) {
+            if (!(nearby instanceof LivingEntity target) || target.isDead() || !target.isValid()) continue;
             paperService.useOnTarget(payload.sourceId(), target.getUniqueId(), payload.item());
         }
     }
@@ -121,6 +144,8 @@ public final class PaperPotionUseListener implements Listener {
             lingering.remove(cloudId);
             BukkitTask task = lingeringCleanup.remove(cloudId);
             if (task != null && !task.isCancelled()) task.cancel();
+            BukkitTask applyTask = lingeringApplyTasks.remove(cloudId);
+            if (applyTask != null && !applyTask.isCancelled()) applyTask.cancel();
         }
     }
 

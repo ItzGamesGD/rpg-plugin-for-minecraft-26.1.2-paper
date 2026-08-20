@@ -270,6 +270,12 @@ public final class ConfigMigrationService {
             if (fileName.equals("alchemy/recipes.yml") && copyMissingTree(target, defaults, "recipes")) changed = true;
             if (fileName.equals("alchemy/catalysts.yml") && copyMissingTree(target, defaults, "catalysts")) changed = true;
             if (fileName.equals("alchemy/gui.yml") && copyMissingTree(target, defaults, "gui")) changed = true;
+            if (fileName.equals("alchemy/effects.yml")
+                    && target.getInt("effects.effect_shock.baseline.tick-interval", 0) == 80) {
+                target.set("effects.effect_shock.baseline.tick-interval", 320);
+                changed = true;
+                lines.add("alchemy/effects.yml: extended shock damage interval 80 -> 320 ticks");
+            }
             if (changed) mark(target, fileName, changedFiles, lines, "alchemy migration staged");
         }
         migrateAlchemyCrafting(lines, changedFiles);
