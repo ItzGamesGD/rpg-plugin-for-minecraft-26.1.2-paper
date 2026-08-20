@@ -3,6 +3,7 @@ effects:
   effect_test_speed:
     enabled: true
     display-name: "테스트 속도"
+    description: "이동 속도를 증가시키는 테스트 효과입니다."
     priority: 10
     duration-ticks: 1200
     amplifier: 1
@@ -26,6 +27,7 @@ effects:
   effect_vampire:
     enabled: true
     display-name: "흡혈"
+    description: "가한 피해의 일정 비율만큼 자신의 체력을 회복합니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -38,6 +40,7 @@ effects:
   effect_berserk:
     enabled: true
     display-name: "광폭화"
+    description: "가하는 피해가 증가하지만 받는 피해도 증가합니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -50,6 +53,7 @@ effects:
   effect_corrosion:
     enabled: true
     display-name: "부식"
+    description: "대상의 방어를 약화해 받는 피해가 증가합니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -62,6 +66,7 @@ effects:
   effect_frostbite:
     enabled: true
     display-name: "동상"
+    description: "대상의 이동 속도를 낮추고 몸을 얼어붙게 만듭니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -69,11 +74,12 @@ effects:
     handler-id: frostbite
     status: IMPLEMENTED_RUNTIME
     balance: BALANCE_PENDING
-    baseline: { movement-multiplier: -0.15 }
+    baseline: { movement-multiplier: -0.15, slowness-amplifier: 0 }
     policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
   effect_shock:
     enabled: true
     display-name: "감전"
+    description: "주기적으로 피해를 주며 피해 직후 잠시 이동을 구속합니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -81,11 +87,12 @@ effects:
     handler-id: shock
     status: IMPLEMENTED_RUNTIME
     balance: BALANCE_PENDING
-    baseline: { tick-interval: 60, damage: 1.0, stun-duration-ticks: 20 }
+    baseline: { tick-interval: 60, damage: 1.0, root-duration-ticks: 20, stun-duration-ticks: 20 }
     policies: { stack: REFRESH_DURATION, remove-on-death: true, persist-on-logout: false, persist-on-world-change: false }
   effect_bleed:
     enabled: true
     display-name: "출혈"
+    description: "일정 간격으로 지속적인 출혈 피해를 줍니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -98,6 +105,7 @@ effects:
   effect_vulnerability:
     enabled: true
     display-name: "취약"
+    description: "대상이 받는 피해를 증가시킵니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1
@@ -110,6 +118,7 @@ effects:
   effect_necrosis:
     enabled: true
     display-name: "괴사"
+    description: "대상의 최대 체력을 감소시킵니다."
     duration-ticks: 1200
     amplifier: 0
     max-stacks: 1

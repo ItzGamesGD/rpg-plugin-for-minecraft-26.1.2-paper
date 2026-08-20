@@ -16,14 +16,21 @@ import java.util.UUID;
 
 /** Shared short-lived movement lock used by effects that pulse a root/stun state. */
 public final class EffectMovementLockService implements Listener {
+    private final JavaPlugin plugin;
     private final Map<UUID, RootState> roots = new HashMap<>();
 
-    public EffectMovementLockService(JavaPlugin plugin) { }
+    public EffectMovementLockService(JavaPlugin plugin) { this.plugin = plugin; }
 
     public synchronized void lock(LivingEntity target, long durationTicks) {
         if (!(target instanceof org.bukkit.entity.Player player)
                 || player.isDead() || !player.isValid() || durationTicks <= 0) return;
-        roots.put(player.getUniqueId(), new RootState(org.bukkit.Bukkit.getCurrentTick() + durationTicks));
+        UUID id = player.getUniqueId();
+        long expiresAt = org.bukkit.Bukkit.getCurrentTick() + durationTicks;
+        roots.put(id, new RootState(expiresAt));
+        // Do not rely on a future PlayerMoveEvent to clean up the state. A player
+        // who stops moving must still leave the root window before the next pulse.
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin,
+                () -> clearIfExpired(id, expiresAt), durationTicks);
     }
 
     /** Returns whether the player is currently rooted, expiring stale state at the boundary tick. */
@@ -58,6 +65,14 @@ public final class EffectMovementLockService implements Listener {
     public synchronized void clear(UUID entityId) {
         if (entityId == null) return;
         roots.remove(entityId);
+    }
+
+    private synchronized void clearIfExpired(UUID entityId, long expiresAt) {
+        RootState state = roots.get(entityId);
+        if (state != null && state.expiresAt() <= expiresAt
+                && org.bukkit.Bukkit.getCurrentTick() >= state.expiresAt()) {
+            roots.remove(entityId);
+        }
     }
 
     public synchronized void clearAll() {

@@ -37,8 +37,10 @@ public final class ShockEffectHandler extends AbstractProductionEffectHandler {
         LivingEntity target = living(targetId);
         damage(target, instance, 1.0D);
         if (movementLocks != null) {
+            long rootDuration = longValue(instance.definition().id(), "root-duration-ticks",
+                    longValue(instance.definition().id(), "stun-duration-ticks", 20L));
             movementLocks.lock(target, Math.min(20L, Math.max(1L,
-                    longValue(instance.definition().id(), "stun-duration-ticks", 20L))));
+                    rootDuration)));
         }
         nextPulseAt.put(instance.instanceId(), currentTick + interval);
     }

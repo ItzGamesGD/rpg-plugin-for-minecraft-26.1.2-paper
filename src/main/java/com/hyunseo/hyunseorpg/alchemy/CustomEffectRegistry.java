@@ -89,7 +89,8 @@ public final class CustomEffectRegistry {
                 continue;
             }
             try {
-                candidate.put(id, new CustomEffectDefinition(id, section.getString("display-name", id), true,
+                candidate.put(id, new CustomEffectDefinition(id, section.getString("display-name", id),
+                        section.getString("description", CustomEffectDefinition.defaultDescription(id)), true,
                         section.getInt("priority", 0), duration, amplifier, stacks, targetPolicy, stackPolicy,
                         section.getBoolean("policies.remove-on-death", true),
                         section.getBoolean("policies.persist-on-logout", false),

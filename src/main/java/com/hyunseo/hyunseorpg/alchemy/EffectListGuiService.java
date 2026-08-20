@@ -44,7 +44,7 @@ public final class EffectListGuiService implements Listener {
             meta.displayName(Component.text(definition.displayName()));
             meta.lore(List.of(
                     Component.text("효과 ID: " + definition.id()),
-                    Component.text("설명: 등록된 양조 상태 효과"),
+                    Component.text("설명: " + definition.description()),
                     Component.text("남은 시간: " + formatTicks(remaining)),
                     Component.text("스택: " + instance.stacks() + "/" + definition.maxStacks()),
                     Component.text("출처: " + instance.source().type().name())));

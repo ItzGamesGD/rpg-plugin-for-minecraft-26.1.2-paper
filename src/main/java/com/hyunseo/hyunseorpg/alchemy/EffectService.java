@@ -95,7 +95,8 @@ public final class EffectService implements Listener {
         CombatEffectHandler handler = handlerFor(definition);
         if (!definition.handlerId().isBlank() && handler == null) return false;
         if (durationOverride != null || amplifierOverride != null) {
-            definition = new CustomEffectDefinition(definition.id(), definition.displayName(), definition.enabled(),
+            definition = new CustomEffectDefinition(definition.id(), definition.displayName(), definition.description(),
+                    definition.enabled(),
                     definition.priority(), durationOverride == null ? definition.durationTicks() : durationOverride,
                     amplifierOverride == null ? definition.amplifier() : amplifierOverride,
                     definition.maxStacks(), definition.targetPolicy(), definition.stackPolicy(),

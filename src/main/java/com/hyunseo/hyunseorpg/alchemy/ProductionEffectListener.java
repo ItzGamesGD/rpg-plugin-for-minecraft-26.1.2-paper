@@ -28,7 +28,9 @@ public final class ProductionEffectListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void afterDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof LivingEntity target)) return;
-        effects.notifyDamage(sourceId(event), target.getUniqueId(), event.getFinalDamage(),
+        double dealt = event.getFinalDamage();
+        if (!Double.isFinite(dealt) || dealt <= 0.0D) dealt = event.getDamage();
+        effects.notifyDamage(sourceId(event), target.getUniqueId(), dealt,
                 CombatEffectHandler.DamageKind.DIRECT);
     }
 

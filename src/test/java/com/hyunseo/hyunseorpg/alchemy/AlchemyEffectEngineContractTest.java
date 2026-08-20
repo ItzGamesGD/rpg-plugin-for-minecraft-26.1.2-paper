@@ -33,7 +33,24 @@ class AlchemyEffectEngineContractTest {
         YamlConfiguration effects = load("alchemy/effects.yml");
         assertEquals(60, effects.getInt("effects.effect_shock.baseline.tick-interval"));
         assertEquals(1.0D, effects.getDouble("effects.effect_shock.baseline.damage"));
+        assertEquals(20, effects.getInt("effects.effect_shock.baseline.root-duration-ticks"));
         assertEquals(20, effects.getInt("effects.effect_shock.baseline.stun-duration-ticks"));
+    }
+
+    @Test
+    void vampirismHealUsesActualPositiveDamageAndConfiguredRatio() {
+        assertEquals(1.0D, VampirismEffectHandler.calculateHeal(20.0D, 0.05D), 0.000001D);
+        assertEquals(0.0D, VampirismEffectHandler.calculateHeal(0.0D, 0.05D), 0.000001D);
+    }
+
+    @Test
+    void productionEffectsExposePlayerFacingDescriptions() {
+        YamlConfiguration effects = load("alchemy/effects.yml");
+        for (String id : java.util.List.of("effect_vampire", "effect_frostbite", "effect_shock")) {
+            assertFalse(effects.getString("effects." + id + ".description", "").isBlank(),
+                    "missing description for " + id);
+        }
+        assertEquals(0, effects.getInt("effects.effect_frostbite.baseline.slowness-amplifier"));
     }
 
     @Test
