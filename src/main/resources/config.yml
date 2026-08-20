@@ -294,3 +294,6 @@ progression:
     enabled: true
     flag: post_ender_dragon
     message: "엔더드래곤 처치 기록이 저장되었습니다. 이후 콘텐츠가 해금될 수 있습니다."
+
+alchemy-runtime-debug:
+  enabled: false
