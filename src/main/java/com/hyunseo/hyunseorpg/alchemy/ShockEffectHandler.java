@@ -66,6 +66,7 @@ public final class ShockEffectHandler extends AbstractProductionEffectHandler {
         damage(target, instance, 1.0D);
 
         if (target.isDead() || !target.isValid()) {
+            if (movementLocks != null) movementLocks.clear(targetId);
             debug("pulse target=" + targetId
                     + " tick=" + currentTick
                     + " action=lock-skipped reason=dead-or-invalid-after-damage", instance);
