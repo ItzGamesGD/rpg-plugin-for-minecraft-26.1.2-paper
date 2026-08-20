@@ -19,9 +19,13 @@
 
 ## Live Verification
 
-- Live Paper server verification: PENDING
+- Live Paper server verification: PASSED_BY_USER
 - Server `plugins` folder: not overwritten
 - Balance verification: PENDING
+
+## Live Test Result
+
+The user confirmed the shock timing and dragon-breath lingering behavior passed live verification. Glowstone amplifier-level behavior remains intentionally unchanged and outside this pass.
 
 ## Required Tests
 
