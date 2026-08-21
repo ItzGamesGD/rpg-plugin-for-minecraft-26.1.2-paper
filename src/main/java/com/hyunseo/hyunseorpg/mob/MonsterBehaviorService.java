@@ -292,8 +292,12 @@ public final class MonsterBehaviorService implements Listener {
 
     @EventHandler(ignoreCancelled = false)
     public void onPotionSplash(PotionSplashEvent event) {
-        if (!(event.getPotion().getShooter() instanceof LivingEntity shooter)
-                || !"swapping_witch".equals(behaviorId(shooter))) return;
+        if (!(event.getPotion().getShooter() instanceof LivingEntity shooter)) return;
+        if ("mire_shaman".equals(behaviorId(shooter))) {
+            event.setCancelled(true);
+            return;
+        }
+        if (!"swapping_witch".equals(behaviorId(shooter))) return;
         event.setIntensity(shooter, 0.0F);
     }
 
