@@ -98,7 +98,7 @@ public final class MonsterBehaviorService implements Listener {
     private enum BulwarkPhase { NORMAL, TELEGRAPH, LUNGE, RECOVERY }
     private static final class BulwarkState { BulwarkPhase phase = BulwarkPhase.NORMAL; long until; Vector direction; final Set<UUID> hits = ConcurrentHashMap.newKeySet(); }
     private enum ShamanAction { IDLE, PROJECTILE_TELEGRAPH, POOL_TELEGRAPH, SUMMON_TELEGRAPH, RECLAIM }
-    private static final class ShamanState { ShamanAction action = ShamanAction.IDLE; long until; Location snapshot; boolean reclaimUsed; String lastAction = ""; }
+    private static final class ShamanState { ShamanAction action = ShamanAction.IDLE; long until; long nextSummonAt; Location snapshot; boolean reclaimUsed; String lastAction = ""; }
     private static final class MudPool { final UUID owner; final Location center; final double radius; final long expiresAt; MudPool(UUID owner, Location center, double radius, long expiresAt) { this.owner=owner; this.center=center; this.radius=radius; this.expiresAt=expiresAt; } }
 
     public MonsterBehaviorService(JavaPlugin plugin, ConfigService configService, MobService mobService) {
@@ -216,6 +216,19 @@ public final class MonsterBehaviorService implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof LivingEntity victim && "golden_bulwark".equals(behaviorId(victim))) {
+            LivingEntity attacker = resolveDamageAttacker(event.getDamager());
+            if (attacker != null) {
+                Vector forward = victim.getLocation().getDirection().setY(0.0D);
+                Vector toAttacker = attacker.getLocation().toVector().subtract(victim.getLocation().toVector()).setY(0.0D);
+                if (forward.lengthSquared() > 0.001D && toAttacker.lengthSquared() > 0.001D) {
+                    double halfAngle = Math.toRadians(behaviorSectionValue(victim, "frontal-half-angle", 60.0D));
+                    if (forward.normalize().dot(toAttacker.normalize()) >= Math.cos(halfAngle)) {
+                        event.setDamage(event.getDamage() * behaviorSectionValue(victim, "frontal-damage-multiplier", 0.35D));
+                    }
+                }
+            }
+        }
         if (event.getDamager() instanceof ThrownPotion potion
                 && potion.getShooter() instanceof LivingEntity shooter
                 && shooter.getUniqueId().equals(event.getEntity().getUniqueId())
@@ -232,19 +245,17 @@ public final class MonsterBehaviorService implements Listener {
         }
         if (!(event.getDamager() instanceof LivingEntity source)
                 || !(event.getEntity() instanceof Player player)) return;
-        if ("golden_bulwark".equals(behaviorId((LivingEntity) event.getEntity()))) {
-            LivingEntity bulwark = (LivingEntity) event.getEntity();
-            Vector forward = bulwark.getLocation().getDirection().setY(0); Vector toAttacker = source.getLocation().toVector().subtract(bulwark.getLocation().toVector()).setY(0);
-            if (forward.lengthSquared() > 0.001 && toAttacker.lengthSquared() > 0.001) {
-                double halfAngle = Math.toRadians(behaviorSectionValue(bulwark, "frontal-half-angle", 60.0));
-                if (forward.normalize().dot(toAttacker.normalize()) >= Math.cos(halfAngle)) event.setDamage(event.getDamage() * behaviorSectionValue(bulwark, "frontal-damage-multiplier", 0.35));
-            }
-        }
         if ("stone_armored_zombie".equals(behaviorId(source))) {
             var section = behaviorSection(source);
             int duration = section == null ? 40 : Math.max(1, section.getInt("bind-duration-ticks", 40));
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, duration, 1));
         }
+    }
+
+    private LivingEntity resolveDamageAttacker(Entity damager) {
+        if (damager instanceof LivingEntity living) return living;
+        if (damager instanceof Projectile projectile && projectile.getShooter() instanceof LivingEntity living) return living;
+        return null;
     }
 
     @EventHandler(ignoreCancelled = false)
@@ -426,22 +437,40 @@ public final class MonsterBehaviorService implements Listener {
 
     private void tickMireShaman(LivingEntity source, Player target) {
         ShamanState state=shamans.computeIfAbsent(source.getUniqueId(), ignored->new ShamanState()); var section=behaviorSection(source); if(section==null) return;
-        if(state.action!=ShamanAction.IDLE){ if(ticks<state.until) return; executeShaman(source,state,section); return; }
+        if(state.action!=ShamanAction.IDLE){ renderShamanTelegraph(source,state,section); if(ticks<state.until) return; executeShaman(source,state,section); return; }
         if(target==null || !ready(source)) return;
         int pools=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count(); int minions=(int)mireMinionOwners.values().stream().filter(source.getUniqueId()::equals).count();
         if(!state.reclaimUsed && source.getHealth()/source.getAttribute(Attribute.MAX_HEALTH).getValue()<=section.getDouble("reclaim.health-threshold",.5D) && pools>0){state.action=ShamanAction.RECLAIM;state.until=ticks+10;return;}
         double distance=source.getLocation().distance(target.getLocation());
         if(pools<section.getInt("pool.max-active",3) && distance>=6 && distance<=12 && !"POOL".equals(state.lastAction)){state.action=ShamanAction.POOL_TELEGRAPH;state.snapshot=target.getLocation().clone();state.until=ticks+section.getLong("pool.telegraph-ticks",20);state.lastAction="POOL";return;}
-        if(minions<section.getInt("minion.max-active",2) && !"SUMMON".equals(state.lastAction)){state.action=ShamanAction.SUMMON_TELEGRAPH;state.until=ticks+12;state.lastAction="SUMMON";return;}
+        if(minions<section.getInt("minion.max-active",2) && ticks >= state.nextSummonAt && !"SUMMON".equals(state.lastAction)){state.action=ShamanAction.SUMMON_TELEGRAPH;state.until=ticks+12;state.lastAction="SUMMON";return;}
         if(distance>=8 && distance<=14){state.action=ShamanAction.PROJECTILE_TELEGRAPH;state.snapshot=target.getEyeLocation().clone();state.until=ticks+section.getLong("projectile.telegraph-ticks",24);state.lastAction="PROJECTILE";}
     }
 
     private void executeShaman(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
         if(state.action==ShamanAction.PROJECTILE_TELEGRAPH){ ThrownPotion p=source.launchProjectile(ThrownPotion.class); Vector d=state.snapshot.toVector().subtract(source.getEyeLocation().toVector()).normalize().multiply(section.getDouble("projectile.speed",.55D)); p.setVelocity(d); p.getPersistentDataContainer().set(swappingProjectileKey,PersistentDataType.BYTE,(byte)1); projectileSources.put(p.getUniqueId(),source.getUniqueId());projectileTypes.put(p.getUniqueId(),"mire_toxic");projectileExpiry.put(p.getUniqueId(),ticks+80); }
         else if(state.action==ShamanAction.POOL_TELEGRAPH){ Location c=state.snapshot; mudPools.put(UUID.randomUUID(),new MudPool(source.getUniqueId(),c,section.getDouble("pool.radius",2.75D),ticks+section.getLong("pool.duration-ticks",120))); }
-        else if(state.action==ShamanAction.SUMMON_TELEGRAPH){ for(int i=0;i<section.getInt("minion.count",2);i++){ org.bukkit.entity.Slime slime=source.getWorld().spawn(source.getLocation(),org.bukkit.entity.Slime.class);slime.setSize(1);mireMinionOwners.put(slime.getUniqueId(),source.getUniqueId()); } }
+        else if(state.action==ShamanAction.SUMMON_TELEGRAPH){ for(int i=0;i<section.getInt("minion.count",2);i++){ org.bukkit.entity.Slime slime=source.getWorld().spawn(source.getLocation(),org.bukkit.entity.Slime.class);slime.setSize(1);mireMinionOwners.put(slime.getUniqueId(),source.getUniqueId()); } state.nextSummonAt=ticks+section.getLong("minion.cooldown-ticks",200L); }
         else if(state.action==ShamanAction.RECLAIM){ int count=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count(); mudPools.entrySet().removeIf(e->e.getValue().owner.equals(source.getUniqueId())); source.setHealth(Math.min(source.getAttribute(Attribute.MAX_HEALTH).getValue(),source.getHealth()+source.getAttribute(Attribute.MAX_HEALTH).getValue()*section.getDouble("reclaim.heal-ratio",.125D))); state.reclaimUsed=true; }
         state.action=ShamanAction.IDLE;nextAction.put(source.getUniqueId(),ticks+20);
+    }
+    private void renderShamanTelegraph(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
+        if (ticks % 2L != 0L) return;
+        if (state.action == ShamanAction.PROJECTILE_TELEGRAPH && state.snapshot != null) {
+            Vector direction = state.snapshot.toVector().subtract(source.getEyeLocation().toVector());
+            if (direction.lengthSquared() > 0.001D) {
+                Location marker = source.getEyeLocation().add(direction.normalize().multiply(0.55D));
+                source.getWorld().spawnParticle(Particle.DUST, marker, 3, .12D, .12D, .12D, new Particle.DustOptions(org.bukkit.Color.LIME, 1.0F));
+            }
+        }
+        if (state.action == ShamanAction.POOL_TELEGRAPH && state.snapshot != null) {
+            double radius = section.getDouble("pool.radius", 2.75D);
+            for (int i = 0; i < 8; i++) {
+                double angle = Math.PI * 2.0D * i / 8.0D;
+                Location marker = state.snapshot.clone().add(Math.cos(angle) * radius, .06D, Math.sin(angle) * radius);
+                source.getWorld().spawnParticle(Particle.DUST, marker, 1, 0.0D, 0.0D, 0.0D, new Particle.DustOptions(org.bukkit.Color.OLIVE, 1.0F));
+            }
+        }
     }
     private void tickMudPools(){ mudPools.entrySet().removeIf(e->e.getValue().expiresAt<=ticks); for(MudPool p:mudPools.values()){ p.center.getWorld().spawnParticle(Particle.DUST,p.center,3,p.radius*.5,.03,p.radius*.5,new Particle.DustOptions(org.bukkit.Color.OLIVE,1)); for(Player player:playersNear(p.center,p.radius)) if(player.getLocation().distanceSquared(p.center)<=p.radius*p.radius){player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,20,0));player.addPotionEffect(new PotionEffect(PotionEffectType.POISON,20,0));} } }
     private void removeMireOwned(UUID owner){ mudPools.entrySet().removeIf(e->e.getValue().owner.equals(owner)); mireMinionOwners.entrySet().removeIf(e->{if(e.getValue().equals(owner)){Entity minion=Bukkit.getEntity(e.getKey());if(minion!=null)minion.remove();return true;}return false;});bulwarks.remove(owner);shamans.remove(owner); }
