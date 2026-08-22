@@ -27,6 +27,8 @@ public final class MobTagService {
     private final NamespacedKey customMobIdKey;
     private final NamespacedKey spawnSourceKey;
     private final NamespacedKey dropTableIdKey;
+    private final NamespacedKey explorationRaidTargetKey;
+    private final NamespacedKey explorationRaidChaseAtKey;
 
     public MobTagService(JavaPlugin plugin) {
         this.rpgMobKey = new NamespacedKey(plugin, "rpg_mob");
@@ -38,6 +40,8 @@ public final class MobTagService {
         this.customMobIdKey = new NamespacedKey(plugin, "custom_mob_id");
         this.spawnSourceKey = new NamespacedKey(plugin, "spawn_source");
         this.dropTableIdKey = new NamespacedKey(plugin, "drop_table_id");
+        this.explorationRaidTargetKey = new NamespacedKey(plugin, "exploration_raid_target");
+        this.explorationRaidChaseAtKey = new NamespacedKey(plugin, "exploration_raid_chase_at");
     }
 
     public boolean isRpgMob(LivingEntity entity) {
@@ -132,6 +136,36 @@ public final class MobTagService {
 
     public String getDropTableId(LivingEntity entity) {
         return entity.getPersistentDataContainer().getOrDefault(dropTableIdKey, PersistentDataType.STRING, "");
+    }
+
+    public void markExplorationRaidTarget(LivingEntity entity, java.util.UUID targetId, long chaseAtTick) {
+        PersistentDataContainer pdc = entity.getPersistentDataContainer();
+        if (targetId == null) {
+            pdc.remove(explorationRaidTargetKey);
+            pdc.remove(explorationRaidChaseAtKey);
+            return;
+        }
+        pdc.set(explorationRaidTargetKey, PersistentDataType.STRING, targetId.toString());
+        pdc.set(explorationRaidChaseAtKey, PersistentDataType.LONG, Math.max(0L, chaseAtTick));
+    }
+
+    public java.util.UUID getExplorationRaidTarget(LivingEntity entity) {
+        String raw = entity.getPersistentDataContainer().get(explorationRaidTargetKey, PersistentDataType.STRING);
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return java.util.UUID.fromString(raw);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    public long getExplorationRaidChaseAt(LivingEntity entity) {
+        return entity.getPersistentDataContainer().getOrDefault(explorationRaidChaseAtKey,
+                PersistentDataType.LONG, Long.MAX_VALUE);
+    }
+
+    public boolean hasExplorationRaidTarget(LivingEntity entity) {
+        return getExplorationRaidTarget(entity) != null;
     }
 
     public void setMobDisplayName(LivingEntity entity, String displayName) {

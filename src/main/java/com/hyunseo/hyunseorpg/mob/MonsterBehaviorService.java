@@ -439,15 +439,17 @@ public final class MonsterBehaviorService implements Listener {
             if (usesPathfinderGroundController(behavior)) {
                 configurePathfinder(entity);
             }
-            Player target = trackedTargetOrNearest(entity, behaviorSectionValue(entity, "recognition-range", 24.0D));
+            Player target = explorationRaidTargetOrNearest(entity,
+                    behaviorSectionValue(entity, "recognition-range", 24.0D));
             if (target == null) {
                 currentTargets.remove(id);
-                if (entity instanceof Mob mob && "charging_zombie".equals(behavior)) mob.setTarget(null);
+                if (entity instanceof Mob mob && ("charging_zombie".equals(behavior)
+                        || mobService.getMobTagService().hasExplorationRaidTarget(entity))) mob.setTarget(null);
                 stopPathfinding(entity);
             } else {
                 currentTargets.put(id, target.getUniqueId());
-                if (entity instanceof Mob mob && "charging_zombie".equals(behavior)
-                        && !dashUntil.containsKey(id)) mob.setTarget(target);
+                if (entity instanceof Mob mob && ("charging_zombie".equals(behavior)
+                        || isForcedExplorationRaidTarget(entity)) && !dashUntil.containsKey(id)) mob.setTarget(target);
             }
             switch (behavior) {
                 case "mining_giant" -> tickMiningGiant(entity, target);
@@ -1198,6 +1200,25 @@ public final class MonsterBehaviorService implements Listener {
         }
         currentTargets.remove(source.getUniqueId());
         return nearestPlayer(source, range);
+    }
+
+    private Player explorationRaidTargetOrNearest(LivingEntity source, double range) {
+        if (isForcedExplorationRaidTarget(source)) {
+            UUID targetId = mobService.getMobTagService().getExplorationRaidTarget(source);
+            Entity target = targetId == null ? null : Bukkit.getEntity(targetId);
+            if (target instanceof Player player && player.isValid() && !player.isDead()
+                    && player.getWorld() == source.getWorld()) {
+                return player;
+            }
+            return null;
+        }
+        return trackedTargetOrNearest(source, range);
+    }
+
+    private boolean isForcedExplorationRaidTarget(LivingEntity source) {
+        var tags = mobService.getMobTagService();
+        UUID targetId = tags.getExplorationRaidTarget(source);
+        return targetId != null && plugin.getServer().getCurrentTick() >= tags.getExplorationRaidChaseAt(source);
     }
 
     private List<Player> playersNear(Location location, double radius) {

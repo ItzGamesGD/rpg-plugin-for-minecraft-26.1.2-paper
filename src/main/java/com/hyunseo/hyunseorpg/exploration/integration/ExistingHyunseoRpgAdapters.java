@@ -78,12 +78,16 @@ public final class ExistingHyunseoRpgAdapters {
                 if (entity == null) return;
                 entity.setGlowing(Boolean.parseBoolean(String.valueOf(
                         options.getOrDefault("glowing", "true"))));
-                if (!(entity instanceof Mob mob)) return;
                 Object rawTarget = options.get("target-player-uuid");
                 if (rawTarget == null) return;
                 try {
                     Player target = Bukkit.getPlayer(UUID.fromString(String.valueOf(rawTarget)));
-                    if (target != null && target.isOnline() && !target.isDead()
+                    UUID targetId = UUID.fromString(String.valueOf(rawTarget));
+                    long chaseAfter = options.get("raid-chase-after-ticks") instanceof Number number
+                            ? Math.max(0L, number.longValue()) : 0L;
+                    mobService.getMobTagService().markExplorationRaidTarget(entity, targetId,
+                            Bukkit.getCurrentTick() + chaseAfter);
+                    if (entity instanceof Mob mob && target != null && target.isOnline() && !target.isDead()
                             && target.getWorld().equals(entity.getWorld())) {
                         mob.setTarget(target);
                     }

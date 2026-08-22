@@ -62,6 +62,7 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
             options.put("glowing", true);
             if (context.runtime().raidTarget() != null) {
                 options.put("target-player-uuid", context.runtime().raidTarget().toString());
+                options.put("raid-chase-after-ticks", 300L);
             }
             Collection<UUID> spawned = context.ports().mobs().spawn("custom:" + unit.mobId(), location, 1, options);
             List<UUID> valid = spawned == null ? List.of() : spawned.stream().filter(java.util.Objects::nonNull).toList();
