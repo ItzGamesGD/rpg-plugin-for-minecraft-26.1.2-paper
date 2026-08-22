@@ -8,7 +8,8 @@ public enum ExplorationComponentPhase {
     LOOT_EXIT,
     CHOICE_TIER_1,
     CHOICE_TIER_2,
-    CHOICE_TIER_3;
+    CHOICE_TIER_3,
+    NEXT_WAVE;
 
     public static ExplorationComponentPhase parse(String raw, ExplorationComponentPhase fallback) {
         if (raw == null || raw.isBlank()) return fallback;

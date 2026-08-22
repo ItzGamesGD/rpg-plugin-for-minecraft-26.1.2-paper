@@ -1,6 +1,9 @@
 package com.hyunseo.hyunseorpg.exploration.runtime;
 
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Location;
@@ -29,6 +32,8 @@ public final class ExplorationRuntime {
     private Location raidOrigin;
     private int objectiveSpawnCount;
     private final Set<UUID> confirmedDeadObjectives = new LinkedHashSet<>();
+    private List<String> raidWavePoolIds = List.of();
+    private int raidWaveIndex = -1;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -50,7 +55,7 @@ public final class ExplorationRuntime {
         if (ids == null || ids.isEmpty()) return;
         objectiveMode = true;
         objectiveEntities.addAll(ids);
-        objectiveSpawnCount = Math.max(objectiveSpawnCount, objectiveEntities.size());
+        objectiveSpawnCount += ids.size();
     }
     public synchronized boolean objectiveMode() { return objectiveMode; }
     public synchronized Set<UUID> objectiveEntities() { return Set.copyOf(objectiveEntities); }
@@ -66,6 +71,32 @@ public final class ExplorationRuntime {
     }
     public synchronized int objectiveSpawnCount() { return objectiveSpawnCount; }
     public synchronized int confirmedDeadObjectiveCount() { return confirmedDeadObjectives.size(); }
+    public synchronized void configureRaidWaveSequence(Collection<String> poolIds) {
+        List<String> normalized = new ArrayList<>();
+        if (poolIds != null) {
+            for (String poolId : poolIds) {
+                if (poolId != null && !poolId.isBlank()) {
+                    normalized.add(poolId.trim().toLowerCase(java.util.Locale.ROOT));
+                }
+            }
+        }
+        raidWavePoolIds = List.copyOf(normalized);
+        raidWaveIndex = raidWavePoolIds.isEmpty() ? -1 : 0;
+    }
+    public synchronized boolean hasNextRaidWave() {
+        return raidWaveIndex >= 0 && raidWaveIndex + 1 < raidWavePoolIds.size();
+    }
+    public synchronized boolean advanceRaidWave() {
+        if (!hasNextRaidWave()) return false;
+        raidWaveIndex++;
+        return true;
+    }
+    public synchronized String currentRaidWavePoolId() {
+        return raidWaveIndex < 0 || raidWaveIndex >= raidWavePoolIds.size()
+                ? "" : raidWavePoolIds.get(raidWaveIndex);
+    }
+    public synchronized int raidWaveNumber() { return raidWaveIndex + 1; }
+    public synchronized int raidWaveCount() { return raidWavePoolIds.size(); }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
                                             String fallback, long expiresAtTick) {
         if (owner == null || choicePending() || !selectedChoice.isBlank()) return false;

@@ -312,6 +312,8 @@ public final class ConfigMigrationService {
                 changed |= copyMissingRoot(target, defaults);
                 changed |= migrateLegacyExplorationPrototype(target, fileName, lines);
                 changed |= migrateOutpostLootTrigger(target, fileName, lines);
+                changed |= disableOutpostScoutPrototype(target, fileName, lines);
+                changed |= migrateOutpostRaidWaveSequence(target, fileName, lines);
                 if (changed) {
                     lines.add(fileName + ": added missing exploration keys without overwriting operator values");
                 }
@@ -369,6 +371,50 @@ public final class ConfigMigrationService {
                 component.put("phase", "loot_exit");
                 changed = true;
                 lines.add(fileName + ": moved outpost raid choice prompt to loot-exit trigger");
+            }
+            migrated.add(component);
+        }
+        if (changed) target.set(root, migrated);
+        return changed;
+    }
+
+    private boolean disableOutpostScoutPrototype(FileConfiguration target,
+                                                  String fileName,
+                                                  List<String> lines) {
+        String root = "structures.pillager_outpost.variants.scout_wave_prototype";
+        if (!target.isConfigurationSection(root) || !target.getBoolean(root + ".prototype", false)) return false;
+        boolean changed = false;
+        if (target.getBoolean(root + ".enabled", true)) {
+            target.set(root + ".enabled", false);
+            changed = true;
+        }
+        if (target.getDouble(root + ".weight", 0.0D) != 0.0D) {
+            target.set(root + ".weight", 0.0D);
+            changed = true;
+        }
+        if (changed) lines.add(fileName + ": disabled deprecated outpost scout prototype variant");
+        return changed;
+    }
+
+    private boolean migrateOutpostRaidWaveSequence(FileConfiguration target,
+                                                    String fileName,
+                                                    List<String> lines) {
+        String root = "structures.pillager_outpost.variants.outpost_raid_event.components";
+        List<Map<?, ?>> configured = target.getMapList(root);
+        if (configured.isEmpty()) return false;
+        boolean changed = false;
+        List<Map<String, Object>> migrated = new ArrayList<>();
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> component = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) component.put(String.valueOf(key), value);
+            });
+            if ("raid_wave_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
+                    && component.containsKey("pool-id") && !component.containsKey("pool-ids")) {
+                component.put("pool-ids", List.of(component.get("pool-id"), component.get("pool-id")));
+                component.remove("pool-id");
+                changed = true;
+                lines.add(fileName + ": converted outpost raid pool to a two-wave sequence");
             }
             migrated.add(component);
         }

@@ -50,7 +50,9 @@ final class ExplorationStructureContentPrototypeTest {
         assertEquals("choice_prompt", eventComponents.get(0).get("type"));
         assertEquals("loot_exit", eventComponents.get(0).get("phase"));
         assertEquals("raid_wave_spawn", eventComponents.get(1).get("type"));
-        assertEquals("outpost_raid_tier_1", eventComponents.get(1).get("pool-id"));
+        assertEquals(List.of("outpost_raid_tier_1", "outpost_raid_tier_1"),
+                eventComponents.get(1).get("pool-ids"));
+        assertEquals(Boolean.TRUE, eventComponents.get(1).get("repeat-on-next-wave"));
         String tierTwo = "raid-pools.outpost_raid_tier_2.mobs.golden_bulwark";
         assertTrue(yaml.isConfigurationSection(tierTwo));
         assertTrue(yaml.getBoolean(tierTwo + ".heavy", false));

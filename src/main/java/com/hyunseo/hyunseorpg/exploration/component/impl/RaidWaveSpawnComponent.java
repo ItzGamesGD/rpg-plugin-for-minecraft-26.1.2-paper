@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Spawns one YAML-selected, bounded raid pool after a player has chosen a tier. */
+/** Spawns bounded YAML-selected raid waves after a player has chosen a tier. */
 public final class RaidWaveSpawnComponent implements ExplorationComponent {
     private final ExplorationRegistry registry;
     private final RaidWavePlanner planner;
@@ -35,10 +35,16 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
-        if (context.runtime().objectiveMode()) {
-            throw new IllegalStateException("raid wave cannot be spawned twice");
+        if (context.runtime().objectiveMode() && !context.runtime().objectiveEntities().isEmpty()) {
+            throw new IllegalStateException("raid wave cannot be spawned while objectives remain");
         }
-        String poolId = spec.string("pool-id", "");
+        if (context.runtime().raidWaveCount() == 0) {
+            List<String> configuredPools = spec.stringList("pool-ids");
+            if (configuredPools.isEmpty()) configuredPools = List.of(spec.string("pool-id", ""));
+            context.runtime().configureRaidWaveSequence(configuredPools);
+        }
+        String poolId = context.runtime().currentRaidWavePoolId();
+        if (poolId.isBlank()) throw new IllegalArgumentException("raid wave has no pool id");
         var pool = registry.raidPool(poolId)
                 .orElseThrow(() -> new IllegalArgumentException("unknown raid pool: " + poolId));
         List<RaidMobDefinition> units = planner.plan(pool, ThreadLocalRandom.current());
@@ -65,6 +71,7 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
         context.runtime().trackObjectives(objectives);
         context.plugin().getLogger().info("Exploration raid wave spawned: structure="
                 + context.record().structureId() + ", pool=" + pool.id() + ", units=" + units.size()
-                + ", objectives=" + objectives.size());
+                + ", objectives=" + objectives.size() + ", wave=" + context.runtime().raidWaveNumber()
+                + "/" + context.runtime().raidWaveCount());
     }
 }

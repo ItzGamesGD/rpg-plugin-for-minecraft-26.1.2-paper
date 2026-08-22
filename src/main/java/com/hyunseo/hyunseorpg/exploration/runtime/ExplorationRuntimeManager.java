@@ -323,7 +323,25 @@ public final class ExplorationRuntimeManager {
                     }
                 }
                 if (runtime.objectivesCleared()) {
-                    complete(record.structureId(), currentTick);
+                    if (runtime.hasNextRaidWave()) {
+                        try {
+                            runtime.advanceRaidWave();
+                            executePhase(record, runtime, ExplorationComponentPhase.NEXT_WAVE, currentTick);
+                            if (runtime.objectiveEntities().isEmpty()) {
+                                throw new IllegalStateException("next raid wave produced no objectives");
+                            }
+                            runtime.clearCombatAbandonExit();
+                            plugin.getLogger().info("Exploration raid wave advanced: structure="
+                                    + record.structureId() + ", wave=" + runtime.raidWaveNumber()
+                                    + "/" + runtime.raidWaveCount());
+                        } catch (Exception exception) {
+                            plugin.getLogger().log(Level.SEVERE, "Exploration next wave failed for "
+                                    + record.structureId(), exception);
+                            abandon(record.structureId());
+                        }
+                    } else {
+                        complete(record.structureId(), currentTick);
+                    }
                     continue;
                 }
             }
@@ -439,7 +457,10 @@ public final class ExplorationRuntimeManager {
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
             ExplorationComponentPhase configured = ExplorationComponentPhase.parse(spec.string("phase", ""), component.defaultPhase());
-            if (configured == phase) component.execute(context, spec);
+            boolean nextWaveRepeat = phase == ExplorationComponentPhase.NEXT_WAVE
+                    && component.type().equals("raid_wave_spawn")
+                    && spec.bool("repeat-on-next-wave", false);
+            if (configured == phase || nextWaveRepeat) component.execute(context, spec);
         }
     }
 

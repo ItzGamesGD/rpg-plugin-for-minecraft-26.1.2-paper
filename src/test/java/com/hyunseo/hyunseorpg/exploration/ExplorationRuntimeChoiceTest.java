@@ -63,4 +63,28 @@ final class ExplorationRuntimeChoiceTest {
         assertTrue(runtime.confirmObjectiveDeath(second));
         assertTrue(runtime.objectivesCleared());
     }
+
+    @Test
+    void raidWaveSequenceAdvancesOnlyAfterTheCurrentWaveIsCleared() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "outpost_raid_event", 10L);
+        runtime.configureRaidWaveSequence(List.of("tier1", "tier1"));
+
+        assertEquals("tier1", runtime.currentRaidWavePoolId());
+        assertEquals(1, runtime.raidWaveNumber());
+        assertTrue(runtime.hasNextRaidWave());
+
+        UUID first = UUID.randomUUID();
+        runtime.trackObjectives(List.of(first));
+        assertTrue(runtime.confirmObjectiveDeath(first));
+        assertTrue(runtime.objectivesCleared());
+        assertTrue(runtime.advanceRaidWave());
+        assertEquals(2, runtime.raidWaveNumber());
+        assertFalse(runtime.hasNextRaidWave());
+
+        UUID second = UUID.randomUUID();
+        runtime.trackObjectives(List.of(second));
+        assertFalse(runtime.objectivesCleared());
+        assertTrue(runtime.confirmObjectiveDeath(second));
+        assertTrue(runtime.objectivesCleared());
+    }
 }

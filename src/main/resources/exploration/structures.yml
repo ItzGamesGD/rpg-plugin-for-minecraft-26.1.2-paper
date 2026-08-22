@@ -70,21 +70,24 @@ structures:
             default-choice: flee
           - type: raid_wave_spawn
             phase: choice_tier_1
-            pool-id: outpost_raid_tier_1
+            pool-ids: [outpost_raid_tier_1, outpost_raid_tier_1]
+            repeat-on-next-wave: true
             safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
           - type: raid_wave_spawn
             phase: choice_tier_2
-            pool-id: outpost_raid_tier_2
+            pool-ids: [outpost_raid_tier_2, outpost_raid_tier_2]
+            repeat-on-next-wave: true
             safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
           - type: raid_wave_spawn
             phase: choice_tier_3
-            pool-id: outpost_raid_tier_3
+            pool-ids: [outpost_raid_tier_3, outpost_raid_tier_3]
+            repeat-on-next-wave: true
             safe-spawn: true
             dx: 0
             dy: 1
