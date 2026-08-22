@@ -298,6 +298,7 @@ public final class ConfigMigrationService {
             } else {
                 changed = copyMissingRoot(target, defaults);
                 changed |= migrateLegacyExplorationPrototype(target, fileName, lines);
+                changed |= migrateOutpostLootTrigger(target, fileName, lines);
                 if (changed) {
                     lines.add(fileName + ": added missing exploration keys without overwriting operator values");
                 }
@@ -331,6 +332,30 @@ public final class ConfigMigrationService {
                     changed = true;
                     lines.add(fileName + ": added selected swamp hut unmanaged Witch cleanup policy");
                 }
+            }
+            migrated.add(component);
+        }
+        if (changed) target.set(root, migrated);
+        return changed;
+    }
+
+    private boolean migrateOutpostLootTrigger(FileConfiguration target, String fileName, List<String> lines) {
+        String root = "structures.pillager_outpost.variants.outpost_raid_event.components";
+        List<Map<?, ?>> configured = target.getMapList(root);
+        if (configured.isEmpty()) return false;
+        boolean changed = false;
+        List<Map<String, Object>> migrated = new ArrayList<>();
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> component = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) component.put(String.valueOf(key), value);
+            });
+            if ("choice_prompt".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
+                    && "outpost_raid_difficulty".equalsIgnoreCase(String.valueOf(component.getOrDefault("prompt-id", "")))
+                    && "activate".equalsIgnoreCase(String.valueOf(component.getOrDefault("phase", "")))) {
+                component.put("phase", "loot_exit");
+                changed = true;
+                lines.add(fileName + ": moved outpost raid choice prompt to loot-exit trigger");
             }
             migrated.add(component);
         }

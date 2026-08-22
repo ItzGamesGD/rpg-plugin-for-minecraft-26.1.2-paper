@@ -22,7 +22,9 @@ public final class ChoicePromptComponent implements ExplorationComponent {
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
-        UUID owner = context.runtime().participants().stream().findFirst()
+        UUID owner = context.runtime().looter() != null
+                ? context.runtime().looter()
+                : context.runtime().participants().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("choice_prompt requires an activating player"));
         Set<String> choices = new LinkedHashSet<>(spec.stringList("choices"));
         if (choices.isEmpty()) choices.addAll(Set.of("tier1", "tier2", "tier3", "flee"));

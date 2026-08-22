@@ -46,6 +46,7 @@ final class ExplorationStructureContentPrototypeTest {
         assertFalse(yaml.getBoolean(eventVariant + ".prototype", true));
         List<Map<?, ?>> eventComponents = yaml.getMapList(eventVariant + ".components");
         assertEquals("choice_prompt", eventComponents.get(0).get("type"));
+        assertEquals("loot_exit", eventComponents.get(0).get("phase"));
         assertEquals("raid_wave_spawn", eventComponents.get(1).get("type"));
         assertEquals("outpost_raid_tier_1", eventComponents.get(1).get("pool-id"));
     }

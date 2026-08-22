@@ -5,6 +5,7 @@ import java.util.Locale;
 public enum ExplorationComponentPhase {
     ACTIVATE,
     CLEAR,
+    LOOT_EXIT,
     CHOICE_TIER_1,
     CHOICE_TIER_2,
     CHOICE_TIER_3;

@@ -20,6 +20,9 @@ public final class ExplorationRuntime {
     private String defaultChoice = "flee";
     private long choiceExpiresAtTick = -1L;
     private String selectedChoice = "";
+    private UUID looter;
+    private long lootTakenAtTick = -1L;
+    private boolean lootExitPrompted;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -74,6 +77,16 @@ public final class ExplorationRuntime {
     public synchronized String defaultChoice() { return defaultChoice; }
     public synchronized Set<String> allowedChoices() { return allowedChoices; }
     public synchronized String selectedChoice() { return selectedChoice; }
+    public synchronized void markLootTaken(UUID playerId, long tick) {
+        if (playerId == null) return;
+        looter = playerId;
+        lootTakenAtTick = Math.max(0L, tick);
+    }
+    public synchronized boolean lootTaken() { return looter != null; }
+    public synchronized UUID looter() { return looter; }
+    public synchronized long lootTakenAtTick() { return lootTakenAtTick; }
+    public synchronized boolean lootExitPrompted() { return lootExitPrompted; }
+    public synchronized void markLootExitPrompted() { lootExitPrompted = true; }
     public synchronized boolean choose(UUID playerId, String choice) {
         String normalized = normalizeChoice(choice);
         if (!choicePending() || !choiceOwner.equals(playerId) || !allowedChoices.contains(normalized)) return false;

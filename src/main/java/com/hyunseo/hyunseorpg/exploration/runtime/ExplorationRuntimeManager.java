@@ -111,11 +111,17 @@ public final class ExplorationRuntimeManager {
             }
             ExplorationRuntime runtime = new ExplorationRuntime(persistent.structureId(), persistent.variantId(), currentTick);
             runtime.addParticipant(trigger.getUniqueId());
+            restoreLootState(persistent, runtime);
             active.put(persistent.structureId(), runtime);
             lastEndReasons.remove(persistent.structureId());
             plugin.getLogger().info("Exploration activation: structure=" + persistent.structureType()
                     + ", variant=" + persistent.variantId() + ", id=" + persistent.structureId());
             executePhase(persistent, runtime, ExplorationComponentPhase.ACTIVATE, currentTick);
+            if (runtime.lootTaken()
+                    && Boolean.parseBoolean(persistent.activationMetadata().getOrDefault("loot-exit-prompted", "false"))) {
+                executePhase(persistent, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
+                runtime.markLootExitPrompted();
+            }
             return true;
         } catch (Exception exception) {
             ExplorationRuntime failed = active.remove(record.structureId());
@@ -166,7 +172,7 @@ public final class ExplorationRuntimeManager {
         String choice = normalizeChoice(rawChoice);
         if (!runtime.allowedChoices().contains(choice)) return ChoiceResult.INVALID_CHOICE;
         ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
-        if (!"flee".equals(choice) && (definition == null || !record.worldId().equals(player.getWorld().getUID())
+        if (!"flee".equals(choice) && !runtime.lootTaken() && (definition == null || !record.worldId().equals(player.getWorld().getUID())
                 || distanceSquared(record, player.getLocation()) > definition.abandonRadius() * definition.abandonRadius())) {
             return ChoiceResult.OUT_OF_RANGE;
         }
@@ -187,6 +193,36 @@ public final class ExplorationRuntimeManager {
             abandon(structureId);
             return ChoiceResult.SPAWN_FAILED;
         }
+    }
+
+    /** Arms an outpost runtime when a player actually removes an item from its container. */
+    public synchronized boolean markLootTaken(Location container, Player player, long currentTick) {
+        if (container == null || player == null || container.getWorld() == null) return false;
+        boolean marked = false;
+        for (StructureRecord record : repository.index().nearby(container.getWorld().getUID(),
+                container.getX(), container.getZ(), 1.0D)) {
+            if (!record.structureType().equals("pillager_outpost")
+                    || !record.bounds().contains(container.getX(), container.getY(), container.getZ())) continue;
+            if (record.state() == StructureEventState.UNDISCOVERED) {
+                activate(record, player, currentTick);
+            }
+            ExplorationRuntime runtime = active.get(record.structureId());
+            if (runtime == null || runtime.lootTaken()) continue;
+            runtime.markLootTaken(player.getUniqueId(), currentTick);
+            try {
+                StructureRecord updated = repository.get(record.structureId()).orElse(record)
+                        .withMetadata("loot-taken", "true")
+                        .withMetadata("looter", player.getUniqueId().toString())
+                        .withMetadata("loot-taken-at-tick", Long.toString(currentTick));
+                repository.save(updated);
+                marked = true;
+                plugin.getLogger().info("Exploration outpost loot armed: structure=" + record.structureId()
+                        + ", looter=" + player.getUniqueId());
+            } catch (IOException exception) {
+                plugin.getLogger().log(Level.WARNING, "Unable to persist outpost loot state: " + record.structureId(), exception);
+            }
+        }
+        return marked;
     }
 
     public synchronized boolean abandon(UUID structureId) {
@@ -223,6 +259,22 @@ public final class ExplorationRuntimeManager {
                 plugin.getLogger().info("Exploration choice timed out: structure=" + record.structureType()
                         + ", id=" + record.structureId() + ", default=" + runtime.defaultChoice());
                 abandon(record.structureId());
+                continue;
+            }
+
+            if (runtime.lootTaken() && runtime.lootExitPrompted() == false
+                    && runtime.physicalExitAtTick() != null
+                    && currentTick - runtime.physicalExitAtTick() >= definition.abandonGraceTicks()) {
+                try {
+                    executePhase(record, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
+                    runtime.markLootExitPrompted();
+                    repository.save(record.withMetadata("loot-exit-prompted", "true"));
+                    runtime.clearPhysicalExit();
+                    plugin.getLogger().info("Exploration outpost loot exit prompt: structure=" + record.structureId());
+                } catch (Exception exception) {
+                    plugin.getLogger().log(Level.WARNING, "Unable to start outpost loot exit prompt: " + record.structureId(), exception);
+                    abandon(record.structureId());
+                }
                 continue;
             }
 
@@ -330,6 +382,25 @@ public final class ExplorationRuntimeManager {
             case "tier3" -> ExplorationComponentPhase.CHOICE_TIER_3;
             default -> throw new IllegalArgumentException("unsupported exploration choice: " + choice);
         };
+    }
+
+    private void restoreLootState(StructureRecord record, ExplorationRuntime runtime) {
+        if (!Boolean.parseBoolean(record.activationMetadata().getOrDefault("loot-taken", "false"))) return;
+        UUID looter = parseUuid(record.activationMetadata().get("looter"));
+        if (looter != null) {
+            runtime.addParticipant(looter);
+            runtime.markLootTaken(looter, parseLong(record.activationMetadata().get("loot-taken-at-tick"), 0L));
+        }
+    }
+
+    private UUID parseUuid(String raw) {
+        try { return raw == null ? null : UUID.fromString(raw); }
+        catch (IllegalArgumentException ignored) { return null; }
+    }
+
+    private long parseLong(String raw, long fallback) {
+        try { return raw == null ? fallback : Long.parseLong(raw); }
+        catch (NumberFormatException ignored) { return fallback; }
     }
 
     private String normalizeChoice(String value) {

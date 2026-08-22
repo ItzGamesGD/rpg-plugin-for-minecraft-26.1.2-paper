@@ -62,7 +62,7 @@ structures:
         components:
           - type: choice_prompt
             prompt-id: outpost_raid_difficulty
-            phase: activate
+            phase: loot_exit
             choices: [tier1, tier2, tier3, flee]
             timeout-ticks: 400
             default-choice: flee

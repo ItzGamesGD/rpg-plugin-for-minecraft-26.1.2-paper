@@ -18,6 +18,7 @@ import com.hyunseo.hyunseorpg.exploration.integration.BukkitExplorationPorts;
 import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
 import com.hyunseo.hyunseorpg.exploration.listener.ChunkLoadExplorationListener;
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationPlayerMovementListener;
+import com.hyunseo.hyunseorpg.exploration.listener.ExplorationChestLootListener;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureIndex;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureRepository;
 import com.hyunseo.hyunseorpg.exploration.persistence.YamlStructureStorage;
@@ -74,7 +75,8 @@ public final class ExplorationModule {
                 effectivePorts, new TeleportExemptionService());
         this.listeners = List.of(
                 new ChunkLoadExplorationListener(detection),
-                new ExplorationPlayerMovementListener(runtimes, tickCounter));
+                new ExplorationPlayerMovementListener(runtimes, tickCounter),
+                new ExplorationChestLootListener(runtimes, tickCounter));
     }
 
     public synchronized boolean start() {

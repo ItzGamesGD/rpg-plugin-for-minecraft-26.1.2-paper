@@ -20,6 +20,12 @@ public record StructureBounds(int minX, int minY, int minZ, int maxX, int maxY, 
         return dx * dx + dy * dy + dz * dz;
     }
 
+    public boolean contains(double x, double y, double z) {
+        return x >= minX && x <= maxX
+                && y >= minY && y <= maxY
+                && z >= minZ && z <= maxZ;
+    }
+
     public int minChunkX() { return minX >> 4; }
     public int maxChunkX() { return maxX >> 4; }
     public int minChunkZ() { return minZ >> 4; }
