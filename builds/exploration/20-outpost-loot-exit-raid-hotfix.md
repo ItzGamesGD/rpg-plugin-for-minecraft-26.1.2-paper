@@ -17,6 +17,7 @@ The outpost runtime had a proximity activation and a choice prompt, but no inven
 - Captures a fixed raid origin at loot exit and searches safe terrain roughly 12-20 blocks around that snapshot instead of spawning around the outpost anchor.
 - Added `golden_bulwark` to tier 2 and tier 3 outpost pools using the existing custom mob port.
 - Objective completion now requires explicit `EntityDeathEvent` confirmation for every spawned objective. Unloaded or unresolved UUIDs are retained and never counted as deaths.
+- Teleports now receive a 60-tick exemption checked by heartbeat as well as movement listeners; loot-trigger and combat-abandon clocks cannot restart on the first post-teleport heartbeat.
 
 ## Runtime path
 
@@ -38,11 +39,11 @@ Leaving the combat radius after `RAID_ACTIVE` starts the independent combat-aban
 
 ## Verification
 
-- `197 tests`
+- `199 tests`
 - `0 failures`
 - `2 skipped` (existing live Paper-dependent tests)
 - JAR: `build/libs/HyunseoRPG-0.1.0-SNAPSHOT.jar`
-- SHA-256: `5629001C704E4BF9BDF378BE23C3CD337892E3C1AB33F66E476794CB3F3137CA`
+- SHA-256: `0A97AEEFC7886E08F2263E409442D8571CF24E68B6F7830BF113E38EB33C46C2`
 - SHA-256: `1E82FCDDB26BBF10436829C2C1BF5534E004D1824AB5FB6DA5B8AFCD619D8C85`
 
 ## Live verification still required

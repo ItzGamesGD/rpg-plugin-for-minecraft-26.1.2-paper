@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 /** E3-E5 runtime coordinator. Persistent state transition always precedes runtime activation. */
 public final class ExplorationRuntimeManager {
+    private static final long TELEPORT_EXEMPTION_TICKS = 60L;
     public enum ChoiceResult { ACCEPTED, FLED, NOT_FOUND, NOT_PENDING, NOT_OWNER, OUT_OF_RANGE, INVALID_CHOICE, SPAWN_FAILED }
     private final JavaPlugin plugin;
     private final ExplorationRegistry registry;
@@ -269,6 +270,11 @@ public final class ExplorationRuntimeManager {
             if (runtime.lootTaken() && !runtime.lootExitPrompted() && !runtime.raidStarted()) {
                 Player looter = runtime.looter() == null ? null : Bukkit.getPlayer(runtime.looter());
                 if (looter != null && looter.isOnline() && looter.getWorld().getUID().equals(record.worldId())) {
+                    if (teleportExemptions.isExempt(record.structureId(), looter.getUniqueId(), currentTick)) {
+                        runtime.clearLootTriggerExit();
+                        runtime.clearCombatAbandonExit();
+                        continue;
+                    }
                     double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
                     if (distanceSquared(record, looter.getLocation()) <= limit) {
                         runtime.clearLootTriggerExit();
@@ -332,6 +338,11 @@ public final class ExplorationRuntimeManager {
                 }
             }
             if (anyInside) {
+                runtime.clearCombatAbandonExit();
+            } else if (runtime.participants().stream()
+                    .anyMatch(playerId -> teleportExemptions.isExempt(record.structureId(), playerId, currentTick))) {
+                // A teleport is not a physical boundary crossing. Re-evaluate after the
+                // short exemption instead of starting an abandon timer on the first heartbeat.
                 runtime.clearCombatAbandonExit();
             } else {
                 if (runtime.combatAbandonExitAtTick() == null) runtime.markCombatAbandonExit(currentTick);
@@ -400,7 +411,8 @@ public final class ExplorationRuntimeManager {
     public synchronized void onTeleport(Player player, long currentTick) {
         for (ExplorationRuntime runtime : java.util.List.copyOf(active.values())) {
             if (!runtime.participants().contains(player.getUniqueId())) continue;
-            teleportExemptions.exempt(runtime.structureId(), player.getUniqueId(), currentTick, 40L);
+            teleportExemptions.exempt(runtime.structureId(), player.getUniqueId(), currentTick,
+                    TELEPORT_EXEMPTION_TICKS);
             runtime.clearLootTriggerExit();
             runtime.clearCombatAbandonExit();
         }
