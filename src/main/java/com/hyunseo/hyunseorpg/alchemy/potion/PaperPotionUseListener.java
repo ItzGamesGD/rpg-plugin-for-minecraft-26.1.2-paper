@@ -75,12 +75,10 @@ public final class PaperPotionUseListener implements Listener {
         if (pdc.readPotionId(item).isBlank() || !"SPLASH".equalsIgnoreCase(pdc.readDelivery(item))) return;
         event.setCancelled(true);
         UUID source = potion.getShooter() instanceof Player player ? player.getUniqueId() : null;
-        if ("slime".equalsIgnoreCase(pdc.readCatalystId(item)) && specialExecutions != null) {
-            specialExecutions.handleSlimeSplash(potion, pdc.readPotionId(item), source, event.getAffectedEntities());
-            return;
-        }
-        if ("echo_shard".equalsIgnoreCase(pdc.readCatalystId(item)) && specialExecutions != null) {
-            specialExecutions.handleEchoSplash(pdc.readPotionId(item), source, event.getAffectedEntities());
+        String catalystId = pdc.readCatalystId(item);
+        if (specialExecutions != null && specialExecutions.isSpecialSplashCatalyst(catalystId)) {
+            specialExecutions.handleSplash(catalystId, potion, pdc.readPotionId(item),
+                    source, event.getAffectedEntities());
             return;
         }
         for (LivingEntity target : event.getAffectedEntities()) {

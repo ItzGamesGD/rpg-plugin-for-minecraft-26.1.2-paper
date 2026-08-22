@@ -218,5 +218,15 @@ public final class EffectMovementLockService implements Listener {
                 + ",yaw=" + location.getYaw() + ",pitch=" + location.getPitch();
     }
 
+    /** Structured shock-root state used by the production effect debug surface. */
+    public synchronized String debug(UUID entityId, long currentTick) {
+        RootState state = roots.get(entityId);
+        boolean active = state != null && currentTick < state.expiresAt();
+        return "shockRootActive=" + active
+                + " shockRootStart=" + (state == null ? -1L : currentTick)
+                + " shockRootEnd=" + (state == null ? -1L : state.expiresAt())
+                + " currentTick=" + currentTick;
+    }
+
     private record RootState(long expiresAt, Boolean originalHasAI) { }
 }

@@ -1,0 +1,194 @@
+# HyunseoRPG Exploration package
+# Safety default: installed but disabled until desktop integration/live validation.
+schema-version: 1
+enabled: false
+
+runtime:
+  # BALANCE_PENDING
+  heartbeat-ticks: 10
+
+# selection-chance, radii, grace, rewards and exact variants remain BALANCE_PENDING.
+# Existing records never reroll when these values are changed later.
+structures:
+  swamp_hut:
+    minecraft-key: minecraft:swamp_hut
+    enabled: true
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 32.0
+    abandon-radius: 64.0
+    abandon-grace-ticks: 100
+    variants:
+      elite_witch_prototype:
+        enabled: true
+        weight: 1.0
+        prototype: true
+        components:
+          - type: scripted_spawn
+            mob-id: custom:mire_shaman
+            count: 1
+            objective: true
+            safe-spawn: true
+            cleanup-unmanaged-type: WITCH
+            dx: 0
+            dy: 1
+            dz: 0
+
+  pillager_outpost:
+    minecraft-key: minecraft:pillager_outpost
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 40.0
+    loot-trigger-radius: 24.0
+    loot-trigger-grace-ticks: 20
+    combat-abandon-radius: 80.0
+    combat-abandon-grace-ticks: 100
+    variants:
+      scout_wave_prototype:
+        enabled: false
+        weight: 0.0
+        prototype: true
+        components:
+          - type: scripted_spawn
+            mob-id: vanilla:pillager
+            count: 2
+            objective: true
+            dx: 0
+            dy: 1
+            dz: 0
+      outpost_raid_event:
+        enabled: true
+        weight: 1.0
+        prototype: false
+        components:
+          - type: choice_prompt
+            prompt-id: outpost_raid_difficulty
+            phase: loot_exit
+            choices: [tier1, tier2, tier3, flee]
+            timeout-ticks: 400
+            default-choice: flee
+          - type: raid_wave_spawn
+            phase: choice_tier_1
+            pool-id: outpost_raid_tier_1
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: raid_wave_spawn
+            phase: choice_tier_2
+            pool-id: outpost_raid_tier_2
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: raid_wave_spawn
+            phase: choice_tier_3
+            pool-id: outpost_raid_tier_3
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+
+  desert_pyramid:
+    minecraft-key: minecraft:desert_pyramid
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 36.0
+    abandon-radius: 72.0
+    abandon-grace-ticks: 100
+    variants: {}
+
+  trial_chambers:
+    minecraft-key: minecraft:trial_chambers
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 48.0
+    abandon-radius: 96.0
+    abandon-grace-ticks: 120
+    variants: {}
+
+  ocean_monument:
+    minecraft-key: minecraft:monument
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 64.0
+    abandon-radius: 128.0
+    abandon-grace-ticks: 140
+    variants: {}
+
+  shipwreck:
+    minecraft-key: minecraft:shipwreck
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 36.0
+    abandon-radius: 72.0
+    abandon-grace-ticks: 100
+    variants: {}
+
+  nether_fortress:
+    minecraft-key: minecraft:fortress
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 56.0
+    abandon-radius: 112.0
+    abandon-grace-ticks: 120
+    variants: {}
+
+  bastion_remnant:
+    minecraft-key: minecraft:bastion_remnant
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 56.0
+    abandon-radius: 112.0
+    abandon-grace-ticks: 120
+    variants: {}
+
+  end_city:
+    minecraft-key: minecraft:end_city
+    enabled: false
+    selection-chance: 0.0
+    balance-pending: true
+    trigger-radius: 56.0
+    abandon-radius: 112.0
+    abandon-grace-ticks: 120
+    variants: {}
+
+# Initial encounter units only. Combat-time summons are intentionally not part of these totals.
+raid-pools:
+  outpost_raid_tier_1:
+    total-max-spawns: 4
+    heavy-max-spawns: 0
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 7}
+      crossbow_raider: {max: 3, weight: 4, heavy: false, level: 6}
+      charger_raider: {max: 1, weight: 2, heavy: false, level: 7}
+
+  outpost_raid_tier_2:
+    total-max-spawns: 6
+    heavy-max-spawns: 1
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 8}
+      crossbow_raider: {max: 3, weight: 3, heavy: false, level: 7}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 8}
+      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 10}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 9}
+      spike_evoker: {max: 1, weight: 1, heavy: true, level: 10}
+
+  outpost_raid_tier_3:
+    total-max-spawns: 8
+    heavy-max-spawns: 2
+    mobs:
+      shield_raider: {max: 3, weight: 3, heavy: false, level: 9}
+      crossbow_raider: {max: 4, weight: 3, heavy: false, level: 8}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 9}
+      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 12}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 10}
+      spike_evoker: {max: 1, weight: 1, heavy: true, level: 11}
+      ravager_rider: {max: 1, weight: 1, heavy: true, level: 12}

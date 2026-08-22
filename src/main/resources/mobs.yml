@@ -137,8 +137,204 @@ forced-rpg-zones:
 # The same four Mythic-compatible IDs are also registered in the core RPG
 # registry so they work without MythicMobs and use the normal RPG reward path.
 custom-mobs:
+  golden_bulwark:
+    display-name: Golden Bulwark
+    vanilla-type: PIGLIN
+    level: 9
+    hp: 58.0
+    damage: 5.0
+    exp: 54
+    class-exp: 16
+    coin: 16
+    drop-table: earth_common
+    region: overworld
+    tags: [rpg_mob, elite, shield]
+    attributes:
+      movement-speed-mode: MULTIPLIER
+      movement-speed-value: 0.75
+      armor: 3.0
+    behavior-id: golden_bulwark
+    behavior:
+      recognition-range: 24.0
+      frontal-half-angle: 60.0
+      frontal-damage-multiplier: 0.35
+      bash:
+        prepare-range: 3.5
+        telegraph-ticks: 12
+        lunge-ticks: 6
+        lunge-horizontal: 0.65
+        lunge-vertical: 0.35
+        hit-range: 1.8
+        hit-half-angle: 45.0
+        knockback-horizontal: 1.05
+        knockback-vertical: 0.85
+        damage: 0.0
+        recovery-ticks: 18
+        cooldown-ticks: 70
+
+  mire_shaman:
+    display-name: 수렁 주술사
+    vanilla-type: WITCH
+    level: 9
+    hp: 48.0
+    damage: 3.0
+    exp: 58
+    class-exp: 18
+    coin: 18
+    drop-table: earth_common
+    region: overworld
+    tags: [rpg_mob, elite, swamp, caster]
+    behavior-id: mire_shaman
+    behavior:
+      recognition-range: 24.0
+      pattern-weights:
+        pool: 0.65
+        summon: 0.35
+      pool:
+        telegraph-ticks: 30
+        radius: 2.75
+        duration-ticks: 120
+        max-active: 3
+        damage: 1.0
+        damage-interval-ticks: 20
+      minion:
+        telegraph-ticks: 12
+        min-count: 1
+        max-count: 2
+        max-active: 5
+        cooldown-ticks: 200
+        types: [SLIME, HUSK, BOGGED]
+        slime-size: 2
+      reclaim:
+        health-threshold: 0.5
+        heal-ratio: 0.125
+
+  shield_raider:
+    display-name: 전초기지 방패병
+    vanilla-type: VINDICATOR
+    level: 7
+    hp: 34.0
+    damage: 4.0
+    exp: 12
+    class-exp: 4
+    coin: 4
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: IRON_SWORD
+      off-hand: SHIELD
+      chestplate: CHAINMAIL_CHESTPLATE
+    behavior-id: shield_raider
+    behavior:
+      recognition-range: 24.0
+      guard:
+        trigger-range: 5.0
+        duration-ticks: 50
+        cooldown-ticks: 140
+        damage-multiplier: 0.5
+
+  crossbow_raider:
+    display-name: 전초기지 석궁병
+    vanilla-type: PILLAGER
+    level: 6
+    hp: 26.0
+    damage: 3.0
+    exp: 9
+    class-exp: 3
+    coin: 3
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: CROSSBOW
+
+  charger_raider:
+    display-name: 전초기지 돌격병
+    vanilla-type: VINDICATOR
+    level: 7
+    hp: 30.0
+    damage: 4.5
+    exp: 13
+    class-exp: 4
+    coin: 4
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: IRON_AXE
+    behavior-id: charger_raider
+    behavior:
+      recognition-range: 24.0
+      charge:
+        trigger-range: 8.0
+        telegraph-ticks: 16
+        dash-ticks: 10
+        cooldown-ticks: 180
+        velocity: 1.05
+        knockback: 0.65
+
+  banner_raider:
+    display-name: 전초기지 깃발병
+    vanilla-type: PILLAGER
+    level: 9
+    hp: 36.0
+    damage: 3.5
+    exp: 20
+    class-exp: 6
+    coin: 6
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy]
+    equipment:
+      main-hand: CROSSBOW
+      helmet: BLACK_BANNER
+    behavior-id: banner_raider
+    behavior:
+      recognition-range: 24.0
+      aura:
+        radius: 10.0
+        interval-ticks: 20
+        duration-ticks: 30
+        speed-amplifier: 0
+        resistance-amplifier: 0
+
+  spike_evoker:
+    display-name: 전초기지 송곳 소환사
+    vanilla-type: EVOKER
+    level: 10
+    hp: 42.0
+    damage: 4.0
+    exp: 24
+    class-exp: 8
+    coin: 8
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy, caster]
+    behavior-id: spike_evoker
+    behavior:
+      recognition-range: 24.0
+      vex-summon: false
+      totem-drop: false
+
+  ravager_rider:
+    display-name: 전초기지 파괴수 기수
+    vanilla-type: RAVAGER
+    level: 12
+    hp: 90.0
+    damage: 7.0
+    exp: 40
+    class-exp: 12
+    coin: 12
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy]
+    behavior-id: ravager_rider
+    behavior:
+      recognition-range: 28.0
+
   frost_blaze:
-    display-name: 서리 블레이즈
+    display-name: Frost Blaze
     vanilla-type: BLAZE
     level: 12
     hp: 40.0
@@ -187,7 +383,7 @@ custom-mobs:
           deny: [RIVER, FROZEN_RIVER, OCEAN, DEEP_OCEAN, FROZEN_OCEAN, BEACH]
 
   explosive_breeze:
-    display-name: 폭발 브리즈
+    display-name: Explosive Breeze
     vanilla-type: BREEZE
     level: 16
     hp: 60.0
@@ -209,7 +405,7 @@ custom-mobs:
     spawn: {natural: {enabled: false, chance: 0.0, max-nearby: 4, requires-ground: false, min-player-distance: 0.0, max-player-distance: -1.0}}
 
   riptide_drowned:
-    display-name: 급류 드라운드
+    display-name: Riptide Drowned
     vanilla-type: DROWNED
     level: 18
     hp: 70.0
@@ -230,7 +426,7 @@ custom-mobs:
     spawn: {natural: {enabled: false, chance: 0.0, max-nearby: 4, requires-ground: true, min-player-distance: 0.0, max-player-distance: -1.0}}
 
   mining_giant:
-    display-name: 채굴 거인
+    display-name: Mining Giant
     vanilla-type: ZOMBIE_VILLAGER
     level: 8
     hp: 140.0
@@ -270,7 +466,7 @@ custom-mobs:
       rock-knockback: 0.35
       rock-radius: 2.0
   lava_cube:
-    display-name: 용암 큐브
+    display-name: Lava Cube
     vanilla-type: MAGMA_CUBE
     level: 8
     hp: 65.0
@@ -285,7 +481,7 @@ custom-mobs:
     behavior-id: lava_cube
     behavior: {recognition-range: 24.0, jump-cooldown-ticks: 50, jump-strength: 0.7, jump-damage: 7.0, lava-duration-ticks: 60, lava-radius: 2.5}
   stone_armored_zombie:
-    display-name: 돌갑옷 좀비
+    display-name: Stone Armored Zombie
     vanilla-type: HUSK
     level: 5
     hp: 90.0
@@ -310,7 +506,7 @@ custom-mobs:
       bind-duration-ticks: 40
       knockback-resistance: 0.8
   fake_explosion_creeper:
-    display-name: 위장 폭발 크리퍼
+    display-name: Fake Explosion Creeper
     vanilla-type: CREEPER
     level: 8
     hp: 36.0
@@ -334,7 +530,7 @@ custom-mobs:
       path-recalc-interval-ticks: 8
       explode-radius: 3.0
   swapping_witch:
-    display-name: 위치 교환 마녀
+    display-name: Swapping Witch
     vanilla-type: WITCH
     level: 10
     hp: 50.0
@@ -362,7 +558,7 @@ custom-mobs:
       max-swap-distance: 32.0
       projectile-ignore-source: true
   charging_zombie:
-    display-name: 돌진 좀비
+    display-name: Charging Zombie
     vanilla-type: ZOMBIE
     level: 8
     hp: 48.0
@@ -390,7 +586,7 @@ custom-mobs:
       stun-duration-ticks: 40
       charge-damage: 8.0
   rapid_shooter:
-    display-name: 속사 해골
+    display-name: Rapid Shooter
     vanilla-type: SKELETON
     level: 8
     hp: 34.0
@@ -415,7 +611,7 @@ custom-mobs:
       max-range: 32.0
       bypass-hurt-immunity: true
   splitting_creeper:
-    display-name: 분열 크리퍼
+    display-name: Splitting Creeper
     vanilla-type: CREEPER
     level: 12
     hp: 60.0
@@ -532,7 +728,7 @@ drop-tables:
     entries:
       - item-id: zombie_fragment
         material: ROTTEN_FLESH
-        display-name: 좀비 파편
+        display-name: Zombie Fragment
         chance: 0.25
         min-amount: 1
         max-amount: 2
@@ -546,7 +742,7 @@ drop-tables:
     entries:
       - item-id: elite_zombie_core
         material: ECHO_SHARD
-        display-name: 엘리트 좀비 코어
+        display-name: Elite Zombie Core
         chance: 0.35
         min-amount: 1
         max-amount: 1
@@ -554,7 +750,7 @@ drop-tables:
     entries:
       - item-id: forest_fang
         material: BONE
-        display-name: 숲 늑대 송곳니
+        display-name: Forest Fang
         chance: 0.3
         min-amount: 1
         max-amount: 2
@@ -562,7 +758,7 @@ drop-tables:
     entries:
       - item-id: guard_bone
         material: BONE
-        display-name: 경비병의 뼈
+        display-name: Guard Bone
         chance: 0.3
         min-amount: 1
         max-amount: 2
@@ -570,13 +766,13 @@ drop-tables:
     entries:
       - item-id: skeleton_king_sigil
         material: PAPER
-        display-name: 스켈레톤 킹 인장
+        display-name: Skeleton King Sigil
         chance: 1.0
         min-amount: 1
         max-amount: 1
       - item-id: basic_promotion_stone
         material: PRISMARINE_CRYSTALS
-        display-name: 기본 승급석
+        display-name: Basic Promotion Stone
         chance: 1.0
         min-amount: 1
         max-amount: 1
@@ -584,7 +780,7 @@ drop-tables:
 
 mob-definitions:
   forest_wolf:
-    display-name: 숲 늑대
+    display-name: Forest Wolf
     vanilla-type: WOLF
     level: 5
     hp: 40.0
@@ -602,7 +798,7 @@ mob-definitions:
     attributes:
       movement-speed: 0.32
   zombie_basic:
-    display-name: 기본 좀비
+    display-name: Basic Zombie
     vanilla-type: ZOMBIE
     level: 1
     hp: 20.0
@@ -620,7 +816,7 @@ mob-definitions:
     attributes:
       movement-speed: 0.23
   elite_zombie:
-    display-name: 엘리트 좀비
+    display-name: Elite Zombie
     vanilla-type: ZOMBIE
     level: 5
     hp: 60.0
@@ -641,7 +837,7 @@ mob-definitions:
       movement-speed: 0.25
       armor: 4.0
   skeleton_guard:
-    display-name: 스켈레톤 경비병
+    display-name: Skeleton Guard
     vanilla-type: SKELETON
     level: 3
     hp: 28.0
@@ -660,7 +856,7 @@ mob-definitions:
     attributes:
       movement-speed: 0.25
   skeleton_king:
-    display-name: 스켈레톤 킹
+    display-name: Skeleton King
     vanilla-type: SKELETON
     level: 10
     hp: 200.0

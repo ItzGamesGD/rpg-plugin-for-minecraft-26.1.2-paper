@@ -1,0 +1,85 @@
+package com.hyunseo.hyunseorpg.mob;
+
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.EntityType;
+import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.junit.jupiter.api.Test;
+
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+final class MireShamanPrototypeTest {
+    @Test
+    void mireShamanDefinitionUsesCanonicalNativeMobContract() {
+        YamlConfiguration mobs = loadMobs();
+        String path = "custom-mobs.mire_shaman";
+
+        assertEquals("수렁 주술사", mobs.getString(path + ".display-name"));
+        assertEquals("WITCH", mobs.getString(path + ".vanilla-type"));
+        assertEquals("mire_shaman", mobs.getString(path + ".behavior-id"));
+        assertFalse(mobs.isConfigurationSection("mire_shaman"));
+        assertTrue(mobs.getInt(path + ".behavior.pool.max-active") > 0);
+        assertEquals(5, mobs.getInt(path + ".behavior.minion.max-active"));
+        assertEquals(1, mobs.getInt(path + ".behavior.minion.min-count"));
+        assertEquals(2, mobs.getInt(path + ".behavior.minion.max-count"));
+        assertTrue(mobs.getStringList(path + ".behavior.minion.types").containsAll(
+                java.util.List.of("SLIME", "HUSK", "BOGGED")));
+        assertEquals(1.0D, mobs.getDouble(path + ".behavior.pool.damage"), 0.000001D);
+        assertEquals(20, mobs.getInt(path + ".behavior.pool.damage-interval-ticks"));
+        assertTrue(mobs.getDouble(path + ".behavior.reclaim.health-threshold") > 0.0D);
+    }
+
+    @Test
+    void reclamationIsOwnedAndOncePerLife() {
+        assertTrue(MireShamanPolicy.canReclaim(false, 0.50D, 1, 0.50D));
+        assertFalse(MireShamanPolicy.canReclaim(true, 0.10D, 3, 0.50D));
+        assertFalse(MireShamanPolicy.canReclaim(false, 0.10D, 0, 0.50D));
+        assertFalse(MireShamanPolicy.canReclaim(false, 0.75D, 2, 0.50D));
+    }
+
+    @Test
+    void minionSummonNeverExceedsConfiguredActiveCap() {
+        assertEquals(2, MireShamanPolicy.summonCount(0, 2, 5));
+        assertEquals(1, MireShamanPolicy.summonCount(4, 2, 5));
+        assertEquals(0, MireShamanPolicy.summonCount(5, 2, 5));
+        assertFalse(MireShamanPolicy.summonAllowed(5, 5));
+    }
+
+    @Test
+    void weightedPatternsRemainStateAware() {
+        assertEquals(MireShamanPolicy.Pattern.POOL,
+                MireShamanPolicy.choosePattern(true, true, 0.65D, 0.35D, 0.10D));
+        assertEquals(MireShamanPolicy.Pattern.SUMMON,
+                MireShamanPolicy.choosePattern(true, true, 0.65D, 0.35D, 0.90D));
+        assertEquals(MireShamanPolicy.Pattern.POOL,
+                MireShamanPolicy.choosePattern(true, false, 0.0D, 1.0D, 0.99D));
+        assertEquals(MireShamanPolicy.Pattern.SUMMON,
+                MireShamanPolicy.choosePattern(false, true, 1.0D, 0.0D, 0.01D));
+        assertEquals(null, MireShamanPolicy.choosePattern(false, false, 1.0D, 1.0D, 0.5D));
+    }
+
+    @Test
+    void vanillaWitchesAreBlockedButPluginCustomWitchesRemainPossible() {
+        assertTrue(VanillaWitchSpawnBlockListener.shouldBlock(
+                EntityType.WITCH, CreatureSpawnEvent.SpawnReason.NATURAL));
+        assertTrue(VanillaWitchSpawnBlockListener.shouldBlock(
+                EntityType.WITCH, CreatureSpawnEvent.SpawnReason.SPAWNER_EGG));
+        assertTrue(VanillaWitchSpawnBlockListener.shouldBlock(
+                EntityType.WITCH, CreatureSpawnEvent.SpawnReason.COMMAND));
+        assertFalse(VanillaWitchSpawnBlockListener.shouldBlock(
+                EntityType.WITCH, CreatureSpawnEvent.SpawnReason.CUSTOM));
+        assertFalse(VanillaWitchSpawnBlockListener.shouldBlock(
+                EntityType.ZOMBIE, CreatureSpawnEvent.SpawnReason.NATURAL));
+    }
+
+    private YamlConfiguration loadMobs() {
+        var stream = getClass().getClassLoader().getResourceAsStream("mobs.yml");
+        assertNotNull(stream);
+        return YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+    }
+}

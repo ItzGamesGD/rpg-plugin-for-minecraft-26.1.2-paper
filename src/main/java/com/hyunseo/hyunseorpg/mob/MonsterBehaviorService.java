@@ -23,6 +23,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowball;
+import org.bukkit.entity.Slime;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
@@ -31,6 +32,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntitySpellCastEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
@@ -56,6 +58,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /** Common behavior handlers for registered non-boss RPG monsters. */
 public final class MonsterBehaviorService implements Listener {
@@ -78,6 +81,14 @@ public final class MonsterBehaviorService implements Listener {
     private final Map<UUID, DripstoneAttack> dripstoneAttacks = new ConcurrentHashMap<>();
     private final Set<UUID> splitChildren = ConcurrentHashMap.newKeySet();
     private final Set<UUID> approvedExplosions = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, BulwarkState> bulwarks = new ConcurrentHashMap<>();
+    private final Map<UUID, ShamanState> shamans = new ConcurrentHashMap<>();
+    private final Map<UUID, MudPool> mudPools = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> mireMinionOwners = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> shieldGuardUntil = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> shieldGuardCooldown = new ConcurrentHashMap<>();
+    private final Map<UUID, ChargerState> outpostChargers = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> bannerAuraAt = new ConcurrentHashMap<>();
     private final org.bukkit.NamespacedKey rapidArrowKey;
     private final org.bukkit.NamespacedKey rapidSourceKey;
     private final org.bukkit.NamespacedKey swappingProjectileKey;
@@ -91,6 +102,31 @@ public final class MonsterBehaviorService implements Listener {
     private static final int FAKE_FLEE = 2;
     private static final int FAKE_REAPPROACH = 3;
     private static final int FAKE_REAL_EXPLOSION = 4;
+    private enum BulwarkPhase { NORMAL, TELEGRAPH, LUNGE, RECOVERY }
+    private static final class BulwarkState { BulwarkPhase phase = BulwarkPhase.NORMAL; long until; Vector direction; final Set<UUID> hits = ConcurrentHashMap.newKeySet(); }
+    private enum ShamanAction { IDLE, POOL_TELEGRAPH, SUMMON_TELEGRAPH, RECLAIM }
+    private static final class ShamanState { ShamanAction action = ShamanAction.IDLE; long until; long nextSummonAt; Location snapshot; boolean reclaimUsed; }
+    private static final class MudPool {
+        final UUID owner;
+        final Location center;
+        final double radius;
+        final long expiresAt;
+        long nextDamageAt;
+
+        MudPool(UUID owner, Location center, double radius, long expiresAt, long nextDamageAt) {
+            this.owner = owner;
+            this.center = center;
+            this.radius = radius;
+            this.expiresAt = expiresAt;
+            this.nextDamageAt = nextDamageAt;
+        }
+    }
+    private enum ChargerPhase { IDLE, TELEGRAPH, DASH }
+    private static final class ChargerState {
+        ChargerPhase phase = ChargerPhase.IDLE;
+        long until;
+        Vector direction = new Vector();
+    }
 
     public MonsterBehaviorService(JavaPlugin plugin, ConfigService configService, MobService mobService) {
         this.plugin = plugin;
@@ -154,6 +190,15 @@ public final class MonsterBehaviorService implements Listener {
         dripstoneAttacks.clear();
         splitChildren.clear();
         approvedExplosions.clear();
+        mudPools.clear();
+        bulwarks.clear();
+        shamans.clear();
+        mireMinionOwners.keySet().forEach(id -> { Entity minion = Bukkit.getEntity(id); if (minion != null) minion.remove(); });
+        mireMinionOwners.clear();
+        shieldGuardUntil.clear();
+        shieldGuardCooldown.clear();
+        outpostChargers.clear();
+        bannerAuraAt.clear();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -179,7 +224,12 @@ public final class MonsterBehaviorService implements Listener {
     public void onDeath(EntityDeathEvent event) {
         LivingEntity entity = event.getEntity();
         String behavior = behaviorId(entity);
+        if ("spike_evoker".equals(behavior)) {
+            event.getDrops().removeIf(drop -> drop.getType() == Material.TOTEM_OF_UNDYING);
+        }
+        mireMinionOwners.remove(entity.getUniqueId());
         removeDripstonesForSource(entity.getUniqueId());
+        removeMireOwned(entity.getUniqueId());
         unregister(entity.getUniqueId());
         if (!"splitting_creeper".equals(behavior) || splitChildren.contains(entity.getUniqueId())) return;
 
@@ -201,6 +251,24 @@ public final class MonsterBehaviorService implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof LivingEntity victim && "shield_raider".equals(behaviorId(victim))
+                && ticks < shieldGuardUntil.getOrDefault(victim.getUniqueId(), 0L)) {
+            event.setDamage(event.getDamage() * OutpostRaiderPolicy.guardDamageMultiplier(
+                    behaviorSectionValue(victim, "guard.damage-multiplier", 0.5D)));
+        }
+        if (event.getEntity() instanceof LivingEntity victim && "golden_bulwark".equals(behaviorId(victim))) {
+            LivingEntity attacker = resolveDamageAttacker(event.getDamager());
+            if (attacker != null) {
+                Vector forward = victim.getLocation().getDirection().setY(0.0D);
+                Vector toAttacker = attacker.getLocation().toVector().subtract(victim.getLocation().toVector()).setY(0.0D);
+                if (forward.lengthSquared() > 0.001D && toAttacker.lengthSquared() > 0.001D) {
+                    double halfAngle = Math.toRadians(behaviorSectionValue(victim, "frontal-half-angle", 60.0D));
+                    if (forward.normalize().dot(toAttacker.normalize()) >= Math.cos(halfAngle)) {
+                        event.setDamage(event.getDamage() * behaviorSectionValue(victim, "frontal-damage-multiplier", 0.35D));
+                    }
+                }
+            }
+        }
         if (event.getDamager() instanceof ThrownPotion potion
                 && potion.getShooter() instanceof LivingEntity shooter
                 && shooter.getUniqueId().equals(event.getEntity().getUniqueId())
@@ -217,11 +285,24 @@ public final class MonsterBehaviorService implements Listener {
         }
         if (!(event.getDamager() instanceof LivingEntity source)
                 || !(event.getEntity() instanceof Player player)) return;
+        if ("charger_raider".equals(behaviorId(source))
+                && outpostChargers.getOrDefault(source.getUniqueId(), new ChargerState()).phase == ChargerPhase.DASH) {
+            Vector direction = player.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0.0D);
+            if (direction.lengthSquared() > 0.001D) {
+                player.setVelocity(direction.normalize().multiply(behaviorSectionValue(source, "charge.knockback", 0.65D)).setY(0.25D));
+            }
+        }
         if ("stone_armored_zombie".equals(behaviorId(source))) {
             var section = behaviorSection(source);
             int duration = section == null ? 40 : Math.max(1, section.getInt("bind-duration-ticks", 40));
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, duration, 1));
         }
+    }
+
+    private LivingEntity resolveDamageAttacker(Entity damager) {
+        if (damager instanceof LivingEntity living) return living;
+        if (damager instanceof Projectile projectile && projectile.getShooter() instanceof LivingEntity living) return living;
+        return null;
     }
 
     @EventHandler(ignoreCancelled = false)
@@ -259,13 +340,18 @@ public final class MonsterBehaviorService implements Listener {
                 player.setNoDamageTicks(0);
             }
         }
+        projectile.getWorld().spawnParticle(Particle.ENTITY_EFFECT, projectile.getLocation(), 14, .25, .08, .25, 0.0D, org.bukkit.Color.LIME);
         projectile.remove();
     }
 
     @EventHandler(ignoreCancelled = false)
     public void onPotionSplash(PotionSplashEvent event) {
-        if (!(event.getPotion().getShooter() instanceof LivingEntity shooter)
-                || !"swapping_witch".equals(behaviorId(shooter))) return;
+        if (!(event.getPotion().getShooter() instanceof LivingEntity shooter)) return;
+        if ("mire_shaman".equals(behaviorId(shooter))) {
+            event.setCancelled(true);
+            return;
+        }
+        if (!"swapping_witch".equals(behaviorId(shooter))) return;
         event.setIntensity(shooter, 0.0F);
     }
 
@@ -370,10 +456,247 @@ public final class MonsterBehaviorService implements Listener {
                 case "swapping_witch" -> tickSwappingWitch(entity, target);
                 case "charging_zombie" -> tickChargingZombie(entity, target);
                 case "rapid_shooter" -> tickRapidShooter(entity, target);
+                case "golden_bulwark" -> tickGoldenBulwark(entity, target);
+                case "mire_shaman" -> tickMireShaman(entity, target);
+                case "shield_raider" -> tickShieldRaider(entity, target);
+                case "charger_raider" -> tickChargerRaider(entity, target);
+                case "banner_raider" -> tickBannerRaider(entity, target);
                 default -> { }
             }
         }
+        tickMudPools();
     }
+
+    private void tickGoldenBulwark(LivingEntity source, Player target) {
+        BulwarkState state = bulwarks.computeIfAbsent(source.getUniqueId(), ignored -> new BulwarkState());
+        var section = behaviorSection(source); if (section == null) return;
+        if (state.phase == BulwarkPhase.NORMAL && target != null && ready(source) && source.getLocation().distanceSquared(target.getLocation()) <= Math.pow(section.getDouble("bash.prepare-range", 3.5D), 2)) {
+            Vector d = target.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0); if (d.lengthSquared() > .01D) { state.direction=d.normalize(); state.phase=BulwarkPhase.TELEGRAPH; state.until=ticks+section.getLong("bash.telegraph-ticks",12L); source.getWorld().playSound(source.getLocation(), Sound.ITEM_SHIELD_BLOCK, .8F, .8F); }
+        } else if (state.phase == BulwarkPhase.TELEGRAPH) {
+            source.getWorld().spawnParticle(Particle.DUST, source.getLocation().add(state.direction.clone().multiply(.7)).add(0,.9,0), 4, .15,.2,.15, new Particle.DustOptions(org.bukkit.Color.YELLOW, 1));
+            if (ticks >= state.until) { source.setVelocity(state.direction.clone().multiply(section.getDouble("bash.lunge-horizontal", .65D)).setY(section.getDouble("bash.lunge-vertical", .35D))); state.phase=BulwarkPhase.LUNGE; state.until=ticks+section.getLong("bash.lunge-ticks",6L); }
+        } else if (state.phase == BulwarkPhase.LUNGE) {
+            for (Player player : playersNear(source.getLocation(), section.getDouble("bash.hit-range",1.8D))) { Vector to=player.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0); if (!state.hits.contains(player.getUniqueId()) && to.lengthSquared()>.01 && state.direction.dot(to.normalize()) >= Math.cos(Math.toRadians(section.getDouble("bash.hit-half-angle",45)))) { state.hits.add(player.getUniqueId()); player.setVelocity(to.normalize().multiply(section.getDouble("bash.knockback-horizontal",1.05D)).setY(section.getDouble("bash.knockback-vertical",.85D))); double damage=section.getDouble("bash.damage",0D); if(damage>0) player.damage(damage,source); } }
+            if(ticks>=state.until){state.phase=BulwarkPhase.RECOVERY;state.until=ticks+section.getLong("bash.recovery-ticks",18L);}
+        } else if(state.phase==BulwarkPhase.RECOVERY && ticks>=state.until){ state.phase=BulwarkPhase.NORMAL; state.hits.clear(); nextAction.put(source.getUniqueId(),ticks+section.getLong("bash.cooldown-ticks",70L)); }
+    }
+
+    private void tickShieldRaider(LivingEntity source, Player target) {
+        long guardedUntil = shieldGuardUntil.getOrDefault(source.getUniqueId(), 0L);
+        if (ticks < guardedUntil) {
+            source.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 10, 1, true, false, false));
+            if (ticks % 8L == 0L) {
+                source.getWorld().playSound(source.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.35F, 0.9F);
+                source.getWorld().spawnParticle(Particle.CLOUD, source.getLocation().add(0.0D, 1.0D, 0.0D), 3, 0.25D, 0.35D, 0.25D, 0.01D);
+            }
+            return;
+        }
+        if (target == null || ticks < shieldGuardCooldown.getOrDefault(source.getUniqueId(), 0L)) return;
+        double range = behaviorSectionValue(source, "guard.trigger-range", 5.0D);
+        if (source.getLocation().distanceSquared(target.getLocation()) > range * range) return;
+        long duration = Math.max(20L, behaviorSectionLong(source, "guard.duration-ticks", 50L));
+        shieldGuardUntil.put(source.getUniqueId(), ticks + duration);
+        shieldGuardCooldown.put(source.getUniqueId(), ticks + Math.max(duration + 20L,
+                behaviorSectionLong(source, "guard.cooldown-ticks", 140L)));
+        source.getWorld().playSound(source.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.8F, 0.75F);
+    }
+
+    private void tickChargerRaider(LivingEntity source, Player target) {
+        ChargerState state = outpostChargers.computeIfAbsent(source.getUniqueId(), ignored -> new ChargerState());
+        if (state.phase == ChargerPhase.TELEGRAPH) {
+            source.getWorld().spawnParticle(Particle.CRIT, source.getLocation().add(0.0D, 0.8D, 0.0D), 4, 0.2D, 0.25D, 0.2D, 0.02D);
+            if (ticks >= state.until) {
+                source.setVelocity(state.direction.clone().multiply(behaviorSectionValue(source, "charge.velocity", 1.05D)).setY(0.18D));
+                state.phase = ChargerPhase.DASH;
+                state.until = ticks + Math.max(4L, behaviorSectionLong(source, "charge.dash-ticks", 10L));
+            }
+            return;
+        }
+        if (state.phase == ChargerPhase.DASH) {
+            if (ticks >= state.until) {
+                state.phase = ChargerPhase.IDLE;
+                nextAction.put(source.getUniqueId(), ticks + Math.max(20L, behaviorSectionLong(source, "charge.cooldown-ticks", 180L)));
+            }
+            return;
+        }
+        if (target == null || !ready(source)) return;
+        double range = behaviorSectionValue(source, "charge.trigger-range", 8.0D);
+        Vector direction = target.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0.0D);
+        if (direction.lengthSquared() < 0.001D || direction.lengthSquared() > range * range) return;
+        state.direction = direction.normalize();
+        state.phase = ChargerPhase.TELEGRAPH;
+        state.until = ticks + Math.max(10L, behaviorSectionLong(source, "charge.telegraph-ticks", 16L));
+        source.getWorld().playSound(source.getLocation(), Sound.ENTITY_PILLAGER_AMBIENT, 0.7F, 0.7F);
+    }
+
+    private void tickBannerRaider(LivingEntity source, Player target) {
+        long next = bannerAuraAt.getOrDefault(source.getUniqueId(), 0L);
+        if (ticks < next) return;
+        bannerAuraAt.put(source.getUniqueId(), ticks + Math.max(10L, behaviorSectionLong(source, "aura.interval-ticks", 20L)));
+        double radius = behaviorSectionValue(source, "aura.radius", 10.0D);
+        int duration = Math.max(20, (int) behaviorSectionLong(source, "aura.duration-ticks", 30L));
+        for (Entity entity : source.getNearbyEntities(radius, radius, radius)) {
+            if (!(entity instanceof LivingEntity ally) || ally.equals(source) || !isOutpostRaider(ally)) continue;
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, duration,
+                    Math.max(0, (int) behaviorSectionLong(source, "aura.speed-amplifier", 0L)), true, false, false));
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, duration,
+                    Math.max(0, (int) behaviorSectionLong(source, "aura.resistance-amplifier", 0L)), true, false, false));
+        }
+    }
+
+    private boolean isOutpostRaider(LivingEntity entity) {
+        return switch (behaviorId(entity)) {
+            case "shield_raider", "charger_raider", "banner_raider", "spike_evoker", "ravager_rider" -> true;
+            default -> "crossbow_raider".equals(mobService.getMobId(entity));
+        };
+    }
+
+    private void tickMireShaman(LivingEntity source, Player target) {
+        ShamanState state=shamans.computeIfAbsent(source.getUniqueId(), ignored->{ ShamanState created=new ShamanState(); created.nextSummonAt=ticks+20L; return created; }); var section=behaviorSection(source); if(section==null) return;
+        if(state.action!=ShamanAction.IDLE){ renderShamanTelegraph(source,state,section); if(ticks<state.until) return; executeShaman(source,state,section); return; }
+        if(target==null || !ready(source)) return;
+        int pools=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count();
+        int minions=activeMireMinionCount(source.getUniqueId());
+        AttributeInstance maximumHealth = source.getAttribute(Attribute.MAX_HEALTH);
+        double healthRatio = maximumHealth == null || maximumHealth.getValue() <= 0.0D
+                ? 1.0D : source.getHealth() / maximumHealth.getValue();
+        if(MireShamanPolicy.canReclaim(state.reclaimUsed, healthRatio, pools,
+                section.getDouble("reclaim.health-threshold",.5D))){state.action=ShamanAction.RECLAIM;state.until=ticks+10;return;}
+        double distance=source.getLocation().distance(target.getLocation());
+        boolean poolAvailable = pools < section.getInt("pool.max-active",3) && distance >= 6 && distance <= 12;
+        boolean summonAvailable = MireShamanPolicy.summonAllowed(minions, section.getInt("minion.max-active",5))
+                && ticks >= state.nextSummonAt;
+        MireShamanPolicy.Pattern pattern = MireShamanPolicy.choosePattern(
+                poolAvailable, summonAvailable,
+                section.getDouble("pattern-weights.pool", 0.65D),
+                section.getDouble("pattern-weights.summon", 0.35D),
+                ThreadLocalRandom.current().nextDouble());
+        if (pattern == MireShamanPolicy.Pattern.POOL) {
+            state.action=ShamanAction.POOL_TELEGRAPH; state.snapshot=target.getLocation().clone();
+            state.until=ticks+Math.max(1L, section.getLong("pool.telegraph-ticks",30L)); return;
+        }
+        if (pattern == MireShamanPolicy.Pattern.SUMMON) {
+            state.action=ShamanAction.SUMMON_TELEGRAPH; state.snapshot=source.getLocation().clone();
+            state.until=ticks+Math.max(1L, section.getLong("minion.telegraph-ticks",12L));
+        }
+    }
+
+    private void executeShaman(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
+        if(state.action==ShamanAction.POOL_TELEGRAPH){ Location c=state.snapshot; if (c != null) { renderPoolActivation(c, section); mudPools.put(UUID.randomUUID(),new MudPool(source.getUniqueId(),c,section.getDouble("pool.radius",2.75D),ticks+section.getLong("pool.duration-ticks",120),ticks)); } }
+        else if(state.action==ShamanAction.SUMMON_TELEGRAPH){
+            int count = MireShamanPolicy.summonCount(activeMireMinionCount(source.getUniqueId()),
+                    randomBetween(section.getInt("minion.min-count",1), section.getInt("minion.max-count",2)),
+                    section.getInt("minion.max-active",5));
+            for(int i=0;i<count;i++){ spawnMireMinion(source, section); }
+            state.nextSummonAt=ticks+Math.max(1L, section.getLong("minion.cooldown-ticks",200L));
+        }
+        else if(state.action==ShamanAction.RECLAIM){ int count=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count(); mudPools.entrySet().removeIf(e->e.getValue().owner.equals(source.getUniqueId())); source.setHealth(Math.min(source.getAttribute(Attribute.MAX_HEALTH).getValue(),source.getHealth()+source.getAttribute(Attribute.MAX_HEALTH).getValue()*section.getDouble("reclaim.heal-ratio",.125D))); state.reclaimUsed=true; }
+        state.action=ShamanAction.IDLE;nextAction.put(source.getUniqueId(),ticks+20);
+    }
+    private void renderShamanTelegraph(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
+        if (ticks % 2L != 0L) return;
+        if (state.action == ShamanAction.POOL_TELEGRAPH && state.snapshot != null) {
+            double radius = section.getDouble("pool.radius", 2.75D);
+            for (int i = 0; i < 20; i++) {
+                double angle = Math.PI * 2.0D * i / 20.0D;
+                Location marker = state.snapshot.clone().add(Math.cos(angle) * radius, .06D, Math.sin(angle) * radius);
+                source.getWorld().spawnParticle(Particle.DUST, marker, 1, 0.0D, 0.0D, 0.0D, new Particle.DustOptions(org.bukkit.Color.fromRGB(190, 220, 150), 1.2F));
+            }
+            source.getWorld().spawnParticle(Particle.CLOUD, state.snapshot.clone().add(0.0D, .08D, 0.0D), 2, radius*.35D, .02D, radius*.35D, .01D);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onSpellCast(EntitySpellCastEvent event) {
+        if (event.getEntity() instanceof LivingEntity source && "spike_evoker".equals(behaviorId(source))
+                && OutpostRaiderPolicy.blocksEvokerSpell(event.getSpell().name())) {
+            event.setCancelled(true);
+        }
+    }
+    private void tickMudPools(){
+        mudPools.entrySet().removeIf(e->e.getValue().expiresAt<=ticks);
+        for(MudPool p:mudPools.values()){
+            if (p.center.getWorld() == null) continue;
+            for (int i = 0; i < 24; i++) {
+                double angle = Math.PI * 2.0D * i / 24.0D;
+                Location edge = p.center.clone().add(Math.cos(angle) * p.radius, .07D, Math.sin(angle) * p.radius);
+                p.center.getWorld().spawnParticle(Particle.DUST, edge, 1, 0, 0, 0, new Particle.DustOptions(org.bukkit.Color.fromRGB(150, 40, 170), 1.25F));
+            }
+            p.center.getWorld().spawnParticle(Particle.DUST, p.center, 5, p.radius*.45D, .05D, p.radius*.45D, new Particle.DustOptions(org.bukkit.Color.OLIVE, 1.0F));
+            p.center.getWorld().spawnParticle(Particle.CLOUD, p.center.clone().add(0, .15D, 0), 2, p.radius*.35D, .08D, p.radius*.35D, .01D);
+            List<Player> inside = playersNear(p.center,p.radius).stream()
+                    .filter(player -> player.getLocation().distanceSquared(p.center) <= p.radius * p.radius)
+                    .toList();
+            if (ticks % 10L == 0L) {
+                for (Player player : inside) {
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 0));
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 30, 0));
+                }
+            }
+            if (ticks >= p.nextDamageAt && !inside.isEmpty()) {
+                double damage = poolDamage(p.owner, "pool.damage", 1.0D);
+                Entity owner = Bukkit.getEntity(p.owner);
+                for (Player player : inside) {
+                    if (owner instanceof LivingEntity living) player.damage(damage, living);
+                    else player.damage(damage);
+                }
+                p.nextDamageAt = ticks + Math.max(1L, poolDamageTicks(p.owner, "pool.damage-interval-ticks", 20L));
+            }
+        }
+    }
+
+    private double poolDamage(UUID owner, String key, double fallback) {
+        Entity entity = Bukkit.getEntity(owner);
+        if (!(entity instanceof LivingEntity living)) return fallback;
+        var section = behaviorSection(living);
+        return Math.max(0.0D, section == null ? fallback : section.getDouble(key, fallback));
+    }
+
+    private long poolDamageTicks(UUID owner, String key, long fallback) {
+        Entity entity = Bukkit.getEntity(owner);
+        if (!(entity instanceof LivingEntity living)) return fallback;
+        var section = behaviorSection(living);
+        return section == null ? fallback : section.getLong(key, fallback);
+    }
+
+    private void renderPoolActivation(Location center, org.bukkit.configuration.ConfigurationSection section) {
+        if (center.getWorld() == null) return;
+        double radius = section.getDouble("pool.radius", 2.75D);
+        for (int i = 0; i < 32; i++) {
+            double angle = Math.PI * 2.0D * i / 32.0D;
+            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(Math.cos(angle) * radius, .12D, Math.sin(angle) * radius), 2, 0, 0, 0, new Particle.DustOptions(org.bukkit.Color.fromRGB(170, 35, 190), 1.5F));
+        }
+        center.getWorld().spawnParticle(Particle.EXPLOSION, center.clone().add(0, .25D, 0), 2, radius*.25D, .12D, radius*.25D, .02D);
+        center.getWorld().playSound(center, Sound.BLOCK_SLIME_BLOCK_PLACE, .55F, .7F);
+    }
+
+    private void spawnMireMinion(LivingEntity source, org.bukkit.configuration.ConfigurationSection section) {
+        if (source.getWorld() == null) return;
+        List<String> types = section.getStringList("minion.types").stream().filter(value -> value != null && !value.isBlank()).toList();
+        if (types.isEmpty()) types = List.of("SLIME", "HUSK", "BOGGED");
+        String selected = types.get(ThreadLocalRandom.current().nextInt(types.size())).trim().toUpperCase(Locale.ROOT);
+        org.bukkit.entity.EntityType type;
+        try { type = org.bukkit.entity.EntityType.valueOf(selected); }
+        catch (IllegalArgumentException ignored) { return; }
+        Entity spawned = source.getWorld().spawnEntity(source.getLocation(), type);
+        if (!(spawned instanceof LivingEntity minion)) { spawned.remove(); return; }
+        if (minion instanceof Slime slime) slime.setSize(Math.max(2, Math.min(4, section.getInt("minion.slime-size", 2))));
+        mireMinionOwners.put(minion.getUniqueId(), source.getUniqueId());
+    }
+
+    private static int randomBetween(int minimum, int maximum) {
+        int min = Math.max(1, Math.min(minimum, maximum));
+        int max = Math.max(min, maximum);
+        return ThreadLocalRandom.current().nextInt(min, max + 1);
+    }
+    private int activeMireMinionCount(UUID owner) {
+        mireMinionOwners.entrySet().removeIf(entry -> {
+            Entity minion = Bukkit.getEntity(entry.getKey());
+            return minion == null || !minion.isValid() || minion.isDead();
+        });
+        return (int) mireMinionOwners.values().stream().filter(owner::equals).count();
+    }
+    private void removeMireOwned(UUID owner){ mudPools.entrySet().removeIf(e->e.getValue().owner.equals(owner)); mireMinionOwners.entrySet().removeIf(e->{if(e.getValue().equals(owner)){Entity minion=Bukkit.getEntity(e.getKey());if(minion!=null)minion.remove();return true;}return false;});bulwarks.remove(owner);shamans.remove(owner); }
 
     private void tickMiningGiant(LivingEntity source, Player target) {
         if (target == null || !ready(source)) return;
@@ -889,9 +1212,10 @@ public final class MonsterBehaviorService implements Listener {
         if (!configured.isBlank()) return configured;
         String id = mobService.getMobId(entity).trim().toLowerCase(Locale.ROOT);
         return switch (id) {
-            case "mining_giant", "lava_cube", "stone_armored_zombie",
+            case "mining_giant", "lava_cube", "stone_armored_zombie", "golden_bulwark", "mire_shaman",
                     "fake_explosion_creeper", "swapping_witch", "charging_zombie", "rapid_shooter",
-                    "splitting_creeper" -> id;
+                    "splitting_creeper", "shield_raider", "charger_raider", "banner_raider",
+                    "spike_evoker", "ravager_rider" -> id;
             default -> "";
         };
     }
@@ -969,6 +1293,11 @@ public final class MonsterBehaviorService implements Listener {
         dashDirections.remove(id);
         dashHits.remove(id);
         approvedExplosions.remove(id);
+        removeMireOwned(id);
+        shieldGuardUntil.remove(id);
+        shieldGuardCooldown.remove(id);
+        outpostChargers.remove(id);
+        bannerAuraAt.remove(id);
         projectileExpiry.entrySet().removeIf(entry -> entry.getKey().equals(id));
     }
 }

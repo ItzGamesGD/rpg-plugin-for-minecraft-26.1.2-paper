@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -61,6 +62,7 @@ public final class ConfigMigrationService {
             "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml", "alchemy/gui.yml");
+    private static final List<String> EXPLORATION_FILES = List.of("exploration/structures.yml");
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
             "burning_sword", "flowing_water_sword", "wind_cutting_sword", "earth_special_sword",
             "ice_special_sword", "dark_energy_sword", "burning_bow", "wind_archers_bow",
@@ -109,6 +111,9 @@ public final class ConfigMigrationService {
             if (normalized.equals("alchemy") || normalized.equals("all")) {
                 migrateAlchemy(lines, changedFiles);
             }
+            if (normalized.equals("exploration") || normalized.equals("all")) {
+                migrateExploration(lines, changedFiles);
+            }
             if (normalized.equals("players") || normalized.equals("all")) {
                 migratePlayers(lines, changedFiles);
             }
@@ -118,7 +123,7 @@ public final class ConfigMigrationService {
                 migrateLegacyProfessionRecipes(lines, changedFiles);
                 migrateLegacyProfessionShops(lines, changedFiles);
             }
-            if (!List.of("configs", "items", "players", "farming", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
+            if (!List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
             }
@@ -280,6 +285,105 @@ public final class ConfigMigrationService {
         }
         migrateAlchemyCrafting(lines, changedFiles);
         activateProductionAlchemy(lines, changedFiles);
+    }
+
+    private void migrateExploration(List<String> lines, List<File> changedFiles) {
+        for (String fileName : EXPLORATION_FILES) {
+            FileConfiguration defaults = loadResource(fileName);
+            if (defaults == null) {
+                lines.add("ERROR " + fileName + ": bundled exploration default is missing");
+                continue;
+            }
+            FileConfiguration target = loadLive(fileName);
+            boolean changed = false;
+            if (target == null) {
+                target = new YamlConfiguration();
+                copyMissingRoot(target, defaults);
+                changed = true;
+                lines.add(fileName + ": created missing exploration config from bundled defaults");
+            } else {
+                changed |= migrateOutpostRadiusAliases(target, fileName, lines);
+                changed |= copyMissingRoot(target, defaults);
+                changed |= migrateLegacyExplorationPrototype(target, fileName, lines);
+                changed |= migrateOutpostLootTrigger(target, fileName, lines);
+                if (changed) {
+                    lines.add(fileName + ": added missing exploration keys without overwriting operator values");
+                }
+            }
+            if (changed) mark(target, fileName, changedFiles, lines, "exploration migration staged");
+        }
+    }
+
+    private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
+                                                      String fileName,
+                                                      List<String> lines) {
+        String root = "structures.swamp_hut.variants.elite_witch_prototype.components";
+        List<Map<?, ?>> configured = target.getMapList(root);
+        if (configured.isEmpty()) return false;
+
+        boolean changed = false;
+        List<Map<String, Object>> migrated = new ArrayList<>();
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> component = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) component.put(String.valueOf(key), value);
+            });
+            if ("scripted_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))) {
+                if ("vanilla:witch".equalsIgnoreCase(String.valueOf(component.getOrDefault("mob-id", "")))) {
+                    component.put("mob-id", "custom:mire_shaman");
+                    changed = true;
+                    lines.add(fileName + ": migrated legacy swamp hut vanilla Witch spawn to custom:mire_shaman");
+                }
+                if (!component.containsKey("cleanup-unmanaged-type")) {
+                    component.put("cleanup-unmanaged-type", "WITCH");
+                    changed = true;
+                    lines.add(fileName + ": added selected swamp hut unmanaged Witch cleanup policy");
+                }
+            }
+            migrated.add(component);
+        }
+        if (changed) target.set(root, migrated);
+        return changed;
+    }
+
+    private boolean migrateOutpostLootTrigger(FileConfiguration target, String fileName, List<String> lines) {
+        String root = "structures.pillager_outpost.variants.outpost_raid_event.components";
+        List<Map<?, ?>> configured = target.getMapList(root);
+        if (configured.isEmpty()) return false;
+        boolean changed = false;
+        List<Map<String, Object>> migrated = new ArrayList<>();
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> component = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) component.put(String.valueOf(key), value);
+            });
+            if ("choice_prompt".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
+                    && "outpost_raid_difficulty".equalsIgnoreCase(String.valueOf(component.getOrDefault("prompt-id", "")))
+                    && "activate".equalsIgnoreCase(String.valueOf(component.getOrDefault("phase", "")))) {
+                component.put("phase", "loot_exit");
+                changed = true;
+                lines.add(fileName + ": moved outpost raid choice prompt to loot-exit trigger");
+            }
+            migrated.add(component);
+        }
+        if (changed) target.set(root, migrated);
+        return changed;
+    }
+
+    private boolean migrateOutpostRadiusAliases(FileConfiguration target, String fileName, List<String> lines) {
+        String root = "structures.pillager_outpost";
+        boolean changed = false;
+        if (target.isSet(root + ".abandon-radius") && !target.isSet(root + ".combat-abandon-radius")) {
+            target.set(root + ".combat-abandon-radius", target.get(root + ".abandon-radius"));
+            lines.add(fileName + ": preserved pillager outpost abandon-radius as combat-abandon-radius");
+            changed = true;
+        }
+        if (target.isSet(root + ".abandon-grace-ticks") && !target.isSet(root + ".combat-abandon-grace-ticks")) {
+            target.set(root + ".combat-abandon-grace-ticks", target.get(root + ".abandon-grace-ticks"));
+            lines.add(fileName + ": preserved pillager outpost abandon-grace-ticks as combat-abandon-grace-ticks");
+            changed = true;
+        }
+        return changed;
     }
 
     /** Explicit activation for the implemented A/B production scope. */
@@ -840,11 +944,31 @@ public final class ConfigMigrationService {
 
         FileConfiguration mobs = loadLive("mobs.yml");
         FileConfiguration mobDefaults = loadResource("mobs.yml");
-        if (mobs != null && mobDefaults != null && !mobs.isConfigurationSection("elemental-fragments")
-                && mobDefaults.isConfigurationSection("elemental-fragments")) {
-            copyTree(mobs, mobDefaults, "elemental-fragments");
-            lines.add("mobs.yml: added explicit elemental fragment registry");
-            mark(mobs, "mobs.yml", changedFiles, lines, "elemental fragment migration staged");
+        if (mobs != null && mobDefaults != null) {
+            boolean changed = false;
+            if (!mobs.isConfigurationSection("elemental-fragments")
+                    && mobDefaults.isConfigurationSection("elemental-fragments")) {
+                copyTree(mobs, mobDefaults, "elemental-fragments");
+                lines.add("mobs.yml: added explicit elemental fragment registry");
+                changed = true;
+            }
+            for (String mobId : List.of("golden_bulwark", "mire_shaman")) {
+                String canonicalPath = "custom-mobs." + mobId;
+                ConfigurationSection legacy = mobs.getConfigurationSection(mobId);
+                if (!mobs.isConfigurationSection(canonicalPath) && legacy != null) {
+                    copySection(mobs, legacy, canonicalPath);
+                    mobs.set(mobId, null);
+                    lines.add("mobs.yml: moved legacy top-level " + mobId + " into custom-mobs");
+                    changed = true;
+                }
+                if (copyMissingTree(mobs, mobDefaults, canonicalPath)) {
+                    lines.add("mobs.yml: added missing " + canonicalPath + " settings");
+                    changed = true;
+                }
+            }
+            if (changed) {
+                mark(mobs, "mobs.yml", changedFiles, lines, "custom mob migration staged");
+            }
         }
 
         FileConfiguration spawns = loadLive("monster-spawns.yml");

@@ -91,4 +91,12 @@ public final class ShockEffectHandler extends AbstractProductionEffectHandler {
             movementLocks.debug(message + " instance=" + instance.instanceId());
         }
     }
+
+    public String debug(UUID targetId, UUID instanceId, long currentTick) {
+        long next = nextPulseAt.getOrDefault(instanceId, -1L);
+        String root = movementLocks == null
+                ? "shockRootActive=false shockRootStart=-1 shockRootEnd=-1 currentTick=" + currentTick
+                : movementLocks.debug(targetId, currentTick);
+        return "shockNextPulse=" + next + " " + root;
+    }
 }

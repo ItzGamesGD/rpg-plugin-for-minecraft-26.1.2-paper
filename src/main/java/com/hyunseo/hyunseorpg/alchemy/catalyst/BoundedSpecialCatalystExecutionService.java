@@ -94,7 +94,9 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         if (source == null || !source.isOnline() || potion == null || !potion.enabled()
                 || definition == null || !definition.enabled()) return Result.REJECTED_POLICY;
         if (definition.kind() == SpecialCatalystDefinition.Kind.SLIME
-                || definition.kind() == SpecialCatalystDefinition.Kind.ECHO) return Result.REJECTED_POLICY;
+                || definition.kind() == SpecialCatalystDefinition.Kind.ECHO
+                || definition.kind() == SpecialCatalystDefinition.Kind.SCULK
+                || definition.kind() == SpecialCatalystDefinition.Kind.WIND_CHARGE) return Result.REJECTED_POLICY;
 
         UUID executionId = UUID.randomUUID();
         Request request = new Request(executionId, potion.id(), definition.catalystId(),
@@ -132,12 +134,80 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         if (execute(request) != Result.STARTED) return;
         state = new RuntimeState(request, potion, definition, potionEntity.getLocation().clone());
         state.bounceCount = 1;
+        state.slimePhase = CatalystRuntimePhase.Slime.INITIAL_SPLASH;
+        state.lastProjectileLocation = potionEntity.getLocation().clone();
         state.processedProjectiles.add(potionEntity.getUniqueId());
         runtimes.put(executionId, state);
+        // Normal slime gameplay never ends by wall-clock timeout. This is a long safety
+        // boundary only; it converts to a final splash instead of deleting the projectile.
         tasks.put(executionId, Bukkit.getScheduler().runTaskLater(plugin,
-                () -> finish(executionId), Math.max(20L,
-                        (long) definition.lifetimeTicks() * definition.maxCount() + 20L)));
+                () -> forceFinalSplash(executionId),
+                Math.max(200L, (long) definition.lifetimeTicks()
+                        * Math.max(1, definition.maxCount()) * 20L + 200L)));
         processSlimeSplash(state, potionEntity, affected);
+    }
+
+    public boolean isSpecialSplashCatalyst(String catalystId) {
+        if (catalystId == null) return false;
+        return switch (catalystId.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "slime", "echo_shard", "sculk", "wind_charge" -> true;
+            default -> false;
+        };
+    }
+
+    public synchronized void handleSplash(String catalystId, ThrownPotion potionEntity, String potionId,
+                                           UUID sourceId, Collection<LivingEntity> affected) {
+        if (catalystId == null) return;
+        switch (catalystId.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "slime" -> handleSlimeSplash(potionEntity, potionId, sourceId, affected);
+            case "echo_shard" -> handleEchoSplash(potionId, sourceId, affected);
+            case "sculk" -> handleSculkSplash(potionEntity, potionId, sourceId);
+            case "wind_charge" -> handleWindChargeSplash(potionEntity, potionId, sourceId, affected);
+            default -> { }
+        }
+    }
+
+    public synchronized void handleSculkSplash(ThrownPotion potionEntity, String potionId, UUID sourceId) {
+        if (plugin == null || potions == null || effects == null || potionEntity == null
+                || potionId == null || potionId.isBlank()) return;
+        SpecialCatalystDefinition definition = registry.find("sculk").orElse(null);
+        PotionDefinition potion = potions.find(potionId).orElse(null);
+        if (definition == null || !definition.enabled()
+                || definition.kind() != SpecialCatalystDefinition.Kind.SCULK
+                || potion == null || !potion.enabled()) return;
+        UUID executionId = UUID.randomUUID();
+        Request request = new Request(executionId, potion.id(), definition.catalystId(),
+                potionEntity.getWorld().getUID(), Set.of(), sourceId);
+        if (execute(request) != Result.STARTED) return;
+        RuntimeState state = new RuntimeState(request, potion, definition,
+                potionEntity.getLocation().clone(), potionEntity.getVelocity());
+        runtimes.put(executionId, state);
+        schedule(state);
+    }
+
+    public synchronized void handleWindChargeSplash(ThrownPotion potionEntity, String potionId,
+                                                     UUID sourceId, Collection<LivingEntity> affected) {
+        if (plugin == null || potions == null || effects == null || potionEntity == null
+                || potionId == null || potionId.isBlank()) return;
+        SpecialCatalystDefinition definition = registry.find("wind_charge").orElse(null);
+        PotionDefinition potion = potions.find(potionId).orElse(null);
+        if (definition == null || !definition.enabled()
+                || definition.kind() != SpecialCatalystDefinition.Kind.WIND_CHARGE
+                || potion == null || !potion.enabled()) return;
+        UUID executionId = UUID.randomUUID();
+        Request request = new Request(executionId, potion.id(), definition.catalystId(),
+                potionEntity.getWorld().getUID(), Set.of(), sourceId);
+        if (execute(request) != Result.STARTED) return;
+        RuntimeState state = new RuntimeState(request, potion, definition,
+                potionEntity.getLocation().clone(), potionEntity.getVelocity());
+        runtimes.put(executionId, state);
+        for (LivingEntity target : affected == null ? java.util.List.<LivingEntity>of() : affected) {
+            if (target != null && target.isValid() && !target.isDead()) {
+                state.visited.add(target.getUniqueId());
+                apply(state, target);
+            }
+        }
+        schedule(state);
     }
 
     /** Applies echo twice to the exact entities affected by one real splash collision. */
@@ -182,7 +252,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                     if (entity instanceof LivingEntity target && target.isValid() && !target.isDead()
                             && target.getWorld().equals(current.origin.getWorld())) apply(current, target);
                 }
-                finish(executionId);
+                finish(executionId, FinishReason.FINAL_SPLASH);
             }
         }, definition.delayTicks()));
     }
@@ -190,22 +260,19 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     private void processSlimeSplash(RuntimeState state, ThrownPotion potionEntity,
                                      Collection<LivingEntity> affected) {
         if (state == null || !active.containsKey(state.request.executionId())) return;
-        if (state.slimePhase == CatalystRuntimePhase.Slime.FINAL_SPLASH) {
+        state.lastProjectileLocation = potionEntity.getLocation().clone();
+        if (state.slimePhase == CatalystRuntimePhase.Slime.FINAL_PROJECTILE
+                || state.slimePhase == CatalystRuntimePhase.Slime.FINAL_SPLASH) {
             applyAffected(state, affected);
             playFinalSplash(potionEntity.getLocation());
             state.slimePhase = CatalystRuntimePhase.Slime.FINISHED;
-            finish(state.request.executionId());
+            finish(state.request.executionId(), FinishReason.FINAL_SPLASH);
             return;
         }
         if (state.bounceCount >= state.definition.maxCount()) {
-            // The projectile that reached the configured count is the final splash.
-            // Do not delete it before its collision is processed.
-            state.slimePhase = CatalystRuntimePhase.slimeAfterCollision(
-                    state.slimePhase, state.bounceCount, state.definition.maxCount());
-            applyAffected(state, affected);
-            playFinalSplash(potionEntity.getLocation());
-            state.slimePhase = CatalystRuntimePhase.Slime.FINISHED;
-            finish(state.request.executionId());
+            // The Nth bounce is the final projectile. Keep it in flight; only its
+            // next collision enters the final splash branch above.
+            state.slimePhase = CatalystRuntimePhase.Slime.FINAL_PROJECTILE;
             return;
         }
         applyAffected(state, affected);
@@ -229,7 +296,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     private void spawnSlimeBounce(RuntimeState state, ThrownPotion previous) {
         Location location = previous.getLocation().clone().add(0.0D, 0.18D, 0.0D);
         World world = location.getWorld();
-        if (world == null) { finish(state.request.executionId()); return; }
+        if (world == null) { forceFinalSplash(state.request.executionId()); return; }
         ThrownPotion bounce = world.spawn(location, ThrownPotion.class);
         bounce.setItem(previous.getItem().clone());
         Player source = source(state);
@@ -246,17 +313,20 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         bounce.getPersistentDataContainer().set(executionKey, PersistentDataType.STRING,
                 state.request.executionId().toString());
         state.bounceProjectiles.add(bounce.getUniqueId());
+        state.lastProjectileLocation = location.clone();
         state.bounceCount++;
     }
 
-    @Override public synchronized void cancel(UUID executionId, CancelReason reason) { finish(executionId); }
+    @Override public synchronized void cancel(UUID executionId, CancelReason reason) {
+        finish(executionId, finishReason(reason));
+    }
 
     @Override
     public synchronized void cancelWorld(UUID worldId, CancelReason reason) {
         if (worldId == null) return;
         new ArrayList<>(active.entrySet()).stream()
                 .filter(entry -> worldId.equals(entry.getValue().worldId()))
-                .map(Map.Entry::getKey).forEach(this::finish);
+                .map(Map.Entry::getKey).forEach(id -> finish(id, finishReason(reason)));
     }
 
     public synchronized void cancelPlayer(UUID playerId, CancelReason reason) {
@@ -264,11 +334,22 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         new ArrayList<>(active.entrySet()).stream()
                 .filter(entry -> playerId.equals(entry.getValue().sourceId())
                         || entry.getValue().visitedTargets().contains(playerId))
-                .map(Map.Entry::getKey).forEach(this::finish);
+                .map(Map.Entry::getKey).forEach(id -> finish(id, finishReason(reason)));
     }
 
     public synchronized void cancelAll(CancelReason reason) {
-        new ArrayList<>(active.keySet()).forEach(this::finish);
+        new ArrayList<>(active.keySet()).forEach(id -> finish(id, finishReason(reason)));
+    }
+
+    private FinishReason finishReason(CancelReason reason) {
+        if (reason == null) return FinishReason.NORMAL;
+        return switch (reason) {
+            case WORLD_UNLOAD -> FinishReason.WORLD_UNLOAD;
+            case SERVER_RESTART -> FinishReason.PLUGIN_DISABLE;
+            case ADMIN_CANCEL -> FinishReason.ADMIN_CLEAR;
+            case TIMEOUT -> FinishReason.SAFETY_TIMEOUT;
+            case CHUNK_UNLOAD, ENTITY_REMOVED -> FinishReason.INVALID_ENTITY;
+        };
     }
 
     public synchronized int activeCount() { return active.size(); }
@@ -296,12 +377,12 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                     new Runnable() {
                         private int ticks;
                         private final Location current = state.origin.clone();
-                        private final Vector direction = state.origin.getDirection().normalize();
+                        private final Vector direction = state.direction.clone().normalize();
                         @Override public void run() {
                             ticks++;
                             if (ticks > definition.lifetimeTicks()
                                     || current.distance(state.origin) > definition.maxDistance()) {
-                                finish(state.request.executionId());
+                                finish(state.request.executionId(), FinishReason.MAX_DISTANCE);
                                 return;
                             }
                             current.add(direction.clone().multiply(0.75D));
@@ -309,7 +390,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                             if (target != null) {
                                 state.visited.add(target.getUniqueId());
                                 apply(state, target);
-                                finish(state.request.executionId());
+                                finish(state.request.executionId(), FinishReason.TARGET_HIT);
                             }
                         }
                     }, 1L, 1L));
@@ -319,8 +400,8 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     private void tickSculk(UUID executionId) {
         RuntimeState state = runtimes.get(executionId);
-        if (state == null || state.origin.getWorld() == null) { finish(executionId); return; }
-        if (state.spawnedClouds >= state.definition.maxCount()) { finish(executionId); return; }
+        if (state == null || state.origin.getWorld() == null) { finish(executionId, FinishReason.WORLD_UNLOAD); return; }
+        if (state.spawnedClouds >= state.definition.maxCount()) { finish(executionId, FinishReason.FINAL_SPLASH); return; }
         if (!CatalystRuntimePhase.sculkPropagationDue(Bukkit.getCurrentTick(), state.nextSculkPropagationAt)) return;
         for (UUID cloudId : new HashSet<>(state.clouds)) {
             Entity entity = Bukkit.getEntity(cloudId);
@@ -343,7 +424,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 }
             }
         }
-        finish(executionId);
+        finish(executionId, FinishReason.FINAL_SPLASH);
     }
 
     private AreaEffectCloud spawnCloud(RuntimeState state, Location location) {
@@ -369,7 +450,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
     private void launchFireball(RuntimeState state) {
         Player source = source(state);
-        if (source == null || executionKey == null) { finish(state.request.executionId()); return; }
+        if (source == null || executionKey == null) { finish(state.request.executionId(), FinishReason.INVALID_ENTITY); return; }
         SmallFireball fireball = source.launchProjectile(SmallFireball.class);
         fireball.setIsIncendiary(false);
         fireball.setYield(0.0F);
@@ -377,7 +458,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
                 state.request.executionId().toString());
         state.projectileId = fireball.getUniqueId();
         tasks.put(state.request.executionId(), Bukkit.getScheduler().runTaskLater(plugin,
-                () -> finish(state.request.executionId()), Math.max(20, state.definition.lifetimeTicks())));
+                () -> finish(state.request.executionId(), FinishReason.SAFETY_TIMEOUT), Math.max(20, state.definition.lifetimeTicks())));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -390,7 +471,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         Location impact = event.getHitEntity() instanceof LivingEntity target
                 ? target.getLocation() : fireball.getLocation();
         deliverFireball(state, impact);
-        finish(state.request.executionId());
+        finish(state.request.executionId(), FinishReason.TARGET_HIT);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -408,7 +489,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         RuntimeState state = runtimes.get(parseUuid(raw));
         if (state != null) {
             deliverFireball(state, fireball.getLocation());
-            finish(state.request.executionId());
+            finish(state.request.executionId(), FinishReason.FINAL_SPLASH);
         }
         event.blockList().clear();
         event.setYield(0.0F);
@@ -448,6 +529,29 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         try { return UUID.fromString(raw); } catch (IllegalArgumentException ignored) { return null; }
     }
 
+    private synchronized void forceFinalSplash(UUID executionId) {
+        RuntimeState state = runtimes.get(executionId);
+        if (state == null || !active.containsKey(executionId)) return;
+        CatalystRuntimePhase.Slime next = CatalystRuntimePhase.safetyTimeout(state.slimePhase);
+        if (next != CatalystRuntimePhase.Slime.FORCE_FINAL_SPLASH) return;
+        state.slimePhase = next;
+        Location impact = state.lastProjectileLocation == null
+                ? state.origin.clone() : state.lastProjectileLocation.clone();
+        applyAtLocation(state, impact);
+        playFinalSplash(impact);
+        state.slimePhase = CatalystRuntimePhase.Slime.FINAL_SPLASH;
+        finish(executionId, FinishReason.SAFETY_TIMEOUT);
+    }
+
+    private void applyAtLocation(RuntimeState state, Location impact) {
+        if (impact == null || impact.getWorld() == null) return;
+        for (Entity nearby : impact.getWorld().getNearbyEntities(impact,
+                state.definition.radius(), state.definition.radius(), state.definition.radius())) {
+            if (nearby instanceof LivingEntity target && target.isValid() && !target.isDead()
+                    && target != source(state)) apply(state, target);
+        }
+    }
+
     private void deliverFireball(RuntimeState state, Location impact) {
         if (state.delivered || impact == null || impact.getWorld() == null) return;
         state.delivered = true;
@@ -484,8 +588,7 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         var definition = effects.registry().get(state.potion.effectId()).orElse(null);
         if (definition == null || !definition.enabled()) return false;
         EffectSourceType sourceType = switch (state.definition.kind()) {
-            case SCULK -> EffectSourceType.POTION_LINGERING;
-            case ECHO, SLIME -> EffectSourceType.POTION_SPLASH;
+            case SCULK, ECHO, SLIME, WIND_CHARGE -> EffectSourceType.POTION_SPLASH;
             case FIREBALL -> EffectSourceType.POTION_FIREBALL;
             default -> EffectSourceType.POTION_DRINK;
         };
@@ -497,12 +600,30 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
     }
 
     private Player source(RuntimeState state) {
-        Entity entity = Bukkit.getEntity(state.request.sourceId());
+        UUID sourceId = state.request.sourceId();
+        if (sourceId == null) return null;
+        Entity entity = Bukkit.getEntity(sourceId);
         return entity instanceof Player player && player.isOnline() ? player : null;
     }
 
+    public enum FinishReason {
+        FINAL_SPLASH, TARGET_HIT, MAX_DISTANCE, WORLD_UNLOAD, PLUGIN_DISABLE,
+        ADMIN_CLEAR, INVALID_ENTITY, SAFETY_TIMEOUT, NORMAL
+    }
+
+    public synchronized FinishReason lastFinishReason(UUID executionId) {
+        return recentFinishReasons.get(executionId);
+    }
+
+    private final Map<UUID, FinishReason> recentFinishReasons = new HashMap<>();
+
     private synchronized void finish(UUID executionId) {
+        finish(executionId, FinishReason.NORMAL);
+    }
+
+    private synchronized void finish(UUID executionId, FinishReason reason) {
         if (executionId == null) return;
+        recentFinishReasons.put(executionId, reason == null ? FinishReason.NORMAL : reason);
         BukkitTask task = tasks.remove(executionId);
         if (task != null) task.cancel();
         RuntimeState state = runtimes.remove(executionId);
@@ -543,6 +664,8 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
         private final PotionDefinition potion;
         private final SpecialCatalystDefinition definition;
         private final Location origin;
+        private final Vector direction;
+        private Location lastProjectileLocation;
         private final Set<UUID> visited = new HashSet<>();
         private final Set<UUID> clouds = new HashSet<>();
         private final Set<UUID> processedProjectiles = new HashSet<>();
@@ -556,10 +679,19 @@ public final class BoundedSpecialCatalystExecutionService implements SpecialCata
 
         private RuntimeState(Request request, PotionDefinition potion,
                              SpecialCatalystDefinition definition, Location origin) {
+            this(request, potion, definition, origin,
+                    origin == null ? new Vector(0.0D, 0.0D, 1.0D) : origin.getDirection());
+        }
+
+        private RuntimeState(Request request, PotionDefinition potion,
+                             SpecialCatalystDefinition definition, Location origin, Vector direction) {
             this.request = request;
             this.potion = potion;
             this.definition = definition;
             this.origin = origin;
+            this.direction = direction == null || direction.lengthSquared() < 0.0001D
+                    ? new Vector(0.0D, 0.0D, 1.0D) : direction.clone().normalize();
+            this.lastProjectileLocation = origin == null ? null : origin.clone();
             this.visited.addAll(request.visitedTargets());
         }
     }

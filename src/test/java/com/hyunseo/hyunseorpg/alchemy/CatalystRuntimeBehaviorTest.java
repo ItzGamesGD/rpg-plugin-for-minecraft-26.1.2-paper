@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +30,19 @@ class CatalystRuntimeBehaviorTest {
         assertTrue(yaml.getStringList("catalysts.fermented_spider_eye.allowed-potions")
                 .contains("potion_vulnerability"));
         assertFalse(yaml.getString("catalysts.fermented_spider_eye.inversion-effect-ids.potion_vulnerability", "").isBlank());
+        assertEquals("SPLASH", yaml.getString("catalysts.sculk.delivery", ""));
+        assertEquals("SPLASH", yaml.getString("catalysts.slime.delivery", ""));
+        assertEquals("SPLASH", yaml.getString("catalysts.echo_shard.delivery", ""));
+        assertEquals("SPLASH", yaml.getString("catalysts.wind_charge.delivery", ""));
+    }
+
+    @Test
+    void specialCatalystMaterialsRemainCanonical() {
+        YamlConfiguration yaml = load("alchemy/catalysts.yml");
+        assertEquals("SCULK_CATALYST", yaml.getString("catalysts.sculk.vanilla-material", ""));
+        assertEquals("SCULK", yaml.getString("catalysts.sculk.kind", ""));
+        assertEquals("WIND_CHARGE", yaml.getString("catalysts.wind_charge.vanilla-material", ""));
+        assertEquals("WIND_CHARGE", yaml.getString("catalysts.wind_charge.kind", ""));
     }
 
     private YamlConfiguration load(String path) {
