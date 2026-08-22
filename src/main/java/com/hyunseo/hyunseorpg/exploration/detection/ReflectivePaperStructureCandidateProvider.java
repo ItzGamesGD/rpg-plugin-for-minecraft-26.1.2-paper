@@ -20,7 +20,6 @@ import java.util.logging.Level;
  */
 public final class ReflectivePaperStructureCandidateProvider implements StructureCandidateProvider {
     private final JavaPlugin plugin;
-    private volatile boolean apiFailed;
     private volatile boolean failureLogged;
 
     public ReflectivePaperStructureCandidateProvider(JavaPlugin plugin) {
@@ -29,7 +28,7 @@ public final class ReflectivePaperStructureCandidateProvider implements Structur
 
     @Override
     public List<StructureCandidate> scanChunk(World world, int chunkX, int chunkZ, Set<String> minecraftKeys) {
-        if (apiFailed || minecraftKeys.isEmpty()) return List.of();
+        if (minecraftKeys.isEmpty()) return List.of();
         try {
             Method worldGetStructures = findWorldGetStructures(world.getClass());
             if (worldGetStructures == null) throw new NoSuchMethodException("World#getStructures(int,int)");
@@ -46,11 +45,10 @@ public final class ReflectivePaperStructureCandidateProvider implements Structur
             }
             return List.copyOf(result);
         } catch (ReflectiveOperationException | RuntimeException exception) {
-            apiFailed = true;
             if (!failureLogged) {
                 failureLogged = true;
                 plugin.getLogger().log(Level.WARNING,
-                        "Exploration structure scan API is unavailable. Detection disabled safely; verify Paper structure API during desktop integration.",
+                        "Exploration structure scan failed for this chunk; detection will retry on the next chunk load.",
                         exception);
             }
             return List.of();

@@ -32,6 +32,12 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
                 ? List.of()
                 : spawned.stream().filter(java.util.Objects::nonNull).toList();
 
+        if (context.plugin() != null) {
+            context.plugin().getLogger().info("Exploration scripted spawn: mob=" + mobId
+                    + ", requested=" + Math.max(1, spec.integer("count", 1))
+                    + ", spawned=" + validIds.size());
+        }
+
         if (spec.bool("objective", false) && validIds.isEmpty()) {
             throw new IllegalStateException("scripted_spawn objective produced no valid entity");
         }

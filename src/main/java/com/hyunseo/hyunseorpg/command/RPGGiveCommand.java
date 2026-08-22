@@ -1305,7 +1305,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return List.of("all", "reload", "configs", "items", "recipes", "equipment", "mobs", "players", "progression", "quests", "farming", "alchemy", "effects");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("migrate")) {
-            return List.of("configs", "items", "players", "farming", "alchemy", "legacy", "cleanup", "all");
+            return List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("farming")) {
             return farmingActionCompletion(args[1]);

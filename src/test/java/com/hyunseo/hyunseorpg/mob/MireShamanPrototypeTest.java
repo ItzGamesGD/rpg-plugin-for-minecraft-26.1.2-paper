@@ -29,6 +29,8 @@ final class MireShamanPrototypeTest {
         assertEquals(2, mobs.getInt(path + ".behavior.minion.max-count"));
         assertTrue(mobs.getStringList(path + ".behavior.minion.types").containsAll(
                 java.util.List.of("SLIME", "HUSK", "BOGGED")));
+        assertEquals(1.0D, mobs.getDouble(path + ".behavior.pool.damage"), 0.000001D);
+        assertEquals(20, mobs.getInt(path + ".behavior.pool.damage-interval-ticks"));
         assertTrue(mobs.getDouble(path + ".behavior.reclaim.health-threshold") > 0.0D);
     }
 

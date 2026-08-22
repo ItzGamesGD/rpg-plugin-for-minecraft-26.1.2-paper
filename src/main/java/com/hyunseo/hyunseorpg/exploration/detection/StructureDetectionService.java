@@ -39,6 +39,10 @@ public final class StructureDetectionService {
         try {
             repository.ensureWorldLoaded(world.getUID());
             List<StructureCandidate> candidates = provider.scanChunk(world, chunkX, chunkZ, registry.minecraftKeys());
+            if (!candidates.isEmpty()) {
+                plugin.getLogger().info("Exploration detection: chunk " + chunkX + "," + chunkZ
+                        + " found " + candidates.size() + " configured structure candidate(s).");
+            }
             int created = 0;
             for (StructureCandidate candidate : candidates) {
                 ExplorationStructureDefinition definition = registry.byMinecraftKey(candidate.minecraftKey()).orElse(null);
@@ -65,7 +69,12 @@ public final class StructureDetectionService {
                         candidate.anchor(), candidate.bounds(), selected, variantId, state,
                         java.util.Map.of(), false, Instant.now(), null,
                         StructureRecord.CURRENT_DATA_VERSION);
-                if (repository.createIfAbsent(record)) created++;
+                if (repository.createIfAbsent(record)) {
+                    created++;
+                    plugin.getLogger().info("Exploration record created: structure=" + definition.id()
+                            + ", selected=" + selected + ", variant=" + (variantId.isBlank() ? "none" : variantId)
+                            + ", state=" + state + ", chunk=" + chunkX + "," + chunkZ);
+                }
             }
             return created;
         } catch (IOException | RuntimeException exception) {

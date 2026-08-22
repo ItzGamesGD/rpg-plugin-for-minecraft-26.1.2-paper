@@ -101,7 +101,21 @@ public final class MonsterBehaviorService implements Listener {
     private static final class BulwarkState { BulwarkPhase phase = BulwarkPhase.NORMAL; long until; Vector direction; final Set<UUID> hits = ConcurrentHashMap.newKeySet(); }
     private enum ShamanAction { IDLE, POOL_TELEGRAPH, SUMMON_TELEGRAPH, RECLAIM }
     private static final class ShamanState { ShamanAction action = ShamanAction.IDLE; long until; long nextSummonAt; Location snapshot; boolean reclaimUsed; }
-    private static final class MudPool { final UUID owner; final Location center; final double radius; final long expiresAt; MudPool(UUID owner, Location center, double radius, long expiresAt) { this.owner=owner; this.center=center; this.radius=radius; this.expiresAt=expiresAt; } }
+    private static final class MudPool {
+        final UUID owner;
+        final Location center;
+        final double radius;
+        final long expiresAt;
+        long nextDamageAt;
+
+        MudPool(UUID owner, Location center, double radius, long expiresAt, long nextDamageAt) {
+            this.owner = owner;
+            this.center = center;
+            this.radius = radius;
+            this.expiresAt = expiresAt;
+            this.nextDamageAt = nextDamageAt;
+        }
+    }
 
     public MonsterBehaviorService(JavaPlugin plugin, ConfigService configService, MobService mobService) {
         this.plugin = plugin;
@@ -465,7 +479,7 @@ public final class MonsterBehaviorService implements Listener {
     }
 
     private void executeShaman(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
-        if(state.action==ShamanAction.POOL_TELEGRAPH){ Location c=state.snapshot; if (c != null) { renderPoolActivation(c, section); mudPools.put(UUID.randomUUID(),new MudPool(source.getUniqueId(),c,section.getDouble("pool.radius",2.75D),ticks+section.getLong("pool.duration-ticks",120))); } }
+        if(state.action==ShamanAction.POOL_TELEGRAPH){ Location c=state.snapshot; if (c != null) { renderPoolActivation(c, section); mudPools.put(UUID.randomUUID(),new MudPool(source.getUniqueId(),c,section.getDouble("pool.radius",2.75D),ticks+section.getLong("pool.duration-ticks",120),ticks)); } }
         else if(state.action==ShamanAction.SUMMON_TELEGRAPH){
             int count = MireShamanPolicy.summonCount(activeMireMinionCount(source.getUniqueId()),
                     randomBetween(section.getInt("minion.min-count",1), section.getInt("minion.max-count",2)),
@@ -499,8 +513,39 @@ public final class MonsterBehaviorService implements Listener {
             }
             p.center.getWorld().spawnParticle(Particle.DUST, p.center, 5, p.radius*.45D, .05D, p.radius*.45D, new Particle.DustOptions(org.bukkit.Color.OLIVE, 1.0F));
             p.center.getWorld().spawnParticle(Particle.CLOUD, p.center.clone().add(0, .15D, 0), 2, p.radius*.35D, .08D, p.radius*.35D, .01D);
-            for(Player player:playersNear(p.center,p.radius)) if(player.getLocation().distanceSquared(p.center)<=p.radius*p.radius){player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,20,0));player.addPotionEffect(new PotionEffect(PotionEffectType.POISON,20,0));}
+            List<Player> inside = playersNear(p.center,p.radius).stream()
+                    .filter(player -> player.getLocation().distanceSquared(p.center) <= p.radius * p.radius)
+                    .toList();
+            if (ticks % 10L == 0L) {
+                for (Player player : inside) {
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 0));
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 30, 0));
+                }
+            }
+            if (ticks >= p.nextDamageAt && !inside.isEmpty()) {
+                double damage = poolDamage(p.owner, "pool.damage", 1.0D);
+                Entity owner = Bukkit.getEntity(p.owner);
+                for (Player player : inside) {
+                    if (owner instanceof LivingEntity living) player.damage(damage, living);
+                    else player.damage(damage);
+                }
+                p.nextDamageAt = ticks + Math.max(1L, poolDamageTicks(p.owner, "pool.damage-interval-ticks", 20L));
+            }
         }
+    }
+
+    private double poolDamage(UUID owner, String key, double fallback) {
+        Entity entity = Bukkit.getEntity(owner);
+        if (!(entity instanceof LivingEntity living)) return fallback;
+        var section = behaviorSection(living);
+        return Math.max(0.0D, section == null ? fallback : section.getDouble(key, fallback));
+    }
+
+    private long poolDamageTicks(UUID owner, String key, long fallback) {
+        Entity entity = Bukkit.getEntity(owner);
+        if (!(entity instanceof LivingEntity living)) return fallback;
+        var section = behaviorSection(living);
+        return section == null ? fallback : section.getLong(key, fallback);
     }
 
     private void renderPoolActivation(Location center, org.bukkit.configuration.ConfigurationSection section) {

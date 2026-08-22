@@ -61,6 +61,7 @@ public final class ConfigMigrationService {
             "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml", "alchemy/gui.yml");
+    private static final List<String> EXPLORATION_FILES = List.of("exploration/structures.yml");
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
             "burning_sword", "flowing_water_sword", "wind_cutting_sword", "earth_special_sword",
             "ice_special_sword", "dark_energy_sword", "burning_bow", "wind_archers_bow",
@@ -109,6 +110,9 @@ public final class ConfigMigrationService {
             if (normalized.equals("alchemy") || normalized.equals("all")) {
                 migrateAlchemy(lines, changedFiles);
             }
+            if (normalized.equals("exploration") || normalized.equals("all")) {
+                migrateExploration(lines, changedFiles);
+            }
             if (normalized.equals("players") || normalized.equals("all")) {
                 migratePlayers(lines, changedFiles);
             }
@@ -118,7 +122,7 @@ public final class ConfigMigrationService {
                 migrateLegacyProfessionRecipes(lines, changedFiles);
                 migrateLegacyProfessionShops(lines, changedFiles);
             }
-            if (!List.of("configs", "items", "players", "farming", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
+            if (!List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
             }
@@ -274,6 +278,30 @@ public final class ConfigMigrationService {
         }
         migrateAlchemyCrafting(lines, changedFiles);
         activateProductionAlchemy(lines, changedFiles);
+    }
+
+    private void migrateExploration(List<String> lines, List<File> changedFiles) {
+        for (String fileName : EXPLORATION_FILES) {
+            FileConfiguration defaults = loadResource(fileName);
+            if (defaults == null) {
+                lines.add("ERROR " + fileName + ": bundled exploration default is missing");
+                continue;
+            }
+            FileConfiguration target = loadLive(fileName);
+            boolean changed = false;
+            if (target == null) {
+                target = new YamlConfiguration();
+                copyMissingRoot(target, defaults);
+                changed = true;
+                lines.add(fileName + ": created missing exploration config from bundled defaults");
+            } else {
+                changed = copyMissingRoot(target, defaults);
+                if (changed) {
+                    lines.add(fileName + ": added missing exploration keys without overwriting operator values");
+                }
+            }
+            if (changed) mark(target, fileName, changedFiles, lines, "exploration migration staged");
+        }
     }
 
     /** Explicit activation for the implemented A/B production scope. */

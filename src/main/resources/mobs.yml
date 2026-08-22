@@ -195,6 +195,8 @@ custom-mobs:
         radius: 2.75
         duration-ticks: 120
         max-active: 3
+        damage: 1.0
+        damage-interval-ticks: 20
       minion:
         telegraph-ticks: 12
         min-count: 1

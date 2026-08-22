@@ -3,6 +3,8 @@
 기준 브랜치: `feature/golden-bulwark-mire-shaman`
 기준 커밋: `4c5979e` 이후 E1-E8 탐험 모듈 병합 및 패턴 수정
 
+후속 정밀 수정: 구조 감지 재시도, 탐험 migration, 독 웅덩이 직접 피해 pulse
+
 ## 1. 이중 검증 결과
 
 ### 코드 논리 검증
@@ -21,6 +23,8 @@
 - 전투 패턴은 원거리 포션 투척이 아니라 `Toxic Pool` 공간 제어와 제한된 하수인 압박으로 구성했다.
 - Golden Bulwark, 양조, 농사, 별도 AI 프레임워크는 변경하지 않았다.
 - 수치와 활성화 여부는 설정에 남겼고, 최종 밸런스 및 라이브 검증 완료로 표시하지 않는다.
+
+외부 설정이 이미 `enabled: true`, `swamp_hut.enabled: true`, `selection-chance: 1.0`인 경우를 전제로 YAML 값을 다시 덮어쓰지 않고 runtime 진입 경로를 진단하도록 수정했다.
 
 ## 2. 변경 내용
 
@@ -44,7 +48,24 @@
 - 예고: 밝은 외곽 ring + 약한 내부 cloud.
 - 발동: 색이 진한 ring 확산, explosion particle, slime block sound.
 - 활성: 보라색 외곽 ring + 올리브 내부 particle + cloud, 기존 Slowness/Poison 판정 유지.
+- Poison은 상태 표시용이며 피해 엔진으로 사용하지 않는다.
+- `pool.damage`와 `pool.damage-interval-ticks`에 따른 직접 피해 pulse가 웅덩이 안의 플레이어에게 적용된다.
+- 피해 source는 살아 있는 수렁 주술사 엔티티로 전달하고, 주술사가 사라진 경우에도 설정 피해 자체는 안전하게 유지한다.
 - 예고 시간, 반경, 지속시간은 `mobs.yml`에서 읽는다.
+
+### 구조 감지 진단 및 재시도
+
+- 기존 `ReflectivePaperStructureCandidateProvider`는 단 한 번의 reflection/runtime 예외 후 `apiFailed`를 고정해 이후 모든 청크 스캔을 영구 중단할 수 있었다.
+- 영구 차단을 제거하고 해당 청크만 빈 결과로 안전 처리한 뒤 다음 `ChunkLoadEvent`에서 재시도하도록 변경했다.
+- candidate 발견, record 생성(selected/variant/state), activation, scripted spawn 결과를 단계별 로그로 남긴다.
+- 따라서 다음 로그 상태로 `detection → persistence → activation → spawn`의 최초 실패 지점을 구분할 수 있다.
+
+### Exploration migration
+
+- `migrate exploration --dry-run` 및 `migrate exploration --apply` 대상을 추가했다.
+- `migrate all`에도 `exploration/structures.yml`을 포함한다.
+- 외부 파일의 `enabled`, selection chance, 기존 variant 및 operator 값은 덮어쓰지 않는다.
+- 없는 파일·section·key만 bundled resource에서 병합하며 apply 전 백업 정책은 기존 migration 흐름을 재사용한다.
 
 ### 하수인
 
@@ -63,6 +84,8 @@
 - custom mob 어댑터: `src/main/java/com/hyunseo/hyunseorpg/exploration/integration/ExistingHyunseoRpgAdapters.java`
 - 수렁 주술사 정책: `src/main/java/com/hyunseo/hyunseorpg/mob/MireShamanPolicy.java`
 - 수렁 주술사 runtime: `src/main/java/com/hyunseo/hyunseorpg/mob/MonsterBehaviorService.java`
+- 탐험 migration: `src/main/java/com/hyunseo/hyunseorpg/core/config/ConfigMigrationService.java`
+- migration 자동완성: `src/main/java/com/hyunseo/hyunseorpg/command/RPGGiveCommand.java`
 - 몹 설정: `src/main/resources/mobs.yml`
 - 회귀 테스트: `src/test/java/com/hyunseo/hyunseorpg/mob/MireShamanPrototypeTest.java`
 
@@ -85,6 +108,8 @@
 - 전투 중 summon이 1~2마리로 실행되는지
 - Slime 중간 크기, Husk/Bogged AI, 5마리 cap
 - 주술사 사망·청크 unload·서버 종료 후 하수인과 ownership 정리
+- 외부 설정에서 migration apply 후 reload 시 `enabled`와 `selection-chance`가 유지되는지
+- 구조 감지 실패 로그 후 다음 청크에서 재시도되는지
 
 ## 6. 범위 외
 

@@ -112,6 +112,8 @@ public final class ExplorationRuntimeManager {
             runtime.addParticipant(trigger.getUniqueId());
             active.put(persistent.structureId(), runtime);
             lastEndReasons.remove(persistent.structureId());
+            plugin.getLogger().info("Exploration activation: structure=" + persistent.structureType()
+                    + ", variant=" + persistent.variantId() + ", id=" + persistent.structureId());
             executePhase(persistent, runtime, ExplorationComponentPhase.ACTIVATE, currentTick);
             return true;
         } catch (Exception exception) {
