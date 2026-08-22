@@ -40,8 +40,10 @@ structures:
     selection-chance: 0.0
     balance-pending: true
     trigger-radius: 40.0
-    abandon-radius: 80.0
-    abandon-grace-ticks: 100
+    loot-trigger-radius: 24.0
+    loot-trigger-grace-ticks: 20
+    combat-abandon-radius: 80.0
+    combat-abandon-grace-ticks: 100
     variants:
       scout_wave_prototype:
         enabled: false
@@ -175,6 +177,7 @@ raid-pools:
       shield_raider: {max: 2, weight: 3, heavy: false, level: 8}
       crossbow_raider: {max: 3, weight: 3, heavy: false, level: 7}
       charger_raider: {max: 2, weight: 2, heavy: false, level: 8}
+      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 10}
       banner_raider: {max: 1, weight: 1, heavy: true, level: 9}
       spike_evoker: {max: 1, weight: 1, heavy: true, level: 10}
 
@@ -185,6 +188,7 @@ raid-pools:
       shield_raider: {max: 3, weight: 3, heavy: false, level: 9}
       crossbow_raider: {max: 4, weight: 3, heavy: false, level: 8}
       charger_raider: {max: 2, weight: 2, heavy: false, level: 9}
+      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 12}
       banner_raider: {max: 1, weight: 1, heavy: true, level: 10}
       spike_evoker: {max: 1, weight: 1, heavy: true, level: 11}
       ravager_rider: {max: 1, weight: 1, heavy: true, level: 12}

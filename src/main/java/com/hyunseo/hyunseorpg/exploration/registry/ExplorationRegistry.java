@@ -124,8 +124,13 @@ public final class ExplorationRegistry {
         boolean structureEnabled = section.getBoolean("enabled", false);
         double chance = section.getDouble("selection-chance", 0.0D);
         double trigger = section.getDouble("trigger-radius", 32.0D);
-        double abandon = section.getDouble("abandon-radius", 64.0D);
-        long grace = section.getLong("abandon-grace-ticks", 100L);
+        double lootTrigger = section.getDouble("loot-trigger-radius", trigger);
+        long lootGrace = section.getLong("loot-trigger-grace-ticks",
+                section.getLong("abandon-grace-ticks", 100L));
+        double combatAbandon = section.getDouble("combat-abandon-radius",
+                section.getDouble("abandon-radius", 64.0D));
+        long combatGrace = section.getLong("combat-abandon-grace-ticks",
+                section.getLong("abandon-grace-ticks", 100L));
         List<StructureVariantDefinition> variants = new ArrayList<>();
         ConfigurationSection variantSection = section.getConfigurationSection("variants");
         if (variantSection != null) {
@@ -139,7 +144,8 @@ public final class ExplorationRegistry {
                         parseComponents(variant.getMapList("components"))));
             }
         }
-        return new ExplorationStructureDefinition(id, minecraftKey, structureEnabled, chance, trigger, abandon, grace, variants);
+        return new ExplorationStructureDefinition(id, minecraftKey, structureEnabled, chance, trigger,
+                lootTrigger, lootGrace, combatAbandon, combatGrace, variants);
     }
 
     private List<ExplorationComponentSpec> parseComponents(List<Map<?, ?>> rawList) {

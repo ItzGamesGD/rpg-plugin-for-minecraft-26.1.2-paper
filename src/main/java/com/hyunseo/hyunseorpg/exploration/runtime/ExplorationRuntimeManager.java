@@ -97,7 +97,8 @@ public final class ExplorationRuntimeManager {
         ExplorationRuntime existing = active.get(record.structureId());
         if (existing != null) {
             existing.addParticipant(trigger.getUniqueId());
-            existing.clearPhysicalExit();
+            existing.clearLootTriggerExit();
+            existing.clearCombatAbandonExit();
             lastEndReasons.remove(record.structureId());
             return true;
         }
@@ -173,7 +174,7 @@ public final class ExplorationRuntimeManager {
         if (!runtime.allowedChoices().contains(choice)) return ChoiceResult.INVALID_CHOICE;
         ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
         if (!"flee".equals(choice) && !runtime.lootTaken() && (definition == null || !record.worldId().equals(player.getWorld().getUID())
-                || distanceSquared(record, player.getLocation()) > definition.abandonRadius() * definition.abandonRadius())) {
+                || distanceSquared(record, player.getLocation()) > definition.combatAbandonRadius() * definition.combatAbandonRadius())) {
             return ChoiceResult.OUT_OF_RANGE;
         }
         if (!runtime.choose(player.getUniqueId(), choice)) return ChoiceResult.NOT_PENDING;
@@ -182,10 +183,13 @@ public final class ExplorationRuntimeManager {
             return ChoiceResult.FLED;
         }
         try {
+            runtime.snapshotRaidOrigin(player.getLocation());
+            runtime.clearCombatAbandonExit();
             executePhase(record, runtime, phaseForChoice(choice), currentTick);
             if (!runtime.objectiveMode() || runtime.objectiveEntities().isEmpty()) {
                 throw new IllegalStateException("raid choice produced no objective entities");
             }
+            runtime.markRaidStarted();
             player.sendMessage(net.kyori.adventure.text.Component.text("약탈자 전초기지 습격이 시작되었습니다."));
             return ChoiceResult.ACCEPTED;
         } catch (Exception exception) {
@@ -262,19 +266,34 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
-            if (runtime.lootTaken() && runtime.lootExitPrompted() == false
-                    && runtime.physicalExitAtTick() != null
-                    && currentTick - runtime.physicalExitAtTick() >= definition.abandonGraceTicks()) {
-                try {
-                    executePhase(record, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
-                    runtime.markLootExitPrompted();
-                    repository.save(record.withMetadata("loot-exit-prompted", "true"));
-                    runtime.clearPhysicalExit();
-                    plugin.getLogger().info("Exploration outpost loot exit prompt: structure=" + record.structureId());
-                } catch (Exception exception) {
-                    plugin.getLogger().log(Level.WARNING, "Unable to start outpost loot exit prompt: " + record.structureId(), exception);
-                    abandon(record.structureId());
+            if (runtime.lootTaken() && !runtime.lootExitPrompted() && !runtime.raidStarted()) {
+                Player looter = runtime.looter() == null ? null : Bukkit.getPlayer(runtime.looter());
+                if (looter != null && looter.isOnline() && looter.getWorld().getUID().equals(record.worldId())) {
+                    double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
+                    if (distanceSquared(record, looter.getLocation()) <= limit) {
+                        runtime.clearLootTriggerExit();
+                    } else {
+                        if (runtime.lootTriggerExitAtTick() == null) runtime.markLootTriggerExit(currentTick);
+                        if (currentTick - runtime.lootTriggerExitAtTick() >= definition.lootTriggerGraceTicks()) {
+                            runtime.snapshotRaidOrigin(looter.getLocation());
+                            try {
+                                executePhase(record, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
+                                runtime.markLootExitPrompted();
+                                repository.save(withRaidOriginMetadata(record
+                                        .withMetadata("loot-exit-prompted", "true"), runtime.raidOrigin()));
+                                runtime.clearLootTriggerExit();
+                                plugin.getLogger().info("Exploration outpost loot exit prompt: structure=" + record.structureId()
+                                        + ", origin=" + formatLocation(runtime.raidOrigin()));
+                            } catch (Exception exception) {
+                                plugin.getLogger().log(Level.WARNING, "Unable to start outpost loot exit prompt: " + record.structureId(), exception);
+                                abandon(record.structureId());
+                            }
+                            continue;
+                        }
+                    }
                 }
+                // Loot-armed runtimes wait for the looter to cross the loot trigger; they are
+                // not eligible for the combat abandon policy before a raid starts.
                 continue;
             }
 
@@ -284,15 +303,20 @@ public final class ExplorationRuntimeManager {
                 }
                 for (UUID entityId : runtime.objectiveEntities()) {
                     var entity = Bukkit.getEntity(entityId);
-                    if (entity == null || !entity.isValid() || entity.isDead()) {
-                        plugin.getLogger().info("Exploration objective missing: structure="
-                                + record.structureType() + ", variant=" + record.variantId()
-                                + ", id=" + record.structureId() + ", entity=" + entityId
-                                + ", entityState=" + (entity == null ? "NULL" : "valid=" + entity.isValid() + ",dead=" + entity.isDead()));
-                        runtime.removeObjective(entityId);
+                    if (entity == null) {
+                        plugin.getLogger().fine("Exploration objective is currently unresolved (likely unloaded): structure="
+                                + record.structureId() + ", entity=" + entityId);
+                    } else if (entity.isDead()) {
+                        if (runtime.confirmObjectiveDeath(entityId)) {
+                            plugin.getLogger().info("Exploration objective death confirmed: structure="
+                                    + record.structureId() + ", entity=" + entityId);
+                        }
+                    } else if (!entity.isValid()) {
+                        plugin.getLogger().fine("Exploration objective is invalid but not confirmed dead; retaining: structure="
+                                + record.structureId() + ", entity=" + entityId);
                     }
                 }
-                if (runtime.objectiveEntities().isEmpty()) {
+                if (runtime.objectivesCleared()) {
                     complete(record.structureId(), currentTick);
                     continue;
                 }
@@ -301,19 +325,41 @@ public final class ExplorationRuntimeManager {
             boolean anyInside = false;
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (!player.getWorld().getUID().equals(record.worldId())) continue;
-                if (distanceSquared(record, player.getLocation()) <= definition.abandonRadius() * definition.abandonRadius()) {
+                if (distanceSquared(record, player.getLocation()) <= definition.combatAbandonRadius() * definition.combatAbandonRadius()) {
                     anyInside = true;
                     runtime.addParticipant(player.getUniqueId());
                     break;
                 }
             }
             if (anyInside) {
-                runtime.clearPhysicalExit();
-            } else if (runtime.physicalExitAtTick() != null
-                    && currentTick - runtime.physicalExitAtTick() >= definition.abandonGraceTicks()) {
-                abandon(record.structureId());
+                runtime.clearCombatAbandonExit();
+            } else {
+                if (runtime.combatAbandonExitAtTick() == null) runtime.markCombatAbandonExit(currentTick);
+                if (currentTick - runtime.combatAbandonExitAtTick() >= definition.combatAbandonGraceTicks()) {
+                    abandon(record.structureId());
+                }
             }
         }
+    }
+
+    /** Marks an objective dead only from an explicit death event; unload is intentionally ignored. */
+    public synchronized boolean confirmObjectiveDeath(UUID entityId) {
+        if (entityId == null) return false;
+        boolean confirmed = false;
+        for (ExplorationRuntime runtime : active.values()) {
+            if (runtime.confirmObjectiveDeath(entityId)) {
+                confirmed = true;
+                plugin.getLogger().info("Exploration objective death event accepted: structure="
+                        + runtime.structureId() + ", entity=" + entityId);
+            }
+        }
+        return confirmed;
+    }
+
+    private String formatLocation(Location location) {
+        if (location == null || location.getWorld() == null) return "unknown";
+        return location.getWorld().getName() + " "
+                + Math.round(location.getX()) + "," + Math.round(location.getY()) + "," + Math.round(location.getZ());
     }
 
     public synchronized void onPhysicalMove(Player player, Location from, Location to, long currentTick) {
@@ -324,19 +370,28 @@ public final class ExplorationRuntimeManager {
             if (record == null || !record.worldId().equals(to.getWorld().getUID())) continue;
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
-            double limit = definition.abandonRadius() * definition.abandonRadius();
+            if (runtime.lootTaken() && !runtime.raidStarted()) {
+                if (runtime.lootExitPrompted()) continue;
+                double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
+                boolean wasInside = distanceSquared(record, from) <= limit;
+                boolean nowInside = distanceSquared(record, to) <= limit;
+                if (nowInside) runtime.clearLootTriggerExit();
+                else if (wasInside && !nowInside) runtime.markLootTriggerExit(currentTick);
+                continue;
+            }
+            double limit = definition.combatAbandonRadius() * definition.combatAbandonRadius();
             boolean wasInside = distanceSquared(record, from) <= limit;
             boolean nowInside = distanceSquared(record, to) <= limit;
             if (nowInside) {
                 runtime.addParticipant(player.getUniqueId());
-                runtime.clearPhysicalExit();
+                runtime.clearCombatAbandonExit();
                 continue;
             }
             if (wasInside && !nowInside) {
                 if (teleportExemptions.isExempt(record.structureId(), player.getUniqueId(), currentTick)) {
-                    runtime.clearPhysicalExit();
+                    runtime.clearCombatAbandonExit();
                 } else {
-                    runtime.markPhysicalExit(currentTick);
+                    runtime.markCombatAbandonExit(currentTick);
                 }
             }
         }
@@ -346,7 +401,8 @@ public final class ExplorationRuntimeManager {
         for (ExplorationRuntime runtime : java.util.List.copyOf(active.values())) {
             if (!runtime.participants().contains(player.getUniqueId())) continue;
             teleportExemptions.exempt(runtime.structureId(), player.getUniqueId(), currentTick, 40L);
-            runtime.clearPhysicalExit();
+            runtime.clearLootTriggerExit();
+            runtime.clearCombatAbandonExit();
         }
     }
 
@@ -390,6 +446,28 @@ public final class ExplorationRuntimeManager {
         if (looter != null) {
             runtime.addParticipant(looter);
             runtime.markLootTaken(looter, parseLong(record.activationMetadata().get("loot-taken-at-tick"), 0L));
+        }
+        Location origin = restoreLocation(record);
+        if (origin != null) runtime.snapshotRaidOrigin(origin);
+    }
+
+    private StructureRecord withRaidOriginMetadata(StructureRecord record, Location origin) {
+        if (origin == null || origin.getWorld() == null) return record;
+        return record.withMetadata("raid-origin-x", Double.toString(origin.getX()))
+                .withMetadata("raid-origin-y", Double.toString(origin.getY()))
+                .withMetadata("raid-origin-z", Double.toString(origin.getZ()));
+    }
+
+    private Location restoreLocation(StructureRecord record) {
+        String x = record.activationMetadata().get("raid-origin-x");
+        String y = record.activationMetadata().get("raid-origin-y");
+        String z = record.activationMetadata().get("raid-origin-z");
+        if (x == null || y == null || z == null) return null;
+        try {
+            org.bukkit.World world = Bukkit.getWorld(record.worldId());
+            return world == null ? null : new Location(world, Double.parseDouble(x), Double.parseDouble(y), Double.parseDouble(z));
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 

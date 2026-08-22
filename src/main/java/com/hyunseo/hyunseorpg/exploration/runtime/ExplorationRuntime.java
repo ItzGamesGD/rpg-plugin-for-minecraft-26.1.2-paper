@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.exploration.runtime;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.bukkit.Location;
 
 /** Ephemeral state only. Persistent lifecycle lives in StructureRecord. */
 public final class ExplorationRuntime {
@@ -13,7 +14,8 @@ public final class ExplorationRuntime {
     private final Set<UUID> participants = new LinkedHashSet<>();
     private final Set<UUID> objectiveEntities = new LinkedHashSet<>();
     private boolean objectiveMode;
-    private Long physicalExitAtTick;
+    private Long lootTriggerExitAtTick;
+    private Long combatAbandonExitAtTick;
     private UUID choiceOwner;
     private String choicePromptId = "";
     private Set<String> allowedChoices = Set.of();
@@ -23,6 +25,10 @@ public final class ExplorationRuntime {
     private UUID looter;
     private long lootTakenAtTick = -1L;
     private boolean lootExitPrompted;
+    private boolean raidStarted;
+    private Location raidOrigin;
+    private int objectiveSpawnCount;
+    private final Set<UUID> confirmedDeadObjectives = new LinkedHashSet<>();
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -44,10 +50,22 @@ public final class ExplorationRuntime {
         if (ids == null || ids.isEmpty()) return;
         objectiveMode = true;
         objectiveEntities.addAll(ids);
+        objectiveSpawnCount = Math.max(objectiveSpawnCount, objectiveEntities.size());
     }
     public synchronized boolean objectiveMode() { return objectiveMode; }
     public synchronized Set<UUID> objectiveEntities() { return Set.copyOf(objectiveEntities); }
-    public synchronized void removeObjective(UUID id) { objectiveEntities.remove(id); }
+    public synchronized void removeObjective(UUID id) { confirmObjectiveDeath(id); }
+    public synchronized boolean confirmObjectiveDeath(UUID id) {
+        if (id == null || !objectiveEntities.remove(id)) return false;
+        confirmedDeadObjectives.add(id);
+        return true;
+    }
+    public synchronized boolean objectivesCleared() {
+        return objectiveMode && objectiveSpawnCount > 0
+                && confirmedDeadObjectives.size() >= objectiveSpawnCount;
+    }
+    public synchronized int objectiveSpawnCount() { return objectiveSpawnCount; }
+    public synchronized int confirmedDeadObjectiveCount() { return confirmedDeadObjectives.size(); }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
                                             String fallback, long expiresAtTick) {
         if (owner == null || choicePending() || !selectedChoice.isBlank()) return false;
@@ -87,15 +105,24 @@ public final class ExplorationRuntime {
     public synchronized long lootTakenAtTick() { return lootTakenAtTick; }
     public synchronized boolean lootExitPrompted() { return lootExitPrompted; }
     public synchronized void markLootExitPrompted() { lootExitPrompted = true; }
+    public synchronized boolean raidStarted() { return raidStarted; }
+    public synchronized void markRaidStarted() { raidStarted = true; }
+    public synchronized Location raidOrigin() { return raidOrigin == null ? null : raidOrigin.clone(); }
+    public synchronized void snapshotRaidOrigin(Location origin) {
+        if (raidOrigin == null && origin != null && origin.getWorld() != null) raidOrigin = origin.clone();
+    }
     public synchronized boolean choose(UUID playerId, String choice) {
         String normalized = normalizeChoice(choice);
         if (!choicePending() || !choiceOwner.equals(playerId) || !allowedChoices.contains(normalized)) return false;
         selectedChoice = normalized;
         return true;
     }
-    public synchronized Long physicalExitAtTick() { return physicalExitAtTick; }
-    public synchronized void markPhysicalExit(long tick) { physicalExitAtTick = tick; }
-    public synchronized void clearPhysicalExit() { physicalExitAtTick = null; }
+    public synchronized Long lootTriggerExitAtTick() { return lootTriggerExitAtTick; }
+    public synchronized void markLootTriggerExit(long tick) { lootTriggerExitAtTick = tick; }
+    public synchronized void clearLootTriggerExit() { lootTriggerExitAtTick = null; }
+    public synchronized Long combatAbandonExitAtTick() { return combatAbandonExitAtTick; }
+    public synchronized void markCombatAbandonExit(long tick) { combatAbandonExitAtTick = tick; }
+    public synchronized void clearCombatAbandonExit() { combatAbandonExitAtTick = null; }
 
     private static String normalizeChoice(String value) {
         return value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);

@@ -44,10 +44,15 @@ final class ExplorationStructureContentPrototypeTest {
         String eventVariant = "structures.pillager_outpost.variants.outpost_raid_event";
         assertTrue(yaml.getBoolean(eventVariant + ".enabled", false));
         assertFalse(yaml.getBoolean(eventVariant + ".prototype", true));
+        assertEquals(24.0D, yaml.getDouble("structures.pillager_outpost.loot-trigger-radius"), 0.000001D);
+        assertEquals(80.0D, yaml.getDouble("structures.pillager_outpost.combat-abandon-radius"), 0.000001D);
         List<Map<?, ?>> eventComponents = yaml.getMapList(eventVariant + ".components");
         assertEquals("choice_prompt", eventComponents.get(0).get("type"));
         assertEquals("loot_exit", eventComponents.get(0).get("phase"));
         assertEquals("raid_wave_spawn", eventComponents.get(1).get("type"));
         assertEquals("outpost_raid_tier_1", eventComponents.get(1).get("pool-id"));
+        String tierTwo = "raid-pools.outpost_raid_tier_2.mobs.golden_bulwark";
+        assertTrue(yaml.isConfigurationSection(tierTwo));
+        assertTrue(yaml.getBoolean(tierTwo + ".heavy", false));
     }
 }

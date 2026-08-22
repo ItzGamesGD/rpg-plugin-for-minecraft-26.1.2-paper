@@ -49,8 +49,7 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
         for (RaidMobDefinition unit : units) {
             double angle = (Math.PI * 2.0D * index) / Math.max(1, units.size());
             double radius = 2.5D + (index % 2) * 1.5D;
-            Location location = ComponentLocations.relative(context, spec,
-                    Math.cos(angle) * radius, Math.sin(angle) * radius);
+            Location location = ComponentLocations.raidOrigin(context, spec, angle, 12.0D + (index % 3) * 4.0D);
             HashMap<String, Object> options = new HashMap<>(spec.options());
             options.put("level", unit.level());
             Collection<UUID> spawned = context.ports().mobs().spawn("custom:" + unit.mobId(), location, 1, options);

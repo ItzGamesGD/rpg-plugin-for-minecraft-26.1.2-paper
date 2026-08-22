@@ -296,7 +296,8 @@ public final class ConfigMigrationService {
                 changed = true;
                 lines.add(fileName + ": created missing exploration config from bundled defaults");
             } else {
-                changed = copyMissingRoot(target, defaults);
+                changed |= migrateOutpostRadiusAliases(target, fileName, lines);
+                changed |= copyMissingRoot(target, defaults);
                 changed |= migrateLegacyExplorationPrototype(target, fileName, lines);
                 changed |= migrateOutpostLootTrigger(target, fileName, lines);
                 if (changed) {
@@ -360,6 +361,22 @@ public final class ConfigMigrationService {
             migrated.add(component);
         }
         if (changed) target.set(root, migrated);
+        return changed;
+    }
+
+    private boolean migrateOutpostRadiusAliases(FileConfiguration target, String fileName, List<String> lines) {
+        String root = "structures.pillager_outpost";
+        boolean changed = false;
+        if (target.isSet(root + ".abandon-radius") && !target.isSet(root + ".combat-abandon-radius")) {
+            target.set(root + ".combat-abandon-radius", target.get(root + ".abandon-radius"));
+            lines.add(fileName + ": preserved pillager outpost abandon-radius as combat-abandon-radius");
+            changed = true;
+        }
+        if (target.isSet(root + ".abandon-grace-ticks") && !target.isSet(root + ".combat-abandon-grace-ticks")) {
+            target.set(root + ".combat-abandon-grace-ticks", target.get(root + ".abandon-grace-ticks"));
+            lines.add(fileName + ": preserved pillager outpost abandon-grace-ticks as combat-abandon-grace-ticks");
+            changed = true;
+        }
         return changed;
     }
 

@@ -4,6 +4,7 @@ import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,5 +47,20 @@ final class ExplorationRuntimeChoiceTest {
         assertTrue(runtime.beginChoice(runtime.looter(), "outpost_raid_difficulty",
                 Set.of("tier1", "flee"), "flee", 60L));
         assertTrue(runtime.choose(looter, "tier1"));
+    }
+
+    @Test
+    void unresolvedObjectiveIsNotCountedAsDead() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "outpost_raid_event", 10L);
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        runtime.trackObjectives(List.of(first, second));
+
+        assertFalse(runtime.objectivesCleared());
+        assertTrue(runtime.confirmObjectiveDeath(first));
+        assertFalse(runtime.objectivesCleared());
+        assertFalse(runtime.confirmObjectiveDeath(first));
+        assertTrue(runtime.confirmObjectiveDeath(second));
+        assertTrue(runtime.objectivesCleared());
     }
 }

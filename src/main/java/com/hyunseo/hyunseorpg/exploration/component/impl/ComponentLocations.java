@@ -27,6 +27,21 @@ final class ComponentLocations {
                 : desired;
     }
 
+    static Location raidOrigin(ExplorationEventContext context, ExplorationComponentSpec spec,
+                               double angle, double distance) {
+        Location origin = context.runtime().raidOrigin();
+        if (origin == null || origin.getWorld() == null) {
+            throw new IllegalStateException("raid origin was not captured");
+        }
+        Location desired = origin.clone().add(
+                Math.cos(angle) * distance + spec.decimal("dx", 0.0D),
+                spec.decimal("dy", 0.0D),
+                Math.sin(angle) * distance + spec.decimal("dz", 0.0D));
+        return spec.bool("safe-spawn", false)
+                ? safeRaidSpawnLocation(origin, desired).orElse(desired)
+                : desired;
+    }
+
     private static Optional<Location> safeSpawnLocation(ExplorationEventContext context, Location desired) {
         var bounds = context.record().bounds();
         var world = Bukkit.getWorld(context.record().worldId());
@@ -48,6 +63,26 @@ final class ComponentLocations {
                 .map(pos -> new Location(world, pos[0] + 0.5D, pos[1], pos[2] + 0.5D,
                         desired.getYaw(), desired.getPitch()))
                 .min(Comparator.comparingDouble(location -> location.toVector().distanceSquared(preferred.toVector())));
+    }
+
+    private static Optional<Location> safeRaidSpawnLocation(Location origin, Location desired) {
+        var world = origin.getWorld();
+        if (world == null) return Optional.empty();
+        int desiredX = desired.getBlockX();
+        int desiredZ = desired.getBlockZ();
+        return IntStream.rangeClosed(-4, 4).boxed()
+                .flatMap(dx -> IntStream.rangeClosed(-4, 4).mapToObj(dz -> new int[]{desiredX + dx, desiredZ + dz}))
+                .map(pos -> {
+                    int floorY = world.getHighestBlockYAt(pos[0], pos[1]);
+                    return new Location(world, pos[0] + 0.5D, floorY + 1.0D, pos[1] + 0.5D,
+                            desired.getYaw(), desired.getPitch());
+                })
+                .filter(location -> {
+                    double distanceSquared = location.distanceSquared(origin);
+                    return distanceSquared >= 8.0D * 8.0D && distanceSquared <= 24.0D * 24.0D;
+                })
+                .filter(location -> isEntitySafe(location.getBlock()))
+                .min(Comparator.comparingDouble(location -> location.distanceSquared(desired)));
     }
 
     private static boolean isEntitySafe(Block feet) {

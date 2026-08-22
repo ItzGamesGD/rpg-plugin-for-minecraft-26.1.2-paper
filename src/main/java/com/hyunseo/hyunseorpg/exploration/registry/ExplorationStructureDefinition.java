@@ -10,8 +10,10 @@ public record ExplorationStructureDefinition(
         boolean enabled,
         double selectionChance,
         double triggerRadius,
-        double abandonRadius,
-        long abandonGraceTicks,
+        double lootTriggerRadius,
+        long lootTriggerGraceTicks,
+        double combatAbandonRadius,
+        long combatAbandonGraceTicks,
         List<StructureVariantDefinition> variants
 ) {
     public ExplorationStructureDefinition {
@@ -21,13 +23,31 @@ public record ExplorationStructureDefinition(
             throw new IllegalArgumentException("selectionChance must be 0..1");
         }
         if (!Double.isFinite(triggerRadius) || triggerRadius <= 0.0D) throw new IllegalArgumentException("triggerRadius <= 0");
-        if (!Double.isFinite(abandonRadius) || abandonRadius < triggerRadius) throw new IllegalArgumentException("abandonRadius < triggerRadius");
-        if (abandonGraceTicks < 1L) throw new IllegalArgumentException("abandonGraceTicks < 1");
+        if (!Double.isFinite(lootTriggerRadius) || lootTriggerRadius <= 0.0D) {
+            throw new IllegalArgumentException("lootTriggerRadius <= 0");
+        }
+        if (lootTriggerGraceTicks < 1L) throw new IllegalArgumentException("lootTriggerGraceTicks < 1");
+        if (!Double.isFinite(combatAbandonRadius) || combatAbandonRadius < triggerRadius) {
+            throw new IllegalArgumentException("combatAbandonRadius < triggerRadius");
+        }
+        if (combatAbandonGraceTicks < 1L) throw new IllegalArgumentException("combatAbandonGraceTicks < 1");
         variants = List.copyOf(variants == null ? List.of() : variants);
         if (enabled && selectionChance > 0.0D && variants.stream().noneMatch(StructureVariantDefinition::enabled)) {
             throw new IllegalArgumentException("enabled RPG structure requires at least one enabled variant");
         }
     }
+
+    /** Compatibility constructor for pre-loot-exit definitions. */
+    public ExplorationStructureDefinition(String id, String minecraftKey, boolean enabled,
+                                          double selectionChance, double triggerRadius,
+                                          double abandonRadius, long abandonGraceTicks,
+                                          List<StructureVariantDefinition> variants) {
+        this(id, minecraftKey, enabled, selectionChance, triggerRadius, triggerRadius,
+                abandonGraceTicks, abandonRadius, abandonGraceTicks, variants);
+    }
+
+    public double abandonRadius() { return combatAbandonRadius; }
+    public long abandonGraceTicks() { return combatAbandonGraceTicks; }
 
     private static String normalize(String value) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException("blank id");
