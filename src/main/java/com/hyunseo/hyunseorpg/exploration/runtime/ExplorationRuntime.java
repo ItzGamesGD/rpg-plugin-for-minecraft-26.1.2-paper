@@ -34,6 +34,7 @@ public final class ExplorationRuntime {
     private final Set<UUID> confirmedDeadObjectives = new LinkedHashSet<>();
     private List<String> raidWavePoolIds = List.of();
     private int raidWaveIndex = -1;
+    private UUID raidTarget;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -97,6 +98,8 @@ public final class ExplorationRuntime {
     }
     public synchronized int raidWaveNumber() { return raidWaveIndex + 1; }
     public synchronized int raidWaveCount() { return raidWavePoolIds.size(); }
+    public synchronized void setRaidTarget(UUID playerId) { raidTarget = playerId; }
+    public synchronized UUID raidTarget() { return raidTarget; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
                                             String fallback, long expiresAtTick) {
         if (owner == null || choicePending() || !selectedChoice.isBlank()) return false;

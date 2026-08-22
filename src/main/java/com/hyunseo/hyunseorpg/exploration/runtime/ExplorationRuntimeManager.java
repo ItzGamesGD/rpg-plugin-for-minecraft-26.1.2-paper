@@ -184,6 +184,7 @@ public final class ExplorationRuntimeManager {
             return ChoiceResult.FLED;
         }
         try {
+            runtime.setRaidTarget(player.getUniqueId());
             runtime.snapshotRaidOrigin(player.getLocation());
             runtime.clearCombatAbandonExit();
             executePhase(record, runtime, phaseForChoice(choice), currentTick);
@@ -318,8 +319,10 @@ public final class ExplorationRuntimeManager {
                                     + record.structureId() + ", entity=" + entityId);
                         }
                     } else if (!entity.isValid()) {
-                        plugin.getLogger().fine("Exploration objective is invalid but not confirmed dead; retaining: structure="
-                                + record.structureId() + ", entity=" + entityId);
+                            plugin.getLogger().fine("Exploration objective is invalid but not confirmed dead; retaining: structure="
+                                    + record.structureId() + ", entity=" + entityId);
+                    } else {
+                        keepRaidMobOnTarget(entity, runtime.raidTarget());
                     }
                 }
                 if (runtime.objectivesCleared()) {
@@ -347,7 +350,16 @@ public final class ExplorationRuntimeManager {
             }
 
             boolean anyInside = false;
+            if (runtime.raidStarted()) {
+                Player raidTarget = runtime.raidTarget() == null ? null : Bukkit.getPlayer(runtime.raidTarget());
+                // Once a raid has started, the target is the encounter owner. Do not fail the
+                // encounter merely because the owner kites away from the structure while the
+                // spawned objectives are still pursuing them.
+                anyInside = raidTarget != null && raidTarget.isOnline() && !raidTarget.isDead()
+                        && raidTarget.getWorld().getUID().equals(record.worldId());
+            }
             for (Player player : Bukkit.getOnlinePlayers()) {
+                if (anyInside) break;
                 if (!player.getWorld().getUID().equals(record.worldId())) continue;
                 if (distanceSquared(record, player.getLocation()) <= definition.combatAbandonRadius() * definition.combatAbandonRadius()) {
                     anyInside = true;
@@ -368,6 +380,17 @@ public final class ExplorationRuntimeManager {
                     abandon(record.structureId());
                 }
             }
+        }
+    }
+
+    private void keepRaidMobOnTarget(org.bukkit.entity.Entity entity, UUID targetId) {
+        if (!(entity instanceof org.bukkit.entity.LivingEntity living)) return;
+        living.setGlowing(true);
+        if (!(living instanceof org.bukkit.entity.Mob mob) || targetId == null) return;
+        Player target = Bukkit.getPlayer(targetId);
+        if (target != null && target.isOnline() && !target.isDead()
+                && target.getWorld().equals(living.getWorld())) {
+            mob.setTarget(target);
         }
     }
 

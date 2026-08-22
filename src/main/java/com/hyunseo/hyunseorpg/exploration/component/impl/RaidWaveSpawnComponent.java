@@ -58,6 +58,10 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
             Location location = ComponentLocations.raidOrigin(context, spec, angle, 12.0D + (index % 3) * 4.0D);
             HashMap<String, Object> options = new HashMap<>(spec.options());
             options.put("level", unit.level());
+            options.put("glowing", true);
+            if (context.runtime().raidTarget() != null) {
+                options.put("target-player-uuid", context.runtime().raidTarget().toString());
+            }
             Collection<UUID> spawned = context.ports().mobs().spawn("custom:" + unit.mobId(), location, 1, options);
             List<UUID> valid = spawned == null ? List.of() : spawned.stream().filter(java.util.Objects::nonNull).toList();
             if (valid.isEmpty()) throw new IllegalStateException("raid unit spawn failed: " + unit.mobId());

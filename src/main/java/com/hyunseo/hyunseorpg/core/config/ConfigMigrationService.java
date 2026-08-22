@@ -416,6 +416,13 @@ public final class ConfigMigrationService {
                 changed = true;
                 lines.add(fileName + ": converted outpost raid pool to a two-wave sequence");
             }
+            if ("raid_wave_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
+                    && component.containsKey("pool-ids")
+                    && !Boolean.parseBoolean(String.valueOf(component.getOrDefault("repeat-on-next-wave", false)))) {
+                component.put("repeat-on-next-wave", true);
+                changed = true;
+                lines.add(fileName + ": enabled outpost raid next-wave execution");
+            }
             migrated.add(component);
         }
         if (changed) target.set(root, migrated);

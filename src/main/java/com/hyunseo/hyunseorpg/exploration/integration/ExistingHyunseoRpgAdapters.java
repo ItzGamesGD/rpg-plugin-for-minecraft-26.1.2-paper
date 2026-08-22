@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -43,7 +44,10 @@ public final class ExistingHyunseoRpgAdapters {
                 if (!type.isAlive() || location.getWorld() == null) return List.of();
                 for (int i = 0; i < Math.max(1, count); i++) {
                     Entity entity = location.getWorld().spawnEntity(location, type);
-                    if (entity != null) spawned.add(entity.getUniqueId());
+                    if (entity instanceof LivingEntity living) {
+                        prepareExplorationMob(living, options);
+                        spawned.add(entity.getUniqueId());
+                    }
                 }
                     return List.copyOf(spawned);
             }
@@ -53,13 +57,37 @@ public final class ExistingHyunseoRpgAdapters {
             for (int i = 0; i < Math.max(1, count); i++) {
                 if (customMobId.equals("ravager_rider")) {
                     mobService.spawnOutpostRavagerRider(location, level, "EXPLORATION")
-                            .forEach(entity -> spawned.add(entity.getUniqueId()));
+                            .forEach(entity -> {
+                                prepareExplorationMob(entity, options);
+                                spawned.add(entity.getUniqueId());
+                            });
                     continue;
                 }
                 mobService.spawnCustomMob(location, customMobId, level, "EXPLORATION")
-                        .ifPresent(entity -> spawned.add(entity.getUniqueId()));
+                        .ifPresent(entity -> {
+                            prepareExplorationMob(entity, options);
+                            spawned.add(entity.getUniqueId());
+                        });
             }
                 return List.copyOf(spawned);
+            }
+
+            private void prepareExplorationMob(LivingEntity entity, Map<String, Object> options) {
+                if (entity == null) return;
+                entity.setGlowing(Boolean.parseBoolean(String.valueOf(
+                        options.getOrDefault("glowing", "true"))));
+                if (!(entity instanceof Mob mob)) return;
+                Object rawTarget = options.get("target-player-uuid");
+                if (rawTarget == null) return;
+                try {
+                    Player target = Bukkit.getPlayer(UUID.fromString(String.valueOf(rawTarget)));
+                    if (target != null && target.isOnline() && !target.isDead()
+                            && target.getWorld().equals(entity.getWorld())) {
+                        mob.setTarget(target);
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Invalid debug/runtime target IDs fail closed.
+                }
             }
 
             @Override
