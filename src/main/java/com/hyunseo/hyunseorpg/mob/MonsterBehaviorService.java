@@ -85,6 +85,7 @@ public final class MonsterBehaviorService implements Listener {
     private final org.bukkit.NamespacedKey rapidArrowKey;
     private final org.bukkit.NamespacedKey rapidSourceKey;
     private final org.bukkit.NamespacedKey swappingProjectileKey;
+    private final org.bukkit.NamespacedKey mireProjectileKey;
     private final org.bukkit.NamespacedKey dripstoneAttackKey;
     private final Set<org.bukkit.scheduler.BukkitTask> tasks = ConcurrentHashMap.newKeySet();
     private org.bukkit.scheduler.BukkitTask tickTask;
@@ -108,6 +109,7 @@ public final class MonsterBehaviorService implements Listener {
         this.rapidArrowKey = new org.bukkit.NamespacedKey(plugin, "rapid_shooter_arrow");
         this.rapidSourceKey = new org.bukkit.NamespacedKey(plugin, "rapid_shooter_source");
         this.swappingProjectileKey = new org.bukkit.NamespacedKey(plugin, "swapping_witch_projectile");
+        this.mireProjectileKey = new org.bukkit.NamespacedKey(plugin, "mire_shaman_projectile");
         this.dripstoneAttackKey = new org.bukkit.NamespacedKey(plugin, "mining_giant_dripstone");
     }
 
@@ -193,6 +195,7 @@ public final class MonsterBehaviorService implements Listener {
     public void onDeath(EntityDeathEvent event) {
         LivingEntity entity = event.getEntity();
         String behavior = behaviorId(entity);
+        mireMinionOwners.remove(entity.getUniqueId());
         removeDripstonesForSource(entity.getUniqueId());
         removeMireOwned(entity.getUniqueId());
         unregister(entity.getUniqueId());
@@ -439,8 +442,13 @@ public final class MonsterBehaviorService implements Listener {
         ShamanState state=shamans.computeIfAbsent(source.getUniqueId(), ignored->new ShamanState()); var section=behaviorSection(source); if(section==null) return;
         if(state.action!=ShamanAction.IDLE){ renderShamanTelegraph(source,state,section); if(ticks<state.until) return; executeShaman(source,state,section); return; }
         if(target==null || !ready(source)) return;
-        int pools=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count(); int minions=(int)mireMinionOwners.values().stream().filter(source.getUniqueId()::equals).count();
-        if(!state.reclaimUsed && source.getHealth()/source.getAttribute(Attribute.MAX_HEALTH).getValue()<=section.getDouble("reclaim.health-threshold",.5D) && pools>0){state.action=ShamanAction.RECLAIM;state.until=ticks+10;return;}
+        int pools=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count();
+        int minions=activeMireMinionCount(source.getUniqueId());
+        AttributeInstance maximumHealth = source.getAttribute(Attribute.MAX_HEALTH);
+        double healthRatio = maximumHealth == null || maximumHealth.getValue() <= 0.0D
+                ? 1.0D : source.getHealth() / maximumHealth.getValue();
+        if(MireShamanPolicy.canReclaim(state.reclaimUsed, healthRatio, pools,
+                section.getDouble("reclaim.health-threshold",.5D))){state.action=ShamanAction.RECLAIM;state.until=ticks+10;return;}
         double distance=source.getLocation().distance(target.getLocation());
         if(pools<section.getInt("pool.max-active",3) && distance>=6 && distance<=12 && !"POOL".equals(state.lastAction)){state.action=ShamanAction.POOL_TELEGRAPH;state.snapshot=target.getLocation().clone();state.until=ticks+section.getLong("pool.telegraph-ticks",20);state.lastAction="POOL";return;}
         if(minions<section.getInt("minion.max-active",2) && ticks >= state.nextSummonAt && !"SUMMON".equals(state.lastAction)){state.action=ShamanAction.SUMMON_TELEGRAPH;state.until=ticks+12;state.lastAction="SUMMON";return;}
@@ -448,9 +456,20 @@ public final class MonsterBehaviorService implements Listener {
     }
 
     private void executeShaman(LivingEntity source, ShamanState state, org.bukkit.configuration.ConfigurationSection section) {
-        if(state.action==ShamanAction.PROJECTILE_TELEGRAPH){ ThrownPotion p=source.launchProjectile(ThrownPotion.class); Vector d=state.snapshot.toVector().subtract(source.getEyeLocation().toVector()).normalize().multiply(section.getDouble("projectile.speed",.55D)); p.setVelocity(d); p.getPersistentDataContainer().set(swappingProjectileKey,PersistentDataType.BYTE,(byte)1); projectileSources.put(p.getUniqueId(),source.getUniqueId());projectileTypes.put(p.getUniqueId(),"mire_toxic");projectileExpiry.put(p.getUniqueId(),ticks+80); }
+        if(state.action==ShamanAction.PROJECTILE_TELEGRAPH && state.snapshot != null){
+            Snowball p=source.launchProjectile(Snowball.class);
+            Vector d=state.snapshot.toVector().subtract(source.getEyeLocation().toVector());
+            if (d.lengthSquared() > 0.001D) p.setVelocity(d.normalize().multiply(section.getDouble("projectile.speed",.55D)));
+            p.getPersistentDataContainer().set(mireProjectileKey,PersistentDataType.BYTE,(byte)1);
+            projectileSources.put(p.getUniqueId(),source.getUniqueId());projectileTypes.put(p.getUniqueId(),"mire_toxic");projectileExpiry.put(p.getUniqueId(),ticks+80);
+        }
         else if(state.action==ShamanAction.POOL_TELEGRAPH){ Location c=state.snapshot; mudPools.put(UUID.randomUUID(),new MudPool(source.getUniqueId(),c,section.getDouble("pool.radius",2.75D),ticks+section.getLong("pool.duration-ticks",120))); }
-        else if(state.action==ShamanAction.SUMMON_TELEGRAPH){ for(int i=0;i<section.getInt("minion.count",2);i++){ org.bukkit.entity.Slime slime=source.getWorld().spawn(source.getLocation(),org.bukkit.entity.Slime.class);slime.setSize(1);mireMinionOwners.put(slime.getUniqueId(),source.getUniqueId()); } state.nextSummonAt=ticks+section.getLong("minion.cooldown-ticks",200L); }
+        else if(state.action==ShamanAction.SUMMON_TELEGRAPH){
+            int count = MireShamanPolicy.summonCount(activeMireMinionCount(source.getUniqueId()),
+                    section.getInt("minion.count",2), section.getInt("minion.max-active",2));
+            for(int i=0;i<count;i++){ org.bukkit.entity.Slime slime=source.getWorld().spawn(source.getLocation(),org.bukkit.entity.Slime.class);slime.setSize(1);mireMinionOwners.put(slime.getUniqueId(),source.getUniqueId()); }
+            state.nextSummonAt=ticks+section.getLong("minion.cooldown-ticks",200L);
+        }
         else if(state.action==ShamanAction.RECLAIM){ int count=(int)mudPools.values().stream().filter(p->p.owner.equals(source.getUniqueId())).count(); mudPools.entrySet().removeIf(e->e.getValue().owner.equals(source.getUniqueId())); source.setHealth(Math.min(source.getAttribute(Attribute.MAX_HEALTH).getValue(),source.getHealth()+source.getAttribute(Attribute.MAX_HEALTH).getValue()*section.getDouble("reclaim.heal-ratio",.125D))); state.reclaimUsed=true; }
         state.action=ShamanAction.IDLE;nextAction.put(source.getUniqueId(),ticks+20);
     }
@@ -473,6 +492,13 @@ public final class MonsterBehaviorService implements Listener {
         }
     }
     private void tickMudPools(){ mudPools.entrySet().removeIf(e->e.getValue().expiresAt<=ticks); for(MudPool p:mudPools.values()){ p.center.getWorld().spawnParticle(Particle.DUST,p.center,3,p.radius*.5,.03,p.radius*.5,new Particle.DustOptions(org.bukkit.Color.OLIVE,1)); for(Player player:playersNear(p.center,p.radius)) if(player.getLocation().distanceSquared(p.center)<=p.radius*p.radius){player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,20,0));player.addPotionEffect(new PotionEffect(PotionEffectType.POISON,20,0));} } }
+    private int activeMireMinionCount(UUID owner) {
+        mireMinionOwners.entrySet().removeIf(entry -> {
+            Entity minion = Bukkit.getEntity(entry.getKey());
+            return minion == null || !minion.isValid() || minion.isDead();
+        });
+        return (int) mireMinionOwners.values().stream().filter(owner::equals).count();
+    }
     private void removeMireOwned(UUID owner){ mudPools.entrySet().removeIf(e->e.getValue().owner.equals(owner)); mireMinionOwners.entrySet().removeIf(e->{if(e.getValue().equals(owner)){Entity minion=Bukkit.getEntity(e.getKey());if(minion!=null)minion.remove();return true;}return false;});bulwarks.remove(owner);shamans.remove(owner); }
 
     private void tickMiningGiant(LivingEntity source, Player target) {

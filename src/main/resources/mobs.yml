@@ -1,69 +1,3 @@
-  golden_bulwark:
-    display-name: Golden Bulwark
-    vanilla-type: PIGLIN
-    level: 9
-    hp: 58.0
-    damage: 5.0
-    exp: 54
-    class-exp: 16
-    coin: 16
-    drop-table: earth_common
-    region: overworld
-    tags: [rpg_mob, elite, shield]
-    attributes:
-      movement-speed-mode: MULTIPLIER
-      movement-speed-value: 0.75
-      armor: 3.0
-    behavior-id: golden_bulwark
-    behavior:
-      recognition-range: 24.0
-      frontal-half-angle: 60.0
-      frontal-damage-multiplier: 0.35
-      bash:
-        prepare-range: 3.5
-        telegraph-ticks: 12
-        lunge-ticks: 6
-        lunge-horizontal: 0.65
-        lunge-vertical: 0.35
-        hit-range: 1.8
-        hit-half-angle: 45.0
-        knockback-horizontal: 1.05
-        knockback-vertical: 0.85
-        damage: 0.0
-        recovery-ticks: 18
-        cooldown-ticks: 70
-  mire_shaman:
-    display-name: Mire Shaman
-    vanilla-type: WITCH
-    level: 9
-    hp: 48.0
-    damage: 3.0
-    exp: 58
-    class-exp: 18
-    coin: 18
-    drop-table: earth_common
-    region: overworld
-    tags: [rpg_mob, elite, swamp, caster]
-    behavior-id: mire_shaman
-    behavior:
-      recognition-range: 24.0
-      projectile:
-        telegraph-ticks: 24
-        speed: 0.55
-        damage: 2.5
-        poison-ticks: 35
-      pool:
-        telegraph-ticks: 20
-        radius: 2.75
-        duration-ticks: 120
-        max-active: 3
-      minion:
-        count: 2
-        max-active: 2
-        cooldown-ticks: 200
-      reclaim:
-        health-threshold: 0.5
-        heal-ratio: 0.125
 loot-crafting-schema-version: 1
 
 vanilla-fragment-drops:
@@ -203,6 +137,74 @@ forced-rpg-zones:
 # The same four Mythic-compatible IDs are also registered in the core RPG
 # registry so they work without MythicMobs and use the normal RPG reward path.
 custom-mobs:
+  golden_bulwark:
+    display-name: Golden Bulwark
+    vanilla-type: PIGLIN
+    level: 9
+    hp: 58.0
+    damage: 5.0
+    exp: 54
+    class-exp: 16
+    coin: 16
+    drop-table: earth_common
+    region: overworld
+    tags: [rpg_mob, elite, shield]
+    attributes:
+      movement-speed-mode: MULTIPLIER
+      movement-speed-value: 0.75
+      armor: 3.0
+    behavior-id: golden_bulwark
+    behavior:
+      recognition-range: 24.0
+      frontal-half-angle: 60.0
+      frontal-damage-multiplier: 0.35
+      bash:
+        prepare-range: 3.5
+        telegraph-ticks: 12
+        lunge-ticks: 6
+        lunge-horizontal: 0.65
+        lunge-vertical: 0.35
+        hit-range: 1.8
+        hit-half-angle: 45.0
+        knockback-horizontal: 1.05
+        knockback-vertical: 0.85
+        damage: 0.0
+        recovery-ticks: 18
+        cooldown-ticks: 70
+
+  mire_shaman:
+    display-name: 수렁 주술사
+    vanilla-type: WITCH
+    level: 9
+    hp: 48.0
+    damage: 3.0
+    exp: 58
+    class-exp: 18
+    coin: 18
+    drop-table: earth_common
+    region: overworld
+    tags: [rpg_mob, elite, swamp, caster]
+    behavior-id: mire_shaman
+    behavior:
+      recognition-range: 24.0
+      projectile:
+        telegraph-ticks: 24
+        speed: 0.55
+        damage: 2.5
+        poison-ticks: 35
+      pool:
+        telegraph-ticks: 20
+        radius: 2.75
+        duration-ticks: 120
+        max-active: 3
+      minion:
+        count: 2
+        max-active: 2
+        cooldown-ticks: 200
+      reclaim:
+        health-threshold: 0.5
+        heal-ratio: 0.125
+
   frost_blaze:
     display-name: Frost Blaze
     vanilla-type: BLAZE

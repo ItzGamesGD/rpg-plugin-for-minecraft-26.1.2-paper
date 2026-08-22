@@ -834,11 +834,31 @@ public final class ConfigMigrationService {
 
         FileConfiguration mobs = loadLive("mobs.yml");
         FileConfiguration mobDefaults = loadResource("mobs.yml");
-        if (mobs != null && mobDefaults != null && !mobs.isConfigurationSection("elemental-fragments")
-                && mobDefaults.isConfigurationSection("elemental-fragments")) {
-            copyTree(mobs, mobDefaults, "elemental-fragments");
-            lines.add("mobs.yml: added explicit elemental fragment registry");
-            mark(mobs, "mobs.yml", changedFiles, lines, "elemental fragment migration staged");
+        if (mobs != null && mobDefaults != null) {
+            boolean changed = false;
+            if (!mobs.isConfigurationSection("elemental-fragments")
+                    && mobDefaults.isConfigurationSection("elemental-fragments")) {
+                copyTree(mobs, mobDefaults, "elemental-fragments");
+                lines.add("mobs.yml: added explicit elemental fragment registry");
+                changed = true;
+            }
+            for (String mobId : List.of("golden_bulwark", "mire_shaman")) {
+                String canonicalPath = "custom-mobs." + mobId;
+                ConfigurationSection legacy = mobs.getConfigurationSection(mobId);
+                if (!mobs.isConfigurationSection(canonicalPath) && legacy != null) {
+                    copySection(mobs, legacy, canonicalPath);
+                    mobs.set(mobId, null);
+                    lines.add("mobs.yml: moved legacy top-level " + mobId + " into custom-mobs");
+                    changed = true;
+                }
+                if (copyMissingTree(mobs, mobDefaults, canonicalPath)) {
+                    lines.add("mobs.yml: added missing " + canonicalPath + " settings");
+                    changed = true;
+                }
+            }
+            if (changed) {
+                mark(mobs, "mobs.yml", changedFiles, lines, "custom mob migration staged");
+            }
         }
 
         FileConfiguration spawns = loadLive("monster-spawns.yml");

@@ -1538,6 +1538,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LevelPlayerListener(this, levelService), this);
         getServer().getPluginManager().registerEvents(new MobSpawnListener(
                 mobService, mobLevelScalingService, zombieVariantService), this);
+        getServer().getPluginManager().registerEvents(
+                new com.hyunseo.hyunseorpg.mob.VanillaWitchSpawnBlockListener(), this);
         getServer().getPluginManager().registerEvents(monsterSpawnService, this);
         getServer().getPluginManager().registerEvents(monsterBehaviorService, this);
         getServer().getPluginManager().registerEvents(zombieVariantService, this);
