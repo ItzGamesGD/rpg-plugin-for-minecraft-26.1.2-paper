@@ -29,7 +29,8 @@ public final class BukkitExplorationPorts {
                 BukkitExplorationPorts::temporaryBlock,
                 (player, location, options) -> player.teleport(location),
                 ExplorationPorts.RewardPort.NOOP,
-                ExplorationPorts.PuzzlePort.NOOP);
+                ExplorationPorts.PuzzlePort.NOOP,
+                ExplorationPorts.StructureEntityCleanupPort.NOOP);
     }
 
     private static Collection<UUID> spawnVanillaOnly(String rawId, Location location, int count, Map<String, Object> options) {

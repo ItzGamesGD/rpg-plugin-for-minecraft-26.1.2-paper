@@ -1,7 +1,10 @@
 package com.hyunseo.hyunseorpg.exploration.integration;
 
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import com.hyunseo.hyunseorpg.exploration.model.StructureBounds;
 
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +22,8 @@ public record ExplorationPorts(
         WorldMutationPort worldMutations,
         TeleportPort teleports,
         RewardPort rewards,
-        PuzzlePort puzzles
+        PuzzlePort puzzles,
+        StructureEntityCleanupPort entityCleanup
 ) {
     public ExplorationPorts {
         mobs = mobs == null ? MobSpawnPort.NOOP : mobs;
@@ -29,6 +33,13 @@ public record ExplorationPorts(
         teleports = teleports == null ? TeleportPort.NOOP : teleports;
         rewards = rewards == null ? RewardPort.NOOP : rewards;
         puzzles = puzzles == null ? PuzzlePort.NOOP : puzzles;
+        entityCleanup = entityCleanup == null ? StructureEntityCleanupPort.NOOP : entityCleanup;
+    }
+
+    public ExplorationPorts(MobSpawnPort mobs, DisplayPort displays, InteractionPort interactions,
+                            WorldMutationPort worldMutations, TeleportPort teleports,
+                            RewardPort rewards, PuzzlePort puzzles) {
+        this(mobs, displays, interactions, worldMutations, teleports, rewards, puzzles, null);
     }
 
     public static ExplorationPorts noOp() { return new ExplorationPorts(null, null, null, null, null, null, null); }
@@ -37,6 +48,13 @@ public record ExplorationPorts(
     public interface MobSpawnPort {
         MobSpawnPort NOOP = (mobId, location, count, options) -> List.of();
         Collection<UUID> spawn(String mobId, Location location, int count, Map<String, Object> options);
+
+        default SpawnDetails describe(UUID entityId) {
+            return new SpawnDetails(entityId, "UNKNOWN", "", "", "");
+        }
+
+        record SpawnDetails(UUID entityId, String entityType, String rpgMobId,
+                            String customMobId, String spawnSource) { }
     }
 
     @FunctionalInterface
@@ -73,5 +91,11 @@ public record ExplorationPorts(
     public interface PuzzlePort {
         PuzzlePort NOOP = (puzzleId, location, options) -> () -> { };
         Runnable start(String puzzleId, Location location, Map<String, Object> options);
+    }
+
+    @FunctionalInterface
+    public interface StructureEntityCleanupPort {
+        StructureEntityCleanupPort NOOP = (world, bounds, entityType) -> 0;
+        int removeUnmanaged(World world, StructureBounds bounds, EntityType entityType);
     }
 }

@@ -28,6 +28,7 @@ structures:
             mob-id: custom:mire_shaman
             count: 1
             objective: true
+            cleanup-unmanaged-type: WITCH
             dx: 0
             dy: 1
             dz: 0

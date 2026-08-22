@@ -30,6 +30,7 @@ final class ExplorationConfigDataTest {
             assertEquals(1, components.size());
             assertEquals(Boolean.TRUE, components.get(0).get("objective"));
             assertEquals("custom:mire_shaman", components.get(0).get("mob-id"));
+            assertEquals("WITCH", components.get(0).get("cleanup-unmanaged-type"));
         } catch (Exception exception) {
             throw new AssertionError(exception);
         }

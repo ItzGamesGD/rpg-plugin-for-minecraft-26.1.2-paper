@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -296,12 +297,45 @@ public final class ConfigMigrationService {
                 lines.add(fileName + ": created missing exploration config from bundled defaults");
             } else {
                 changed = copyMissingRoot(target, defaults);
+                changed |= migrateLegacyExplorationPrototype(target, fileName, lines);
                 if (changed) {
                     lines.add(fileName + ": added missing exploration keys without overwriting operator values");
                 }
             }
             if (changed) mark(target, fileName, changedFiles, lines, "exploration migration staged");
         }
+    }
+
+    private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
+                                                      String fileName,
+                                                      List<String> lines) {
+        String root = "structures.swamp_hut.variants.elite_witch_prototype.components";
+        List<Map<?, ?>> configured = target.getMapList(root);
+        if (configured.isEmpty()) return false;
+
+        boolean changed = false;
+        List<Map<String, Object>> migrated = new ArrayList<>();
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> component = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) component.put(String.valueOf(key), value);
+            });
+            if ("scripted_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))) {
+                if ("vanilla:witch".equalsIgnoreCase(String.valueOf(component.getOrDefault("mob-id", "")))) {
+                    component.put("mob-id", "custom:mire_shaman");
+                    changed = true;
+                    lines.add(fileName + ": migrated legacy swamp hut vanilla Witch spawn to custom:mire_shaman");
+                }
+                if (!component.containsKey("cleanup-unmanaged-type")) {
+                    component.put("cleanup-unmanaged-type", "WITCH");
+                    changed = true;
+                    lines.add(fileName + ": added selected swamp hut unmanaged Witch cleanup policy");
+                }
+            }
+            migrated.add(component);
+        }
+        if (changed) target.set(root, migrated);
+        return changed;
     }
 
     /** Explicit activation for the implemented A/B production scope. */

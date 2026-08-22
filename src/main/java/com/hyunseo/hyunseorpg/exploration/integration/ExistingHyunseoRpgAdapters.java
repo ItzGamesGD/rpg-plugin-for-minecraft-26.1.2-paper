@@ -3,8 +3,11 @@ package com.hyunseo.hyunseorpg.exploration.integration;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.mob.MobService;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -18,10 +21,14 @@ import java.util.UUID;
  * Farming/alchemy are intentionally absent. Re-check signatures against the latest desktop source.
  */
 public final class ExistingHyunseoRpgAdapters {
+    private static final ExplorationEntityCleanupPolicy CLEANUP_POLICY = new ExplorationEntityCleanupPolicy();
+
     private ExistingHyunseoRpgAdapters() { }
 
     public static ExplorationPorts.MobSpawnPort mobPort(MobService mobService) {
-        return (mobId, location, count, options) -> {
+        return new ExplorationPorts.MobSpawnPort() {
+            @Override
+            public Collection<UUID> spawn(String mobId, Location location, int count, Map<String, Object> options) {
             List<UUID> spawned = new ArrayList<>();
             Integer level = options.get("level") instanceof Number number ? Math.max(1, number.intValue()) : null;
             String normalized = mobId == null ? "" : mobId.trim().toLowerCase(java.util.Locale.ROOT);
@@ -31,14 +38,14 @@ public final class ExistingHyunseoRpgAdapters {
                 try {
                     type = org.bukkit.entity.EntityType.valueOf(typeName);
                 } catch (IllegalArgumentException ignored) {
-                    return List.of();
+                        return List.of();
                 }
                 if (!type.isAlive() || location.getWorld() == null) return List.of();
                 for (int i = 0; i < Math.max(1, count); i++) {
                     Entity entity = location.getWorld().spawnEntity(location, type);
                     if (entity != null) spawned.add(entity.getUniqueId());
                 }
-                return List.copyOf(spawned);
+                    return List.copyOf(spawned);
             }
             String customMobId = normalized.startsWith("custom:")
                     ? normalized.substring("custom:".length()) : normalized;
@@ -47,7 +54,39 @@ public final class ExistingHyunseoRpgAdapters {
                 mobService.spawnCustomMob(location, customMobId, level, "EXPLORATION")
                         .ifPresent(entity -> spawned.add(entity.getUniqueId()));
             }
-            return List.copyOf(spawned);
+                return List.copyOf(spawned);
+            }
+
+            @Override
+            public SpawnDetails describe(UUID entityId) {
+                Entity entity = Bukkit.getEntity(entityId);
+                if (!(entity instanceof LivingEntity living)) {
+                    return new SpawnDetails(entityId, entity == null ? "UNKNOWN" : entity.getType().name(), "", "", "");
+                }
+                return new SpawnDetails(entityId, living.getType().name(), mobService.getMobId(living),
+                        mobService.getMobTagService().getCustomMobId(living),
+                        mobService.getMobTagService().getSpawnSource(living));
+            }
+        };
+    }
+
+    public static ExplorationPorts.StructureEntityCleanupPort entityCleanupPort(MobService mobService) {
+        return (world, bounds, entityType) -> {
+            if (world == null || bounds == null || entityType == null) return 0;
+            Location center = new Location(world, bounds.centerX(), bounds.centerY(), bounds.centerZ());
+            double x = Math.max(1.0D, (bounds.maxX() - bounds.minX()) / 2.0D + 1.0D);
+            double y = Math.max(1.0D, (bounds.maxY() - bounds.minY()) / 2.0D + 1.0D);
+            double z = Math.max(1.0D, (bounds.maxZ() - bounds.minZ()) / 2.0D + 1.0D);
+            int removed = 0;
+            for (Entity entity : world.getNearbyEntities(center, x, y, z)) {
+                if (!(entity instanceof LivingEntity living)) continue;
+                if (!CLEANUP_POLICY.shouldRemove(entity.getType(), entityType,
+                        mobService.isRpgMob(living), mobService.getMobTagService().isCustomMob(living),
+                        bounds, entity.getLocation().getX(), entity.getLocation().getY(), entity.getLocation().getZ())) continue;
+                entity.remove();
+                removed++;
+            }
+            return removed;
         };
     }
 
