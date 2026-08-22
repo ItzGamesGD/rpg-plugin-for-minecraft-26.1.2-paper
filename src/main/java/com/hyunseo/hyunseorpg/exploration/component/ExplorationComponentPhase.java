@@ -4,7 +4,10 @@ import java.util.Locale;
 
 public enum ExplorationComponentPhase {
     ACTIVATE,
-    CLEAR;
+    CLEAR,
+    CHOICE_TIER_1,
+    CHOICE_TIER_2,
+    CHOICE_TIER_3;
 
     public static ExplorationComponentPhase parse(String raw, ExplorationComponentPhase fallback) {
         if (raw == null || raw.isBlank()) return fallback;

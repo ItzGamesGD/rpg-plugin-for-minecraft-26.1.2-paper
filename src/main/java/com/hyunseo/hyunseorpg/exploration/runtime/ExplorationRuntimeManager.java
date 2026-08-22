@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 /** E3-E5 runtime coordinator. Persistent state transition always precedes runtime activation. */
 public final class ExplorationRuntimeManager {
+    public enum ChoiceResult { ACCEPTED, FLED, NOT_FOUND, NOT_PENDING, NOT_OWNER, OUT_OF_RANGE, INVALID_CHOICE, SPAWN_FAILED }
     private final JavaPlugin plugin;
     private final ExplorationRegistry registry;
     private final StructureRepository repository;
@@ -108,7 +109,7 @@ public final class ExplorationRuntimeManager {
                         .withMetadata("activated-at", Long.toString(System.currentTimeMillis()));
                 repository.save(persistent);
             }
-            ExplorationRuntime runtime = new ExplorationRuntime(persistent.structureId(), persistent.variantId());
+            ExplorationRuntime runtime = new ExplorationRuntime(persistent.structureId(), persistent.variantId(), currentTick);
             runtime.addParticipant(trigger.getUniqueId());
             active.put(persistent.structureId(), runtime);
             lastEndReasons.remove(persistent.structureId());
@@ -155,6 +156,39 @@ public final class ExplorationRuntimeManager {
         }
     }
 
+    /** Resolves a choice created by choice_prompt without creating a second encounter engine. */
+    public synchronized ChoiceResult choose(UUID structureId, Player player, String rawChoice, long currentTick) {
+        ExplorationRuntime runtime = active.get(structureId);
+        StructureRecord record = repository.get(structureId).orElse(null);
+        if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE) return ChoiceResult.NOT_FOUND;
+        if (!runtime.choicePending()) return ChoiceResult.NOT_PENDING;
+        if (player == null || !player.getUniqueId().equals(runtime.choiceOwner())) return ChoiceResult.NOT_OWNER;
+        String choice = normalizeChoice(rawChoice);
+        if (!runtime.allowedChoices().contains(choice)) return ChoiceResult.INVALID_CHOICE;
+        ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
+        if (!"flee".equals(choice) && (definition == null || !record.worldId().equals(player.getWorld().getUID())
+                || distanceSquared(record, player.getLocation()) > definition.abandonRadius() * definition.abandonRadius())) {
+            return ChoiceResult.OUT_OF_RANGE;
+        }
+        if (!runtime.choose(player.getUniqueId(), choice)) return ChoiceResult.NOT_PENDING;
+        if ("flee".equals(choice)) {
+            abandon(structureId);
+            return ChoiceResult.FLED;
+        }
+        try {
+            executePhase(record, runtime, phaseForChoice(choice), currentTick);
+            if (!runtime.objectiveMode() || runtime.objectiveEntities().isEmpty()) {
+                throw new IllegalStateException("raid choice produced no objective entities");
+            }
+            player.sendMessage(net.kyori.adventure.text.Component.text("약탈자 전초기지 습격이 시작되었습니다."));
+            return ChoiceResult.ACCEPTED;
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.SEVERE, "Exploration choice failed for " + structureId + ", choice=" + choice, exception);
+            abandon(structureId);
+            return ChoiceResult.SPAWN_FAILED;
+        }
+    }
+
     public synchronized boolean abandon(UUID structureId) {
         ExplorationRuntime runtime = active.get(structureId);
         StructureRecord record = repository.get(structureId).orElse(null);
@@ -185,10 +219,26 @@ public final class ExplorationRuntimeManager {
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
 
+            if (runtime.choiceExpired(currentTick)) {
+                plugin.getLogger().info("Exploration choice timed out: structure=" + record.structureType()
+                        + ", id=" + record.structureId() + ", default=" + runtime.defaultChoice());
+                abandon(record.structureId());
+                continue;
+            }
+
             if (runtime.objectiveMode()) {
+                if (currentTick <= runtime.activatedAtTick()) {
+                    continue;
+                }
                 for (UUID entityId : runtime.objectiveEntities()) {
                     var entity = Bukkit.getEntity(entityId);
-                    if (entity == null || !entity.isValid() || entity.isDead()) runtime.removeObjective(entityId);
+                    if (entity == null || !entity.isValid() || entity.isDead()) {
+                        plugin.getLogger().info("Exploration objective missing: structure="
+                                + record.structureType() + ", variant=" + record.variantId()
+                                + ", id=" + record.structureId() + ", entity=" + entityId
+                                + ", entityState=" + (entity == null ? "NULL" : "valid=" + entity.isValid() + ",dead=" + entity.isDead()));
+                        runtime.removeObjective(entityId);
+                    }
                 }
                 if (runtime.objectiveEntities().isEmpty()) {
                     complete(record.structureId(), currentTick);
@@ -271,6 +321,19 @@ public final class ExplorationRuntimeManager {
             ExplorationComponentPhase configured = ExplorationComponentPhase.parse(spec.string("phase", ""), component.defaultPhase());
             if (configured == phase) component.execute(context, spec);
         }
+    }
+
+    private ExplorationComponentPhase phaseForChoice(String choice) {
+        return switch (normalizeChoice(choice)) {
+            case "tier1" -> ExplorationComponentPhase.CHOICE_TIER_1;
+            case "tier2" -> ExplorationComponentPhase.CHOICE_TIER_2;
+            case "tier3" -> ExplorationComponentPhase.CHOICE_TIER_3;
+            default -> throw new IllegalArgumentException("unsupported exploration choice: " + choice);
+        };
+    }
+
+    private String normalizeChoice(String value) {
+        return value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private boolean hasRewardPhase(StructureRecord record) {

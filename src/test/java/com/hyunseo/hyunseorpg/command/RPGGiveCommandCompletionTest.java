@@ -11,7 +11,14 @@ class RPGGiveCommandCompletionTest {
     void exposesPendingAndClaimCompletions() {
         assertTrue(RPGGiveCommand.rootCompletion("").contains("pending"));
         assertTrue(RPGGiveCommand.rootCompletion("").contains("farming"));
+        assertTrue(RPGGiveCommand.rootCompletion("").contains("exploration"));
         assertTrue(RPGGiveCommand.pendingCompletion("").contains("claim"));
+    }
+
+    @Test
+    void exposesExplorationDiagnosticsCompletions() {
+        assertTrue(RPGGiveCommand.explorationActionCompletion("").containsAll(
+                List.of("status", "inspect", "complete", "choose")));
     }
 
     @Test

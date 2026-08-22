@@ -909,6 +909,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                     specialCatalystExecutionService, alchemyGuiController, alchemyAuditLog);
             giveCommand.setPotionFactory(potionFactory);
             giveCommand.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
+            giveCommand.setExplorationModule(explorationModule);
             rpgCommand.setExecutor(giveCommand);
             rpgCommand.setTabCompleter(giveCommand);
         }

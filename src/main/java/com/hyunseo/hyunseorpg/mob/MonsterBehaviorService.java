@@ -32,6 +32,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntitySpellCastEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
@@ -84,6 +85,10 @@ public final class MonsterBehaviorService implements Listener {
     private final Map<UUID, ShamanState> shamans = new ConcurrentHashMap<>();
     private final Map<UUID, MudPool> mudPools = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> mireMinionOwners = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> shieldGuardUntil = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> shieldGuardCooldown = new ConcurrentHashMap<>();
+    private final Map<UUID, ChargerState> outpostChargers = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> bannerAuraAt = new ConcurrentHashMap<>();
     private final org.bukkit.NamespacedKey rapidArrowKey;
     private final org.bukkit.NamespacedKey rapidSourceKey;
     private final org.bukkit.NamespacedKey swappingProjectileKey;
@@ -115,6 +120,12 @@ public final class MonsterBehaviorService implements Listener {
             this.expiresAt = expiresAt;
             this.nextDamageAt = nextDamageAt;
         }
+    }
+    private enum ChargerPhase { IDLE, TELEGRAPH, DASH }
+    private static final class ChargerState {
+        ChargerPhase phase = ChargerPhase.IDLE;
+        long until;
+        Vector direction = new Vector();
     }
 
     public MonsterBehaviorService(JavaPlugin plugin, ConfigService configService, MobService mobService) {
@@ -184,6 +195,10 @@ public final class MonsterBehaviorService implements Listener {
         shamans.clear();
         mireMinionOwners.keySet().forEach(id -> { Entity minion = Bukkit.getEntity(id); if (minion != null) minion.remove(); });
         mireMinionOwners.clear();
+        shieldGuardUntil.clear();
+        shieldGuardCooldown.clear();
+        outpostChargers.clear();
+        bannerAuraAt.clear();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -209,6 +224,9 @@ public final class MonsterBehaviorService implements Listener {
     public void onDeath(EntityDeathEvent event) {
         LivingEntity entity = event.getEntity();
         String behavior = behaviorId(entity);
+        if ("spike_evoker".equals(behavior)) {
+            event.getDrops().removeIf(drop -> drop.getType() == Material.TOTEM_OF_UNDYING);
+        }
         mireMinionOwners.remove(entity.getUniqueId());
         removeDripstonesForSource(entity.getUniqueId());
         removeMireOwned(entity.getUniqueId());
@@ -233,6 +251,11 @@ public final class MonsterBehaviorService implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof LivingEntity victim && "shield_raider".equals(behaviorId(victim))
+                && ticks < shieldGuardUntil.getOrDefault(victim.getUniqueId(), 0L)) {
+            event.setDamage(event.getDamage() * OutpostRaiderPolicy.guardDamageMultiplier(
+                    behaviorSectionValue(victim, "guard.damage-multiplier", 0.5D)));
+        }
         if (event.getEntity() instanceof LivingEntity victim && "golden_bulwark".equals(behaviorId(victim))) {
             LivingEntity attacker = resolveDamageAttacker(event.getDamager());
             if (attacker != null) {
@@ -262,6 +285,13 @@ public final class MonsterBehaviorService implements Listener {
         }
         if (!(event.getDamager() instanceof LivingEntity source)
                 || !(event.getEntity() instanceof Player player)) return;
+        if ("charger_raider".equals(behaviorId(source))
+                && outpostChargers.getOrDefault(source.getUniqueId(), new ChargerState()).phase == ChargerPhase.DASH) {
+            Vector direction = player.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0.0D);
+            if (direction.lengthSquared() > 0.001D) {
+                player.setVelocity(direction.normalize().multiply(behaviorSectionValue(source, "charge.knockback", 0.65D)).setY(0.25D));
+            }
+        }
         if ("stone_armored_zombie".equals(behaviorId(source))) {
             var section = behaviorSection(source);
             int duration = section == null ? 40 : Math.max(1, section.getInt("bind-duration-ticks", 40));
@@ -428,6 +458,9 @@ public final class MonsterBehaviorService implements Listener {
                 case "rapid_shooter" -> tickRapidShooter(entity, target);
                 case "golden_bulwark" -> tickGoldenBulwark(entity, target);
                 case "mire_shaman" -> tickMireShaman(entity, target);
+                case "shield_raider" -> tickShieldRaider(entity, target);
+                case "charger_raider" -> tickChargerRaider(entity, target);
+                case "banner_raider" -> tickBannerRaider(entity, target);
                 default -> { }
             }
         }
@@ -446,6 +479,76 @@ public final class MonsterBehaviorService implements Listener {
             for (Player player : playersNear(source.getLocation(), section.getDouble("bash.hit-range",1.8D))) { Vector to=player.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0); if (!state.hits.contains(player.getUniqueId()) && to.lengthSquared()>.01 && state.direction.dot(to.normalize()) >= Math.cos(Math.toRadians(section.getDouble("bash.hit-half-angle",45)))) { state.hits.add(player.getUniqueId()); player.setVelocity(to.normalize().multiply(section.getDouble("bash.knockback-horizontal",1.05D)).setY(section.getDouble("bash.knockback-vertical",.85D))); double damage=section.getDouble("bash.damage",0D); if(damage>0) player.damage(damage,source); } }
             if(ticks>=state.until){state.phase=BulwarkPhase.RECOVERY;state.until=ticks+section.getLong("bash.recovery-ticks",18L);}
         } else if(state.phase==BulwarkPhase.RECOVERY && ticks>=state.until){ state.phase=BulwarkPhase.NORMAL; state.hits.clear(); nextAction.put(source.getUniqueId(),ticks+section.getLong("bash.cooldown-ticks",70L)); }
+    }
+
+    private void tickShieldRaider(LivingEntity source, Player target) {
+        long guardedUntil = shieldGuardUntil.getOrDefault(source.getUniqueId(), 0L);
+        if (ticks < guardedUntil) {
+            source.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 10, 1, true, false, false));
+            if (ticks % 8L == 0L) {
+                source.getWorld().playSound(source.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.35F, 0.9F);
+                source.getWorld().spawnParticle(Particle.CLOUD, source.getLocation().add(0.0D, 1.0D, 0.0D), 3, 0.25D, 0.35D, 0.25D, 0.01D);
+            }
+            return;
+        }
+        if (target == null || ticks < shieldGuardCooldown.getOrDefault(source.getUniqueId(), 0L)) return;
+        double range = behaviorSectionValue(source, "guard.trigger-range", 5.0D);
+        if (source.getLocation().distanceSquared(target.getLocation()) > range * range) return;
+        long duration = Math.max(20L, behaviorSectionLong(source, "guard.duration-ticks", 50L));
+        shieldGuardUntil.put(source.getUniqueId(), ticks + duration);
+        shieldGuardCooldown.put(source.getUniqueId(), ticks + Math.max(duration + 20L,
+                behaviorSectionLong(source, "guard.cooldown-ticks", 140L)));
+        source.getWorld().playSound(source.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.8F, 0.75F);
+    }
+
+    private void tickChargerRaider(LivingEntity source, Player target) {
+        ChargerState state = outpostChargers.computeIfAbsent(source.getUniqueId(), ignored -> new ChargerState());
+        if (state.phase == ChargerPhase.TELEGRAPH) {
+            source.getWorld().spawnParticle(Particle.CRIT, source.getLocation().add(0.0D, 0.8D, 0.0D), 4, 0.2D, 0.25D, 0.2D, 0.02D);
+            if (ticks >= state.until) {
+                source.setVelocity(state.direction.clone().multiply(behaviorSectionValue(source, "charge.velocity", 1.05D)).setY(0.18D));
+                state.phase = ChargerPhase.DASH;
+                state.until = ticks + Math.max(4L, behaviorSectionLong(source, "charge.dash-ticks", 10L));
+            }
+            return;
+        }
+        if (state.phase == ChargerPhase.DASH) {
+            if (ticks >= state.until) {
+                state.phase = ChargerPhase.IDLE;
+                nextAction.put(source.getUniqueId(), ticks + Math.max(20L, behaviorSectionLong(source, "charge.cooldown-ticks", 180L)));
+            }
+            return;
+        }
+        if (target == null || !ready(source)) return;
+        double range = behaviorSectionValue(source, "charge.trigger-range", 8.0D);
+        Vector direction = target.getLocation().toVector().subtract(source.getLocation().toVector()).setY(0.0D);
+        if (direction.lengthSquared() < 0.001D || direction.lengthSquared() > range * range) return;
+        state.direction = direction.normalize();
+        state.phase = ChargerPhase.TELEGRAPH;
+        state.until = ticks + Math.max(10L, behaviorSectionLong(source, "charge.telegraph-ticks", 16L));
+        source.getWorld().playSound(source.getLocation(), Sound.ENTITY_PILLAGER_AMBIENT, 0.7F, 0.7F);
+    }
+
+    private void tickBannerRaider(LivingEntity source, Player target) {
+        long next = bannerAuraAt.getOrDefault(source.getUniqueId(), 0L);
+        if (ticks < next) return;
+        bannerAuraAt.put(source.getUniqueId(), ticks + Math.max(10L, behaviorSectionLong(source, "aura.interval-ticks", 20L)));
+        double radius = behaviorSectionValue(source, "aura.radius", 10.0D);
+        int duration = Math.max(20, (int) behaviorSectionLong(source, "aura.duration-ticks", 30L));
+        for (Entity entity : source.getNearbyEntities(radius, radius, radius)) {
+            if (!(entity instanceof LivingEntity ally) || ally.equals(source) || !isOutpostRaider(ally)) continue;
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, duration,
+                    Math.max(0, (int) behaviorSectionLong(source, "aura.speed-amplifier", 0L)), true, false, false));
+            ally.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, duration,
+                    Math.max(0, (int) behaviorSectionLong(source, "aura.resistance-amplifier", 0L)), true, false, false));
+        }
+    }
+
+    private boolean isOutpostRaider(LivingEntity entity) {
+        return switch (behaviorId(entity)) {
+            case "shield_raider", "charger_raider", "banner_raider", "spike_evoker", "ravager_rider" -> true;
+            default -> "crossbow_raider".equals(mobService.getMobId(entity));
+        };
     }
 
     private void tickMireShaman(LivingEntity source, Player target) {
@@ -500,6 +603,14 @@ public final class MonsterBehaviorService implements Listener {
                 source.getWorld().spawnParticle(Particle.DUST, marker, 1, 0.0D, 0.0D, 0.0D, new Particle.DustOptions(org.bukkit.Color.fromRGB(190, 220, 150), 1.2F));
             }
             source.getWorld().spawnParticle(Particle.CLOUD, state.snapshot.clone().add(0.0D, .08D, 0.0D), 2, radius*.35D, .02D, radius*.35D, .01D);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onSpellCast(EntitySpellCastEvent event) {
+        if (event.getEntity() instanceof LivingEntity source && "spike_evoker".equals(behaviorId(source))
+                && OutpostRaiderPolicy.blocksEvokerSpell(event.getSpell().name())) {
+            event.setCancelled(true);
         }
     }
     private void tickMudPools(){
@@ -1103,7 +1214,8 @@ public final class MonsterBehaviorService implements Listener {
         return switch (id) {
             case "mining_giant", "lava_cube", "stone_armored_zombie", "golden_bulwark", "mire_shaman",
                     "fake_explosion_creeper", "swapping_witch", "charging_zombie", "rapid_shooter",
-                    "splitting_creeper" -> id;
+                    "splitting_creeper", "shield_raider", "charger_raider", "banner_raider",
+                    "spike_evoker", "ravager_rider" -> id;
             default -> "";
         };
     }
@@ -1182,6 +1294,10 @@ public final class MonsterBehaviorService implements Listener {
         dashHits.remove(id);
         approvedExplosions.remove(id);
         removeMireOwned(id);
+        shieldGuardUntil.remove(id);
+        shieldGuardCooldown.remove(id);
+        outpostChargers.remove(id);
+        bannerAuraAt.remove(id);
         projectileExpiry.entrySet().removeIf(entry -> entry.getKey().equals(id));
     }
 }

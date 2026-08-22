@@ -209,6 +209,130 @@ custom-mobs:
         health-threshold: 0.5
         heal-ratio: 0.125
 
+  shield_raider:
+    display-name: 전초기지 방패병
+    vanilla-type: VINDICATOR
+    level: 7
+    hp: 34.0
+    damage: 4.0
+    exp: 12
+    class-exp: 4
+    coin: 4
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: IRON_SWORD
+      off-hand: SHIELD
+      chestplate: CHAINMAIL_CHESTPLATE
+    behavior-id: shield_raider
+    behavior:
+      recognition-range: 24.0
+      guard:
+        trigger-range: 5.0
+        duration-ticks: 50
+        cooldown-ticks: 140
+        damage-multiplier: 0.5
+
+  crossbow_raider:
+    display-name: 전초기지 석궁병
+    vanilla-type: PILLAGER
+    level: 6
+    hp: 26.0
+    damage: 3.0
+    exp: 9
+    class-exp: 3
+    coin: 3
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: CROSSBOW
+
+  charger_raider:
+    display-name: 전초기지 돌격병
+    vanilla-type: VINDICATOR
+    level: 7
+    hp: 30.0
+    damage: 4.5
+    exp: 13
+    class-exp: 4
+    coin: 4
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider]
+    equipment:
+      main-hand: IRON_AXE
+    behavior-id: charger_raider
+    behavior:
+      recognition-range: 24.0
+      charge:
+        trigger-range: 8.0
+        telegraph-ticks: 16
+        dash-ticks: 10
+        cooldown-ticks: 180
+        velocity: 1.05
+        knockback: 0.65
+
+  banner_raider:
+    display-name: 전초기지 깃발병
+    vanilla-type: PILLAGER
+    level: 9
+    hp: 36.0
+    damage: 3.5
+    exp: 20
+    class-exp: 6
+    coin: 6
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy]
+    equipment:
+      main-hand: CROSSBOW
+      helmet: BLACK_BANNER
+    behavior-id: banner_raider
+    behavior:
+      recognition-range: 24.0
+      aura:
+        radius: 10.0
+        interval-ticks: 20
+        duration-ticks: 30
+        speed-amplifier: 0
+        resistance-amplifier: 0
+
+  spike_evoker:
+    display-name: 전초기지 송곳 소환사
+    vanilla-type: EVOKER
+    level: 10
+    hp: 42.0
+    damage: 4.0
+    exp: 24
+    class-exp: 8
+    coin: 8
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy, caster]
+    behavior-id: spike_evoker
+    behavior:
+      recognition-range: 24.0
+      vex-summon: false
+      totem-drop: false
+
+  ravager_rider:
+    display-name: 전초기지 파괴수 기수
+    vanilla-type: RAVAGER
+    level: 12
+    hp: 90.0
+    damage: 7.0
+    exp: 40
+    class-exp: 12
+    coin: 12
+    drop-table: ""
+    region: overworld
+    tags: [rpg_mob, outpost, raider, heavy]
+    behavior-id: ravager_rider
+    behavior:
+      recognition-range: 28.0
+
   frost_blaze:
     display-name: Frost Blaze
     vanilla-type: BLAZE

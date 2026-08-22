@@ -6,6 +6,8 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.ForcedRelocationCompone
 import com.hyunseo.hyunseorpg.exploration.component.impl.InteractionTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PuzzleComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ScriptedSpawnComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.TemporarySealComponent;
 import com.hyunseo.hyunseorpg.exploration.detection.DeterministicStructureSelector;
@@ -25,13 +27,17 @@ import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntimeManager;
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationStatusSnapshot;
 import com.hyunseo.hyunseorpg.exploration.runtime.TeleportExemptionService;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -111,6 +117,9 @@ public final class ExplorationModule {
     }
 
     public boolean complete(UUID structureId) { return runtimes.complete(structureId, tickCounter.get()); }
+    public ExplorationRuntimeManager.ChoiceResult choose(UUID structureId, Player player, String choice) {
+        return runtimes.choose(structureId, player, choice, tickCounter.get());
+    }
     public int scanChunk(org.bukkit.World world, int chunkX, int chunkZ) { return detection.scanChunk(world, chunkX, chunkZ); }
     public ExplorationRegistry registry() { return registry; }
     public StructureRepository repository() { return repository; }
@@ -118,9 +127,35 @@ public final class ExplorationModule {
     public java.util.Optional<ExplorationStatusSnapshot> status(UUID structureId) { return runtimes.status(structureId); }
     public java.util.List<ExplorationStatusSnapshot> statuses() { return runtimes.statuses(); }
 
+    public Optional<UUID> targetedStructure(Player player, double radius) {
+        if (player == null || player.getWorld() == null) return Optional.empty();
+        var eye = player.getEyeLocation();
+        Vector origin = eye.toVector();
+        Vector direction = eye.getDirection().normalize();
+        return repository.index().nearby(player.getWorld().getUID(), origin.getX(), origin.getZ(), Math.max(1.0D, radius))
+                .stream()
+                .filter(record -> {
+                    Vector center = new Vector(record.bounds().centerX(), record.bounds().centerY(), record.bounds().centerZ());
+                    Vector toCenter = center.clone().subtract(origin);
+                    double length = toCenter.length();
+                    if (length <= 0.001D || length > radius) return false;
+                    return direction.dot(toCenter.normalize()) >= 0.86D;
+                })
+                .min(Comparator.comparingDouble(record -> {
+                    Vector center = new Vector(record.bounds().centerX(), record.bounds().centerY(), record.bounds().centerZ());
+                    Vector toCenter = center.clone().subtract(origin);
+                    double projected = Math.max(0.0D, toCenter.dot(direction));
+                    Vector closest = origin.clone().add(direction.clone().multiply(projected));
+                    return center.distanceSquared(closest) * 8.0D + projected;
+                }))
+                .map(record -> record.structureId());
+    }
+
     private ExplorationComponentRegistry defaultComponents() {
         return new ExplorationComponentRegistry()
                 .register(new ScriptedSpawnComponent())
+                .register(new ChoicePromptComponent())
+                .register(new RaidWaveSpawnComponent(registry))
                 .register(new DisplayTargetComponent())
                 .register(new InteractionTargetComponent())
                 .register(new TemporarySealComponent())

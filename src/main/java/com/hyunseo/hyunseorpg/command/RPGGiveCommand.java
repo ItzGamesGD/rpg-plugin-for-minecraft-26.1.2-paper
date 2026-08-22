@@ -36,6 +36,8 @@ import com.hyunseo.hyunseorpg.alchemy.potion.PaperPotionPdcContract;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionFactory;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionDefinition;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionRegistry;
+import com.hyunseo.hyunseorpg.exploration.ExplorationModule;
+import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationStatusSnapshot;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
 import com.hyunseo.hyunseorpg.ui.KoreanDisplay;
 import net.kyori.adventure.text.Component;
@@ -94,6 +96,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private BoundedSpecialCatalystExecutionService specialCatalystExecutions;
     private AlchemyGuiControllerService alchemyGuiController;
     private AlchemyAuditLog alchemyAuditLog;
+    private ExplorationModule explorationModule;
 
     public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService, SoulboundItemService soulboundItemService) {
         this(itemRegistry, itemService, soulboundItemService, null, null, null);
@@ -196,6 +199,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         this.inventoryNormalizer = inventoryNormalizer == null ? inventory -> { } : inventoryNormalizer;
     }
 
+    public void setExplorationModule(ExplorationModule explorationModule) {
+        this.explorationModule = explorationModule;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0 && sender instanceof Player player && menuService != null) {
@@ -247,6 +254,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                 RPGReloadService.ReloadResult reload = reloadService.reload("all");
                 sender.sendMessage(reload.message());
             }
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("exploration")) {
+            handleExploration(sender, args);
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("reload")) {
@@ -357,6 +368,108 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         }
         player.sendMessage(Component.text("커스텀 아이템을 지급했습니다: " + args[1], NamedTextColor.GREEN));
         return true;
+    }
+
+    private void handleExploration(CommandSender sender, String[] args) {
+        String action = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "status";
+        if (action.equals("choose")) {
+            if (explorationModule == null) {
+                sender.sendMessage("탐험 모듈이 준비되지 않았습니다.");
+                return;
+            }
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage("전초기지 선택은 플레이어만 할 수 있습니다.");
+                return;
+            }
+            if (args.length < 4) {
+                player.sendMessage("사용법: /rpg exploration choose <structure-uuid> <tier1|tier2|tier3|flee>");
+                return;
+            }
+            UUID structureId = parseUuid(args[2], player);
+            if (structureId == null) return;
+            var result = explorationModule.choose(structureId, player, args[3]);
+            switch (result) {
+                case ACCEPTED -> player.sendMessage("선택한 난이도로 전초기지 습격을 시작합니다.");
+                case FLED -> player.sendMessage("전투를 피했습니다. 약탈자들이 전초기지를 장악한 채 남아 있습니다.");
+                case NOT_OWNER -> player.sendMessage("이 선택지는 해당 전초기지에 접근한 플레이어만 사용할 수 있습니다.");
+                case OUT_OF_RANGE -> player.sendMessage("전초기지에서 너무 멀리 떨어져 선택할 수 없습니다.");
+                case INVALID_CHOICE -> player.sendMessage("허용되지 않은 전초기지 선택입니다.");
+                case SPAWN_FAILED -> player.sendMessage("전초기지 습격을 시작하지 못했습니다. 관리자에게 로그를 알려주세요.");
+                default -> player.sendMessage("현재 선택할 수 있는 전초기지 습격이 없습니다.");
+            }
+            return;
+        }
+        if (!sender.hasPermission("hyunseorpg.admin")) {
+            sender.sendMessage("관리자 권한이 필요합니다.");
+            return;
+        }
+        if (explorationModule == null) {
+            sender.sendMessage("탐험 모듈이 준비되지 않았습니다.");
+            return;
+        }
+        switch (action) {
+            case "status" -> {
+                List<ExplorationStatusSnapshot> snapshots = explorationModule.statuses();
+                sender.sendMessage("탐험 상태: " + snapshots.size() + "개 runtime/end-reason 기록");
+                if (snapshots.isEmpty()) {
+                    sender.sendMessage("활성 런타임 또는 최근 종료 기록이 없습니다.");
+                    return;
+                }
+                snapshots.stream().limit(10).map(this::formatExplorationSnapshot).forEach(sender::sendMessage);
+                if (snapshots.size() > 10) sender.sendMessage("...외 " + (snapshots.size() - 10) + "개");
+            }
+            case "inspect" -> {
+                UUID structureId = resolveExplorationTarget(sender, args);
+                if (structureId == null) return;
+                explorationModule.status(structureId)
+                        .map(this::formatExplorationSnapshot)
+                        .ifPresentOrElse(sender::sendMessage,
+                                () -> sender.sendMessage("해당 탐험 구조물 기록을 찾을 수 없습니다: " + structureId));
+            }
+            case "complete" -> {
+                UUID structureId = resolveExplorationTarget(sender, args);
+                if (structureId == null) return;
+                boolean completed = explorationModule.complete(structureId);
+                sender.sendMessage(completed
+                        ? "탐험 구조물을 완료 처리했습니다: " + structureId
+                        : "완료 처리할 수 없습니다. ACTIVE runtime/objective 상태를 확인하세요: " + structureId);
+            }
+            default -> sender.sendMessage("사용법: /rpg exploration <status|inspect|complete>");
+        }
+    }
+
+    private UUID resolveExplorationTarget(CommandSender sender, String[] args) {
+        if (args.length >= 3) return parseUuid(args[2], sender);
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("사용법: /rpg exploration " + (args.length >= 2 ? args[1] : "inspect") + " <structure-uuid>");
+            return null;
+        }
+        return explorationModule.targetedStructure(player, 96.0D)
+                .orElseGet(() -> {
+                    sender.sendMessage("바라보는 방향에서 가까운 탐험 구조물을 찾지 못했습니다.");
+                    return null;
+                });
+    }
+
+    private UUID parseUuid(String raw, CommandSender sender) {
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException exception) {
+            sender.sendMessage("올바른 UUID가 아닙니다: " + raw);
+            return null;
+        }
+    }
+
+    private String formatExplorationSnapshot(ExplorationStatusSnapshot snapshot) {
+        return "탐험 "
+                + snapshot.structureId()
+                + " type=" + snapshot.structureType()
+                + " variant=" + snapshot.variantId()
+                + " state=" + snapshot.persistentState()
+                + " runtime=" + snapshot.runtimeActive()
+                + " participants=" + snapshot.participantCount()
+                + " objectives=" + snapshot.objectiveCount()
+                + " lastEnd=" + (snapshot.lastEndReason() == null ? "NONE" : snapshot.lastEndReason());
     }
 
     private void handleFarmingLegacy(CommandSender sender, String[] args) {
@@ -1307,6 +1420,9 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("migrate")) {
             return List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all");
         }
+        if (args.length == 2 && args[0].equalsIgnoreCase("exploration")) {
+            return explorationActionCompletion(args[1]);
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("farming")) {
             return farmingActionCompletion(args[1]);
         }
@@ -1372,7 +1488,11 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     }
 
     static List<String> rootCompletion(String prefix) {
-        return filterCompletion(List.of("give", "pending", "reload", "doctor", "migrate", "farming", "effect", "alchemy", "debug"), prefix);
+        return filterCompletion(List.of("give", "pending", "reload", "doctor", "migrate", "exploration", "farming", "effect", "alchemy", "debug"), prefix);
+    }
+
+    static List<String> explorationActionCompletion(String prefix) {
+        return filterCompletion(List.of("status", "inspect", "complete", "choose"), prefix);
     }
 
     static List<String> farmingActionCompletion(String prefix) {

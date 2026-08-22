@@ -51,6 +51,11 @@ public final class ExistingHyunseoRpgAdapters {
                     ? normalized.substring("custom:".length()) : normalized;
             if (customMobId.isBlank()) return List.of();
             for (int i = 0; i < Math.max(1, count); i++) {
+                if (customMobId.equals("ravager_rider")) {
+                    mobService.spawnOutpostRavagerRider(location, level, "EXPLORATION")
+                            .forEach(entity -> spawned.add(entity.getUniqueId()));
+                    continue;
+                }
                 mobService.spawnCustomMob(location, customMobId, level, "EXPLORATION")
                         .ifPresent(entity -> spawned.add(entity.getUniqueId()));
             }

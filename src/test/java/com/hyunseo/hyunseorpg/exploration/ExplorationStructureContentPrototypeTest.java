@@ -26,9 +26,9 @@ final class ExplorationStructureContentPrototypeTest {
         assertEquals(0.0D, yaml.getDouble("structures.pillager_outpost.selection-chance"), 0.000001D);
 
         String variant = "structures.pillager_outpost.variants.scout_wave_prototype";
-        assertTrue(yaml.getBoolean(variant + ".enabled", false));
+        assertFalse(yaml.getBoolean(variant + ".enabled", true));
         assertTrue(yaml.getBoolean(variant + ".prototype", false));
-        assertEquals(1.0D, yaml.getDouble(variant + ".weight"), 0.000001D);
+        assertEquals(0.0D, yaml.getDouble(variant + ".weight"), 0.000001D);
 
         List<Map<?, ?>> components = yaml.getMapList(variant + ".components");
         assertEquals(1, components.size());
@@ -40,5 +40,13 @@ final class ExplorationStructureContentPrototypeTest {
         assertEquals(0, ((Number) component.get("dx")).intValue());
         assertEquals(1, ((Number) component.get("dy")).intValue());
         assertEquals(0, ((Number) component.get("dz")).intValue());
+
+        String eventVariant = "structures.pillager_outpost.variants.outpost_raid_event";
+        assertTrue(yaml.getBoolean(eventVariant + ".enabled", false));
+        assertFalse(yaml.getBoolean(eventVariant + ".prototype", true));
+        List<Map<?, ?>> eventComponents = yaml.getMapList(eventVariant + ".components");
+        assertEquals("choice_prompt", eventComponents.get(0).get("type"));
+        assertEquals("raid_wave_spawn", eventComponents.get(1).get("type"));
+        assertEquals("outpost_raid_tier_1", eventComponents.get(1).get("pool-id"));
     }
 }

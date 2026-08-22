@@ -58,4 +58,23 @@ final class ExplorationConfigDataTest {
             throw new AssertionError(exception);
         }
     }
+
+    @Test
+    void outpostRaidPoolsHaveExplicitBoundedHeavyRules() {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream("exploration/structures.yml")) {
+            assertNotNull(stream);
+            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            assertEquals(4, yaml.getInt("raid-pools.outpost_raid_tier_1.total-max-spawns"));
+            assertEquals(0, yaml.getInt("raid-pools.outpost_raid_tier_1.heavy-max-spawns"));
+            assertFalse(yaml.isConfigurationSection("raid-pools.outpost_raid_tier_1.mobs.spike_evoker"));
+            assertEquals(6, yaml.getInt("raid-pools.outpost_raid_tier_2.total-max-spawns"));
+            assertEquals(1, yaml.getInt("raid-pools.outpost_raid_tier_2.heavy-max-spawns"));
+            assertEquals(8, yaml.getInt("raid-pools.outpost_raid_tier_3.total-max-spawns"));
+            assertEquals(2, yaml.getInt("raid-pools.outpost_raid_tier_3.heavy-max-spawns"));
+            assertEquals(1, yaml.getInt("raid-pools.outpost_raid_tier_3.mobs.ravager_rider.max"));
+        } catch (Exception exception) {
+            throw new AssertionError(exception);
+        }
+    }
 }

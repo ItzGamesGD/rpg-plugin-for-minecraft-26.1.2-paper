@@ -1,5 +1,7 @@
 package com.hyunseo.hyunseorpg.exploration.registry;
 
+import com.hyunseo.hyunseorpg.exploration.raid.RaidMobDefinition;
+import com.hyunseo.hyunseorpg.exploration.raid.RaidWavePoolDefinition;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,6 +22,7 @@ public final class ExplorationRegistry {
     private final File file;
     private final Map<String, ExplorationStructureDefinition> byId = new LinkedHashMap<>();
     private final Map<String, ExplorationStructureDefinition> byMinecraftKey = new LinkedHashMap<>();
+    private final Map<String, RaidWavePoolDefinition> raidPools = new LinkedHashMap<>();
     private boolean enabled;
     private long heartbeatTicks = 10L;
 
@@ -35,16 +38,17 @@ public final class ExplorationRegistry {
     public boolean load() {
         byId.clear();
         byMinecraftKey.clear();
+        raidPools.clear();
         ensureFile();
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         enabled = yaml.getBoolean("enabled", false);
         heartbeatTicks = Math.max(5L, yaml.getLong("runtime.heartbeat-ticks", 10L));
+        boolean valid = parseRaidPools(yaml.getConfigurationSection("raid-pools"));
         ConfigurationSection structures = yaml.getConfigurationSection("structures");
         if (structures == null) {
             plugin.getLogger().warning("Exploration registry has no structures section; module remains inert.");
             return !enabled;
         }
-        boolean valid = true;
         for (String rawId : structures.getKeys(false)) {
             ConfigurationSection section = structures.getConfigurationSection(rawId);
             if (section == null) continue;
@@ -81,6 +85,39 @@ public final class ExplorationRegistry {
     public Optional<ExplorationStructureDefinition> byMinecraftKey(String key) { return Optional.ofNullable(byMinecraftKey.get(normalize(key))); }
     public List<ExplorationStructureDefinition> all() { return List.copyOf(byId.values()); }
     public Set<String> minecraftKeys() { return Set.copyOf(byMinecraftKey.keySet()); }
+    public Optional<RaidWavePoolDefinition> raidPool(String id) { return Optional.ofNullable(raidPools.get(normalize(id))); }
+    public List<RaidWavePoolDefinition> raidPools() { return List.copyOf(raidPools.values()); }
+
+    private boolean parseRaidPools(ConfigurationSection pools) {
+        if (pools == null) return true;
+        boolean valid = true;
+        for (String rawId : pools.getKeys(false)) {
+            ConfigurationSection pool = pools.getConfigurationSection(rawId);
+            if (pool == null) continue;
+            try {
+                List<RaidMobDefinition> entries = new ArrayList<>();
+                ConfigurationSection mobs = pool.getConfigurationSection("mobs");
+                if (mobs != null) {
+                    for (String rawMobId : mobs.getKeys(false)) {
+                        ConfigurationSection mob = mobs.getConfigurationSection(rawMobId);
+                        if (mob == null) continue;
+                        entries.add(new RaidMobDefinition(rawMobId,
+                                mob.getInt("max", 1), mob.getInt("weight", 1),
+                                mob.getBoolean("heavy", false), Math.max(1, mob.getInt("level", 1))));
+                    }
+                }
+                RaidWavePoolDefinition definition = new RaidWavePoolDefinition(rawId,
+                        pool.getInt("total-max-spawns", 1), pool.getInt("heavy-max-spawns", 0), entries);
+                if (raidPools.putIfAbsent(definition.id(), definition) != null) {
+                    throw new IllegalArgumentException("duplicate raid pool id");
+                }
+            } catch (RuntimeException exception) {
+                valid = false;
+                plugin.getLogger().log(Level.WARNING, "Skipping invalid exploration raid pool: " + rawId, exception);
+            }
+        }
+        return valid;
+    }
 
     private ExplorationStructureDefinition parse(String id, ConfigurationSection section) {
         String minecraftKey = section.getString("minecraft-key", "");

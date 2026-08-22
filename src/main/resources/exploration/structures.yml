@@ -28,6 +28,7 @@ structures:
             mob-id: custom:mire_shaman
             count: 1
             objective: true
+            safe-spawn: true
             cleanup-unmanaged-type: WITCH
             dx: 0
             dy: 1
@@ -43,14 +44,46 @@ structures:
     abandon-grace-ticks: 100
     variants:
       scout_wave_prototype:
-        enabled: true
-        weight: 1.0
+        enabled: false
+        weight: 0.0
         prototype: true
         components:
           - type: scripted_spawn
             mob-id: vanilla:pillager
             count: 2
             objective: true
+            dx: 0
+            dy: 1
+            dz: 0
+      outpost_raid_event:
+        enabled: true
+        weight: 1.0
+        prototype: false
+        components:
+          - type: choice_prompt
+            prompt-id: outpost_raid_difficulty
+            phase: activate
+            choices: [tier1, tier2, tier3, flee]
+            timeout-ticks: 400
+            default-choice: flee
+          - type: raid_wave_spawn
+            phase: choice_tier_1
+            pool-id: outpost_raid_tier_1
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: raid_wave_spawn
+            phase: choice_tier_2
+            pool-id: outpost_raid_tier_2
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: raid_wave_spawn
+            phase: choice_tier_3
+            pool-id: outpost_raid_tier_3
+            safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
@@ -124,3 +157,34 @@ structures:
     abandon-radius: 112.0
     abandon-grace-ticks: 120
     variants: {}
+
+# Initial encounter units only. Combat-time summons are intentionally not part of these totals.
+raid-pools:
+  outpost_raid_tier_1:
+    total-max-spawns: 4
+    heavy-max-spawns: 0
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 7}
+      crossbow_raider: {max: 3, weight: 4, heavy: false, level: 6}
+      charger_raider: {max: 1, weight: 2, heavy: false, level: 7}
+
+  outpost_raid_tier_2:
+    total-max-spawns: 6
+    heavy-max-spawns: 1
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 8}
+      crossbow_raider: {max: 3, weight: 3, heavy: false, level: 7}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 8}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 9}
+      spike_evoker: {max: 1, weight: 1, heavy: true, level: 10}
+
+  outpost_raid_tier_3:
+    total-max-spawns: 8
+    heavy-max-spawns: 2
+    mobs:
+      shield_raider: {max: 3, weight: 3, heavy: false, level: 9}
+      crossbow_raider: {max: 4, weight: 3, heavy: false, level: 8}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 9}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 10}
+      spike_evoker: {max: 1, weight: 1, heavy: true, level: 11}
+      ravager_rider: {max: 1, weight: 1, heavy: true, level: 12}

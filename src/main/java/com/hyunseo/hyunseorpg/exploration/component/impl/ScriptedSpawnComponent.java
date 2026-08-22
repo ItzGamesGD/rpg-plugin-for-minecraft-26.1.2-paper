@@ -25,6 +25,8 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
         String mobId = spec.string("mob-id", "");
         if (mobId.isBlank()) throw new IllegalArgumentException("scripted_spawn requires mob-id");
 
+        cleanupUnmanagedEntities(context, spec);
+
         Collection<UUID> spawned = context.ports().mobs().spawn(
                 mobId,
                 ComponentLocations.relative(context, spec),
@@ -38,6 +40,23 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
             throw new IllegalStateException("scripted_spawn objective produced no valid entity");
         }
 
+        for (UUID entityId : validIds) {
+            ExplorationPorts.MobSpawnPort.SpawnDetails details = context.ports().mobs().describe(entityId);
+            if (context.plugin() != null) {
+                context.plugin().getLogger().info("Exploration scripted spawn: structure="
+                        + context.record().structureType() + ", variant=" + context.record().variantId()
+                        + ", mob=" + mobId + ", entity=" + entityId
+                        + ", entityType=" + details.entityType() + ", rpgMobId=" + details.rpgMobId()
+                        + ", customMobId=" + details.customMobId()
+                        + ", spawnSource=" + details.spawnSource());
+            }
+        }
+
+        validIds.forEach(context.runtime().tracker()::trackEntity);
+        if (spec.bool("objective", false)) context.runtime().trackObjectives(validIds);
+    }
+
+    private void cleanupUnmanagedEntities(ExplorationEventContext context, ExplorationComponentSpec spec) {
         String cleanupType = spec.string("cleanup-unmanaged-type", "").trim();
         if (!cleanupType.isBlank()) {
             EntityType entityType;
@@ -56,20 +75,5 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
                 }
             });
         }
-
-        for (UUID entityId : validIds) {
-            ExplorationPorts.MobSpawnPort.SpawnDetails details = context.ports().mobs().describe(entityId);
-            if (context.plugin() != null) {
-                context.plugin().getLogger().info("Exploration scripted spawn: structure="
-                        + context.record().structureType() + ", variant=" + context.record().variantId()
-                        + ", mob=" + mobId + ", entity=" + entityId
-                        + ", entityType=" + details.entityType() + ", rpgMobId=" + details.rpgMobId()
-                        + ", customMobId=" + details.customMobId()
-                        + ", spawnSource=" + details.spawnSource());
-            }
-        }
-
-        validIds.forEach(context.runtime().tracker()::trackEntity);
-        if (spec.bool("objective", false)) context.runtime().trackObjectives(validIds);
     }
 }

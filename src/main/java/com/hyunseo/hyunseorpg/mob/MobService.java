@@ -2,6 +2,7 @@ package com.hyunseo.hyunseorpg.mob;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -11,6 +12,9 @@ import org.bukkit.entity.Animals;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Pillager;
+import org.bukkit.inventory.EntityEquipment;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -97,7 +101,26 @@ public final class MobService {
         markAsRpgMob(entity, level, data.mobId(), data.displayName(), data.tags());
         mobTagService.markCustomMob(entity, data.mobId(), spawnSource, data.dropTableId());
         applyCustomAttributes(entity, data.attributes());
+        applyConfiguredEquipment(entity, data.mobId());
+        if (entity instanceof Pillager pillager) {
+            // Outpost encounters are not vanilla patrols and must never create Bad Omen or a raid.
+            pillager.setPatrolLeader(false);
+        }
         return Optional.of(entity);
+    }
+
+    /** Creates the bounded outpost heavy unit as one mount plus one custom rider. */
+    public List<LivingEntity> spawnOutpostRavagerRider(Location location, Integer levelOverride, String spawnSource) {
+        Optional<LivingEntity> ravager = spawnCustomMob(location, "ravager_rider", levelOverride, spawnSource);
+        if (ravager.isEmpty()) return List.of();
+        Optional<LivingEntity> rider = spawnCustomMob(location.clone().add(0.0D, 0.5D, 0.0D),
+                "crossbow_raider", levelOverride, spawnSource);
+        if (rider.isEmpty() || !ravager.get().addPassenger(rider.get())) {
+            rider.ifPresent(LivingEntity::remove);
+            ravager.get().remove();
+            return List.of();
+        }
+        return List.of(ravager.get(), rider.get());
     }
 
     public void markAsNaturalRpgMob(LivingEntity entity, int level) {
@@ -307,6 +330,30 @@ public final class MobService {
         }
         if (attributes.hasKnockbackResistance()) {
             setAttribute(entity, Attribute.KNOCKBACK_RESISTANCE, attributes.knockbackResistance());
+        }
+    }
+
+    private void applyConfiguredEquipment(LivingEntity entity, String mobId) {
+        EntityEquipment equipment = entity.getEquipment();
+        var section = mobRegistry.getSection(mobId).map(value -> value.getConfigurationSection("equipment")).orElse(null);
+        if (equipment == null || section == null) return;
+        setEquipment(equipment::setItemInMainHand, equipment::setItemInMainHandDropChance, section.getString("main-hand", ""));
+        setEquipment(equipment::setItemInOffHand, equipment::setItemInOffHandDropChance, section.getString("off-hand", ""));
+        setEquipment(equipment::setHelmet, equipment::setHelmetDropChance, section.getString("helmet", ""));
+        setEquipment(equipment::setChestplate, equipment::setChestplateDropChance, section.getString("chestplate", ""));
+        setEquipment(equipment::setLeggings, equipment::setLeggingsDropChance, section.getString("leggings", ""));
+        setEquipment(equipment::setBoots, equipment::setBootsDropChance, section.getString("boots", ""));
+    }
+
+    private void setEquipment(java.util.function.Consumer<ItemStack> setter,
+                              java.util.function.Consumer<Float> dropChanceSetter, String rawMaterial) {
+        if (rawMaterial == null || rawMaterial.isBlank()) return;
+        try {
+            Material material = Material.valueOf(rawMaterial.trim().toUpperCase(java.util.Locale.ROOT));
+            setter.accept(new ItemStack(material));
+            dropChanceSetter.accept(0.0F);
+        } catch (IllegalArgumentException ignored) {
+            configService.getPlugin().getLogger().warning("Unknown custom mob equipment material: " + rawMaterial);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.hyunseo.hyunseorpg.exploration.registry;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -35,5 +36,12 @@ public record ExplorationComponentSpec(String type, Map<String, Object> options)
         Object value = options.get(key);
         if (value instanceof Boolean bool) return bool;
         return value == null ? fallback : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    public List<String> stringList(String key) {
+        Object value = options.get(key);
+        if (!(value instanceof List<?> values)) return List.of();
+        return values.stream().filter(java.util.Objects::nonNull).map(String::valueOf)
+                .map(String::trim).filter(entry -> !entry.isBlank()).toList();
     }
 }
