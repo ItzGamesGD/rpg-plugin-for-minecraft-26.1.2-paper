@@ -30,6 +30,13 @@ final class ComponentLocations {
     static Location raidOrigin(ExplorationEventContext context, ExplorationComponentSpec spec,
                                double angle, double distance) {
         Location origin = context.runtime().raidOrigin();
+        if (context.runtime().raidWaveNumber() > 1 && context.runtime().raidTarget() != null) {
+            var target = Bukkit.getPlayer(context.runtime().raidTarget());
+            if (target != null && target.isOnline() && !target.isDead()
+                    && target.getWorld().getUID().equals(context.record().worldId())) {
+                origin = target.getLocation();
+            }
+        }
         if (origin == null || origin.getWorld() == null) {
             throw new IllegalStateException("raid origin was not captured");
         }

@@ -403,30 +403,78 @@ public final class ConfigMigrationService {
         List<Map<?, ?>> configured = target.getMapList(root);
         if (configured.isEmpty()) return false;
         boolean changed = false;
+        boolean hasFinalTotemReward = false;
         List<Map<String, Object>> migrated = new ArrayList<>();
         for (Map<?, ?> raw : configured) {
             Map<String, Object> component = new LinkedHashMap<>();
             raw.forEach((key, value) -> {
                 if (key != null) component.put(String.valueOf(key), value);
             });
-            if ("raid_wave_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
-                    && component.containsKey("pool-id") && !component.containsKey("pool-ids")) {
-                component.put("pool-ids", List.of(component.get("pool-id"), component.get("pool-id")));
-                component.remove("pool-id");
-                changed = true;
-                lines.add(fileName + ": converted outpost raid pool to a two-wave sequence");
+            String type = String.valueOf(component.getOrDefault("type", ""));
+            if ("raid_wave_spawn".equalsIgnoreCase(type)) {
+                String phase = String.valueOf(component.getOrDefault("phase", ""));
+                List<String> canonicalPools = canonicalOutpostWavePools(phase);
+                if (!canonicalPools.isEmpty() && usesLegacyOutpostWavePools(component)) {
+                    component.put("pool-ids", canonicalPools);
+                    component.remove("pool-id");
+                    changed = true;
+                    lines.add(fileName + ": upgraded legacy outpost raid pool to the canonical multi-wave sequence");
+                }
+                if (component.containsKey("pool-ids")
+                        && !Boolean.parseBoolean(String.valueOf(component.getOrDefault("repeat-on-next-wave", false)))) {
+                    component.put("repeat-on-next-wave", true);
+                    changed = true;
+                    lines.add(fileName + ": enabled outpost raid next-wave execution");
+                }
+                if (!component.containsKey("next-wave-delay-ticks")) {
+                    component.put("next-wave-delay-ticks", "choice_tier_3".equalsIgnoreCase(phase) ? 40 : 30);
+                    changed = true;
+                    lines.add(fileName + ": added bounded outpost inter-wave delay");
+                }
             }
-            if ("raid_wave_spawn".equalsIgnoreCase(String.valueOf(component.getOrDefault("type", "")))
-                    && component.containsKey("pool-ids")
-                    && !Boolean.parseBoolean(String.valueOf(component.getOrDefault("repeat-on-next-wave", false)))) {
-                component.put("repeat-on-next-wave", true);
-                changed = true;
-                lines.add(fileName + ": enabled outpost raid next-wave execution");
+            if ("reward_drop".equalsIgnoreCase(type)
+                    && "clear".equalsIgnoreCase(String.valueOf(component.getOrDefault("phase", "")))
+                    && "vanilla:totem_of_undying".equalsIgnoreCase(String.valueOf(component.getOrDefault("reward-id", "")))) {
+                hasFinalTotemReward = true;
             }
             migrated.add(component);
         }
+        if (!hasFinalTotemReward) {
+            Map<String, Object> reward = new LinkedHashMap<>();
+            reward.put("type", "reward_drop");
+            reward.put("phase", "clear");
+            reward.put("recipient", "looter");
+            reward.put("reward-id", "vanilla:TOTEM_OF_UNDYING");
+            reward.put("amount", 1);
+            migrated.add(reward);
+            changed = true;
+            lines.add(fileName + ": added final outpost clear reward (vanilla totem of undying)");
+        }
         if (changed) target.set(root, migrated);
         return changed;
+    }
+
+    private List<String> canonicalOutpostWavePools(String phase) {
+        return switch (phase == null ? "" : phase.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "choice_tier_1" -> List.of("outpost_t1_wave_1", "outpost_t1_wave_2");
+            case "choice_tier_2" -> List.of("outpost_t2_wave_1", "outpost_t2_wave_2", "outpost_t2_wave_3");
+            case "choice_tier_3" -> List.of("outpost_t3_wave_1", "outpost_t3_wave_2", "outpost_t3_wave_3", "outpost_t3_wave_4");
+            default -> List.of();
+        };
+    }
+
+    private boolean usesLegacyOutpostWavePools(Map<String, Object> component) {
+        Object legacyPool = component.get("pool-id");
+        if (legacyPool != null && String.valueOf(legacyPool).startsWith("outpost_raid_tier_")) return true;
+        Object rawPools = component.get("pool-ids");
+        if (!(rawPools instanceof Iterable<?> pools)) return false;
+        boolean sawPool = false;
+        for (Object pool : pools) {
+            String id = String.valueOf(pool).trim().toLowerCase(java.util.Locale.ROOT);
+            if (!id.startsWith("outpost_raid_tier_")) return false;
+            sawPool = true;
+        }
+        return sawPool;
     }
 
     private boolean migrateOutpostRadiusAliases(FileConfiguration target, String fileName, List<String> lines) {

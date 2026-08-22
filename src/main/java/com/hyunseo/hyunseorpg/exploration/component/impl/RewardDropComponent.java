@@ -18,9 +18,22 @@ public final class RewardDropComponent implements ExplorationComponent {
         int amount = Math.max(1, spec.integer("amount", 1));
         var fallback = ComponentLocations.relative(context, spec);
 
+        String recipient = spec.string("recipient", "participants").trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.Collection<java.util.UUID> recipients;
+        if (recipient.equals("looter")) {
+            if (context.runtime().looter() == null) {
+                throw new IllegalStateException("reward_drop recipient looter is unavailable");
+            }
+            recipients = java.util.List.of(context.runtime().looter());
+        } else if (recipient.equals("participants")) {
+            recipients = context.runtime().participants();
+        } else {
+            throw new IllegalArgumentException("unsupported reward_drop recipient: " + recipient);
+        }
+
         int onlineParticipants = 0;
         int successfulDeliveries = 0;
-        for (var playerId : context.runtime().participants()) {
+        for (var playerId : recipients) {
             var player = Bukkit.getPlayer(playerId);
             if (player == null || !player.isOnline()) continue;
             onlineParticipants++;

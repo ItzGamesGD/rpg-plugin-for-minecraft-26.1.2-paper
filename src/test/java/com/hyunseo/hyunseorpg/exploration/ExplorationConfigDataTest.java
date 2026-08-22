@@ -65,14 +65,16 @@ final class ExplorationConfigDataTest {
             assertNotNull(stream);
             YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(stream, StandardCharsets.UTF_8));
-            assertEquals(4, yaml.getInt("raid-pools.outpost_raid_tier_1.total-max-spawns"));
-            assertEquals(0, yaml.getInt("raid-pools.outpost_raid_tier_1.heavy-max-spawns"));
-            assertFalse(yaml.isConfigurationSection("raid-pools.outpost_raid_tier_1.mobs.spike_evoker"));
-            assertEquals(6, yaml.getInt("raid-pools.outpost_raid_tier_2.total-max-spawns"));
-            assertEquals(1, yaml.getInt("raid-pools.outpost_raid_tier_2.heavy-max-spawns"));
-            assertEquals(8, yaml.getInt("raid-pools.outpost_raid_tier_3.total-max-spawns"));
-            assertEquals(2, yaml.getInt("raid-pools.outpost_raid_tier_3.heavy-max-spawns"));
-            assertEquals(1, yaml.getInt("raid-pools.outpost_raid_tier_3.mobs.ravager_rider.max"));
+            assertEquals(3, yaml.getInt("raid-pools.outpost_t1_wave_1.total-max-spawns"));
+            assertEquals(4, yaml.getInt("raid-pools.outpost_t1_wave_2.total-max-spawns"));
+            assertEquals(4, yaml.getInt("raid-pools.outpost_t2_wave_1.total-max-spawns"));
+            assertEquals(5, yaml.getInt("raid-pools.outpost_t2_wave_3.total-max-spawns"));
+            assertEquals(1, yaml.getInt("raid-pools.outpost_t2_wave_3.guaranteed.golden_bulwark"));
+            assertEquals(5, yaml.getInt("raid-pools.outpost_t3_wave_1.total-max-spawns"));
+            assertEquals(6, yaml.getInt("raid-pools.outpost_t3_wave_4.total-max-spawns"));
+            assertEquals(2, yaml.getInt("raid-pools.outpost_t3_wave_4.heavy-max-spawns"));
+            assertEquals(1, yaml.getInt("raid-pools.outpost_t3_wave_4.guaranteed.golden_bulwark"));
+            assertEquals(1, yaml.getInt("raid-pools.outpost_t3_wave_4.mobs.ravager_rider.max"));
         } catch (Exception exception) {
             throw new AssertionError(exception);
         }

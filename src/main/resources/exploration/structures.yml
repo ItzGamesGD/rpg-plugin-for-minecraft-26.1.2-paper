@@ -70,28 +70,36 @@ structures:
             default-choice: flee
           - type: raid_wave_spawn
             phase: choice_tier_1
-            pool-ids: [outpost_raid_tier_1, outpost_raid_tier_1]
+            pool-ids: [outpost_t1_wave_1, outpost_t1_wave_2]
             repeat-on-next-wave: true
+            next-wave-delay-ticks: 30
             safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
           - type: raid_wave_spawn
             phase: choice_tier_2
-            pool-ids: [outpost_raid_tier_2, outpost_raid_tier_2]
+            pool-ids: [outpost_t2_wave_1, outpost_t2_wave_2, outpost_t2_wave_3]
             repeat-on-next-wave: true
+            next-wave-delay-ticks: 30
             safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
           - type: raid_wave_spawn
             phase: choice_tier_3
-            pool-ids: [outpost_raid_tier_3, outpost_raid_tier_3]
+            pool-ids: [outpost_t3_wave_1, outpost_t3_wave_2, outpost_t3_wave_3, outpost_t3_wave_4]
             repeat-on-next-wave: true
+            next-wave-delay-ticks: 40
             safe-spawn: true
             dx: 0
             dy: 1
             dz: 0
+          - type: reward_drop
+            phase: clear
+            recipient: looter
+            reward-id: vanilla:TOTEM_OF_UNDYING
+            amount: 1
 
   desert_pyramid:
     minecraft-key: minecraft:desert_pyramid
@@ -163,35 +171,93 @@ structures:
     abandon-grace-ticks: 120
     variants: {}
 
-# Initial encounter units only. Combat-time summons are intentionally not part of these totals.
+# Raid pools are bounded per wave. Combat-time summons are intentionally not part of these totals.
 raid-pools:
-  outpost_raid_tier_1:
+  outpost_t1_wave_1:
+    total-max-spawns: 3
+    heavy-max-spawns: 0
+    mobs:
+      crossbow_raider: {max: 2, weight: 4, heavy: false, level: 6}
+      shield_raider: {max: 1, weight: 3, heavy: false, level: 7}
+      charger_raider: {max: 1, weight: 2, heavy: false, level: 7}
+
+  outpost_t1_wave_2:
     total-max-spawns: 4
     heavy-max-spawns: 0
     mobs:
       shield_raider: {max: 2, weight: 3, heavy: false, level: 7}
-      crossbow_raider: {max: 3, weight: 4, heavy: false, level: 6}
-      charger_raider: {max: 1, weight: 2, heavy: false, level: 7}
+      crossbow_raider: {max: 2, weight: 3, heavy: false, level: 7}
+      charger_raider: {max: 2, weight: 3, heavy: false, level: 8}
 
-  outpost_raid_tier_2:
-    total-max-spawns: 6
+  outpost_t2_wave_1:
+    total-max-spawns: 4
+    heavy-max-spawns: 0
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 8}
+      crossbow_raider: {max: 3, weight: 4, heavy: false, level: 7}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 8}
+
+  outpost_t2_wave_2:
+    total-max-spawns: 5
     heavy-max-spawns: 1
     mobs:
       shield_raider: {max: 2, weight: 3, heavy: false, level: 8}
-      crossbow_raider: {max: 3, weight: 3, heavy: false, level: 7}
-      charger_raider: {max: 2, weight: 2, heavy: false, level: 8}
-      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 10}
+      crossbow_raider: {max: 2, weight: 3, heavy: false, level: 8}
+      charger_raider: {max: 2, weight: 3, heavy: false, level: 9}
       banner_raider: {max: 1, weight: 1, heavy: true, level: 9}
+
+  outpost_t2_wave_3:
+    total-max-spawns: 5
+    heavy-max-spawns: 1
+    guaranteed:
+      golden_bulwark: 1
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 9}
+      crossbow_raider: {max: 1, weight: 2, heavy: false, level: 8}
+      charger_raider: {max: 1, weight: 2, heavy: false, level: 9}
+      golden_bulwark: {max: 1, weight: 2, heavy: true, level: 10}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 10}
       spike_evoker: {max: 1, weight: 1, heavy: true, level: 10}
 
-  outpost_raid_tier_3:
-    total-max-spawns: 8
-    heavy-max-spawns: 2
+  outpost_t3_wave_1:
+    total-max-spawns: 5
+    heavy-max-spawns: 0
     mobs:
-      shield_raider: {max: 3, weight: 3, heavy: false, level: 9}
-      crossbow_raider: {max: 4, weight: 3, heavy: false, level: 8}
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 9}
+      crossbow_raider: {max: 3, weight: 4, heavy: false, level: 8}
       charger_raider: {max: 2, weight: 2, heavy: false, level: 9}
-      golden_bulwark: {max: 1, weight: 1, heavy: true, level: 12}
+
+  outpost_t3_wave_2:
+    total-max-spawns: 6
+    heavy-max-spawns: 1
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 10}
+      crossbow_raider: {max: 3, weight: 3, heavy: false, level: 9}
+      charger_raider: {max: 2, weight: 3, heavy: false, level: 10}
       banner_raider: {max: 1, weight: 1, heavy: true, level: 10}
+
+  outpost_t3_wave_3:
+    total-max-spawns: 6
+    heavy-max-spawns: 1
+    guaranteed:
+      golden_bulwark: 1
+    mobs:
+      shield_raider: {max: 2, weight: 3, heavy: false, level: 10}
+      crossbow_raider: {max: 2, weight: 2, heavy: false, level: 10}
+      charger_raider: {max: 2, weight: 2, heavy: false, level: 11}
+      golden_bulwark: {max: 1, weight: 2, heavy: true, level: 12}
       spike_evoker: {max: 1, weight: 1, heavy: true, level: 11}
-      ravager_rider: {max: 1, weight: 1, heavy: true, level: 12}
+
+  outpost_t3_wave_4:
+    total-max-spawns: 6
+    heavy-max-spawns: 2
+    guaranteed:
+      golden_bulwark: 1
+    mobs:
+      shield_raider: {max: 2, weight: 2, heavy: false, level: 11}
+      crossbow_raider: {max: 1, weight: 2, heavy: false, level: 10}
+      charger_raider: {max: 1, weight: 2, heavy: false, level: 11}
+      golden_bulwark: {max: 1, weight: 3, heavy: true, level: 12}
+      banner_raider: {max: 1, weight: 1, heavy: true, level: 11}
+      spike_evoker: {max: 1, weight: 2, heavy: true, level: 12}
+      ravager_rider: {max: 1, weight: 2, heavy: true, level: 12}

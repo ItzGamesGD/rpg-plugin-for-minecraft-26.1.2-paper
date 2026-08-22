@@ -50,11 +50,17 @@ final class ExplorationStructureContentPrototypeTest {
         assertEquals("choice_prompt", eventComponents.get(0).get("type"));
         assertEquals("loot_exit", eventComponents.get(0).get("phase"));
         assertEquals("raid_wave_spawn", eventComponents.get(1).get("type"));
-        assertEquals(List.of("outpost_raid_tier_1", "outpost_raid_tier_1"),
+        assertEquals(List.of("outpost_t1_wave_1", "outpost_t1_wave_2"),
                 eventComponents.get(1).get("pool-ids"));
         assertEquals(Boolean.TRUE, eventComponents.get(1).get("repeat-on-next-wave"));
-        String tierTwo = "raid-pools.outpost_raid_tier_2.mobs.golden_bulwark";
-        assertTrue(yaml.isConfigurationSection(tierTwo));
-        assertTrue(yaml.getBoolean(tierTwo + ".heavy", false));
+        assertEquals(30, ((Number) eventComponents.get(1).get("next-wave-delay-ticks")).intValue());
+        Map<?, ?> finalReward = eventComponents.get(4);
+        assertEquals("reward_drop", finalReward.get("type"));
+        assertEquals("clear", finalReward.get("phase"));
+        assertEquals("looter", finalReward.get("recipient"));
+        assertEquals("vanilla:TOTEM_OF_UNDYING", finalReward.get("reward-id"));
+        String tierThreeFinal = "raid-pools.outpost_t3_wave_4";
+        assertEquals(6, yaml.getInt(tierThreeFinal + ".total-max-spawns"));
+        assertEquals(1, yaml.getInt(tierThreeFinal + ".guaranteed.golden_bulwark"));
     }
 }

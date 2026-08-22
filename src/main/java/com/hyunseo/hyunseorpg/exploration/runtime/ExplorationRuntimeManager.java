@@ -14,6 +14,8 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinitio
 import com.hyunseo.hyunseorpg.exploration.registry.StructureVariantDefinition;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -327,6 +329,11 @@ public final class ExplorationRuntimeManager {
                 }
                 if (runtime.objectivesCleared()) {
                     if (runtime.hasNextRaidWave()) {
+                        if (runtime.scheduleNextRaidWave(currentTick)) {
+                            announceNextRaidWave(runtime);
+                            continue;
+                        }
+                        if (!runtime.nextRaidWaveDue(currentTick)) continue;
                         try {
                             runtime.advanceRaidWave();
                             executePhase(record, runtime, ExplorationComponentPhase.NEXT_WAVE, currentTick);
@@ -482,9 +489,28 @@ public final class ExplorationRuntimeManager {
             ExplorationComponentPhase configured = ExplorationComponentPhase.parse(spec.string("phase", ""), component.defaultPhase());
             boolean nextWaveRepeat = phase == ExplorationComponentPhase.NEXT_WAVE
                     && component.type().equals("raid_wave_spawn")
-                    && spec.bool("repeat-on-next-wave", false);
+                    && spec.bool("repeat-on-next-wave", false)
+                    && matchesSelectedRaidWave(runtime.selectedChoice(), configured);
             if (configured == phase || nextWaveRepeat) component.execute(context, spec);
         }
+    }
+
+    static boolean matchesSelectedRaidWave(String selectedChoice, ExplorationComponentPhase configured) {
+        return switch (selectedChoice == null ? "" : selectedChoice.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "tier1" -> configured == ExplorationComponentPhase.CHOICE_TIER_1;
+            case "tier2" -> configured == ExplorationComponentPhase.CHOICE_TIER_2;
+            case "tier3" -> configured == ExplorationComponentPhase.CHOICE_TIER_3;
+            default -> false;
+        };
+    }
+
+    private void announceNextRaidWave(ExplorationRuntime runtime) {
+        Player target = runtime.raidTarget() == null ? null : Bukkit.getPlayer(runtime.raidTarget());
+        if (target == null || !target.isOnline() || target.isDead()) return;
+        target.sendMessage(net.kyori.adventure.text.Component.text("더 많은 약탈자들이 몰려옵니다. 다음 습격을 준비하십시오."));
+        target.playSound(target.getLocation(), Sound.ENTITY_PILLAGER_AMBIENT, 1.0F, 0.75F);
+        target.getWorld().spawnParticle(Particle.SMOKE, target.getLocation().add(0.0D, 1.0D, 0.0D), 20,
+                1.25D, 0.5D, 1.25D, 0.02D);
     }
 
     private ExplorationComponentPhase phaseForChoice(String choice) {

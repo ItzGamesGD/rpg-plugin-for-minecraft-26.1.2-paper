@@ -87,4 +87,16 @@ final class ExplorationRuntimeChoiceTest {
         assertTrue(runtime.confirmObjectiveDeath(second));
         assertTrue(runtime.objectivesCleared());
     }
+
+    @Test
+    void nextWaveWaitsForItsConfiguredDelay() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "outpost_raid_event", 10L);
+        runtime.configureRaidWaveSequence(List.of("first", "second"), 30L);
+
+        assertTrue(runtime.scheduleNextRaidWave(100L));
+        assertFalse(runtime.nextRaidWaveDue(129L));
+        assertTrue(runtime.nextRaidWaveDue(130L));
+        assertTrue(runtime.advanceRaidWave());
+        assertFalse(runtime.nextRaidWaveDue(130L));
+    }
 }

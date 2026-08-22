@@ -106,8 +106,15 @@ public final class ExplorationRegistry {
                                 mob.getBoolean("heavy", false), Math.max(1, mob.getInt("level", 1))));
                     }
                 }
+                Map<String, Integer> guaranteed = new LinkedHashMap<>();
+                ConfigurationSection guaranteedSection = pool.getConfigurationSection("guaranteed");
+                if (guaranteedSection != null) {
+                    for (String mobId : guaranteedSection.getKeys(false)) {
+                        guaranteed.put(mobId, guaranteedSection.getInt(mobId, 0));
+                    }
+                }
                 RaidWavePoolDefinition definition = new RaidWavePoolDefinition(rawId,
-                        pool.getInt("total-max-spawns", 1), pool.getInt("heavy-max-spawns", 0), entries);
+                        pool.getInt("total-max-spawns", 1), pool.getInt("heavy-max-spawns", 0), entries, guaranteed);
                 if (raidPools.putIfAbsent(definition.id(), definition) != null) {
                     throw new IllegalArgumentException("duplicate raid pool id");
                 }

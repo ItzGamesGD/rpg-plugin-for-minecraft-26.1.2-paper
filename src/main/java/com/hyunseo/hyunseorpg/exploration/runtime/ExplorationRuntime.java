@@ -34,6 +34,8 @@ public final class ExplorationRuntime {
     private final Set<UUID> confirmedDeadObjectives = new LinkedHashSet<>();
     private List<String> raidWavePoolIds = List.of();
     private int raidWaveIndex = -1;
+    private long nextRaidWaveDelayTicks = 30L;
+    private Long nextRaidWaveAtTick;
     private UUID raidTarget;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
@@ -73,6 +75,9 @@ public final class ExplorationRuntime {
     public synchronized int objectiveSpawnCount() { return objectiveSpawnCount; }
     public synchronized int confirmedDeadObjectiveCount() { return confirmedDeadObjectives.size(); }
     public synchronized void configureRaidWaveSequence(Collection<String> poolIds) {
+        configureRaidWaveSequence(poolIds, 30L);
+    }
+    public synchronized void configureRaidWaveSequence(Collection<String> poolIds, long delayTicks) {
         List<String> normalized = new ArrayList<>();
         if (poolIds != null) {
             for (String poolId : poolIds) {
@@ -83,6 +88,8 @@ public final class ExplorationRuntime {
         }
         raidWavePoolIds = List.copyOf(normalized);
         raidWaveIndex = raidWavePoolIds.isEmpty() ? -1 : 0;
+        nextRaidWaveDelayTicks = Math.max(0L, delayTicks);
+        nextRaidWaveAtTick = null;
     }
     public synchronized boolean hasNextRaidWave() {
         return raidWaveIndex >= 0 && raidWaveIndex + 1 < raidWavePoolIds.size();
@@ -90,6 +97,7 @@ public final class ExplorationRuntime {
     public synchronized boolean advanceRaidWave() {
         if (!hasNextRaidWave()) return false;
         raidWaveIndex++;
+        nextRaidWaveAtTick = null;
         return true;
     }
     public synchronized String currentRaidWavePoolId() {
@@ -98,6 +106,15 @@ public final class ExplorationRuntime {
     }
     public synchronized int raidWaveNumber() { return raidWaveIndex + 1; }
     public synchronized int raidWaveCount() { return raidWavePoolIds.size(); }
+    public synchronized boolean scheduleNextRaidWave(long currentTick) {
+        if (!hasNextRaidWave() || nextRaidWaveAtTick != null) return false;
+        nextRaidWaveAtTick = Math.max(0L, currentTick) + nextRaidWaveDelayTicks;
+        return true;
+    }
+    public synchronized boolean nextRaidWaveDue(long currentTick) {
+        return nextRaidWaveAtTick != null && currentTick >= nextRaidWaveAtTick;
+    }
+    public synchronized Long nextRaidWaveAtTick() { return nextRaidWaveAtTick; }
     public synchronized void setRaidTarget(UUID playerId) { raidTarget = playerId; }
     public synchronized UUID raidTarget() { return raidTarget; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,

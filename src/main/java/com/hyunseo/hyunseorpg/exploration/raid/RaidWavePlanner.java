@@ -14,6 +14,16 @@ public final class RaidWavePlanner {
         Map<String, Integer> counts = new LinkedHashMap<>();
         List<RaidMobDefinition> result = new ArrayList<>();
         int heavy = 0;
+        Map<String, RaidMobDefinition> byId = new LinkedHashMap<>();
+        for (RaidMobDefinition mob : pool.mobs()) byId.put(mob.mobId(), mob);
+        for (Map.Entry<String, Integer> entry : pool.guaranteed().entrySet()) {
+            RaidMobDefinition guaranteed = byId.get(entry.getKey());
+            for (int i = 0; i < entry.getValue(); i++) {
+                result.add(guaranteed);
+                counts.merge(guaranteed.mobId(), 1, Integer::sum);
+                if (guaranteed.heavy()) heavy++;
+            }
+        }
         while (result.size() < pool.totalMaxSpawns()) {
             int currentHeavy = heavy;
             List<RaidMobDefinition> candidates = pool.mobs().stream()

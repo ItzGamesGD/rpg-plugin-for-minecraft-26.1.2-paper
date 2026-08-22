@@ -41,7 +41,8 @@ public final class RaidWaveSpawnComponent implements ExplorationComponent {
         if (context.runtime().raidWaveCount() == 0) {
             List<String> configuredPools = spec.stringList("pool-ids");
             if (configuredPools.isEmpty()) configuredPools = List.of(spec.string("pool-id", ""));
-            context.runtime().configureRaidWaveSequence(configuredPools);
+            context.runtime().configureRaidWaveSequence(configuredPools,
+                    Math.max(0L, spec.integer("next-wave-delay-ticks", 30)));
         }
         String poolId = context.runtime().currentRaidWavePoolId();
         if (poolId.isBlank()) throw new IllegalArgumentException("raid wave has no pool id");

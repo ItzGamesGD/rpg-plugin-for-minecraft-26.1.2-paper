@@ -5,11 +5,13 @@ import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.mob.MobService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -125,10 +127,25 @@ public final class ExistingHyunseoRpgAdapters {
 
     public static ExplorationPorts.RewardPort itemRewardPort(RPGItemService itemService,
                                                               InventoryDeliveryService deliveryService) {
-        return (player, rewardId, amount, fallback, options) -> itemService.create(rewardId, Math.max(1, amount))
-                .map(item -> {
-                    deliveryService.giveOrDrop(player, fallback, item);
+        return (player, rewardId, amount, fallback, options) -> {
+            int safeAmount = Math.max(1, amount);
+            String normalized = rewardId == null ? "" : rewardId.trim();
+            if (normalized.regionMatches(true, 0, "vanilla:", 0, "vanilla:".length())) {
+                try {
+                    Material material = Material.valueOf(normalized.substring("vanilla:".length())
+                            .trim().toUpperCase(java.util.Locale.ROOT));
+                    if (!material.isItem()) return false;
+                    deliveryService.giveOrDrop(player, fallback, new ItemStack(material, safeAmount));
                     return true;
-                }).orElse(false);
+                } catch (IllegalArgumentException ignored) {
+                    return false;
+                }
+            }
+            return itemService.create(normalized, safeAmount)
+                    .map(item -> {
+                        deliveryService.giveOrDrop(player, fallback, item);
+                        return true;
+                    }).orElse(false);
+        };
     }
 }

@@ -8,11 +8,25 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class RaidWavePlannerTest {
     private final RaidWavePlanner planner = new RaidWavePlanner();
+
+    @Test
+    void guaranteedMobIsAlwaysIncludedBeforeWeightedFilling() {
+        RaidWavePoolDefinition pool = new RaidWavePoolDefinition("final", 4, 1, List.of(
+                new RaidMobDefinition("raider", 3, 10, false, 1),
+                new RaidMobDefinition("golden_bulwark", 1, 1, true, 1)),
+                java.util.Map.of("golden_bulwark", 1));
+
+        var wave = planner.plan(pool, new java.util.Random(7L));
+
+        assertEquals(4, wave.size());
+        assertEquals(1, wave.stream().filter(mob -> mob.mobId().equals("golden_bulwark")).count());
+    }
 
     @Test
     void tierOneNeverSelectsHeavyUnits() {
