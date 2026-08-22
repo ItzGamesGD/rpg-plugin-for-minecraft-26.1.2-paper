@@ -24,7 +24,11 @@ final class MireShamanPrototypeTest {
         assertEquals("mire_shaman", mobs.getString(path + ".behavior-id"));
         assertFalse(mobs.isConfigurationSection("mire_shaman"));
         assertTrue(mobs.getInt(path + ".behavior.pool.max-active") > 0);
-        assertTrue(mobs.getInt(path + ".behavior.minion.max-active") > 0);
+        assertEquals(5, mobs.getInt(path + ".behavior.minion.max-active"));
+        assertEquals(1, mobs.getInt(path + ".behavior.minion.min-count"));
+        assertEquals(2, mobs.getInt(path + ".behavior.minion.max-count"));
+        assertTrue(mobs.getStringList(path + ".behavior.minion.types").containsAll(
+                java.util.List.of("SLIME", "HUSK", "BOGGED")));
         assertTrue(mobs.getDouble(path + ".behavior.reclaim.health-threshold") > 0.0D);
     }
 
@@ -38,9 +42,23 @@ final class MireShamanPrototypeTest {
 
     @Test
     void minionSummonNeverExceedsConfiguredActiveCap() {
-        assertEquals(2, MireShamanPolicy.summonCount(0, 2, 2));
-        assertEquals(1, MireShamanPolicy.summonCount(1, 2, 2));
-        assertEquals(0, MireShamanPolicy.summonCount(2, 2, 2));
+        assertEquals(2, MireShamanPolicy.summonCount(0, 2, 5));
+        assertEquals(1, MireShamanPolicy.summonCount(4, 2, 5));
+        assertEquals(0, MireShamanPolicy.summonCount(5, 2, 5));
+        assertFalse(MireShamanPolicy.summonAllowed(5, 5));
+    }
+
+    @Test
+    void weightedPatternsRemainStateAware() {
+        assertEquals(MireShamanPolicy.Pattern.POOL,
+                MireShamanPolicy.choosePattern(true, true, 0.65D, 0.35D, 0.10D));
+        assertEquals(MireShamanPolicy.Pattern.SUMMON,
+                MireShamanPolicy.choosePattern(true, true, 0.65D, 0.35D, 0.90D));
+        assertEquals(MireShamanPolicy.Pattern.POOL,
+                MireShamanPolicy.choosePattern(true, false, 0.0D, 1.0D, 0.99D));
+        assertEquals(MireShamanPolicy.Pattern.SUMMON,
+                MireShamanPolicy.choosePattern(false, true, 1.0D, 0.0D, 0.01D));
+        assertEquals(null, MireShamanPolicy.choosePattern(false, false, 1.0D, 1.0D, 0.5D));
     }
 
     @Test

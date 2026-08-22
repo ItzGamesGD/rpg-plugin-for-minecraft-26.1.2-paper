@@ -187,20 +187,22 @@ custom-mobs:
     behavior-id: mire_shaman
     behavior:
       recognition-range: 24.0
-      projectile:
-        telegraph-ticks: 24
-        speed: 0.55
-        damage: 2.5
-        poison-ticks: 35
+      pattern-weights:
+        pool: 0.65
+        summon: 0.35
       pool:
-        telegraph-ticks: 20
+        telegraph-ticks: 30
         radius: 2.75
         duration-ticks: 120
         max-active: 3
       minion:
-        count: 2
-        max-active: 2
+        telegraph-ticks: 12
+        min-count: 1
+        max-count: 2
+        max-active: 5
         cooldown-ticks: 200
+        types: [SLIME, HUSK, BOGGED]
+        slime-size: 2
       reclaim:
         health-threshold: 0.5
         heal-ratio: 0.125
