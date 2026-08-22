@@ -18,6 +18,7 @@ The outpost runtime had a proximity activation and a choice prompt, but no inven
 - Added `golden_bulwark` to tier 2 and tier 3 outpost pools using the existing custom mob port.
 - Objective completion now requires explicit `EntityDeathEvent` confirmation for every spawned objective. Unloaded or unresolved UUIDs are retained and never counted as deaths.
 - Teleports now receive a 60-tick exemption checked by heartbeat as well as movement listeners; loot-trigger and combat-abandon clocks cannot restart on the first post-teleport heartbeat.
+- Explicit `migrate mobs --apply` now adds the complete official exploration roster with missing-only semantics; the existing apply command then reloads `ConfigService` and `MobRegistry` through the normal `reload all` path.
 
 ## Runtime path
 
@@ -39,11 +40,11 @@ Leaving the combat radius after `RAID_ACTIVE` starts the independent combat-aban
 
 ## Verification
 
-- `204 tests`
+- `205 tests`
 - `0 failures`
 - `2 skipped` (existing live Paper-dependent tests)
 - JAR: `build/libs/HyunseoRPG-0.1.0-SNAPSHOT.jar`
-- SHA-256: `94BCB9F215A8321BB53CB7A013C52D0546E5E3810F653B84A76F6BD65D1FAFF8`
+- SHA-256: `82B83A7A1926306763DE576CE6A68B2AE371903C7BF121296AAE262BC8B4587B`
 - SHA-256: `1E82FCDDB26BBF10436829C2C1BF5534E004D1824AB5FB6DA5B8AFCD619D8C85`
 
 ## Live verification still required

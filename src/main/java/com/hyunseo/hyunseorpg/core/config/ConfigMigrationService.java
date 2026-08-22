@@ -63,6 +63,9 @@ public final class ConfigMigrationService {
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml", "alchemy/gui.yml");
     private static final List<String> EXPLORATION_FILES = List.of("exploration/structures.yml");
+    private static final List<String> OFFICIAL_EXPLORATION_MOB_IDS = List.of(
+            "golden_bulwark", "mire_shaman", "shield_raider", "crossbow_raider",
+            "charger_raider", "banner_raider", "spike_evoker", "ravager_rider");
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
             "burning_sword", "flowing_water_sword", "wind_cutting_sword", "earth_special_sword",
             "ice_special_sword", "dark_energy_sword", "burning_bow", "wind_archers_bow",
@@ -105,6 +108,9 @@ public final class ConfigMigrationService {
                 migrateLegacyItemReferences(lines, changedFiles);
                 migrateRetiredSpecialRecipes(lines, changedFiles);
             }
+            if (normalized.equals("mobs")) {
+                migrateMobDefinitions(lines, changedFiles);
+            }
             if (normalized.equals("farming") || normalized.equals("all")) {
                 migrateFarming(lines, changedFiles);
             }
@@ -123,7 +129,7 @@ public final class ConfigMigrationService {
                 migrateLegacyProfessionRecipes(lines, changedFiles);
                 migrateLegacyProfessionShops(lines, changedFiles);
             }
-            if (!List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
+            if (!List.of("configs", "items", "mobs", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
             }
@@ -942,34 +948,7 @@ public final class ConfigMigrationService {
             }
         }
 
-        FileConfiguration mobs = loadLive("mobs.yml");
-        FileConfiguration mobDefaults = loadResource("mobs.yml");
-        if (mobs != null && mobDefaults != null) {
-            boolean changed = false;
-            if (!mobs.isConfigurationSection("elemental-fragments")
-                    && mobDefaults.isConfigurationSection("elemental-fragments")) {
-                copyTree(mobs, mobDefaults, "elemental-fragments");
-                lines.add("mobs.yml: added explicit elemental fragment registry");
-                changed = true;
-            }
-            for (String mobId : List.of("golden_bulwark", "mire_shaman")) {
-                String canonicalPath = "custom-mobs." + mobId;
-                ConfigurationSection legacy = mobs.getConfigurationSection(mobId);
-                if (!mobs.isConfigurationSection(canonicalPath) && legacy != null) {
-                    copySection(mobs, legacy, canonicalPath);
-                    mobs.set(mobId, null);
-                    lines.add("mobs.yml: moved legacy top-level " + mobId + " into custom-mobs");
-                    changed = true;
-                }
-                if (copyMissingTree(mobs, mobDefaults, canonicalPath)) {
-                    lines.add("mobs.yml: added missing " + canonicalPath + " settings");
-                    changed = true;
-                }
-            }
-            if (changed) {
-                mark(mobs, "mobs.yml", changedFiles, lines, "custom mob migration staged");
-            }
-        }
+        migrateMobDefinitions(lines, changedFiles);
 
         FileConfiguration spawns = loadLive("monster-spawns.yml");
         FileConfiguration spawnDefaults = loadResource("monster-spawns.yml");
@@ -996,6 +975,36 @@ public final class ConfigMigrationService {
             lines.add("config.yml: added dirty player persistence settings");
             mark(config, "config.yml", changedFiles, lines, "persistence migration staged");
         }
+    }
+
+    /** Adds only missing official mob definitions and preserves all operator values. */
+    private void migrateMobDefinitions(List<String> lines, List<File> changedFiles) {
+        FileConfiguration mobs = loadLive("mobs.yml");
+        FileConfiguration defaults = loadResource("mobs.yml");
+        if (mobs == null || defaults == null) return;
+
+        boolean changed = false;
+        if (!mobs.isConfigurationSection("elemental-fragments")
+                && defaults.isConfigurationSection("elemental-fragments")) {
+            copyTree(mobs, defaults, "elemental-fragments");
+            lines.add("mobs.yml: added explicit elemental fragment registry");
+            changed = true;
+        }
+        for (String mobId : OFFICIAL_EXPLORATION_MOB_IDS) {
+            String canonicalPath = "custom-mobs." + mobId;
+            ConfigurationSection legacy = mobs.getConfigurationSection(mobId);
+            if (!mobs.isConfigurationSection(canonicalPath) && legacy != null) {
+                copySection(mobs, legacy, canonicalPath);
+                mobs.set(mobId, null);
+                lines.add("mobs.yml: moved legacy top-level " + mobId + " into custom-mobs");
+                changed = true;
+            }
+            if (copyMissingTree(mobs, defaults, canonicalPath)) {
+                lines.add("mobs.yml: added missing " + canonicalPath + " settings");
+                changed = true;
+            }
+        }
+        if (changed) mark(mobs, "mobs.yml", changedFiles, lines, "custom mob migration staged");
     }
 
     private void migrateEquipmentSupport(List<String> lines, List<File> changedFiles) {

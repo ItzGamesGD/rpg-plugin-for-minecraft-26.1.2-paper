@@ -16,8 +16,8 @@ final class OutpostRaiderDefinitionTest {
     @Test
     void firstOutpostRosterUsesVanillaPillagerFamilyAndExplicitSafetyPolicies() {
         YamlConfiguration mobs = loadMobs();
-        List<String> ids = List.of("shield_raider", "crossbow_raider", "charger_raider",
-                "banner_raider", "spike_evoker", "ravager_rider");
+        List<String> ids = List.of("golden_bulwark", "mire_shaman", "shield_raider",
+                "crossbow_raider", "charger_raider", "banner_raider", "spike_evoker", "ravager_rider");
         for (String id : ids) {
             String path = "custom-mobs." + id;
             assertTrue(mobs.isConfigurationSection(path), "missing outpost mob: " + id);
@@ -29,6 +29,8 @@ final class OutpostRaiderDefinitionTest {
         assertFalse(mobs.getBoolean("custom-mobs.spike_evoker.behavior.vex-summon", true));
         assertFalse(mobs.getBoolean("custom-mobs.spike_evoker.behavior.totem-drop", true));
         assertEquals("RAVAGER", mobs.getString("custom-mobs.ravager_rider.vanilla-type"));
+        assertEquals("WITCH", mobs.getString("custom-mobs.mire_shaman.vanilla-type"));
+        assertEquals("golden_bulwark", mobs.getString("custom-mobs.golden_bulwark.behavior-id"));
     }
 
     private YamlConfiguration loadMobs() {

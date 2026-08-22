@@ -1418,7 +1418,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             return List.of("all", "reload", "configs", "items", "recipes", "equipment", "mobs", "players", "progression", "quests", "farming", "alchemy", "effects");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("migrate")) {
-            return List.of("configs", "items", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all");
+            return migrationTargetCompletion(args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("exploration")) {
             return explorationActionCompletion(args[1]);
@@ -1504,6 +1504,11 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
 
     static List<String> pendingCompletion(String prefix) {
         return filterCompletion(List.of("claim"), prefix);
+    }
+
+    static List<String> migrationTargetCompletion(String prefix) {
+        return filterCompletion(List.of("configs", "items", "mobs", "players", "farming",
+                "alchemy", "exploration", "legacy", "cleanup", "all"), prefix);
     }
 
     static List<String> effectActionCompletion(String prefix) {

@@ -34,6 +34,11 @@ class RPGGiveCommandCompletionTest {
     }
 
     @Test
+    void exposesMobMigrationTarget() {
+        assertTrue(RPGGiveCommand.migrationTargetCompletion("").contains("mobs"));
+    }
+
+    @Test
     void exposesCanonicalEffectCommandActions() {
         assertTrue(RPGGiveCommand.effectActionCompletion("").containsAll(
                 List.of("list", "apply", "remove", "clear", "debug", "reload")));
