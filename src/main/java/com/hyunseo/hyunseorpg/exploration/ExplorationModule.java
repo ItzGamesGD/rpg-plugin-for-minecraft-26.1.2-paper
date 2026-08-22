@@ -71,7 +71,7 @@ public final class ExplorationModule {
                 new ExplorationPlayerMovementListener(runtimes, tickCounter));
     }
 
-    public boolean start() {
+    public synchronized boolean start() {
         if (!registry.load()) return false;
         if (!registry.isEnabled()) {
             plugin.getLogger().info("Exploration module is installed but disabled in exploration/structures.yml.");
@@ -99,8 +99,16 @@ public final class ExplorationModule {
         catch (IOException exception) { plugin.getLogger().log(Level.SEVERE, "Unable to flush exploration persistence", exception); }
     }
 
-    /** Reloads definitions only. Existing StructureRecord selection/variant/state are never rerolled. */
-    public boolean reload() { return registry.load(); }
+    /**
+     * Reloads definitions and reconciles the runtime lifecycle with the new root enabled flag.
+     * A registry-only reload is insufficient when the module was disabled during boot because
+     * listeners and the heartbeat task were never registered in that state. Existing
+     * StructureRecord selection/variant/state are never rerolled.
+     */
+    public synchronized boolean reload() {
+        stop();
+        return start();
+    }
 
     public boolean complete(UUID structureId) { return runtimes.complete(structureId, tickCounter.get()); }
     public int scanChunk(org.bukkit.World world, int chunkX, int chunkZ) { return detection.scanChunk(world, chunkX, chunkZ); }

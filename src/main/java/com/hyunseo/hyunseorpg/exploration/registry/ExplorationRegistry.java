@@ -61,6 +61,11 @@ public final class ExplorationRegistry {
                 plugin.getLogger().log(Level.WARNING, "Skipping invalid exploration structure: " + rawId, exception);
             }
         }
+        if (!enabled && byId.values().stream().anyMatch(ExplorationStructureDefinition::enabled)) {
+            plugin.getLogger().warning(
+                    "Exploration root enabled=false while one or more structures are enabled; "
+                            + "the module will remain inactive until the root flag is enabled.");
+        }
         if (enabled && byId.isEmpty()) {
             plugin.getLogger().warning("Exploration enabled but no valid structures loaded; disabling safely.");
             enabled = false;
