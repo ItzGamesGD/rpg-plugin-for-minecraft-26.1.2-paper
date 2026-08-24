@@ -8,7 +8,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * A single bounded gate between two existing component phases. It is deliberately
+ * A single bounded gate between configured component phases. It is deliberately
  * not an expression language: only known runtime facts can be awaited.
  */
 public final class SequenceWaitComponent implements ExplorationComponent {
@@ -24,14 +24,14 @@ public final class SequenceWaitComponent implements ExplorationComponent {
         String condition = spec.string("wait-for", "").trim().toLowerCase(Locale.ROOT);
         String key = spec.string("key", "").trim();
         int threshold = Math.max(0, spec.integer("threshold", 0));
-        ExplorationComponentPhase next = ExplorationComponentPhase.parse(spec.string("next-phase", ""), null);
-        if (actionId.isBlank() || next == null || !CONDITIONS.contains(condition)) {
+        String nextPhase = spec.string("next-phase", "").trim();
+        if (actionId.isBlank() || nextPhase.isBlank() || !CONDITIONS.contains(condition)) {
             throw new IllegalArgumentException("sequence_wait requires action-id, supported wait-for, and next-phase");
         }
         if (("counter".equals(condition) || "flag".equals(condition)) && key.isBlank()) {
             throw new IllegalArgumentException("sequence_wait " + condition + " requires key");
         }
-        if (!context.runtime().sequence().armWait(actionId, condition, key, threshold, next.name())) {
+        if (!context.runtime().sequence().armWait(actionId, condition, key, threshold, nextPhase)) {
             throw new IllegalStateException("sequence_wait rejected duplicate or concurrent action " + actionId);
         }
     }
