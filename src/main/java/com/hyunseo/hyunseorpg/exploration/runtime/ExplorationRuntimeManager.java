@@ -307,7 +307,13 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
-            if (progressSequenceWait(record, runtime, currentTick)) continue;
+            try {
+                if (progressSequenceWait(record, runtime, currentTick)) continue;
+            } catch (Exception exception) {
+                plugin.getLogger().log(Level.WARNING, "Exploration sequence wait failed: " + record.structureId(), exception);
+                abandon(record.structureId());
+                continue;
+            }
 
             if (runtime.objectiveMode()) {
                 if (currentTick <= runtime.activatedAtTick()) {
