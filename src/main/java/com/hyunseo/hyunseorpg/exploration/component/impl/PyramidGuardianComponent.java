@@ -3,12 +3,11 @@ package com.hyunseo.hyunseorpg.exploration.component.impl;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponent;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
-import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
-import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomLocator;
-import com.hyunseo.hyunseorpg.exploration.model.StructureBounds;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -18,28 +17,25 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * First bounded Desert Pyramid runtime slice. It validates a room candidate
- * before spawning the configured guardian through the existing mob port.
- * No blocks are changed by this component.
+ * Spawns the guardian outside the generated room after the loot-trigger delay.
  */
 public final class PyramidGuardianComponent implements ExplorationComponent {
+    private final PyramidRoomService rooms;
+
+    public PyramidGuardianComponent(PyramidRoomService rooms) { this.rooms = rooms; }
+
     @Override public String type() { return "pyramid_guardian"; }
-    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.ACTIVATE; }
+    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.PYRAMID_GUARDIAN_SPAWN; }
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
         if (!"desert_pyramid".equals(context.record().structureType())) {
             throw new IllegalArgumentException("pyramid_guardian requires desert_pyramid");
         }
-        World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
-        PyramidRoomCandidate candidate = findRoom(context, spec, world)
-                .orElseThrow(() -> new IllegalStateException("no safe Desert Pyramid room candidate"));
+        PlayerSpawn playerSpawn = playerSpawn(context);
+        Location spawnLocation = rooms.guardianSpawn(context, playerSpawn.player());
 
-        context.runtime().sequence().setFlag("pyramid.preflight.passed");
-        Location spawnLocation = new Location(world,
-                candidate.origin().x() + 0.5D,
-                candidate.origin().y(),
-                candidate.origin().z() + 0.5D);
+        context.runtime().sequence().setFlag("pyramid.guardian.spawned.outside");
         Map<String, Object> options = new LinkedHashMap<>(spec.options());
         options.putIfAbsent("glowing", true);
         options.putIfAbsent("invulnerable", false);
@@ -62,19 +58,22 @@ public final class PyramidGuardianComponent implements ExplorationComponent {
         if (spec.bool("objective", true)) context.runtime().trackObjectives(validIds);
         if (context.plugin() != null) {
             context.plugin().getLogger().info("Desert Pyramid guardian activated: structure="
-                    + context.record().structureId() + ", room=" + candidate.slot()
-                    + ", origin=" + candidate.origin() + ", mob=" + mobId
+                    + context.record().structureId() + ", spawn=" + spawnLocation.getBlockX() + ","
+                    + spawnLocation.getBlockY() + "," + spawnLocation.getBlockZ() + ", mob=" + mobId
                     + ", objectives=" + validIds.size());
         }
     }
 
-    private Optional<PyramidRoomCandidate> findRoom(ExplorationEventContext context,
-                                                     ExplorationComponentSpec spec,
-                                                     World world) {
-        StructureBounds bounds = context.record().bounds();
-        int radius = Math.max(0, Math.min(2, spec.integer("room-radius", 1)));
-        int height = Math.max(1, Math.min(3, spec.integer("room-height", 2)));
-        boolean rejectContainers = spec.bool("reject-containers", false);
-        return PyramidRoomLocator.find(world, bounds, radius, height, rejectContainers);
+    private PlayerSpawn playerSpawn(ExplorationEventContext context) {
+        UUID playerId = context.runtime().looter();
+        if (playerId == null) playerId = context.runtime().participants().stream().findFirst().orElse(null);
+        if (playerId == null) throw new IllegalStateException("pyramid guardian has no target player");
+        Player player = org.bukkit.Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline() || player.isDead()) {
+            throw new IllegalStateException("pyramid guardian target player is unavailable");
+        }
+        return new PlayerSpawn(player);
     }
+
+    private record PlayerSpawn(Player player) { }
 }

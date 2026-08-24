@@ -323,7 +323,12 @@ public final class ConfigMigrationService {
         }
     }
 
-    /** Adds the new Pyramid puzzle component only when an operator has not defined it yet. */
+    /**
+     * Reconciles the bounded Desert Pyramid runtime components without replacing
+     * the operator's existing component list. Official components are appended
+     * only when their type is absent; legacy official guardian/puzzle entries get
+     * their missing phase so the loot-triggered sequence is not bypassed.
+     */
     private boolean migrateDesertPyramidPushPillars(FileConfiguration target,
                                                     FileConfiguration defaults,
                                                     String fileName,
@@ -331,25 +336,43 @@ public final class ConfigMigrationService {
         String path = "structures.desert_pyramid.variants.guardian_trial.components";
         List<Map<?, ?>> configured = target.getMapList(path);
         List<Map<?, ?>> bundled = defaults.getMapList(path);
-        if (bundled.isEmpty() || configured.stream().anyMatch(entry ->
-                "pyramid_push_pillars".equalsIgnoreCase(String.valueOf(entry.get("type"))))) {
-            return false;
-        }
-        Map<?, ?> puzzle = bundled.stream()
-                .filter(entry -> "pyramid_push_pillars".equalsIgnoreCase(String.valueOf(entry.get("type"))))
-                .findFirst().orElse(null);
-        if (puzzle == null) return false;
+        if (bundled.isEmpty()) return false;
         List<Map<String, Object>> merged = new ArrayList<>();
+        Set<String> configuredTypes = new HashSet<>();
+        boolean changed = false;
         for (Map<?, ?> entry : configured) {
             Map<String, Object> copy = new LinkedHashMap<>();
             entry.forEach((key, value) -> copy.put(String.valueOf(key), value));
+            String type = String.valueOf(copy.getOrDefault("type", "")).trim().toLowerCase(Locale.ROOT);
+            configuredTypes.add(type);
+            if ("pyramid_guardian".equals(type)
+                    && !copy.containsKey("phase")
+                    && "custom:stone_armored_zombie".equalsIgnoreCase(String.valueOf(copy.getOrDefault("mob-id", "")))) {
+                copy.put("phase", "pyramid_guardian_spawn");
+                changed = true;
+                lines.add(fileName + ": routed legacy Desert Pyramid guardian to pyramid_guardian_spawn");
+            }
+            if ("pyramid_push_pillars".equals(type) && !copy.containsKey("phase")) {
+                copy.put("phase", "pyramid_puzzle");
+                changed = true;
+                lines.add(fileName + ": routed legacy Desert Pyramid puzzle to pyramid_puzzle");
+            }
             merged.add(copy);
         }
-        Map<String, Object> copy = new LinkedHashMap<>();
-        puzzle.forEach((key, value) -> copy.put(String.valueOf(key), value));
-        merged.add(copy);
+        for (String requiredType : List.of("pyramid_room", "pyramid_repel", "sequence_delay", "pyramid_push_pillars")) {
+            if (configuredTypes.contains(requiredType)) continue;
+            Map<?, ?> source = bundled.stream()
+                    .filter(entry -> requiredType.equalsIgnoreCase(String.valueOf(entry.get("type"))))
+                    .findFirst().orElse(null);
+            if (source == null) continue;
+            Map<String, Object> copy = new LinkedHashMap<>();
+            source.forEach((key, value) -> copy.put(String.valueOf(key), value));
+            merged.add(copy);
+            changed = true;
+            lines.add(fileName + ": added missing Desert Pyramid " + requiredType + " component");
+        }
+        if (!changed) return false;
         target.set(path, merged);
-        lines.add(fileName + ": added missing desert_pyramid push-pillar component without overwriting operator values");
         return true;
     }
 

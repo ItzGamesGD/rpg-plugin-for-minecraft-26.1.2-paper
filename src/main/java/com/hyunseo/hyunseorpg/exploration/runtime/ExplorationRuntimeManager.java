@@ -211,6 +211,7 @@ public final class ExplorationRuntimeManager {
         for (StructureRecord record : repository.index().nearby(container.getWorld().getUID(),
                 container.getX(), container.getZ(), 1.0D)) {
             if (!record.structureType().equals("pillager_outpost")
+                    && !record.structureType().equals("desert_pyramid")
                     || !record.bounds().contains(container.getX(), container.getY(), container.getZ())) continue;
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 activate(record, player, currentTick);
@@ -225,7 +226,17 @@ public final class ExplorationRuntimeManager {
                         .withMetadata("loot-taken-at-tick", Long.toString(currentTick));
                 repository.save(updated);
                 marked = true;
-                plugin.getLogger().info("Exploration outpost loot armed: structure=" + record.structureId()
+                if (record.structureType().equals("desert_pyramid")) {
+                    try {
+                        executeNamedPhase(repository.get(record.structureId()).orElse(updated), runtime,
+                                ExplorationComponentPhase.PYRAMID_LOOT_TRIGGER.name(), currentTick);
+                    } catch (Exception exception) {
+                        plugin.getLogger().log(Level.WARNING,
+                                "Unable to start Desert Pyramid loot sequence: " + record.structureId(), exception);
+                        abandon(record.structureId());
+                    }
+                }
+                plugin.getLogger().info("Exploration structure loot armed: structure=" + record.structureId()
                         + ", looter=" + player.getUniqueId());
             } catch (IOException exception) {
                 plugin.getLogger().log(Level.WARNING, "Unable to persist outpost loot state: " + record.structureId(), exception);
@@ -337,11 +348,20 @@ public final class ExplorationRuntimeManager {
                     }
                 }
                 if (runtime.objectivesCleared()) {
-                    // The guardian is only the first Pyramid module. Its clear gate must
-                    // not bypass the live push-pillar module when that module is active.
                     if (record.structureType().equals("desert_pyramid")
-                            && runtime.sequence().flag("pyramid.puzzle.active")) {
-                        continue;
+                            && !runtime.sequence().flag("pyramid.puzzle.solved")) {
+                        if (!runtime.sequence().flag("pyramid.puzzle.started")) {
+                            try {
+                                executeNamedPhase(record, runtime,
+                                        ExplorationComponentPhase.PYRAMID_PUZZLE.name(), currentTick);
+                            } catch (Exception exception) {
+                                plugin.getLogger().log(Level.WARNING,
+                                        "Unable to activate Desert Pyramid puzzle: " + record.structureId(), exception);
+                                abandon(record.structureId());
+                                continue;
+                            }
+                        }
+                        if (runtime.sequence().flag("pyramid.puzzle.active")) continue;
                     }
                     if (runtime.hasNextRaidWave()) {
                         if (runtime.scheduleNextRaidWave(currentTick)) {

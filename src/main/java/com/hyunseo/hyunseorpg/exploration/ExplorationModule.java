@@ -6,8 +6,11 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.ForcedRelocationCompone
 import com.hyunseo.hyunseorpg.exploration.component.impl.InteractionTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PuzzleComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidGuardianComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRepelComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
@@ -64,6 +67,7 @@ public final class ExplorationModule {
     private final AtomicLong tickCounter = new AtomicLong();
     private final List<Listener> listeners;
     private final PyramidPushPillarService pyramidPuzzles;
+    private final PyramidRoomService pyramidRooms;
     private BukkitTask heartbeatTask;
 
     public ExplorationModule(JavaPlugin plugin) {
@@ -75,6 +79,7 @@ public final class ExplorationModule {
         this.registry = new ExplorationRegistry(plugin);
         this.repository = new StructureRepository(new YamlStructureStorage(plugin), new StructureIndex());
         ExplorationPorts effectivePorts = ports == null ? BukkitExplorationPorts.safeDefaults(plugin) : ports;
+        this.pyramidRooms = new PyramidRoomService(plugin, repository);
         this.pyramidPuzzles = new PyramidPushPillarService(plugin, effectivePorts);
         StructureCandidateProvider effectiveProvider = candidateProvider == null
                 ? new ReflectivePaperStructureCandidateProvider(plugin) : candidateProvider;
@@ -116,6 +121,7 @@ public final class ExplorationModule {
         listeners.forEach(HandlerList::unregisterAll);
         runtimes.shutdown();
         pyramidPuzzles.stopAll();
+        pyramidRooms.stopAll();
         try { repository.flushAll(); }
         catch (IOException exception) { plugin.getLogger().log(Level.SEVERE, "Unable to flush exploration persistence", exception); }
     }
@@ -179,8 +185,10 @@ public final class ExplorationModule {
                 .register(new TemporarySealComponent())
                 .register(new ForcedRelocationComponent())
                 .register(new RewardDropComponent())
-                .register(new PyramidGuardianComponent())
-                .register(new PyramidPushPillarComponent(pyramidPuzzles))
+                .register(new PyramidRoomComponent(pyramidRooms))
+                .register(new PyramidRepelComponent(pyramidRooms))
+                .register(new PyramidGuardianComponent(pyramidRooms))
+                .register(new PyramidPushPillarComponent(pyramidPuzzles, pyramidRooms))
                 .register(new PuzzleComponent());
     }
 }

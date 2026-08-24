@@ -115,22 +115,33 @@ structures:
         weight: 1.0
         prototype: true
         components:
+          - type: pyramid_room
+            phase: pyramid_loot_trigger
+            room-radius: 3
+            room-height: 4
+            safety-shell: 2
+            reject-containers: true
+          - type: pyramid_repel
+            phase: pyramid_loot_trigger
+            horizontal-strength: 0.75
+            vertical-strength: 0.32
+          - type: sequence_delay
+            phase: pyramid_loot_trigger
+            action-id: pyramid_guardian_delay
+            delay-ticks: 40
+            next-phase: pyramid_guardian_spawn
           - type: pyramid_guardian
+            phase: pyramid_guardian_spawn
             mob-id: custom:stone_armored_zombie
             count: 1
             objective: true
             glowing: true
-            room-radius: 1
-            room-height: 2
-            reject-containers: false
           - type: pyramid_push_pillars
+            phase: pyramid_puzzle
             cooldown-ticks: 8
             contact-radius: 1.65
             grid-scale: 1.0
             display-y-offset: 0
-            room-radius: 1
-            room-height: 2
-            reject-containers: false
             display-material: SANDSTONE
             pillars:
               - id: sun

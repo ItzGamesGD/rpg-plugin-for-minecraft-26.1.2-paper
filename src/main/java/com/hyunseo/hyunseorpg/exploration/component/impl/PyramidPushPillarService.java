@@ -156,8 +156,7 @@ public final class PyramidPushPillarService {
         }
 
         private void portsMove(UUID display, Location location) {
-            // The service owns no second display engine; this default-aware adapter moves the tracked display.
-            // The actual call is supplied by the outer service through the thread-safe port wrapper below.
+            ports.displays().move(display, location);
         }
 
         private Location location(PyramidGridPoint point) {

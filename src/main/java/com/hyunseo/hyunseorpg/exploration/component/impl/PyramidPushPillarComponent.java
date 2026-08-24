@@ -5,7 +5,7 @@ import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
-import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomLocator;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
@@ -20,13 +20,15 @@ import java.util.Set;
 /** Connects the Pyramid-specific logical pillar board to the live runtime. */
 public final class PyramidPushPillarComponent implements ExplorationComponent {
     private final PyramidPushPillarService service;
+    private final PyramidRoomService rooms;
 
-    public PyramidPushPillarComponent(PyramidPushPillarService service) {
+    public PyramidPushPillarComponent(PyramidPushPillarService service, PyramidRoomService rooms) {
         this.service = service;
+        this.rooms = rooms;
     }
 
     @Override public String type() { return "pyramid_push_pillars"; }
-    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.ACTIVATE; }
+    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.PYRAMID_PUZZLE; }
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
@@ -34,14 +36,13 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
             throw new IllegalArgumentException("pyramid_push_pillars requires desert_pyramid");
         }
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
-        PyramidRoomCandidate room = PyramidRoomLocator.find(world, context.record().bounds(),
-                        spec.integer("room-radius", 1), spec.integer("room-height", 2),
-                        spec.bool("reject-containers", false))
+        PyramidRoomCandidate room = rooms.room(context.runtime().structureId())
                 .orElseThrow(() -> new IllegalStateException("no safe Desert Pyramid puzzle room"));
         List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
         if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
         PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
         service.start(context, spec, room, board, pillars);
+        context.runtime().sequence().setFlag("pyramid.puzzle.started");
         context.runtime().sequence().setFlag("pyramid.puzzle.active");
         context.runtime().tracker().track(() -> service.stop(context.runtime().structureId()));
     }
