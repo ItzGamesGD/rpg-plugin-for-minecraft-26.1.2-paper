@@ -429,10 +429,10 @@ public final class ExplorationRuntimeManager {
 
         ExplorationSequenceState.PendingWait completed = runtime.sequence().completeWait(wait.actionId());
         if (completed == null) return true;
-        ExplorationComponentPhase next = ExplorationComponentPhase.parse(completed.nextPhase(), null);
-        if (next == null || !runtime.sequence().transitionTo(next.name(), "wait:" + completed.condition()
+        String nextPhase = completed.nextPhase().trim();
+        if (nextPhase.isBlank() || !runtime.sequence().transitionTo(nextPhase, "wait:" + completed.condition()
                 + ":" + completed.actionId())) return true;
-        executePhase(record, runtime, next, currentTick);
+        executeNamedPhase(record, runtime, nextPhase, currentTick);
         return true;
     }
 
@@ -451,7 +451,7 @@ public final class ExplorationRuntimeManager {
     }
 
     private boolean scheduleSequencePhase(ExplorationEventContext context, String actionId,
-                                          long delayTicks, ExplorationComponentPhase nextPhase) {
+                                          long delayTicks, String nextPhase) {
         ExplorationRuntime runtime = context.runtime();
         if (!runtime.sequence().beginAction(actionId)) return false;
         UUID structureId = runtime.structureId();
@@ -461,8 +461,8 @@ public final class ExplorationRuntimeManager {
                 StructureRecord record = repository.get(structureId).orElse(null);
                 if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) return;
                 runtime.sequence().completeTask(actionId);
-                if (!runtime.sequence().transitionTo(nextPhase.name(), "delayed:" + actionId)) return;
-                try { executePhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks)); }
+                if (!runtime.sequence().transitionTo(nextPhase, "delayed:" + actionId)) return;
+                try { executeNamedPhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks)); }
                 catch (Exception exception) {
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
                     abandon(structureId);
@@ -546,6 +546,16 @@ public final class ExplorationRuntimeManager {
 
     private void executePhase(StructureRecord record, ExplorationRuntime runtime,
                               ExplorationComponentPhase phase, long currentTick) throws Exception {
+        executeNamedPhase(record, runtime, phase.name(), currentTick);
+    }
+
+    /**
+     * Dispatches a configured named phase without adding a scripting language.
+     * A component either uses its existing default enum phase or an exact
+     * literal phase identifier from its own definition.
+     */
+    private void executeNamedPhase(StructureRecord record, ExplorationRuntime runtime,
+                                   String phase, long currentTick) throws Exception {
         ExplorationStructureDefinition definition = registry.get(record.structureType())
                 .orElseThrow(() -> new IllegalStateException("missing structure definition " + record.structureType()));
         StructureVariantDefinition variant = definition.variants().stream()
@@ -556,12 +566,17 @@ public final class ExplorationRuntimeManager {
         for (ExplorationComponentSpec spec : variant.components()) {
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
-            ExplorationComponentPhase configured = ExplorationComponentPhase.parse(spec.string("phase", ""), component.defaultPhase());
-            boolean nextWaveRepeat = phase == ExplorationComponentPhase.NEXT_WAVE
+            String configuredPhase = spec.string("phase", "").trim();
+            boolean defaultPhaseMatch = configuredPhase.isEmpty()
+                    && component.defaultPhase().name().equalsIgnoreCase(phase);
+            boolean explicitPhaseMatch = !configuredPhase.isEmpty()
+                    && configuredPhase.equalsIgnoreCase(phase);
+            ExplorationComponentPhase configured = ExplorationComponentPhase.parse(configuredPhase, component.defaultPhase());
+            boolean nextWaveRepeat = ExplorationComponentPhase.NEXT_WAVE.name().equalsIgnoreCase(phase)
                     && component.type().equals("raid_wave_spawn")
                     && spec.bool("repeat-on-next-wave", false)
                     && matchesSelectedRaidWave(runtime.selectedChoice(), configured);
-            if (configured == phase || nextWaveRepeat) component.execute(context, spec);
+            if (defaultPhaseMatch || explicitPhaseMatch || nextWaveRepeat) component.execute(context, spec);
         }
     }
 
