@@ -2,6 +2,7 @@ package com.hyunseo.hyunseorpg.exploration.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,20 @@ class ExplorationSequenceStateTest {
         assertFalse(state.movedSince(epoch));
         state.markPhysicalMove();
         assertTrue(state.movedSince(epoch));
+    }
+
+    @Test
+    void waitIsRuntimeLocalAndCanOnlyBeCompletedOnce() {
+        ExplorationSequenceState state = new ExplorationSequenceState();
+
+        assertTrue(state.armWait("wait-move", "movement", "", 0, "next_wave"));
+        assertFalse(state.armWait("wait-duplicate", "flag", "ready", 0, "clear"));
+        ExplorationSequenceState.PendingWait wait = state.pendingWait();
+        assertEquals("movement", wait.condition());
+        assertNull(state.completeWait("wrong"));
+        assertEquals(wait, state.completeWait("wait-move"));
+        assertNull(state.pendingWait());
+        assertNull(state.completeWait("wait-move"));
     }
 
     @Test
