@@ -314,12 +314,43 @@ public final class ConfigMigrationService {
                 changed |= migrateOutpostLootTrigger(target, fileName, lines);
                 changed |= disableOutpostScoutPrototype(target, fileName, lines);
                 changed |= migrateOutpostRaidWaveSequence(target, fileName, lines);
+                changed |= migrateDesertPyramidPushPillars(target, defaults, fileName, lines);
                 if (changed) {
                     lines.add(fileName + ": added missing exploration keys without overwriting operator values");
                 }
             }
             if (changed) mark(target, fileName, changedFiles, lines, "exploration migration staged");
         }
+    }
+
+    /** Adds the new Pyramid puzzle component only when an operator has not defined it yet. */
+    private boolean migrateDesertPyramidPushPillars(FileConfiguration target,
+                                                    FileConfiguration defaults,
+                                                    String fileName,
+                                                    List<String> lines) {
+        String path = "structures.desert_pyramid.variants.guardian_trial.components";
+        List<Map<?, ?>> configured = target.getMapList(path);
+        List<Map<?, ?>> bundled = defaults.getMapList(path);
+        if (bundled.isEmpty() || configured.stream().anyMatch(entry ->
+                "pyramid_push_pillars".equalsIgnoreCase(String.valueOf(entry.get("type"))))) {
+            return false;
+        }
+        Map<?, ?> puzzle = bundled.stream()
+                .filter(entry -> "pyramid_push_pillars".equalsIgnoreCase(String.valueOf(entry.get("type"))))
+                .findFirst().orElse(null);
+        if (puzzle == null) return false;
+        List<Map<String, Object>> merged = new ArrayList<>();
+        for (Map<?, ?> entry : configured) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            entry.forEach((key, value) -> copy.put(String.valueOf(key), value));
+            merged.add(copy);
+        }
+        Map<String, Object> copy = new LinkedHashMap<>();
+        puzzle.forEach((key, value) -> copy.put(String.valueOf(key), value));
+        merged.add(copy);
+        target.set(path, merged);
+        lines.add(fileName + ": added missing desert_pyramid push-pillar component without overwriting operator values");
+        return true;
     }
 
     private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
