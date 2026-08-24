@@ -18,6 +18,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -415,6 +416,33 @@ public final class ExplorationRuntimeManager {
         return confirmed;
     }
 
+    private boolean scheduleSequencePhase(ExplorationEventContext context, String actionId,
+                                          long delayTicks, ExplorationComponentPhase nextPhase) {
+        ExplorationRuntime runtime = context.runtime();
+        if (!runtime.sequence().beginAction(actionId)) return false;
+        UUID structureId = runtime.structureId();
+        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            synchronized (ExplorationRuntimeManager.this) {
+                ExplorationRuntime current = active.get(structureId);
+                StructureRecord record = repository.get(structureId).orElse(null);
+                if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) return;
+                runtime.sequence().completeTask(actionId);
+                if (!runtime.sequence().transitionTo(nextPhase.name(), "delayed:" + actionId)) return;
+                try { executePhase(record, runtime, nextPhase, tickCounterSafe()); }
+                catch (Exception exception) {
+                    plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
+                    abandon(structureId);
+                }
+            }
+        }, Math.max(0L, delayTicks));
+        runtime.sequence().trackTask(actionId, task);
+        return true;
+    }
+
+    private long tickCounterSafe() {
+        return Math.max(0L, System.currentTimeMillis() / 50L);
+    }
+
     private String formatLocation(Location location) {
         if (location == null || location.getWorld() == null) return "unknown";
         return location.getWorld().getName() + " "
@@ -483,7 +511,8 @@ public final class ExplorationRuntimeManager {
         StructureVariantDefinition variant = definition.variants().stream()
                 .filter(candidate -> candidate.id().equals(record.variantId()))
                 .findFirst().orElseThrow(() -> new IllegalStateException("missing variant " + record.variantId()));
-        ExplorationEventContext context = new ExplorationEventContext(plugin, record, runtime, ports, teleportExemptions, currentTick);
+        ExplorationEventContext context = new ExplorationEventContext(plugin, record, runtime, ports, teleportExemptions, currentTick,
+                this::scheduleSequencePhase);
         for (ExplorationComponentSpec spec : variant.components()) {
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
