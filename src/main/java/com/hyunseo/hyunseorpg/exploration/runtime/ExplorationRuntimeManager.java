@@ -428,7 +428,7 @@ public final class ExplorationRuntimeManager {
                 if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) return;
                 runtime.sequence().completeTask(actionId);
                 if (!runtime.sequence().transitionTo(nextPhase.name(), "delayed:" + actionId)) return;
-                try { executePhase(record, runtime, nextPhase, tickCounterSafe()); }
+                try { executePhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks)); }
                 catch (Exception exception) {
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
                     abandon(structureId);
@@ -439,9 +439,6 @@ public final class ExplorationRuntimeManager {
         return true;
     }
 
-    private long tickCounterSafe() {
-        return Math.max(0L, System.currentTimeMillis() / 50L);
-    }
 
     private String formatLocation(Location location) {
         if (location == null || location.getWorld() == null) return "unknown";
