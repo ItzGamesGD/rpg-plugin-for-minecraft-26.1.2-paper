@@ -14,6 +14,7 @@ public final class ExplorationRuntime {
     private final String variantId;
     private final long activatedAtTick;
     private final RuntimeObjectTracker tracker = new RuntimeObjectTracker();
+    private final ExplorationSequenceState sequence = new ExplorationSequenceState();
     private final Set<UUID> participants = new LinkedHashSet<>();
     private final Set<UUID> objectiveEntities = new LinkedHashSet<>();
     private boolean objectiveMode;
@@ -52,6 +53,8 @@ public final class ExplorationRuntime {
     public String variantId() { return variantId; }
     public long activatedAtTick() { return activatedAtTick; }
     public RuntimeObjectTracker tracker() { return tracker; }
+    /** Runtime-only state for generic sequence waits, flags, counters and task ownership. */
+    public ExplorationSequenceState sequence() { return sequence; }
     public synchronized void addParticipant(UUID playerId) { if (playerId != null) participants.add(playerId); }
     public synchronized Set<UUID> participants() { return Set.copyOf(participants); }
     public synchronized void trackObjectives(java.util.Collection<UUID> ids) {
