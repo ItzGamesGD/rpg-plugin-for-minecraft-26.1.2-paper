@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "codex/exploration-*"
-      - "feature/exploration-common-event-engine"
   pull_request:
     branches:
       - "codex/exploration-*"
