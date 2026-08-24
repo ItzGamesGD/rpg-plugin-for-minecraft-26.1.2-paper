@@ -9,6 +9,7 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ScriptedSpawnComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.SequenceDelayComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.TemporarySealComponent;
 import com.hyunseo.hyunseorpg.exploration.detection.DeterministicStructureSelector;
 import com.hyunseo.hyunseorpg.exploration.detection.ReflectivePaperStructureCandidateProvider;
@@ -158,6 +159,7 @@ public final class ExplorationModule {
     private ExplorationComponentRegistry defaultComponents() {
         return new ExplorationComponentRegistry()
                 .register(new ScriptedSpawnComponent())
+                .register(new SequenceDelayComponent())
                 .register(new ChoicePromptComponent())
                 .register(new RaidWaveSpawnComponent(registry))
                 .register(new DisplayTargetComponent())
