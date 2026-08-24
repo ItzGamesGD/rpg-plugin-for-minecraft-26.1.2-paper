@@ -43,6 +43,12 @@ public final class BukkitExplorationPorts {
         List<UUID> result = new ArrayList<>();
         for (int i = 0; i < Math.max(1, count); i++) {
             Entity entity = location.getWorld().spawnEntity(location, type);
+            if (entity instanceof org.bukkit.entity.LivingEntity living) {
+                if (options.containsKey("ai")) living.setAI(Boolean.parseBoolean(String.valueOf(options.get("ai"))));
+                if (options.containsKey("invulnerable")) {
+                    living.setInvulnerable(Boolean.parseBoolean(String.valueOf(options.get("invulnerable"))));
+                }
+            }
             result.add(entity.getUniqueId());
         }
         return List.copyOf(result);
