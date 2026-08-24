@@ -18,6 +18,7 @@ public final class ExplorationSequenceState {
     private final Set<String> completedActions = new LinkedHashSet<>();
     private final Map<String, BukkitTask> pendingTasks = new LinkedHashMap<>();
     private long physicalMoveEpoch;
+    private PendingWait pendingWait;
 
     public synchronized String currentPhase() { return currentPhase; }
     public synchronized String lastTransitionReason() { return lastTransitionReason; }
@@ -67,13 +68,43 @@ public final class ExplorationSequenceState {
     public synchronized long physicalMoveEpoch() { return physicalMoveEpoch; }
     public synchronized boolean movedSince(long epoch) { return physicalMoveEpoch > epoch; }
 
+    /**
+     * Arms exactly one bounded wait for this runtime. Conditions are intentionally
+     * limited to the common event primitives; no arbitrary predicate is stored.
+     */
+    public synchronized boolean armWait(String actionId, String condition, String key,
+                                        int threshold, String nextPhase) {
+        String normalizedAction = requiredKey(actionId);
+        String normalizedCondition = requiredKey(condition);
+        String normalizedPhase = requiredKey(nextPhase);
+        if (pendingWait != null || !completedActions.add(normalizedAction)) return false;
+        pendingWait = new PendingWait(normalizedAction, normalizedCondition, normalize(key),
+                threshold, normalizedPhase, physicalMoveEpoch);
+        return true;
+    }
+
+    public synchronized PendingWait pendingWait() { return pendingWait; }
+
+    /** Returns and clears the currently armed wait; safe to call more than once. */
+    public synchronized PendingWait completeWait(String actionId) {
+        if (pendingWait == null || !pendingWait.actionId().equals(normalize(actionId))) return null;
+        PendingWait completed = pendingWait;
+        pendingWait = null;
+        return completed;
+    }
+
     /** Idempotent lifecycle cleanup. Scheduled callbacks are deliberately not persistent. */
     public synchronized void cancelPendingTasks() {
         for (BukkitTask task : pendingTasks.values()) {
             if (task != null) task.cancel();
         }
         pendingTasks.clear();
+        pendingWait = null;
     }
+
+    /** Immutable data for a runtime-owned wait; never serialized with StructureRecord. */
+    public record PendingWait(String actionId, String condition, String key, int threshold,
+                              String nextPhase, long movementEpoch) { }
 
     private static String requiredKey(String value) {
         String normalized = normalize(value);
