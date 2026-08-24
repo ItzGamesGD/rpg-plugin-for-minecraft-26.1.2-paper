@@ -61,6 +61,8 @@ public record ExplorationPorts(
     public interface DisplayPort {
         DisplayPort NOOP = (kind, location, options) -> null;
         UUID spawn(String kind, Location location, Map<String, Object> options);
+        default boolean move(UUID entityId, Location location) { return false; }
+        default boolean remove(UUID entityId) { return false; }
     }
 
     @FunctionalInterface

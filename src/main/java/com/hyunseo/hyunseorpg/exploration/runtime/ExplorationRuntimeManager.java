@@ -337,6 +337,12 @@ public final class ExplorationRuntimeManager {
                     }
                 }
                 if (runtime.objectivesCleared()) {
+                    // The guardian is only the first Pyramid module. Its clear gate must
+                    // not bypass the live push-pillar module when that module is active.
+                    if (record.structureType().equals("desert_pyramid")
+                            && runtime.sequence().flag("pyramid.puzzle.active")) {
+                        continue;
+                    }
                     if (runtime.hasNextRaidWave()) {
                         if (runtime.scheduleNextRaidWave(currentTick)) {
                             announceNextRaidWave(runtime);
