@@ -78,6 +78,10 @@ public final class ExistingHyunseoRpgAdapters {
                 if (entity == null) return;
                 entity.setGlowing(Boolean.parseBoolean(String.valueOf(
                         options.getOrDefault("glowing", "true"))));
+                if (options.containsKey("ai")) entity.setAI(Boolean.parseBoolean(String.valueOf(options.get("ai"))));
+                if (options.containsKey("invulnerable")) {
+                    entity.setInvulnerable(Boolean.parseBoolean(String.valueOf(options.get("invulnerable"))));
+                }
                 Object rawTarget = options.get("target-player-uuid");
                 if (rawTarget == null) return;
                 try {
