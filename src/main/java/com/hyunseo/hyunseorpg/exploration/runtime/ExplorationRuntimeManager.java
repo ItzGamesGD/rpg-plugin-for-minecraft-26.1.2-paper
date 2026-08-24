@@ -307,6 +307,8 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
+            if (progressSequenceWait(record, runtime, currentTick)) continue;
+
             if (runtime.objectiveMode()) {
                 if (currentTick <= runtime.activatedAtTick()) {
                     continue;
@@ -402,6 +404,32 @@ public final class ExplorationRuntimeManager {
         }
     }
 
+    /**
+     * Evaluates only a runtime-owned bounded wait. Completion clears the gate before
+     * executing its next phase, so heartbeat and player callbacks cannot progress it twice.
+     */
+    private boolean progressSequenceWait(StructureRecord record, ExplorationRuntime runtime, long currentTick) throws Exception {
+        ExplorationSequenceState.PendingWait wait = runtime.sequence().pendingWait();
+        if (wait == null) return false;
+        boolean satisfied = switch (wait.condition()) {
+            case "objectives-clear" -> runtime.objectivesCleared();
+            case "objective-count" -> runtime.objectiveEntities().size() <= wait.threshold();
+            case "counter" -> runtime.sequence().counterAtLeast(wait.key(), wait.threshold());
+            case "flag" -> runtime.sequence().flag(wait.key());
+            case "movement" -> runtime.sequence().movedSince(wait.movementEpoch());
+            default -> throw new IllegalStateException("unsupported sequence wait " + wait.condition());
+        };
+        if (!satisfied) return true;
+
+        ExplorationSequenceState.PendingWait completed = runtime.sequence().completeWait(wait.actionId());
+        if (completed == null) return true;
+        ExplorationComponentPhase next = ExplorationComponentPhase.parse(completed.nextPhase(), null);
+        if (next == null || !runtime.sequence().transitionTo(next.name(), "wait:" + completed.condition()
+                + ":" + completed.actionId())) return true;
+        executePhase(record, runtime, next, currentTick);
+        return true;
+    }
+
     /** Marks an objective dead only from an explicit death event; unload is intentionally ignored. */
     public synchronized boolean confirmObjectiveDeath(UUID entityId) {
         if (entityId == null) return false;
@@ -454,7 +482,16 @@ public final class ExplorationRuntimeManager {
             if (record == null || !record.worldId().equals(to.getWorld().getUID())) continue;
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
-            if (runtime.participants().contains(player.getUniqueId())) runtime.sequence().markPhysicalMove();
+            if (runtime.participants().contains(player.getUniqueId())) {
+                runtime.sequence().markPhysicalMove();
+                try {
+                    if (progressSequenceWait(record, runtime, currentTick)) continue;
+                } catch (Exception exception) {
+                    plugin.getLogger().log(Level.WARNING, "Exploration movement wait failed: " + record.structureId(), exception);
+                    abandon(record.structureId());
+                    continue;
+                }
+            }
             if (runtime.lootTaken() && !runtime.raidStarted()) {
                 if (runtime.lootExitPrompted()) continue;
                 double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
