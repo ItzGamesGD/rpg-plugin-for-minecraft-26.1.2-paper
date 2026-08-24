@@ -54,14 +54,14 @@ The model stores only logical string IDs and sets. It does not store locations, 
 
 | Capability | Implementation | Static | Unit | Paper runtime | Live client |
 |---|---|---|---|---|---|
-| Seal state and final-warning gate | IMPLEMENTED | VERIFIED | PENDING_CI | NOT_IMPLEMENTED | UNVERIFIED |
-| Objective/boss/clear state | IMPLEMENTED | VERIFIED | PENDING_CI | NOT_IMPLEMENTED | UNVERIFIED |
-| Duplicate suppression | IMPLEMENTED | VERIFIED | PENDING_CI | NOT_IMPLEMENTED | UNVERIFIED |
-| Logical final-reward claim gate | IMPLEMENTED | VERIFIED | PENDING_CI | NOT_IMPLEMENTED | UNVERIFIED |
+| Seal state and final-warning gate | IMPLEMENTED | VERIFIED | VERIFIED | NOT_IMPLEMENTED | UNVERIFIED |
+| Objective/boss/clear state | IMPLEMENTED | VERIFIED | VERIFIED | NOT_IMPLEMENTED | UNVERIFIED |
+| Duplicate suppression | IMPLEMENTED | VERIFIED | VERIFIED | NOT_IMPLEMENTED | UNVERIFIED |
+| Logical final-reward claim gate | IMPLEMENTED | VERIFIED | VERIFIED | NOT_IMPLEMENTED | UNVERIFIED |
 | Monument discovery and spatial resolution | NOT_IMPLEMENTED | N/A | N/A | UNVERIFIED | UNVERIFIED |
 | Fake seals, player interaction, relocation, combat and reward delivery | NOT_IMPLEMENTED | N/A | N/A | UNVERIFIED | UNVERIFIED |
 
-Static verification here means source inspection: no common production source was changed, no registry/configuration/persistence file was changed, and the new package has no Bukkit/Paper import.
+Static verification here means source inspection: no common production source was changed, no registry/configuration/persistence file was changed, and the new package has no Bukkit/Paper import. Unit verification is GitHub Actions run #46, job #97365205058: `clean build + JUnit` completed successfully.
 
 ## Validation debt
 
