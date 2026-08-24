@@ -5,6 +5,7 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.DisplayTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ForcedRelocationComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.InteractionTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PuzzleComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidGuardianComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
@@ -171,6 +172,7 @@ public final class ExplorationModule {
                 .register(new TemporarySealComponent())
                 .register(new ForcedRelocationComponent())
                 .register(new RewardDropComponent())
+                .register(new PyramidGuardianComponent())
                 .register(new PuzzleComponent());
     }
 }

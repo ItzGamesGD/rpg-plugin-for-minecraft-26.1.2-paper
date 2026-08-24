@@ -16,12 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 final class ExplorationConfigDataTest {
     @Test
-    void packageShipsDisabledAndBalancePending() {
+    void packageShipsActivatesPyramidWhileKeepingOtherContentSafe() {
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream("exploration/structures.yml")) {
             assertNotNull(stream);
             YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(stream, StandardCharsets.UTF_8));
-            assertFalse(yaml.getBoolean("enabled", true));
+            assertTrue(yaml.getBoolean("enabled", false));
+            assertTrue(yaml.getBoolean("structures.desert_pyramid.enabled", false));
+            assertEquals(1.0D, yaml.getDouble("structures.desert_pyramid.selection-chance", 0.0D));
             assertEquals(0.0D, yaml.getDouble("structures.swamp_hut.selection-chance", 1.0D));
             assertTrue(yaml.getBoolean("structures.swamp_hut.balance-pending", false));
 

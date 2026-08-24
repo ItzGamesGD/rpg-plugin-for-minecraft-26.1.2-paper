@@ -1,7 +1,7 @@
 # HyunseoRPG Exploration package
 # Safety default: installed but disabled until desktop integration/live validation.
 schema-version: 1
-enabled: false
+enabled: true
 
 runtime:
   # BALANCE_PENDING
@@ -103,13 +103,31 @@ structures:
 
   desert_pyramid:
     minecraft-key: minecraft:desert_pyramid
-    enabled: false
-    selection-chance: 0.0
+    enabled: true
+    selection-chance: 1.0
     balance-pending: true
     trigger-radius: 36.0
     abandon-radius: 72.0
     abandon-grace-ticks: 100
-    variants: {}
+    variants:
+      guardian_trial:
+        enabled: true
+        weight: 1.0
+        prototype: true
+        components:
+          - type: pyramid_guardian
+            mob-id: custom:stone_armored_zombie
+            count: 1
+            objective: true
+            glowing: true
+            room-radius: 1
+            room-height: 2
+            reject-containers: false
+          - type: reward_drop
+            phase: clear
+            recipient: participants
+            reward-id: vanilla:GOLD_INGOT
+            amount: 4
 
   trial_chambers:
     minecraft-key: minecraft:trial_chambers
