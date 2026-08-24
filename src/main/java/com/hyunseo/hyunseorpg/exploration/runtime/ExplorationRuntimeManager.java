@@ -429,6 +429,7 @@ public final class ExplorationRuntimeManager {
             if (record == null || !record.worldId().equals(to.getWorld().getUID())) continue;
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
+            if (runtime.participants().contains(player.getUniqueId())) runtime.sequence().markPhysicalMove();
             if (runtime.lootTaken() && !runtime.raidStarted()) {
                 if (runtime.lootExitPrompted()) continue;
                 double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
@@ -584,6 +585,7 @@ public final class ExplorationRuntimeManager {
     }
 
     private void safeCleanup(ExplorationRuntime runtime) {
+        runtime.sequence().cancelPendingTasks();
         try { runtime.tracker().cleanup(); }
         catch (RuntimeException exception) { plugin.getLogger().log(Level.WARNING, "Exploration cleanup had an error", exception); }
     }
