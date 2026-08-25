@@ -5,7 +5,7 @@ import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 
-/** Creates the bounded Pyramid underground room after canonical loot extraction. */
+/** Preflights the bounded Pyramid underground room after canonical loot extraction. */
 public final class PyramidRoomComponent implements ExplorationComponent {
     private final com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService rooms;
 
@@ -21,8 +21,12 @@ public final class PyramidRoomComponent implements ExplorationComponent {
         if (!"desert_pyramid".equals(context.record().structureType())) {
             throw new IllegalArgumentException("pyramid_room requires desert_pyramid");
         }
-        rooms.create(context, spec);
-        context.runtime().sequence().setFlag("pyramid.room.ready");
-        context.runtime().tracker().track(() -> rooms.cleanup(context.runtime().structureId()));
+        rooms.prepare(context, spec);
+        String actionId = spec.string("action-id", "pyramid_room_reveal");
+        long delay = Math.max(0L, spec.integer("reveal-delay-ticks", 140));
+        String nextPhase = spec.string("reveal-phase", "pyramid_room_reveal");
+        if (!context.sequenceScheduler().schedule(context, actionId, delay, nextPhase)) {
+            throw new IllegalStateException("pyramid room reveal already scheduled: " + actionId);
+        }
     }
 }

@@ -326,8 +326,8 @@ public final class ConfigMigrationService {
     /**
      * Reconciles the bounded Desert Pyramid runtime components without replacing
      * the operator's existing component list. Official components are appended
-     * only when their type is absent; legacy official guardian/puzzle entries get
-     * their missing phase so the loot-triggered sequence is not bypassed.
+     * only when their type is absent; legacy official entries are routed to the
+     * current reveal/guardian phases so loot cannot spawn the guardian directly.
      */
     private boolean migrateDesertPyramidPushPillars(FileConfiguration target,
                                                     FileConfiguration defaults,
@@ -352,14 +352,47 @@ public final class ConfigMigrationService {
                 changed = true;
                 lines.add(fileName + ": routed legacy Desert Pyramid guardian to pyramid_guardian_spawn");
             }
-            if ("pyramid_push_pillars".equals(type) && !copy.containsKey("phase")) {
-                copy.put("phase", "pyramid_puzzle");
+            if ("pyramid_room".equals(type)) {
+                if (!copy.containsKey("room-radius") || String.valueOf(copy.get("room-radius")).equals("3")) {
+                    copy.put("room-radius", 4);
+                    changed = true;
+                    lines.add(fileName + ": expanded legacy Desert Pyramid room to usable 7x7 interior");
+                }
+                if (!copy.containsKey("action-id")) {
+                    copy.put("action-id", "pyramid_room_reveal");
+                    changed = true;
+                }
+                if (!copy.containsKey("reveal-delay-ticks")) {
+                    copy.put("reveal-delay-ticks", 140);
+                    changed = true;
+                }
+                if (!copy.containsKey("reveal-phase")) {
+                    copy.put("reveal-phase", "pyramid_room_reveal");
+                    changed = true;
+                }
+            }
+            if ("pyramid_repel".equals(type)
+                    && "pyramid_loot_trigger".equalsIgnoreCase(String.valueOf(copy.getOrDefault("phase", "")))) {
+                copy.put("phase", "pyramid_guardian_spawn");
                 changed = true;
-                lines.add(fileName + ": routed legacy Desert Pyramid puzzle to pyramid_puzzle");
+                lines.add(fileName + ": moved Desert Pyramid repel out of loot-trigger phase");
+            }
+            if ("pyramid_push_pillars".equals(type)
+                    && (!copy.containsKey("phase")
+                    || "pyramid_puzzle".equalsIgnoreCase(String.valueOf(copy.get("phase"))))) {
+                copy.put("phase", "pyramid_room_reveal");
+                changed = true;
+                lines.add(fileName + ": routed Desert Pyramid puzzle to room reveal phase");
+            }
+            if ("sequence_delay".equals(type)
+                    && "pyramid_guardian_delay".equalsIgnoreCase(String.valueOf(copy.getOrDefault("action-id", "")))) {
+                changed = true;
+                lines.add(fileName + ": removed legacy loot-trigger guardian delay");
+                continue;
             }
             merged.add(copy);
         }
-        for (String requiredType : List.of("pyramid_room", "pyramid_repel", "sequence_delay", "pyramid_push_pillars")) {
+        for (String requiredType : List.of("pyramid_room", "pyramid_room_reveal", "pyramid_repel", "pyramid_guardian", "pyramid_push_pillars")) {
             if (configuredTypes.contains(requiredType)) continue;
             Map<?, ?> source = bundled.stream()
                     .filter(entry -> requiredType.equalsIgnoreCase(String.valueOf(entry.get("type"))))

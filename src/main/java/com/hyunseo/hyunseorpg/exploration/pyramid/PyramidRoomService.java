@@ -35,16 +35,21 @@ public final class PyramidRoomService {
         this.repository = repository;
     }
 
-    public synchronized PyramidRoomCandidate create(ExplorationEventContext context,
-                                                     ExplorationComponentSpec spec) throws IOException {
+    /**
+     * Resolves and persists a safe candidate without changing any world block.
+     * Loot handling calls this before the delayed reveal so a later failure
+     * cannot leave a half-carved room behind.
+     */
+    public synchronized PyramidRoomCandidate prepare(ExplorationEventContext context,
+                                                      ExplorationComponentSpec spec) throws IOException {
         UUID structureId = context.runtime().structureId();
         RoomSession existing = sessions.get(structureId);
         if (existing != null) return existing.candidate();
 
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureBounds bounds = context.record().bounds();
-        int radius = clamp(spec.integer("room-radius", 3), 2, 5);
-        int height = clamp(spec.integer("room-height", 4), 3, 6);
+        int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 3)), 2, 5);
+        int height = clamp(persistedInt(context, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
         PyramidRoomCandidate candidate = readPersistedCandidate(context, world).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell))
@@ -52,20 +57,54 @@ public final class PyramidRoomService {
 
         if (context.record().activationMetadata().containsKey("pyramid-room-created")) {
             RoomSession restored = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
-                    List.of(), true);
+                    List.of(), true, false);
             sessions.put(structureId, restored);
             context.runtime().sequence().setFlag("pyramid.room.created");
             return candidate;
         }
 
-        List<BlockSnapshot> snapshots = snapshot(world, candidate.origin(), radius, height);
+        if (!shaftSafe(world, candidate.origin(), bounds)) {
+            throw new IllegalStateException("no safe Desert Pyramid access shaft");
+        }
+        Map<String, String> metadata = new LinkedHashMap<>();
+        metadata.put("pyramid-room-prepared", "true");
+        metadata.put("pyramid-room-origin", encode(candidate.origin()));
+        metadata.put("pyramid-room-radius", Integer.toString(radius));
+        metadata.put("pyramid-room-height", Integer.toString(height));
+        repository.save(withMetadata(context, metadata));
+        RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
+                List.of(), false, true);
+        sessions.put(structureId, session);
+        context.runtime().sequence().setFlag("pyramid.room.prepared");
+        plugin.getLogger().info("Desert Pyramid underground room prepared: structure=" + structureId
+                + ", origin=" + encode(candidate.origin()) + ", reveal=delayed");
+        return candidate;
+    }
+
+    /** Performs the previously preflighted block mutation at the reveal phase. */
+    public synchronized PyramidRoomCandidate reveal(ExplorationEventContext context,
+                                                     ExplorationComponentSpec spec) throws IOException {
+        UUID structureId = context.runtime().structureId();
+        RoomSession existing = sessions.get(structureId);
+        if (existing != null && existing.persisted) return existing.candidate();
+        if (existing == null) {
+            prepare(context, spec);
+            existing = sessions.get(structureId);
+        }
+        if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
+        World world = existing.world;
+        PyramidBlockPosition origin = existing.candidate.origin();
+        List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
+                context.record().bounds());
+
         try {
-            carve(world, candidate.origin(), radius, height);
+            carve(world, origin, existing.radius, existing.height, context.record().bounds());
             Map<String, String> metadata = new LinkedHashMap<>();
             metadata.put("pyramid-room-created", "true");
-            metadata.put("pyramid-room-origin", encode(candidate.origin()));
-            metadata.put("pyramid-room-radius", Integer.toString(radius));
-            metadata.put("pyramid-room-height", Integer.toString(height));
+            metadata.put("pyramid-room-prepared", "true");
+            metadata.put("pyramid-room-origin", encode(origin));
+            metadata.put("pyramid-room-radius", Integer.toString(existing.radius));
+            metadata.put("pyramid-room-height", Integer.toString(existing.height));
             metadata.put("pyramid-room-created-at", Instant.now().toString());
             repository.save(withMetadata(context, metadata));
         } catch (Exception exception) {
@@ -73,13 +112,20 @@ public final class PyramidRoomService {
             if (exception instanceof IOException io) throw io;
             throw new IllegalStateException("unable to create Desert Pyramid room", exception);
         }
-        RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
-                snapshots, false);
+        RoomSession session = new RoomSession(context.runtime(), world, existing.candidate, existing.radius,
+                existing.height, existing.shell, snapshots, false, false);
         sessions.put(structureId, session);
         context.runtime().sequence().setFlag("pyramid.room.created");
-        plugin.getLogger().info("Desert Pyramid underground room created: structure=" + structureId
-                + ", origin=" + encode(candidate.origin()) + ", radius=" + radius + ", height=" + height);
-        return candidate;
+        plugin.getLogger().info("Desert Pyramid underground room revealed: structure=" + structureId
+                + ", origin=" + encode(origin) + ", radius=" + existing.radius + ", height=" + existing.height);
+        return existing.candidate;
+    }
+
+    /** Backward-compatible immediate creation entry point for existing callers. */
+    public synchronized PyramidRoomCandidate create(ExplorationEventContext context,
+                                                     ExplorationComponentSpec spec) throws IOException {
+        prepare(context, spec);
+        return reveal(context, spec);
     }
 
     public synchronized Optional<PyramidRoomCandidate> room(UUID structureId) {
@@ -156,7 +202,8 @@ public final class PyramidRoomService {
         return true;
     }
 
-    private List<BlockSnapshot> snapshot(World world, PyramidBlockPosition origin, int radius, int height) {
+    private List<BlockSnapshot> snapshot(World world, PyramidBlockPosition origin, int radius, int height,
+                                         StructureBounds bounds) {
         List<BlockSnapshot> snapshots = new ArrayList<>();
         for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
             for (int z = origin.z() - radius; z <= origin.z() + radius; z++) {
@@ -166,10 +213,14 @@ public final class PyramidRoomService {
                 }
             }
         }
+        for (int y = origin.y() + height; y < bounds.minY(); y++) {
+            Block block = world.getBlockAt(origin.x(), y, origin.z());
+            snapshots.add(new BlockSnapshot(origin.x(), y, origin.z(), block.getBlockData().clone()));
+        }
         return List.copyOf(snapshots);
     }
 
-    private void carve(World world, PyramidBlockPosition origin, int radius, int height) {
+    private void carve(World world, PyramidBlockPosition origin, int radius, int height, StructureBounds bounds) {
         Material wall = Material.SANDSTONE;
         Material trim = Material.CHISELED_SANDSTONE;
         for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
@@ -181,6 +232,9 @@ public final class PyramidRoomService {
                 world.getBlockAt(x, origin.y() - 1, z).setType(wall, false);
                 world.getBlockAt(x, origin.y() + height, z).setType(trim, false);
             }
+        }
+        for (int y = origin.y() + height; y < bounds.minY(); y++) {
+            world.getBlockAt(origin.x(), y, origin.z()).setType(Material.AIR, false);
         }
     }
 
@@ -194,6 +248,15 @@ public final class PyramidRoomService {
         return state instanceof org.bukkit.inventory.InventoryHolder
                 || state.getType().name().contains("SPAWNER")
                 || state.getType().name().contains("PORTAL");
+    }
+
+    private boolean shaftSafe(World world, PyramidBlockPosition origin, StructureBounds bounds) {
+        if (!world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
+        for (int y = origin.y() + 1; y < bounds.minY(); y++) {
+            Block block = world.getBlockAt(origin.x(), y, origin.z());
+            if (block.isLiquid() || protectedBlock(block.getState())) return false;
+        }
+        return true;
     }
 
     private StructureRecord withMetadata(ExplorationEventContext context, Map<String, String> values) {
@@ -222,6 +285,13 @@ public final class PyramidRoomService {
 
     private int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
 
+    private int persistedInt(ExplorationEventContext context, String key, int fallback) {
+        String value = context.record().activationMetadata().get(key);
+        if (value == null) return fallback;
+        try { return Integer.parseInt(value); }
+        catch (NumberFormatException ignored) { return fallback; }
+    }
+
     private record BlockSnapshot(int x, int y, int z, org.bukkit.block.data.BlockData data) { }
 
     private static final class RoomSession {
@@ -233,10 +303,17 @@ public final class PyramidRoomService {
         private final int shell;
         private final List<BlockSnapshot> snapshots;
         private final boolean persisted;
+        private final boolean prepared;
 
         private RoomSession(com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime, World world,
                             PyramidRoomCandidate candidate, int radius, int height, int shell,
                             List<BlockSnapshot> snapshots, boolean persisted) {
+            this(runtime, world, candidate, radius, height, shell, snapshots, persisted, false);
+        }
+
+        private RoomSession(com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime,
+                            World world, PyramidRoomCandidate candidate, int radius, int height, int shell,
+                            List<BlockSnapshot> snapshots, boolean persisted, boolean prepared) {
             this.runtime = runtime;
             this.world = world;
             this.candidate = candidate;
@@ -245,6 +322,7 @@ public final class PyramidRoomService {
             this.shell = shell;
             this.snapshots = snapshots;
             this.persisted = persisted;
+            this.prepared = prepared;
         }
 
         private PyramidRoomCandidate candidate() { return candidate; }

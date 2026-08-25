@@ -8,6 +8,7 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.PuzzleComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidGuardianComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRepelComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomRevealComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
@@ -186,6 +187,7 @@ public final class ExplorationModule {
                 .register(new ForcedRelocationComponent())
                 .register(new RewardDropComponent())
                 .register(new PyramidRoomComponent(pyramidRooms))
+                .register(new PyramidRoomRevealComponent(pyramidRooms))
                 .register(new PyramidRepelComponent(pyramidRooms))
                 .register(new PyramidGuardianComponent(pyramidRooms))
                 .register(new PyramidPushPillarComponent(pyramidPuzzles, pyramidRooms))

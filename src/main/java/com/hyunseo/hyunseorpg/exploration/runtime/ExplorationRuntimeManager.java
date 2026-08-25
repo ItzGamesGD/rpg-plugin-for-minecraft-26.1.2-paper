@@ -127,6 +127,16 @@ public final class ExplorationRuntimeManager {
                 executePhase(persistent, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
                 runtime.markLootExitPrompted();
             }
+            if (runtime.lootTaken() && persistent.structureType().equals("desert_pyramid")) {
+                // Delayed Bukkit tasks are intentionally not persisted. Re-arm the
+                // deterministic room reveal, or restore the already-created room
+                // and its puzzle displays, after a reload/reconnect.
+                if (persistent.activationMetadata().containsKey("pyramid-room-created")) {
+                    executeNamedPhase(persistent, runtime, "pyramid_room_reveal", currentTick);
+                } else {
+                    executePhase(persistent, runtime, ExplorationComponentPhase.PYRAMID_LOOT_TRIGGER, currentTick);
+                }
+            }
             return true;
         } catch (Exception exception) {
             ExplorationRuntime failed = active.remove(record.structureId());
@@ -306,7 +316,8 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
-            if (runtime.lootTaken() && !runtime.lootExitPrompted() && !runtime.raidStarted()) {
+            if (record.structureType().equals("pillager_outpost")
+                    && runtime.lootTaken() && !runtime.lootExitPrompted() && !runtime.raidStarted()) {
                 Player looter = runtime.looter() == null ? null : Bukkit.getPlayer(runtime.looter());
                 if (looter != null && looter.isOnline() && looter.getWorld().getUID().equals(record.worldId())) {
                     if (teleportExemptions.isExempt(record.structureId(), looter.getUniqueId(), currentTick)) {
@@ -548,7 +559,8 @@ public final class ExplorationRuntimeManager {
                     continue;
                 }
             }
-            if (runtime.lootTaken() && !runtime.raidStarted()) {
+            if (record.structureType().equals("pillager_outpost")
+                    && runtime.lootTaken() && !runtime.raidStarted()) {
                 if (runtime.lootExitPrompted()) continue;
                 double limit = definition.lootTriggerRadius() * definition.lootTriggerRadius();
                 boolean wasInside = distanceSquared(record, from) <= limit;
