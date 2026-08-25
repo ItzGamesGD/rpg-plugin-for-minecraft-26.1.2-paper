@@ -210,9 +210,7 @@ public final class ExplorationRuntimeManager {
         boolean marked = false;
         for (StructureRecord record : repository.index().nearby(container.getWorld().getUID(),
                 container.getX(), container.getZ(), 1.0D)) {
-            if (!record.structureType().equals("pillager_outpost")
-                    && !record.structureType().equals("desert_pyramid")
-                    || !record.bounds().contains(container.getX(), container.getY(), container.getZ())) continue;
+            if (!isLootContainerInStructure(record, container)) continue;
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 activate(record, player, currentTick);
             }
@@ -243,6 +241,32 @@ public final class ExplorationRuntimeManager {
             }
         }
         return marked;
+    }
+
+    /**
+     * Vanilla desert-temple treasure rooms can extend below the Paper structure
+     * bounding box. Keep the horizontal structure ownership strict while
+     * allowing the bounded underground loot chamber to trigger the event.
+     */
+    static boolean isLootContainerInStructure(StructureRecord record, Location container) {
+        if (record == null || container == null || container.getWorld() == null
+                || !record.worldId().equals(container.getWorld().getUID())) return false;
+        return isLootContainerInStructure(record, container.getX(), container.getY(), container.getZ());
+    }
+
+    public static boolean isLootContainerInStructure(StructureRecord record, double x, double y, double z) {
+        if (record == null) return false;
+        if (record.structureType().equals("pillager_outpost")) {
+            return record.bounds().contains(x, y, z);
+        }
+        if (!record.structureType().equals("desert_pyramid")) return false;
+        boolean horizontal = x >= record.bounds().minX()
+                && x <= record.bounds().maxX()
+                && z >= record.bounds().minZ()
+                && z <= record.bounds().maxZ();
+        return horizontal
+                && y >= record.bounds().minY() - 16
+                && y <= record.bounds().maxY() + 2;
     }
 
     public synchronized boolean abandon(UUID structureId) {

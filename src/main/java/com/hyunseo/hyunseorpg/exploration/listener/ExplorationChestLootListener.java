@@ -11,6 +11,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.DoubleChest;
 
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,9 +48,19 @@ public final class ExplorationChestLootListener implements Listener {
         Inventory top = event.getView().getTopInventory();
         if (event.getClickedInventory() != top) return;
         if (event.getCurrentItem() == null || event.getCurrentItem().getType().isAir()) return;
-        Location location = top.getLocation();
+        Location location = resolveLocation(top);
         if (!isSupportedLootContainer(location)) return;
         runtimes.markLootTaken(location, player, tickCounter.get());
+    }
+
+    private Location resolveLocation(Inventory inventory) {
+        if (inventory == null) return null;
+        Location location = inventory.getLocation();
+        if (location != null) return location;
+        InventoryHolder holder = inventory.getHolder();
+        if (holder instanceof BlockState state) return state.getLocation();
+        if (holder instanceof DoubleChest doubleChest) return doubleChest.getLocation();
+        return null;
     }
 
     private boolean isSupportedLootContainer(Location location) {
