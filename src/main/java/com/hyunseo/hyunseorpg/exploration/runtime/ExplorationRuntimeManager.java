@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -563,8 +564,8 @@ public final class ExplorationRuntimeManager {
                                     + record.structureId() + ", entity=" + entityId);
                         }
                     } else if (!entity.isValid()) {
-                            plugin.getLogger().fine("Exploration objective is invalid but not confirmed dead; retaining: structure="
-                                    + record.structureId() + ", entity=" + entityId);
+                        plugin.getLogger().fine("Exploration objective is invalid but not confirmed dead; retaining: structure="
+                                + record.structureId() + ", entity=" + entityId);
                     } else {
                         keepRaidMobOnTarget(entity, runtime.raidTarget());
                     }
