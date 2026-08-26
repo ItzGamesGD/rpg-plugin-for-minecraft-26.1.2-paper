@@ -8,6 +8,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidCompletionRetryPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionCoordinator;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
@@ -105,16 +106,7 @@ public final class PyramidPushPillarService {
     private synchronized boolean persistSolvedIntent(UUID structureId) {
         if (repository == null) return true;
         try {
-            var record = repository.get(structureId).orElse(null);
-            if (record == null) return false;
-            if (Boolean.parseBoolean(record.activationMetadata()
-                    .getOrDefault("pyramid-underground-complete", "false"))) return true;
-            if (PyramidUndergroundCompletionState.parse(record.activationMetadata()
-                    .get("pyramid-underground-completion-state"))
-                    == PyramidUndergroundCompletionState.COMPLETION_PENDING) return true;
-            repository.save(record.withMetadata("pyramid-underground-completion-state",
-                    PyramidUndergroundCompletionState.COMPLETION_PENDING.value()));
-            return true;
+            return PyramidUndergroundCompletionCoordinator.persistSolvedIntent(repository, structureId);
         } catch (java.io.IOException | RuntimeException failure) {
             plugin.getLogger().log(java.util.logging.Level.WARNING,
                     "Pyramid final pillar move deferred until solved intent is durable: structure=" + structureId,
@@ -124,28 +116,11 @@ public final class PyramidPushPillarService {
     }
 
     private synchronized void persistUndergroundCompletion(UUID structureId,
-                                                               com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime) {
+                                                           com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime) {
         if (repository == null) return;
         try {
-            var record = repository.get(structureId).orElse(null);
-            if (record == null || Boolean.parseBoolean(record.activationMetadata()
-                    .getOrDefault("pyramid-underground-complete", "false"))) {
-                completionRetryAttempts.remove(structureId);
-                runtime.sequence().clearFlag("pyramid.underground.persistence.retry");
-                return;
-            }
-            // Persist the solved intent before the final completion write so restart recovery
-            // never mistakes a solved board for an unsolved puzzle.
-            if (PyramidUndergroundCompletionState.parse(record.activationMetadata().get("pyramid-underground-completion-state"))
-                    != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
-                record = record.withMetadata("pyramid-underground-completion-state",
-                        PyramidUndergroundCompletionState.COMPLETION_PENDING.value());
-                repository.save(record);
-            }
-            repository.save(record.withMetadata("pyramid-underground-complete", "true")
-                    .withMetadata("pyramid-underground-completion-state", PyramidUndergroundCompletionState.COMPLETE.value())
-                    .withMetadata("pyramid-content-version",
-                            Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
+            var record = PyramidUndergroundCompletionCoordinator.complete(repository, structureId);
+            if (record == null) return;
             completionRetryAttempts.remove(structureId);
             runtime.sequence().setFlag("pyramid.underground.complete");
             org.bukkit.scheduler.BukkitTask task = completionRetryTasks.remove(structureId);
