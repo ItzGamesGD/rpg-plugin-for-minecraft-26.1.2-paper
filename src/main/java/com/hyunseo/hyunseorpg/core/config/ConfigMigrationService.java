@@ -410,7 +410,9 @@ public final class ConfigMigrationService {
                         .findFirst().orElse(null);
                 if (source == null) continue;
                 value = new LinkedHashMap<>();
-                source.forEach((key, item) -> value.put(String.valueOf(key), item));
+                for (Map.Entry<?, ?> entry : source.entrySet()) {
+                    value.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
                 changed = true;
                 lines.add(fileName + ": added missing canonical Pyramid " + type);
             }
