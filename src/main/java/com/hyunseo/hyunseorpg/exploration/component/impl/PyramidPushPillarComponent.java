@@ -4,6 +4,7 @@ import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponent;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarRecoveryPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
@@ -19,6 +20,10 @@ import java.util.Set;
 
 /** Connects the Pyramid-specific logical pillar board to the live runtime. */
 public final class PyramidPushPillarComponent implements ExplorationComponent {
+    private static final String RETRY_ATTEMPTS = "pyramid.pillar.restore.retry.attempts";
+    private static final String RETRY_SCHEDULED = "pyramid.puzzle.restore.retry.scheduled";
+    private static final String RETRY_EXHAUSTED = "pyramid.puzzle.restore.retry.exhausted";
+
     private final PyramidPushPillarService service;
     private final PyramidRoomService rooms;
 
@@ -47,10 +52,39 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
         List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
         if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
         PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
-        service.start(context, spec, room, board, pillars);
+
+        // From this point onward the committed room is owned by the pillar runtime. Even if
+        // display creation fails, heartbeat must not route the carved room back through reveal.
+        context.runtime().sequence().setFlag("pyramid.puzzle.started");
+        context.runtime().sequence().clearFlag(RETRY_SCHEDULED);
+        try {
+            service.start(context, spec, room, board, pillars);
+        } catch (RuntimeException failure) {
+            int attempt = context.runtime().sequence().incrementCounter(RETRY_ATTEMPTS);
+            PyramidPillarRecoveryPolicy.Decision decision = PyramidPillarRecoveryPolicy.afterFailure(attempt);
+            if (decision.retry()) {
+                String actionId = "pyramid_pillar_restore_retry_" + attempt;
+                boolean scheduled = context.sequenceScheduler().schedule(
+                        context, actionId, decision.delayTicks(), decision.phase());
+                if (scheduled || context.runtime().sequence().actionInFlight(actionId)) {
+                    context.runtime().sequence().setFlag(RETRY_SCHEDULED);
+                    context.plugin().getLogger().log(java.util.logging.Level.WARNING,
+                            "Pyramid pillar restore deferred: structure=" + context.record().structureId()
+                                    + ", attempt=" + attempt, failure);
+                    return;
+                }
+            }
+            context.runtime().sequence().setFlag(RETRY_EXHAUSTED);
+            context.plugin().getLogger().log(java.util.logging.Level.SEVERE,
+                    "Pyramid pillar restore exhausted without replaying room reveal: structure="
+                            + context.record().structureId() + ", attempt=" + attempt, failure);
+            return;
+        }
+
+        context.runtime().sequence().clearFlag(RETRY_SCHEDULED);
+        context.runtime().sequence().clearFlag(RETRY_EXHAUSTED);
         context.runtime().sequence().setFlag("pyramid.room.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.ready");
-        context.runtime().sequence().setFlag("pyramid.puzzle.started");
         context.runtime().sequence().setFlag("pyramid.puzzle.active");
         context.runtime().tracker().track(() -> service.stop(context.runtime().structureId()));
     }
