@@ -911,6 +911,39 @@ public final class ExplorationRuntimeManager {
         executeNamedPhase(record, runtime, phase.name(), currentTick);
     }
 
+    /** Explicit happy-path continuation invoked after a committed staged reveal. */
+    public synchronized void continuePyramidPuzzle(ExplorationEventContext source) {
+        if (source == null || !"desert_pyramid".equals(source.record().structureType())
+                || source.runtime().tracker().isClosed()) return;
+        StructureRecord record = repository.get(source.runtime().structureId()).orElse(source.record());
+        if (Boolean.parseBoolean(record.activationMetadata().getOrDefault(
+                "pyramid-underground-complete", "false"))) return;
+        ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
+        if (definition == null) return;
+        StructureVariantDefinition variant = definition.variants().stream()
+                .filter(candidate -> candidate.id().equals(record.variantId())).findFirst().orElse(null);
+        if (variant == null) return;
+        ExplorationEventContext context = new ExplorationEventContext(plugin, record, source.runtime(), ports,
+                teleportExemptions, source.currentTick(), this::scheduleSequencePhase);
+        int matched = 0;
+        for (ExplorationComponentSpec spec : variant.components()) {
+            if (!"pyramid_push_pillars".equalsIgnoreCase(spec.type())) continue;
+            ExplorationComponent component = components.get(spec.type())
+                    .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
+            try {
+                component.execute(context, spec);
+                matched++;
+            } catch (Exception failure) {
+                plugin.getLogger().log(Level.WARNING,
+                        "Pyramid puzzle continuation deferred: structure=" + record.structureId(), failure);
+            }
+        }
+        if (matched == 0) {
+            plugin.getLogger().severe("Pyramid puzzle continuation matched zero pillar components: structure="
+                    + record.structureId() + ", variant=" + record.variantId());
+        }
+    }
+
     /**
      * Dispatches a configured named phase without adding a scripting language.
      * A component either uses its existing default enum phase or an exact
