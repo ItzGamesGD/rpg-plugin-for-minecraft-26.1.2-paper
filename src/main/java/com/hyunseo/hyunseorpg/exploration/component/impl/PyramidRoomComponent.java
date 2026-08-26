@@ -28,12 +28,10 @@ public final class PyramidRoomComponent implements ExplorationComponent {
         }
         rooms.prepare(context, spec);
         context.world().ifPresent(world -> {
-            int anchorX = context.record().activationMetadata().containsKey("pyramid-treasure-x")
-                    ? Integer.parseInt(context.record().activationMetadata().get("pyramid-treasure-x"))
-                    : (int) Math.floor(context.record().bounds().centerX());
-            int anchorZ = context.record().activationMetadata().containsKey("pyramid-treasure-z")
-                    ? Integer.parseInt(context.record().activationMetadata().get("pyramid-treasure-z"))
-                    : (int) Math.floor(context.record().bounds().centerZ());
+            int anchorX = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-x"),
+                    (int) Math.floor(context.record().bounds().centerX()));
+            int anchorZ = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-z"),
+                    (int) Math.floor(context.record().bounds().centerZ()));
             Location center = new Location(world, anchorX + 0.5D,
                     context.record().bounds().minY(), anchorZ + 0.5D);
             world.spawnParticle(Particle.FALLING_DUST, center, 18, 2.5D, 0.2D, 2.5D, 0.01D);
@@ -50,6 +48,11 @@ public final class PyramidRoomComponent implements ExplorationComponent {
             throw new IllegalStateException("pyramid room reveal already scheduled: " + actionId);
         }
     }
+    private int parseAnchor(String raw, int fallback) {
+        try { return raw == null ? fallback : Integer.parseInt(raw); }
+        catch (NumberFormatException ignored) { return fallback; }
+    }
+
     private void scheduleTelegraph(ExplorationEventContext context, Location center, long delay,
                                    int particles, float volume) {
         BukkitTask task = Bukkit.getScheduler().runTaskLater(context.plugin(), () -> {
