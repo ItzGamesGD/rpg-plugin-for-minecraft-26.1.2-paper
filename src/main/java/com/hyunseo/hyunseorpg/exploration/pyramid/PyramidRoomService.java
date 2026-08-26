@@ -94,6 +94,13 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
+        // Final T+140 validation: the world may have changed since preparation.
+        if (!shaftSafe(world, origin, context.record().bounds())
+                || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
+            plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
+                    + structureId + ", origin=" + encode(origin));
+            throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
+        }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
                 context.record().bounds());
 
