@@ -22,6 +22,14 @@ public final class InventoryDeliveryService {
         this.deliveryObserver = deliveryObserver;
     }
 
+    /** Enqueues a completion reward durably under a deterministic idempotency token. */
+    public boolean queueItemOnce(Player player, java.util.UUID token, ItemStack item, String cause) {
+        if (player == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0
+                || pendingRewards == null) return false;
+        pendingRewards.queueItemOnce(player.getUniqueId(), token, item, cause);
+        return true;
+    }
+
     public void setItemNormalizer(Consumer<ItemStack> itemNormalizer) {
         this.itemNormalizer = itemNormalizer == null ? item -> { } : itemNormalizer;
     }
