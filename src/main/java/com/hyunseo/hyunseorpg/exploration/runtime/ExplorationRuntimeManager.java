@@ -101,7 +101,8 @@ public final class ExplorationRuntimeManager {
         ExplorationRuntime existing = active.get(record.structureId());
         if (existing != null) {
             existing.addParticipant(trigger.getUniqueId());
-            existing.clearLootTriggerExit();
+            // Proximity heartbeats must not erase an already-running Outpost loot-exit timer.
+            // Teleports and an actual return inside the loot radius clear it explicitly.
             existing.clearCombatAbandonExit();
             lastEndReasons.remove(record.structureId());
             return true;
@@ -361,6 +362,21 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
+            if (record.structureType().equals("desert_pyramid")
+                    && runtime.sequence().flag("pyramid.puzzle.solved")
+                    && !runtime.sequence().flag("pyramid.underground.complete")) {
+                try {
+                    markPyramidModuleComplete(record, runtime, "pyramid-underground-complete");
+                    if (pyramidModulesComplete(record.structureId())) {
+                        complete(record.structureId(), currentTick);
+                        continue;
+                    }
+                } catch (IOException exception) {
+                    plugin.getLogger().log(Level.WARNING, "Unable to persist Pyramid underground completion: "
+                            + record.structureId(), exception);
+                }
+            }
+
             if (runtime.objectiveMode()) {
                 if (currentTick <= runtime.activatedAtTick()) {
                     continue;
@@ -383,20 +399,17 @@ public final class ExplorationRuntimeManager {
                     }
                 }
                 if (runtime.objectivesCleared()) {
-                    if (record.structureType().equals("desert_pyramid")
-                            && !runtime.sequence().flag("pyramid.puzzle.solved")) {
-                        if (!runtime.sequence().flag("pyramid.puzzle.started")) {
-                            try {
-                                executeNamedPhase(record, runtime,
-                                        ExplorationComponentPhase.PYRAMID_PUZZLE.name(), currentTick);
-                            } catch (Exception exception) {
-                                plugin.getLogger().log(Level.WARNING,
-                                        "Unable to activate Desert Pyramid puzzle: " + record.structureId(), exception);
-                                abandon(record.structureId());
-                                continue;
-                            }
+                    if (record.structureType().equals("desert_pyramid")) {
+                        // Guardian and underground are independent modules. Objective completion
+                        // records only the guardian module; it must never force-start pillars.
+                        try {
+                            markPyramidModuleComplete(record, runtime, "pyramid-guardian-complete");
+                        } catch (IOException exception) {
+                            plugin.getLogger().log(Level.WARNING, "Unable to persist Pyramid guardian completion: "
+                                    + record.structureId(), exception);
+                            continue;
                         }
-                        if (runtime.sequence().flag("pyramid.puzzle.active")) continue;
+                        if (!pyramidModulesComplete(record.structureId())) continue;
                     }
                     if (runtime.hasNextRaidWave()) {
                         if (runtime.scheduleNextRaidWave(currentTick)) {
@@ -458,6 +471,27 @@ public final class ExplorationRuntimeManager {
                 }
             }
         }
+    }
+
+    private void markPyramidModuleComplete(StructureRecord record, ExplorationRuntime runtime, String metadataKey)
+            throws IOException {
+        String runtimeFlag = metadataKey.replace('-', '.');
+        if (runtime.sequence().flag(runtimeFlag)) return;
+        StructureRecord current = repository.get(record.structureId()).orElse(record);
+        if (!Boolean.parseBoolean(current.activationMetadata().getOrDefault(metadataKey, "false"))) {
+            repository.save(current.withMetadata(metadataKey, "true")
+                    .withMetadata("pyramid-content-version", "2"));
+        }
+        runtime.sequence().setFlag(runtimeFlag);
+        plugin.getLogger().info("Desert Pyramid module complete: structure=" + record.structureId()
+                + ", module=" + metadataKey);
+    }
+
+    private boolean pyramidModulesComplete(UUID structureId) {
+        StructureRecord current = repository.get(structureId).orElse(null);
+        if (current == null) return false;
+        return Boolean.parseBoolean(current.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
+                && Boolean.parseBoolean(current.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
     }
 
     private void keepRaidMobOnTarget(org.bukkit.entity.Entity entity, UUID targetId) {
