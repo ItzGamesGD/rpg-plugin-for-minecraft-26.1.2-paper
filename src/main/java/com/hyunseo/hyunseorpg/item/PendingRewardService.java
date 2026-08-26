@@ -60,7 +60,11 @@ public final class PendingRewardService {
     public synchronized boolean queueItemOnce(UUID uuid, UUID token, ItemStack item, String cause) {
         if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
-        if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) return true;
+        if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) {
+            // A previous enqueue may have populated memory but failed its file write.
+            // Retry that durable flush instead of treating the uncertain item as committed.
+            return !dirty || save();
+        }
         return add(uuid, PendingReward.item(token, uuid, item, cause));
     }
 
