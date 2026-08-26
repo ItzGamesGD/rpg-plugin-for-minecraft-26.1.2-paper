@@ -168,6 +168,7 @@ import com.hyunseo.hyunseorpg.alchemy.recipe.YamlAlchemyRecipeRegistry;
 import com.hyunseo.hyunseorpg.exploration.ExplorationModule;
 import com.hyunseo.hyunseorpg.exploration.integration.ExistingHyunseoRpgAdapters;
 import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
+import com.hyunseo.hyunseorpg.exploration.integration.BukkitExplorationPorts;
 import com.hyunseo.hyunseorpg.activity.MiningActivityListener;
 import com.hyunseo.hyunseorpg.activity.MiningActivityService;
 import com.hyunseo.hyunseorpg.crafting.CraftingService;
