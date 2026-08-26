@@ -16,8 +16,17 @@ public enum PyramidUndergroundCompletionState {
         return UNSOLVED;
     }
 
-    /** A durable complete flag always wins over a stale pending marker. */
+    /**
+     * Returns the persisted state that still needs to be reconciled by the caller.
+     *
+     * A durable complete flag is authoritative for gameplay, but a stale/missing
+     * state marker must remain observable long enough for the repository layer to
+     * normalize it to COMPLETE. Returning COMPLETE unconditionally for a true flag
+     * would hide the contradictory metadata and skip that durable normalization.
+     */
     public static PyramidUndergroundCompletionState reconcile(boolean completeFlag, String rawState) {
-        return completeFlag ? COMPLETE : parse(rawState);
+        PyramidUndergroundCompletionState persisted = parse(rawState);
+        if (!completeFlag) return persisted;
+        return persisted == COMPLETE ? COMPLETE : persisted;
     }
 }
