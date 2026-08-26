@@ -421,10 +421,17 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
             case "inspect" -> {
                 UUID structureId = resolveExplorationTarget(sender, args);
                 if (structureId == null) return;
-                explorationModule.status(structureId)
-                        .map(this::formatExplorationSnapshot)
-                        .ifPresentOrElse(sender::sendMessage,
-                                () -> sender.sendMessage("해당 탐험 구조물 기록을 찾을 수 없습니다: " + structureId));
+                explorationModule.runtimes().pyramidDiagnostics(structureId)
+                        .ifPresentOrElse(values -> values.forEach((key, value) -> sender.sendMessage("pyramid." + key + "=" + value)),
+                                () -> explorationModule.status(structureId).map(this::formatExplorationSnapshot).ifPresentOrElse(sender::sendMessage,
+                                        () -> sender.sendMessage("해당 탐험 구조물 기록을 찾을 수 없습니다: " + structureId)));
+            }
+            case "reset" -> {
+                UUID structureId = resolveExplorationTarget(sender, args);
+                if (structureId == null) return;
+                boolean reset = explorationModule.runtimes().resetPyramid(structureId);
+                sender.sendMessage(reset ? "Desert Pyramid reset 완료: " + structureId
+                        : "Desert Pyramid만 reset할 수 없거나 기록을 찾지 못했습니다: " + structureId);
             }
             case "complete" -> {
                 UUID structureId = resolveExplorationTarget(sender, args);
@@ -434,7 +441,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                         ? "탐험 구조물을 완료 처리했습니다: " + structureId
                         : "완료 처리할 수 없습니다. ACTIVE runtime/objective 상태를 확인하세요: " + structureId);
             }
-            default -> sender.sendMessage("사용법: /rpg exploration <status|inspect|complete>");
+            default -> sender.sendMessage("사용법: /rpg exploration <status|inspect|reset|complete>");
         }
     }
 
