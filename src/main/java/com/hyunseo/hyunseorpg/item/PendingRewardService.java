@@ -56,6 +56,15 @@ public final class PendingRewardService {
         add(uuid, PendingReward.item(UUID.randomUUID(), uuid, item, cause));
     }
 
+    /** Durable idempotent mailbox enqueue. The token is persisted as the pending reward id. */
+    public synchronized boolean queueItemOnce(UUID uuid, UUID token, ItemStack item, String cause) {
+        if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
+        List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
+        if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) return true;
+        add(uuid, PendingReward.item(token, uuid, item, cause));
+        return pending.getOrDefault(uuid, List.of()).stream().anyMatch(reward -> token.equals(reward.id()));
+    }
+
     public synchronized void queueCoins(UUID uuid, long amount, String cause) {
         if (uuid == null || amount <= 0L) return;
         add(uuid, PendingReward.coins(UUID.randomUUID(), uuid, amount, cause));
