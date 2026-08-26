@@ -188,8 +188,8 @@ public final class ExplorationModule {
                 .register(new RewardDropComponent())
                 .register(new PyramidRoomComponent(pyramidRooms))
                 .register(new PyramidRoomRevealComponent(pyramidRooms))
-                .register(new PyramidRepelComponent(pyramidRooms))
-                .register(new PyramidGuardianComponent(pyramidRooms))
+                .register(new PyramidRepelComponent())
+                .register(new PyramidGuardianComponent())
                 .register(new PyramidPushPillarComponent(pyramidPuzzles, pyramidRooms))
                 .register(new PuzzleComponent());
     }
