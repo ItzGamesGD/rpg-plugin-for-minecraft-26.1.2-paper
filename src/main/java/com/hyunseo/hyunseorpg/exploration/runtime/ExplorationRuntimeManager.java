@@ -220,7 +220,10 @@ public final class ExplorationRuntimeManager {
                 throw new IllegalStateException("raid choice produced no objective entities");
             }
             runtime.markRaidStarted();
-            player.sendMessage(net.kyori.adventure.text.Component.text("약탈자 전초기지 습격이 시작되었습니다."));
+            String message = record.structureType().equals("desert_pyramid")
+                    ? "사막 피라미드의 수호자가 깨어났습니다."
+                    : "약탈자 전초기지 습격이 시작되었습니다.";
+            player.sendMessage(net.kyori.adventure.text.Component.text(message));
             return ChoiceResult.ACCEPTED;
         } catch (Exception exception) {
             plugin.getLogger().log(Level.WARNING, "Exploration choice failed for " + structureId + ", choice=" + choice, exception);
