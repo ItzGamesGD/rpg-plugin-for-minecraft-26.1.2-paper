@@ -173,6 +173,7 @@ public final class ExplorationRuntimeManager {
             plugin.getLogger().info("Exploration activation: structure=" + persistent.structureType()
                     + ", variant=" + persistent.variantId() + ", id=" + persistent.structureId());
             executePhase(persistent, runtime, ExplorationComponentPhase.ACTIVATE, currentTick);
+            recoverPyramidGuardianEncounter(persistent, runtime, currentTick);
             if (persistent.structureType().equals("desert_pyramid")
                     && pyramidModulesComplete(persistent.structureId())) {
                 complete(persistent.structureId(), currentTick);
@@ -965,6 +966,38 @@ public final class ExplorationRuntimeManager {
             case "tier3" -> ExplorationComponentPhase.CHOICE_TIER_3;
             default -> throw new IllegalArgumentException("unsupported exploration choice: " + choice);
         };
+    }
+
+    private void recoverPyramidGuardianEncounter(StructureRecord record, ExplorationRuntime runtime, long currentTick) {
+        if (!"desert_pyramid".equals(record.structureType())
+                || Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))) return;
+        String state = record.activationMetadata().getOrDefault("pyramid-guardian-encounter-state", "not_started");
+        if (!Set.of("spawn_pending", "active").contains(state)) return;
+        UUID actor = runtime.entryActor();
+        Player player = actor == null ? null : Bukkit.getPlayer(actor);
+        if (player == null || !player.isOnline() || player.isDead()) {
+            try {
+                repository.save(record.withMetadata("pyramid-guardian-encounter-state", "not_started")
+                        .withMetadata("pyramid-guardian-started", null)
+                        .withMetadata("pyramid-guardian-spawned", null));
+                runtime.sequence().clearFlag("pyramid.entry.prompted");
+                plugin.getLogger().info("Pyramid guardian owner unavailable; encounter re-armed for next entry: " + record.structureId());
+            } catch (IOException exception) {
+                plugin.getLogger().log(Level.WARNING, "Unable to re-arm Pyramid guardian after restart: " + record.structureId(), exception);
+            }
+            return;
+        }
+        try {
+            executeNamedPhase(record, runtime, "pyramid_guardian_spawn", currentTick);
+            if (!runtime.objectiveEntities().isEmpty()) {
+                runtime.markRaidStarted();
+                repository.save(repository.get(record.structureId()).orElse(record)
+                        .withMetadata("pyramid-guardian-encounter-state", "active")
+                        .withMetadata("pyramid-guardian-started", "true"));
+            }
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.WARNING, "Pyramid guardian restart recovery deferred: " + record.structureId(), exception);
+        }
     }
 
     private StructureRecord migratePyramidRecord(StructureRecord record) throws IOException {
