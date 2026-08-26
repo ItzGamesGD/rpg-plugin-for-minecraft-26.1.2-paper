@@ -201,7 +201,11 @@ public final class ExplorationRuntimeManager {
             runtime.setRaidTarget(player.getUniqueId());
             runtime.snapshotRaidOrigin(player.getLocation());
             runtime.clearCombatAbandonExit();
-            executePhase(record, runtime, phaseForChoice(choice), currentTick);
+            if (record.structureType().equals("desert_pyramid")) {
+                executePhase(record, runtime, ExplorationComponentPhase.PYRAMID_GUARDIAN_SPAWN, currentTick);
+            } else {
+                executePhase(record, runtime, phaseForChoice(choice), currentTick);
+            }
             if (!runtime.objectiveMode() || runtime.objectiveEntities().isEmpty()) {
                 throw new IllegalStateException("raid choice produced no objective entities");
             }
@@ -494,6 +498,16 @@ public final class ExplorationRuntimeManager {
                 && Boolean.parseBoolean(current.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
     }
 
+    static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
+        if (record == null || from == null || to == null) return false;
+        double p = Math.max(0.0D, padding);
+        boolean wasInside = from.getX() >= record.bounds().minX() - p && from.getX() <= record.bounds().maxX() + p
+                && from.getZ() >= record.bounds().minZ() - p && from.getZ() <= record.bounds().maxZ() + p;
+        boolean nowInside = to.getX() >= record.bounds().minX() - p && to.getX() <= record.bounds().maxX() + p
+                && to.getZ() >= record.bounds().minZ() - p && to.getZ() <= record.bounds().maxZ() + p;
+        return !wasInside && nowInside;
+    }
+
     private void keepRaidMobOnTarget(org.bukkit.entity.Entity entity, UUID targetId) {
         if (!(entity instanceof org.bukkit.entity.LivingEntity living)) return;
         living.setGlowing(true);
@@ -593,6 +607,25 @@ public final class ExplorationRuntimeManager {
                     continue;
                 }
             }
+            if (record.structureType().equals("desert_pyramid")
+                    && crossesPyramidEntryBoundary(record, from, to, 4.0D)
+                    && !runtime.raidStarted() && !runtime.choicePending()) {
+                runtime.addParticipant(player.getUniqueId());
+                runtime.markPyramidEntry(player.getUniqueId(), to.getX() - from.getX(), to.getZ() - from.getZ());
+                try {
+                    executeNamedPhase(record, runtime, "pyramid_entry", currentTick);
+                    executeNamedPhase(record, runtime, "pyramid_quiz", currentTick);
+                    runtime.sequence().setFlag("pyramid.entry.prompted");
+                    plugin.getLogger().info("Pyramid entry: structure=" + record.structureId() + ", player="
+                            + player.getUniqueId() + ", from=" + formatLocation(from) + ", to=" + formatLocation(to));
+                } catch (Exception exception) {
+                    // Entry presentation/spawn failures are recoverable; do not terminally abandon a Pyramid.
+                    plugin.getLogger().log(Level.WARNING, "Pyramid exterior entry sequence deferred: "
+                            + record.structureId(), exception);
+                }
+                continue;
+            }
+
             if (record.structureType().equals("pillager_outpost")
                     && runtime.lootTaken() && !runtime.raidStarted()) {
                 if (runtime.lootExitPrompted()) continue;
