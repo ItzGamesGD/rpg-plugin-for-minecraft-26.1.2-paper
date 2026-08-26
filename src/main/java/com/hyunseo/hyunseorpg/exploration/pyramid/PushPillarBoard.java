@@ -93,6 +93,20 @@ public final class PushPillarBoard {
         return MoveResult.moved(pillarId, destination, solvedNow, solvedIds.size() == pillarsById.size());
     }
 
+    /**
+     * Returns whether this exact next move would irrevocably solve the board.
+     * The caller may durably reserve completion before applying the final move.
+     */
+    public synchronized boolean wouldCompleteMove(String pillarId, PyramidGridDirection direction, long serverTick) {
+        PillarState pillar = pillarsById.get(pillarId);
+        if (pillar == null || pillar.solved || serverTick < pillar.nextAllowedMoveTick) return false;
+        PyramidGridPoint destination = pillar.currentPosition.translate(direction);
+        return !occupancy.containsKey(destination)
+                && pillar.definition.allowedCells().contains(destination)
+                && destination.equals(pillar.definition.targetPosition())
+                && solvedIds.size() + 1 == pillarsById.size();
+    }
+
     public synchronized Optional<PyramidGridPoint> currentPosition(String pillarId) {
         PillarState state = pillarsById.get(pillarId);
         return state == null ? Optional.empty() : Optional.of(state.currentPosition);
