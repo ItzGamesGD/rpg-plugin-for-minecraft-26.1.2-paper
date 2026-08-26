@@ -107,6 +107,7 @@ structures:
     selection-chance: 1.0
     balance-pending: true
     trigger-radius: 36.0
+    entry-boundary-padding: 4.0
     abandon-radius: 72.0
     abandon-grace-ticks: 100
     variants:
@@ -127,9 +128,21 @@ structures:
           - type: pyramid_room_reveal
             phase: pyramid_room_reveal
           - type: pyramid_repel
-            phase: pyramid_guardian_spawn
+            phase: pyramid_entry
             horizontal-strength: 0.75
             vertical-strength: 0.32
+          # CONTENT_TEXT_PENDING: placeholder quiz copy is intentionally config-owned.
+          - type: choice_prompt
+            phase: pyramid_quiz
+            prompt-id: pyramid_entry_quiz
+            prompt-text: "피라미드의 수수께끼가 길을 막습니다."
+            choices: [answer_a, answer_b, answer_c]
+            default-choice: answer_a
+            timeout-ticks: 400
+            choice-labels:
+              answer_a: "[답 A]"
+              answer_b: "[답 B]"
+              answer_c: "[답 C]"
           - type: pyramid_guardian
             phase: pyramid_guardian_spawn
             mob-id: custom:stone_armored_zombie
@@ -170,7 +183,8 @@ structures:
                 allowed: ["0,-1", "0,0", "0,1"]
           - type: reward_drop
             phase: clear
-            recipient: participants
+            # BALANCE_POLICY_PENDING: do not use radius-history as a recipient set.
+            recipient: looter
             reward-id: vanilla:GOLD_INGOT
             amount: 4
 
