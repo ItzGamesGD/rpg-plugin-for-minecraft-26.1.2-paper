@@ -38,6 +38,9 @@ public final class ExplorationRuntime {
     private long nextRaidWaveDelayTicks = 30L;
     private Long nextRaidWaveAtTick;
     private UUID raidTarget;
+    private UUID entryActor;
+    private double entryDeltaX;
+    private double entryDeltaZ;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -120,6 +123,16 @@ public final class ExplorationRuntime {
     public synchronized Long nextRaidWaveAtTick() { return nextRaidWaveAtTick; }
     public synchronized void setRaidTarget(UUID playerId) { raidTarget = playerId; }
     public synchronized UUID raidTarget() { return raidTarget; }
+    /** Actual exterior boundary crosser; deliberately distinct from proximity participants. */
+    public synchronized void markPyramidEntry(UUID playerId, double deltaX, double deltaZ) {
+        if (playerId == null || entryActor != null) return;
+        entryActor = playerId;
+        entryDeltaX = deltaX;
+        entryDeltaZ = deltaZ;
+    }
+    public synchronized UUID entryActor() { return entryActor; }
+    public synchronized double entryDeltaX() { return entryDeltaX; }
+    public synchronized double entryDeltaZ() { return entryDeltaZ; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
                                             String fallback, long expiresAtTick) {
         if (owner == null || choicePending() || !selectedChoice.isBlank()) return false;
