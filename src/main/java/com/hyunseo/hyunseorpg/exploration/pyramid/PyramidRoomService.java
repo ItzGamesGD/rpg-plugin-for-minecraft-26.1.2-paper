@@ -300,7 +300,11 @@ public final class PyramidRoomService {
         int outer = radius + shell;
         int minY = origin.y() - 1 - shell;
         int maxY = origin.y() + height + shell;
-        if (!world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
+        for (int x = origin.x() - outer; x <= origin.x() + outer; x += 16) {
+            for (int z = origin.z() - outer; z <= origin.z() + outer; z += 16) {
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+            }
+        }
         for (int x = origin.x() - outer; x <= origin.x() + outer; x++) {
             for (int z = origin.z() - outer; z <= origin.z() + outer; z++) {
                 for (int y = minY; y <= maxY; y++) {
@@ -365,7 +369,11 @@ public final class PyramidRoomService {
     }
 
     private boolean shaftSafe(World world, PyramidBlockPosition origin, StructureBounds bounds) {
-        if (!world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
+        for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
+            for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+            }
+        }
         for (int y = origin.y() + 1; y < bounds.minY(); y++) {
             for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
                 for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
