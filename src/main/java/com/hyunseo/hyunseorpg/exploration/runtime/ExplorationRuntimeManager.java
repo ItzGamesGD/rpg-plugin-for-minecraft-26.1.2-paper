@@ -13,6 +13,7 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationRegistry;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.StructureVariantDefinition;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRewardTransaction;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionCoordinator;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -1049,24 +1050,15 @@ public final class ExplorationRuntimeManager {
         }
     }
 
-    /** Converts a durable solved-but-unfinalized board to module completion before any puzzle restore. */
+    /** Restart recovery delegates to the same durable transaction used by the live pillar service. */
     private StructureRecord reconcilePendingPyramidUndergroundCompletion(StructureRecord record) throws IOException {
-        boolean completeFlag = Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
-        String state = PyramidUndergroundCompletionState.reconcile(completeFlag,
-                record.activationMetadata().get("pyramid-underground-completion-state")).value();
-        if (completeFlag && !"complete".equals(state)) {
-            StructureRecord normalized = record.withMetadata("pyramid-underground-completion-state", PyramidUndergroundCompletionState.COMPLETE.value())
-                    .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
-            repository.save(normalized);
-            return normalized;
+        var reconciled = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
+        if (reconciled != null && reconciled != record
+                && Boolean.parseBoolean(reconciled.activationMetadata()
+                .getOrDefault("pyramid-underground-complete", "false"))) {
+            plugin.getLogger().info("Recovered pending Pyramid underground completion: structure=" + record.structureId());
         }
-        if (!"completion_pending".equals(state) || completeFlag) return record;
-        StructureRecord complete = record.withMetadata("pyramid-underground-complete", "true")
-                .withMetadata("pyramid-underground-completion-state", "complete")
-                .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
-        repository.save(complete);
-        plugin.getLogger().info("Recovered pending Pyramid underground completion: structure=" + record.structureId());
-        return complete;
+        return reconciled == null ? record : reconciled;
     }
 
     private StructureRecord migratePyramidRecord(StructureRecord record) throws IOException {
