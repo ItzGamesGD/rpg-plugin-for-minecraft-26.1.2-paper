@@ -415,6 +415,18 @@ public final class ExplorationRuntimeManager {
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
 
+            if ("desert_pyramid".equals(record.structureType())
+                    && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
+                    && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
+                    && !runtime.sequence().flag("pyramid.puzzle.started")
+                    && !runtime.sequence().flag("pyramid.room.reveal.in_progress")) {
+                try {
+                    executeNamedPhase(record, runtime, "pyramid_room_reveal", currentTick);
+                } catch (Exception exception) {
+                    plugin.getLogger().log(Level.WARNING, "Pyramid puzzle restore deferred (retryable): " + record.structureId(), exception);
+                }
+            }
+
             if (runtime.choiceExpired(currentTick)) {
                 plugin.getLogger().info("Exploration choice timed out: structure=" + record.structureType()
                         + ", id=" + record.structureId() + ", default=" + runtime.defaultChoice());
