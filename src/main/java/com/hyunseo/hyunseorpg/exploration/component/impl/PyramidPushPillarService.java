@@ -111,6 +111,7 @@ public final class PyramidPushPillarService {
                     .withMetadata("pyramid-content-version",
                             Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
             completionRetryAttempts.remove(structureId);
+            runtime.sequence().setFlag("pyramid.underground.complete");
             org.bukkit.scheduler.BukkitTask task = completionRetryTasks.remove(structureId);
             if (task != null) task.cancel();
             runtime.sequence().clearFlag("pyramid.underground.persistence.retry");
