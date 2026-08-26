@@ -2,7 +2,7 @@
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
 - Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Audited source revision: `ad15ec8f0be61c8245f3cf8f0eadd0ae90de0902` (the commit immediately preceding this status-only commit)
+- Audited source revision: `3306bbd3316be14ed88b5577840bc3587d0eab39` (the commit immediately preceding this status-only commit)
 - Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
 
 ## Canonical flows
@@ -26,11 +26,11 @@ Both persisted module flags are required for final clear.
 
 Current content version is `ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION = 3`.
 Records persist entry actor/direction, treasure anchor, room prepared/created/origin/radius/height,
-guardian encounter state, independent guardian/underground completion, and reward transaction state.
+guardian encounter state, independent guardian/underground completion, and reward transaction state and deterministic mailbox token reconciliation.
 
 Reward states are `reserved`, `pending`, `delivered`, and `finalized`. Pyramid rewards are durably enqueued through the existing pending-reward mailbox with a deterministic token before the structure is finalized; repeated completion is idempotent.
 
-Legacy radius-3 or incompatible room metadata is migrated forward and stale room signatures are downgraded for safe re-preparation. A committed physical room is retained across ordinary reloads. Underground completion persistence retries with bounded runtime-owned backoff and never abandons the structure.
+Legacy radius-3 or incompatible room metadata is migrated forward and stale room signatures are downgraded for safe re-preparation. A committed physical room is retained across ordinary reloads. Underground completion persistence retries with bounded runtime-owned backoff (five attempts at 40-tick increments) and never abandons the structure.
 
 ## Legacy boundary
 
