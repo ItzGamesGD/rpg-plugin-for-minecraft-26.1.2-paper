@@ -36,16 +36,10 @@ public final class RewardDropComponent implements ExplorationComponent {
             throw new IllegalArgumentException("unsupported reward_drop recipient: " + recipient);
         }
 
-        if ("desert_pyramid".equals(context.record().structureType())) {
+        boolean pyramid = "desert_pyramid".equals(context.record().structureType());
+        if (pyramid) {
             String rewardState = context.record().activationMetadata().getOrDefault("pyramid-reward-state", "pending");
-            String deliveredTo = context.record().activationMetadata().get("pyramid-reward-delivered-to");
             if ("finalized".equalsIgnoreCase(rewardState) || "delivered".equalsIgnoreCase(rewardState)) return;
-            // A crash can leave the durable transaction in delivering state after the
-            // adapter has handed the item to the player. Never issue a second copy;
-            // leave the record for bounded administrative reconciliation instead.
-            if ("delivering".equalsIgnoreCase(rewardState) && (deliveredTo == null || deliveredTo.isBlank())) {
-                throw new IllegalStateException("Pyramid reward delivery is uncertain; refusing duplicate grant");
-            }
         }
         int onlineParticipants = 0;
         int successfulDeliveries = 0;
@@ -60,11 +54,13 @@ public final class RewardDropComponent implements ExplorationComponent {
             var player = Bukkit.getPlayer(playerId);
             if (player == null || !player.isOnline()) continue;
             onlineParticipants++;
-            if (context.ports().rewards().grant(player, rewardId, amount, fallback, spec.options())) {
+            String token = context.record().structureId() + ":" + playerId + ":" + rewardId + ":" + amount;
+            boolean delivered = pyramid
+                    ? context.ports().rewards().enqueueDurable(player, rewardId, amount, fallback, spec.options(), token)
+                    : context.ports().rewards().grant(player, rewardId, amount, fallback, spec.options());
+            if (delivered) {
                 successfulDeliveries++;
-                if ("desert_pyramid".equals(context.record().structureType())) {
-                    context.runtime().sequence().setFlag("pyramid.reward.delivered." + playerId);
-                }
+                if (pyramid) context.runtime().sequence().setFlag("pyramid.reward.delivered." + playerId);
             }
         }
 
