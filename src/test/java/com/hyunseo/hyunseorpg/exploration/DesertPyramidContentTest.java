@@ -23,6 +23,7 @@ class DesertPyramidContentTest {
 
             assertTrue(yaml.getBoolean("enabled"));
             assertTrue(yaml.getBoolean("structures.desert_pyramid.enabled"));
+            assertEquals(4.0D, yaml.getDouble("structures.desert_pyramid.entry-boundary-padding"));
             assertEquals(1.0D, yaml.getDouble("structures.desert_pyramid.selection-chance"));
 
             String root = "structures.desert_pyramid.variants.guardian_trial.components";
