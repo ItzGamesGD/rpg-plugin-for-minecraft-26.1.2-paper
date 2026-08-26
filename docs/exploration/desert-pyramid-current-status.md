@@ -2,16 +2,16 @@
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
 - Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Current audited HEAD: branch tip (verify with `git rev-parse HEAD`; final report records the exact SHA)
+- Audited source revision: `5c1c1c6c0823a51b9e67b03ecead1b34a0fc7886` (the commit immediately preceding this status-only commit)
 - Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
 
 ## Canonical flows
 
-Exterior: padded boundary crossing -> entry-actor capture -> outward repel -> Pyramid quiz -> any answer/default timeout -> guardian.
+Exterior: padded boundary crossing -> actual actor/direction capture -> outward repel -> Pyramid quiz -> any answer or timeout default -> guardian. Guardian completion is independent.
 
-Underground: validated vanilla Pyramid chest -> room preparation -> delayed final validation -> 3x3 shaft and 7x7 usable room -> four real displays -> push-pillar solve.
+Underground: canonical vanilla treasure chest -> persisted anchor -> non-mutating preparation -> seven-second telegraph -> final validation -> staged top-to-bottom 3x3 shaft -> usable 7x7 interior -> four real displays -> push-pillar solve. Room reveal invokes the pillar component directly; heartbeat replay is recovery-only.
 
-Guardian and underground are independent. Both persisted module flags are required for clear.
+Both persisted module flags are required for final clear.
 
 ## Current runtime path
 
@@ -20,38 +20,37 @@ Guardian and underground are independent. Both persisted module flags are requir
 `PyramidRoomRevealComponent`, `PyramidPushPillarComponent`,
 `PyramidPushPillarService`, and `ExplorationSequenceState`.
 
-Bukkit primitive ports are composed with HyunseoRPG mob, reward, and cleanup adapters.
+`BukkitExplorationPorts.compose(...)` supplies real Bukkit Display/Interaction/WorldMutation/Teleport ports while retaining HyunseoRPG mob, reward, and cleanup adapters.
 
-## Persistent metadata
+## Persistent metadata and version
 
-`pyramid-content-version`, `pyramid-entry-actor`, `pyramid-entry-dx`,
-`pyramid-entry-dz`, `pyramid-treasure-x/y/z`,
-`pyramid-room-prepared`, `pyramid-room-created`,
-`pyramid-room-origin/radius/height`, `pyramid-guardian-complete`,
-and `pyramid-underground-complete`.
+Current content version is `ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION = 3`.
+Records persist entry actor/direction, treasure anchor, room prepared/created/origin/radius/height,
+guardian encounter state, independent guardian/underground completion, and reward transaction state.
 
-Completed module metadata is authoritative after restart. Legacy radius-3 geometry is reset to retryable metadata while completion flags are preserved. Persisted room-created metadata is checked against bounded shell/floor/roof signatures before reuse; stale records are downgraded. Entry padding is a structure-level policy (default 4.0). Treasure anchors are restricted to canonical normal-chest slots and drive direct shaft planning.
+Reward states are `reserved`, `pending`, `delivered`, and `finalized`. Pyramid rewards are durably enqueued through the existing pending-reward mailbox with a deterministic token before the structure is finalized; repeated completion is idempotent.
+
+Legacy radius-3 or incompatible room metadata is migrated forward and stale room signatures are downgraded for safe re-preparation. A committed physical room is retained across ordinary reloads. Underground completion persistence retries with bounded runtime-owned backoff and never abandons the structure.
 
 ## Legacy boundary
 
-`PyramidRoomLocator`, `PyramidRoomPreflight`, `PyramidModuleProgress`,
-and `PyramidVariantModules` remain deterministic/reusable logic or historical test axes;
-the live runtime is authoritative through `PyramidRoomService` and the component path above.
+`PyramidRoomService` is authoritative for live room planning/reveal. `PyramidRoomLocator`,
+`PyramidRoomPreflight`, `PyramidRoomCandidate`, `PyramidModuleProgress`, and
+`PyramidVariantModules` are reusable deterministic logic/test axes; they are not alternate live runtime paths.
 
-Historical checkpoint documents are not current implementation evidence.
+Historical checkpoint documents are evidence only and are marked superseded.
 
-## Verification
+## Validation and administration
 
-The bundled Pyramid test was updated for the seven-component canonical configuration.
-Sequence reservation/release and production primitive-port composition tests were added.
-Room reveal now escalates telegraph effects at T+0/40/80/110/130 and opens 3x3 shaft layers top-to-bottom every bounded interval with rollback snapshots. Guardian/pillar technical failures stay retryable; delayed reveal failures re-arm up to five attempts. `/rpg exploration inspect <uuid>` exposes Pyramid metadata and `/rpg exploration reset <uuid>` clears only that Pyramid. Gradle execution was not available in this workspace (authenticated checkout/tooling unavailable); Paper/client verification remains a live-only requirement.
+Startup applies targeted exploration migration, loads the migrated registry, and validates the canonical seven-component Pyramid graph and required phases. Required named Pyramid phases fail closed on zero matches.
 
-## Recovery and reward contract
+Use `/rpg exploration inspect <structure-uuid>` for bounded state/diagnostics and
+`/rpg exploration reset <structure-uuid>` for one-record retryable reset.
 
-Guardian encounter state is persisted as `not_started`, `quiz_pending`, `spawn_pending`, `active`, or `complete`. A failed guardian start clears the pending prompt and re-arms the next valid entrant; a completed guardian module suppresses all later spawns. Reveal preparation uses bounded retry reservations (60 ticks, five attempts); staged reveal snapshots the complete footprint and rolls back on failure. Underground completion is persisted immediately after the final pillar solve and suppresses puzzle restoration on restart.
+## Tests and live boundary
 
-Reward delivery records `pyramid-reward-recipient` and `pyramid-reward-state` (`delivering`, `delivered`, `finalized`) before clear. The canonical owner is the persisted entry actor (BALANCE_POLICY_PENDING); inventory overflow uses the existing pending-reward queue. A live restart test is still required to validate the adapter's crash-window behavior.
-
-## Admin/live checklist
-
-Use `/rpg exploration inspect <structure-uuid>` for bounded Pyramid metadata and `/rpg exploration reset <structure-uuid>` to cancel owned runtime tasks/entities and clear only that record. Live validation must cover all cardinal/diagonal entries, quiz answers and timeout, real vanilla chest slots, the seven-second telegraph, staged 3x3 opening, four displays, both module orders, and restart at each persisted checkpoint.
+Executable tests cover canonical YAML, padded cardinal/diagonal crossing, sequence reservation semantics,
+primitive port composition, independent module ordering, reward state transitions, retry bounds, room geometry,
+and push-board behavior. The requested command `./gradlew clean test --no-daemon` was attempted in this
+workspace but cannot execute because the checkout has no Gradle wrapper (`./gradlew: No such file or directory`).
+Therefore unit execution is not claimed. Paper/client restart and visual acceptance remain LIVE_SERVER_RETEST_REQUIRED.
