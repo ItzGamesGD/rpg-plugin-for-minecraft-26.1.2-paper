@@ -1,7 +1,7 @@
 # Desert Pyramid Automation State
 
-PHASE: NEEDS_FIX
-CURRENT_HEAD: 5aa6c6904a39d6414a212361b077fe284bd96fa1
+PHASE: IMPLEMENTING
+CURRENT_HEAD: 6d9b77cd3a4274880e12a7f9af7a99f4249e9217
 CANDIDATE_HEAD: 9601f93199c4baad14f7a60c3523bfd318329d4b
 LAST_REVIEWED_HEAD: 9601f93199c4baad14f7a60c3523bfd318329d4b
 LAST_SAFE_HEAD: 3851be385434d314dd7fc54370c342e463316c40
@@ -11,6 +11,9 @@ VERIFIED_SAFE_REGRESSIONS: 0
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
+
+IMPLEMENTING_DEFECT:
+- P0 committed-room recovery: after a committed room and pillar-start failure, heartbeat must never re-enter pyramid_room_reveal. Replace that recovery edge with bounded pillar-only restoration/retry and add behavioral coverage for its gate.
 
 VERIFIED_SAFE_INVARIANTS:
 - heartbeat is not an independent underground-completion writer
@@ -34,4 +37,4 @@ KNOWN_DEFECTS:
 6. P1 - Status documentation remains stale relative to the automation candidate/current branch history and cannot serve as the final completion certificate yet.
 7. P1 - Bounded Outpost regression proof remains incomplete for loot-exit grace preservation, 24-40 radius behavior, next-wave scheduling, and delayed target chase.
 
-NEXT_REQUIRED_ACTION: modifier should address P0 Defect 2 first: make committed-room recovery pillar-only and bounded, with a behavioral test proving that a committed room never re-enters room reveal after pillar-start failure. After one coherent repair, commit and return PHASE=AWAITING_REVIEW for independent review. Do not combine the reward transaction rewrite into the same repair.
+NEXT_REQUIRED_ACTION: implementation in progress for committed-room pillar-only bounded recovery. Do not run independent review until PHASE returns to AWAITING_REVIEW.
