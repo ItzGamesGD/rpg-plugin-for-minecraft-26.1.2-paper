@@ -1,53 +1,30 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
-- Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Audited source revision: `495c0a8c8c868ad37d800e7041803d78eb9acf83` (the commit immediately preceding this status-only commit)
-- Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
+- Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
+- CI: GitHub Actions run [33023357959](https://github.com/ItzGamesGD/rpg-plugin-for-minecraft-26.1.2-paper/actions/runs/33023357959) passed `./gradlew clean test --no-daemon` (283 tests, 2 skipped).
+- Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
 
-## Canonical flows
+## Durable underground completion
 
-Exterior: padded boundary crossing -> actual actor/direction capture -> outward repel -> Pyramid quiz -> any answer or timeout default -> guardian. Guardian completion is independent.
+The live final-pillar operation persists `pyramid-underground-completion-state=completion_pending` before it mutates the final solved board. `PyramidUndergroundCompletionCoordinator` is the sole durable pending-to-complete transaction; the pillar service owns normal live completion and restart/retry recovery calls that same coordinator. It rejects an unsolved record, is idempotent, and normalizes legacy `pyramid-underground-complete=true + completion_pending` to `complete`.
 
-Underground: canonical vanilla treasure chest -> persisted anchor -> non-mutating preparation -> seven-second telegraph -> final validation -> staged top-to-bottom 3x3 shaft -> usable 7x7 interior -> four real displays -> push-pillar solve. Room reveal invokes the pillar component directly; heartbeat replay is recovery-only.
+This preserves independent guardian and underground modules. Guardian completion cannot start the room/pillars, and underground completion cannot start the guardian.
 
-Both persisted module flags are required for final clear.
+## Room, shaft, and pillar recovery
 
-## Current runtime path
+The current configuration uses a room radius of 4 (9x9 footprint, 7x7 usable interior), a consistent staged 3x3 shaft, and four required pillar displays. Partial display creation is cleaned up. A committed room uses `pyramid_pillar_restore` with bounded pillar-only retry; it never replays room reveal.
 
-`ExplorationRuntimeManager`, `PyramidRepelComponent`, `ChoicePromptComponent`,
-`PyramidGuardianComponent`, `PyramidRoomComponent`,
-`PyramidRoomRevealComponent`, `PyramidPushPillarComponent`,
-`PyramidPushPillarService`, and `ExplorationSequenceState`.
+Config migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`, matching the bundled configuration and runtime recovery path.
 
-`BukkitExplorationPorts.compose(...)` supplies real Bukkit Display/Interaction/WorldMutation/Teleport ports while retaining HyunseoRPG mob, reward, and cleanup adapters.
+## Reward transaction
 
-## Persistent metadata and version
+Pyramid rewards are durably queued with deterministic tokens. Claim records a durable pre-delivery journal before an exact inventory insertion and tags the delivered item with that token. If final tombstone persistence fails, restart reconciliation finds the tagged item and persists the completed tombstone without another delivery. Pending, journalled, and completed tokens suppress repeated queue/finalization attempts.
 
-Current content version is `ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION = 3`.
-Records persist entry actor/direction, treasure trigger plus canonical chamber center, room prepared/created/origin/radius/height,
-guardian encounter state, independent guardian/underground completion, and reward transaction state and deterministic mailbox token reconciliation.
+## Entry and restart behavior
 
-Reward states are `reserved`, `pending`, `delivered`, and `finalized`. Pyramid rewards are durably enqueued through the existing pending-reward mailbox with a deterministic token before the structure is finalized; repeated completion is idempotent.
+Pyramid entry captures the real actor and movement vector. A padded boundary triggers only on an actual outside-to-interior crossing; the perimeter itself is neutral against movement jitter. Restart recovery restores durable module, room, guardian, and reward evidence without replaying committed geometry.
 
-Legacy radius-3 or incompatible room metadata is migrated forward and stale room signatures are downgraded for safe re-preparation. A committed physical room is retained across ordinary reloads. Solved boards write `pyramid-underground-completion-state=completion_pending` before final module completion; activation reconciles that durable pending state before any puzzle restoration. Completion retries retain bounded runtime-owned backoff and never abandon the structure.
+## Remaining live-only validation
 
-## Legacy boundary
-
-`PyramidRoomService` is authoritative for live room planning/reveal. `PyramidRoomLocator`,
-`PyramidRoomPreflight`, `PyramidRoomCandidate`, `PyramidModuleProgress`, and
-`PyramidVariantModules` are reusable deterministic logic/test axes; they are not alternate live runtime paths.
-
-Historical checkpoint documents are evidence only and are marked superseded.
-
-## Validation and administration
-
-Startup applies targeted exploration migration, loads the migrated registry, and validates the canonical seven-component Pyramid graph and required phases. Required named Pyramid phases fail closed on zero matches.
-
-Use `/rpg exploration inspect <structure-uuid>` for bounded state/diagnostics and
-`/rpg exploration reset <structure-uuid>` for one-record retryable reset.
-
-## Tests and live boundary
-
-Executable tests cover canonical YAML, padded cardinal/diagonal crossing, sequence reservation semantics, primitive port composition, independent module ordering, reward state transitions, bounded retry policy, runtime continuation hooks, room geometry, and push-board behavior. The requested command `./gradlew clean test --no-daemon` was attempted in the prior Codex execution workspace, but that workspace was not the repository checkout; therefore its local path could not access this repository's `gradlew`, `gradlew.bat`, or `gradle/` wrapper files.
-Therefore unit execution is not claimed. Paper/client restart and visual acceptance remain LIVE_SERVER_RETEST_REQUIRED.
+Run a Paper server retest for staged shaft timing, TNT/special-block protection in a generated Pyramid, real display interaction, guardian safe-spawn terrain, and client-visible repel direction. These are intentionally not claimed as live verified.
