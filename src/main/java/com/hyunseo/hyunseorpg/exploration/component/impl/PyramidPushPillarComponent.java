@@ -42,6 +42,8 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
         if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
         PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
         service.start(context, spec, room, board, pillars);
+        context.runtime().sequence().setFlag("pyramid.room.ready");
+        context.runtime().sequence().setFlag("pyramid.puzzle.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.started");
         context.runtime().sequence().setFlag("pyramid.puzzle.active");
         context.runtime().tracker().track(() -> service.stop(context.runtime().structureId()));
