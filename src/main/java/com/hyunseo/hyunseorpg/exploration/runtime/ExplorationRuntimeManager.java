@@ -293,6 +293,14 @@ public final class ExplorationRuntimeManager {
                 // this pending attempt without a terminal state.
                 runtime.sequence().clearFlag("pyramid.entry.prompted");
                 runtime.sequence().clearFlag("pyramid.guardian.encounter.started");
+                try {
+                    repository.save(repository.get(structureId).orElse(record)
+                            .withMetadata("pyramid-guardian-encounter-state", "not_started")
+                            .withMetadata("pyramid-guardian-started", null)
+                            .withMetadata("pyramid-guardian-spawned", null));
+                } catch (IOException persistenceFailure) {
+                    plugin.getLogger().log(Level.WARNING, "Unable to clear failed Pyramid encounter checkpoint: " + structureId, persistenceFailure);
+                }
                 return ChoiceResult.SPAWN_FAILED;
             }
             abandon(structureId);
@@ -786,14 +794,17 @@ public final class ExplorationRuntimeManager {
                     && crossesPyramidEntryBoundary(record, from, to, pyramidEntryPadding(definition))
                     && !runtime.raidStarted() && !runtime.choicePending()
                     && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
-                    && !runtime.sequence().flag("pyramid.entry.prompted")) {
+                    && !runtime.sequence().flag("pyramid.entry.prompted")
+                    && !java.util.Set.of("spawn_pending", "active").contains(record.activationMetadata()
+                    .getOrDefault("pyramid-guardian-encounter-state", "not_started"))) {
                 runtime.addParticipant(player.getUniqueId());
                 runtime.markPyramidEntry(player.getUniqueId(), to.getX() - from.getX(), to.getZ() - from.getZ());
                 try {
                     StructureRecord latest = repository.get(record.structureId()).orElse(record);
                     repository.save(latest.withMetadata("pyramid-entry-actor", player.getUniqueId().toString())
                             .withMetadata("pyramid-entry-dx", Double.toString(to.getX() - from.getX()))
-                            .withMetadata("pyramid-entry-dz", Double.toString(to.getZ() - from.getZ())));
+                            .withMetadata("pyramid-entry-dz", Double.toString(to.getZ() - from.getZ()))
+                            .withMetadata("pyramid-guardian-encounter-state", "quiz_pending"));
                     executeNamedPhase(record, runtime, "pyramid_entry", currentTick);
                     executeNamedPhase(record, runtime, "pyramid_quiz", currentTick);
                     runtime.sequence().setFlag("pyramid.entry.prompted");
