@@ -83,7 +83,7 @@ public final class ExplorationModule {
         this.repository = new StructureRepository(new YamlStructureStorage(plugin), new StructureIndex());
         ExplorationPorts effectivePorts = ports == null ? BukkitExplorationPorts.safeDefaults(plugin) : ports;
         this.pyramidRooms = new PyramidRoomService(plugin, repository);
-        this.pyramidPuzzles = new PyramidPushPillarService(plugin, effectivePorts);
+        this.pyramidPuzzles = new PyramidPushPillarService(plugin, effectivePorts, repository);
         StructureCandidateProvider effectiveProvider = candidateProvider == null
                 ? new ReflectivePaperStructureCandidateProvider(plugin) : candidateProvider;
         this.detection = new StructureDetectionService(plugin, registry, effectiveProvider, repository,
