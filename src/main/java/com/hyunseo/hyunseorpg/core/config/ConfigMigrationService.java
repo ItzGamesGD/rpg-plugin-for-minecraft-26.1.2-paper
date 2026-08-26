@@ -337,76 +337,92 @@ public final class ConfigMigrationService {
         List<Map<?, ?>> configured = target.getMapList(path);
         List<Map<?, ?>> bundled = defaults.getMapList(path);
         if (bundled.isEmpty()) return false;
-        List<Map<String, Object>> merged = new ArrayList<>();
-        Set<String> configuredTypes = new HashSet<>();
+        List<String> officialOrder = List.of("pyramid_room", "pyramid_room_reveal", "pyramid_repel",
+                "choice_prompt", "pyramid_guardian", "pyramid_push_pillars", "reward_drop");
+        Map<String, Map<String, Object>> byType = new LinkedHashMap<>();
+        List<Map<String, Object>> extras = new ArrayList<>();
         boolean changed = false;
-        for (Map<?, ?> entry : configured) {
+        for (Map<?, ?> raw : configured) {
             Map<String, Object> copy = new LinkedHashMap<>();
-            entry.forEach((key, value) -> copy.put(String.valueOf(key), value));
-            String type = String.valueOf(copy.getOrDefault("type", "")).trim().toLowerCase(Locale.ROOT);
-            configuredTypes.add(type);
-            if ("pyramid_guardian".equals(type)
-                    && !copy.containsKey("phase")
-                    && "custom:stone_armored_zombie".equalsIgnoreCase(String.valueOf(copy.getOrDefault("mob-id", "")))) {
-                copy.put("phase", "pyramid_guardian_spawn");
-                changed = true;
-                lines.add(fileName + ": routed legacy Desert Pyramid guardian to pyramid_guardian_spawn");
-            }
-            if ("pyramid_room".equals(type)) {
-                if (!copy.containsKey("room-radius") || String.valueOf(copy.get("room-radius")).equals("3")) {
-                    copy.put("room-radius", 4);
-                    changed = true;
-                    lines.add(fileName + ": expanded legacy Desert Pyramid room to usable 7x7 interior");
-                }
-                if (!copy.containsKey("action-id")) {
-                    copy.put("action-id", "pyramid_room_reveal");
-                    changed = true;
-                }
-                if (!copy.containsKey("reveal-delay-ticks")) {
-                    copy.put("reveal-delay-ticks", 140);
-                    changed = true;
-                }
-                if (!copy.containsKey("reveal-phase")) {
-                    copy.put("reveal-phase", "pyramid_room_reveal");
-                    changed = true;
-                }
-            }
-            if ("pyramid_repel".equals(type)
-                    && "pyramid_loot_trigger".equalsIgnoreCase(String.valueOf(copy.getOrDefault("phase", "")))) {
-                copy.put("phase", "pyramid_guardian_spawn");
-                changed = true;
-                lines.add(fileName + ": moved Desert Pyramid repel out of loot-trigger phase");
-            }
-            if ("pyramid_push_pillars".equals(type)
-                    && (!copy.containsKey("phase")
-                    || "pyramid_puzzle".equalsIgnoreCase(String.valueOf(copy.get("phase"))))) {
-                copy.put("phase", "pyramid_room_reveal");
-                changed = true;
-                lines.add(fileName + ": routed Desert Pyramid puzzle to room reveal phase");
-            }
+            raw.forEach((key, value) -> copy.put(String.valueOf(key), value));
+            String type = normalize(String.valueOf(copy.getOrDefault("type", "")));
             if ("sequence_delay".equals(type)
                     && "pyramid_guardian_delay".equalsIgnoreCase(String.valueOf(copy.getOrDefault("action-id", "")))) {
                 changed = true;
-                lines.add(fileName + ": removed legacy loot-trigger guardian delay");
+                lines.add(fileName + ": removed legacy Pyramid guardian delay");
                 continue;
             }
-            merged.add(copy);
+            if (!officialOrder.contains(type)) {
+                extras.add(copy);
+                continue;
+            }
+            if (byType.put(type, copy) != null) changed = true;
+            switch (type) {
+                case "pyramid_room" -> {
+                    if (copy.get("room-radius") == null || "3".equals(String.valueOf(copy.get("room-radius")))) {
+                        copy.put("room-radius", 4);
+                        changed = true;
+                    }
+                    copy.putIfAbsent("action-id", "pyramid_room_reveal");
+                    copy.putIfAbsent("reveal-delay-ticks", 140);
+                    copy.putIfAbsent("reveal-phase", "pyramid_room_reveal");
+                    copy.putIfAbsent("safety-shell", 2);
+                }
+                case "pyramid_room_reveal" -> {
+                    if (!"pyramid_room_reveal".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_room_reveal");
+                        changed = true;
+                    }
+                }
+                case "pyramid_repel" -> {
+                    if (!"pyramid_entry".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_entry");
+                        changed = true;
+                    }
+                }
+                case "choice_prompt" -> {
+                    if (!"pyramid_quiz".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_quiz");
+                        changed = true;
+                    }
+                }
+                case "pyramid_guardian" -> {
+                    if (!"pyramid_guardian_spawn".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_guardian_spawn");
+                        changed = true;
+                    }
+                }
+                case "pyramid_push_pillars" -> {
+                    if (!"pyramid_room_reveal".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_room_reveal");
+                        changed = true;
+                    }
+                }
+                default -> { }
+            }
         }
-        for (String requiredType : List.of("pyramid_room", "pyramid_room_reveal", "pyramid_repel", "pyramid_guardian", "pyramid_push_pillars")) {
-            if (configuredTypes.contains(requiredType)) continue;
-            Map<?, ?> source = bundled.stream()
-                    .filter(entry -> requiredType.equalsIgnoreCase(String.valueOf(entry.get("type"))))
-                    .findFirst().orElse(null);
-            if (source == null) continue;
-            Map<String, Object> copy = new LinkedHashMap<>();
-            source.forEach((key, value) -> copy.put(String.valueOf(key), value));
-            merged.add(copy);
+        List<Map<String, Object>> canonical = new ArrayList<>();
+        for (String type : officialOrder) {
+            Map<String, Object> value = byType.get(type);
+            if (value == null) {
+                Map<?, ?> source = bundled.stream()
+                        .filter(entry -> type.equalsIgnoreCase(String.valueOf(entry.get("type"))))
+                        .findFirst().orElse(null);
+                if (source == null) continue;
+                value = new LinkedHashMap<>();
+                source.forEach((key, item) -> value.put(String.valueOf(key), item));
+                changed = true;
+                lines.add(fileName + ": added missing canonical Pyramid " + type);
+            }
+            canonical.add(value);
+        }
+        canonical.addAll(extras);
+        if (!canonical.equals(configured)) {
             changed = true;
-            lines.add(fileName + ": added missing Desert Pyramid " + requiredType + " component");
+            lines.add(fileName + ": canonicalized Desert Pyramid component order and phases");
         }
-        if (!changed) return false;
-        target.set(path, merged);
-        return true;
+        if (changed) target.set(path, canonical);
+        return changed;
     }
 
     private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
