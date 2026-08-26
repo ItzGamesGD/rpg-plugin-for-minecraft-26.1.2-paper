@@ -118,11 +118,17 @@ public final class ExplorationRuntimeManager {
             ExplorationRuntime runtime = new ExplorationRuntime(persistent.structureId(), persistent.variantId(), currentTick);
             runtime.addParticipant(trigger.getUniqueId());
             restoreLootState(persistent, runtime);
+            restorePyramidState(persistent, runtime, trigger);
             active.put(persistent.structureId(), runtime);
             lastEndReasons.remove(persistent.structureId());
             plugin.getLogger().info("Exploration activation: structure=" + persistent.structureType()
                     + ", variant=" + persistent.variantId() + ", id=" + persistent.structureId());
             executePhase(persistent, runtime, ExplorationComponentPhase.ACTIVATE, currentTick);
+            if (persistent.structureType().equals("desert_pyramid")
+                    && pyramidModulesComplete(persistent.structureId())) {
+                complete(persistent.structureId(), currentTick);
+                return true;
+            }
             if (runtime.lootTaken()
                     && Boolean.parseBoolean(persistent.activationMetadata().getOrDefault("loot-exit-prompted", "false"))) {
                 executePhase(persistent, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
@@ -213,7 +219,13 @@ public final class ExplorationRuntimeManager {
             player.sendMessage(net.kyori.adventure.text.Component.text("약탈자 전초기지 습격이 시작되었습니다."));
             return ChoiceResult.ACCEPTED;
         } catch (Exception exception) {
-            plugin.getLogger().log(Level.SEVERE, "Exploration choice failed for " + structureId + ", choice=" + choice, exception);
+            plugin.getLogger().log(Level.WARNING, "Exploration choice failed for " + structureId + ", choice=" + choice, exception);
+            if (record.structureType().equals("desert_pyramid")) {
+                runtime.releaseChoiceForRetry();
+                runtime.sequence().clearFlag("pyramid.guardian.spawned");
+                runtime.sequence().clearFlag("pyramid.guardian.started");
+                return ChoiceResult.SPAWN_FAILED;
+            }
             abandon(structureId);
             return ChoiceResult.SPAWN_FAILED;
         }
@@ -615,10 +627,16 @@ public final class ExplorationRuntimeManager {
             }
             if (record.structureType().equals("desert_pyramid")
                     && crossesPyramidEntryBoundary(record, from, to, 4.0D)
-                    && !runtime.raidStarted() && !runtime.choicePending()) {
+                    && !runtime.raidStarted() && !runtime.choicePending()
+                    && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
+                    && !runtime.sequence().flag("pyramid.entry.prompted")) {
                 runtime.addParticipant(player.getUniqueId());
                 runtime.markPyramidEntry(player.getUniqueId(), to.getX() - from.getX(), to.getZ() - from.getZ());
                 try {
+                    StructureRecord latest = repository.get(record.structureId()).orElse(record);
+                    repository.save(latest.withMetadata("pyramid-entry-actor", player.getUniqueId().toString())
+                            .withMetadata("pyramid-entry-dx", Double.toString(to.getX() - from.getX()))
+                            .withMetadata("pyramid-entry-dz", Double.toString(to.getZ() - from.getZ())));
                     executeNamedPhase(record, runtime, "pyramid_entry", currentTick);
                     executeNamedPhase(record, runtime, "pyramid_quiz", currentTick);
                     runtime.sequence().setFlag("pyramid.entry.prompted");
@@ -740,6 +758,19 @@ public final class ExplorationRuntimeManager {
             case "tier3" -> ExplorationComponentPhase.CHOICE_TIER_3;
             default -> throw new IllegalArgumentException("unsupported exploration choice: " + choice);
         };
+    }
+
+    private void restorePyramidState(StructureRecord record, ExplorationRuntime runtime, Player trigger) {
+        if (!"desert_pyramid".equals(record.structureType())) return;
+        UUID actor = parseUuid(record.activationMetadata().get("pyramid-entry-actor"));
+        if (actor != null) runtime.restorePyramidEntryActor(actor);
+        if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))) {
+            runtime.sequence().setFlag("pyramid.guardian.complete");
+        }
+        if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) {
+            runtime.sequence().setFlag("pyramid.underground.complete");
+            runtime.sequence().setFlag("pyramid.puzzle.solved");
+        }
     }
 
     private void restoreLootState(StructureRecord record, ExplorationRuntime runtime) {
