@@ -26,6 +26,8 @@ public final class PendingRewardService {
     private final CoinService coins;
     private final File file;
     private final Map<UUID, List<PendingReward>> pending = new LinkedHashMap<>();
+    /** Idempotent mailbox tokens survive claim/removal; normal random rewards are not recorded here. */
+    private final Map<UUID, Long> completedTokens = new LinkedHashMap<>();
     private Consumer<ItemStack> itemNormalizer = item -> { };
     private boolean dirty;
 
@@ -59,6 +61,7 @@ public final class PendingRewardService {
     /** Durable idempotent mailbox enqueue. The token is persisted as the pending reward id. */
     public synchronized boolean queueItemOnce(UUID uuid, UUID token, ItemStack item, String cause) {
         if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
+        if (completedTokens.containsKey(token)) return true;
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
         if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) {
             // A previous enqueue may have populated memory but failed its file write.
@@ -90,6 +93,9 @@ public final class PendingRewardService {
             itemNormalizer.accept(item);
             Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone());
             if (leftovers.isEmpty()) {
+                // Only deterministic queueItemOnce tokens are eligible for durable tombstones.
+                // A Pyramid token is structure-scoped and must remain idempotent after claim.
+                if (reward.cause().startsWith("exploration:")) completedTokens.put(reward.id(), System.currentTimeMillis());
                 claimed++;
             } else {
                 ItemStack left = leftovers.values().iterator().next();
@@ -113,7 +119,9 @@ public final class PendingRewardService {
     public synchronized boolean save() {
         if (!dirty) return true;
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("schema-version", 1);
+        yaml.set("schema-version", 2);
+        for (Map.Entry<UUID, Long> token : completedTokens.entrySet())
+            yaml.set("completed-tokens." + token.getKey(), token.getValue());
         for (Map.Entry<UUID, List<PendingReward>> entry : pending.entrySet()) {
             int index = 0;
             for (PendingReward reward : entry.getValue()) {
@@ -148,6 +156,10 @@ public final class PendingRewardService {
     private void load() {
         if (!file.isFile()) return;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        ConfigurationSection completed = yaml.getConfigurationSection("completed-tokens");
+        if (completed != null) for (String token : completed.getKeys(false)) {
+            try { completedTokens.put(UUID.fromString(token), completed.getLong(token)); } catch (IllegalArgumentException ignored) { }
+        }
         ConfigurationSection players = yaml.getConfigurationSection("players");
         if (players == null) return;
         for (String rawUuid : players.getKeys(false)) {
