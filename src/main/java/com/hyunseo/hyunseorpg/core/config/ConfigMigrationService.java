@@ -393,8 +393,9 @@ public final class ConfigMigrationService {
                     }
                 }
                 case "pyramid_push_pillars" -> {
-                    if (!"pyramid_room_reveal".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
-                        copy.put("phase", "pyramid_room_reveal");
+                    String canonicalPhase = canonicalPyramidPhase(type);
+                    if (!canonicalPhase.equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", canonicalPhase);
                         changed = true;
                     }
                 }
@@ -2764,6 +2765,11 @@ public final class ConfigMigrationService {
 
     private static String firstNonBlank(String first, String fallback) {
         return first == null || first.isBlank() ? fallback : first;
+    }
+
+    /** Canonical current phase for migrated Desert Pyramid components. */
+    static String canonicalPyramidPhase(String type) {
+        return "pyramid_push_pillars".equals(normalize(type)) ? "pyramid_pillar_restore" : "";
     }
 
     private static String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }
