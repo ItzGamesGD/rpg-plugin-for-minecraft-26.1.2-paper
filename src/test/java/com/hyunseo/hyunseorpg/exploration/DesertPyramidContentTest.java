@@ -45,7 +45,7 @@ class DesertPyramidContentTest {
             assertEquals("custom:stone_armored_zombie", components.get(4).get("mob-id"));
             assertEquals(Boolean.TRUE, components.get(4).get("objective"));
             assertEquals("pyramid_push_pillars", components.get(5).get("type"));
-            assertEquals("pyramid_room_reveal", components.get(5).get("phase"));
+            assertEquals("pyramid_pillar_restore", components.get(5).get("phase"));
             assertEquals(4, ((List<?>) components.get(5).get("pillars")).size());
             assertEquals("reward_drop", components.get(6).get("type"));
             assertEquals("clear", components.get(6).get("phase"));
