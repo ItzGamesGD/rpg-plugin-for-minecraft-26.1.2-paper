@@ -109,6 +109,9 @@ public final class ExplorationRuntimeManager {
         }
         StructureRecord persistent = record;
         try {
+            if ("desert_pyramid".equals(record.structureType())) {
+                persistent = migratePyramidRecord(persistent);
+            }
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 persistent = record.transitionTo(StructureEventState.ACTIVE, Instant.now())
                         .withMetadata("activated-by", trigger.getUniqueId().toString())
@@ -758,6 +761,24 @@ public final class ExplorationRuntimeManager {
             case "tier3" -> ExplorationComponentPhase.CHOICE_TIER_3;
             default -> throw new IllegalArgumentException("unsupported exploration choice: " + choice);
         };
+    }
+
+    private StructureRecord migratePyramidRecord(StructureRecord record) throws IOException {
+        int version;
+        try { version = Integer.parseInt(record.activationMetadata().getOrDefault("pyramid-content-version", "0")); }
+        catch (NumberFormatException ignored) { version = 0; }
+        if (version >= 3) return record;
+        StructureRecord migrated = record.withMetadata("pyramid-content-version", "3");
+        if ("3".equals(record.activationMetadata().get("pyramid-room-radius"))) {
+            for (String key : List.of("pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
+                    "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at")) {
+                migrated = migrated.withMetadata(key, null);
+            }
+            plugin.getLogger().warning("Migrated obsolete Pyramid geometry: structure="
+                    + record.structureId() + ", radius=3 reset to retryable state");
+        }
+        if (!migrated.equals(record)) repository.save(migrated);
+        return migrated;
     }
 
     private void restorePyramidState(StructureRecord record, ExplorationRuntime runtime, Player trigger) {
