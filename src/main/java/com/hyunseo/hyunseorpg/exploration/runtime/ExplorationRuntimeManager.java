@@ -244,9 +244,9 @@ public final class ExplorationRuntimeManager {
                         executeNamedPhase(repository.get(record.structureId()).orElse(updated), runtime,
                                 ExplorationComponentPhase.PYRAMID_LOOT_TRIGGER.name(), currentTick);
                     } catch (Exception exception) {
+                        // World/phase/display failures are retryable Pyramid diagnostics, never gameplay abandonment.
                         plugin.getLogger().log(Level.WARNING,
-                                "Unable to start Desert Pyramid loot sequence: " + record.structureId(), exception);
-                        abandon(record.structureId());
+                                "Desert Pyramid loot sequence deferred (retryable): " + record.structureId(), exception);
                     }
                 }
                 plugin.getLogger().info("Exploration structure loot armed: structure=" + record.structureId()
@@ -574,7 +574,7 @@ public final class ExplorationRuntimeManager {
                 try { executeNamedPhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks)); }
                 catch (Exception exception) {
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
-                    abandon(structureId);
+                    if (!"desert_pyramid".equals(record.structureType())) abandon(structureId);
                 }
             }
         }, Math.max(0L, delayTicks));
