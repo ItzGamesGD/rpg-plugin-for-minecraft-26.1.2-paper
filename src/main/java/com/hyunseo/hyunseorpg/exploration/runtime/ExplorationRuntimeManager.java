@@ -218,16 +218,24 @@ public final class ExplorationRuntimeManager {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE) return false;
         try {
-            executePhase(record, runtime, ExplorationComponentPhase.CLEAR, currentTick);
             StructureRecord rewardCheckpoint = record;
+            if ("desert_pyramid".equals(record.structureType()) && runtime.entryActor() != null
+                    && !record.rewardClaimed()) {
+                rewardCheckpoint = record.withMetadata("pyramid-reward-recipient", runtime.entryActor().toString())
+                        .withMetadata("pyramid-reward-state", "delivering");
+                repository.save(rewardCheckpoint);
+            }
+            executePhase(rewardCheckpoint, runtime, ExplorationComponentPhase.CLEAR, currentTick);
             if ("desert_pyramid".equals(record.structureType())) {
                 for (UUID recipient : java.util.Set.copyOf(runtime.participants())) {
                     if (runtime.sequence().flag("pyramid.reward.delivered." + recipient)) {
-                        rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", recipient.toString());
+                        rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", recipient.toString())
+                                .withMetadata("pyramid-reward-state", "delivered");
                     }
                 }
                 if (runtime.entryActor() != null && runtime.sequence().flag("pyramid.reward.delivered." + runtime.entryActor())) {
-                    rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", runtime.entryActor().toString());
+                    rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", runtime.entryActor().toString())
+                        .withMetadata("pyramid-reward-state", "delivered");
                 }
             }
             StructureRecord completed = rewardCheckpoint.transitionTo(StructureEventState.CLEARED, Instant.now());
