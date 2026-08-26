@@ -25,7 +25,7 @@ public final class PyramidRoomRevealComponent implements ExplorationComponent {
             throw new IllegalArgumentException("pyramid_room_reveal requires desert_pyramid");
         }
         rooms.reveal(context, spec);
-        context.runtime().sequence().setFlag("pyramid.room.ready");
+        context.runtime().sequence().setFlag("pyramid.room.revealed");
         context.runtime().tracker().track(() -> rooms.cleanup(context.runtime().structureId()));
     }
 }
