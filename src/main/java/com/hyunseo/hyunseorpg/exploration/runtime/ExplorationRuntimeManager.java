@@ -63,6 +63,50 @@ public final class ExplorationRuntimeManager {
     }
 
     /** Builds a non-mutating diagnostic view for one persistent structure. */
+    /** Clears one Pyramid's retry/progression metadata without touching other structures. */
+    public synchronized boolean resetPyramid(UUID structureId) {
+        StructureRecord record = repository.get(structureId).orElse(null);
+        if (record == null || !"desert_pyramid".equals(record.structureType()) || record.state().terminal()) return false;
+        ExplorationRuntime runtime = active.remove(structureId);
+        if (runtime != null) safeCleanup(runtime);
+        StructureRecord reset = record;
+        for (String key : List.of("loot-taken", "looter", "loot-taken-at-tick", "pyramid-entry-actor",
+                "pyramid-entry-dx", "pyramid-entry-dz", "pyramid.entry.prompted", "pyramid-guardian-complete",
+                "pyramid-underground-complete", "pyramid-guardian-encounter-state", "pyramid-guardian-started",
+                "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
+                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
+                "pyramid-room-radius", "pyramid-room-height", "pyramid-reveal-retry-attempts",
+                "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
+            reset = reset.withMetadata(key, null);
+        }
+        try {
+            repository.save(reset);
+            lastEndReasons.remove(structureId);
+            return true;
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.WARNING, "Unable to reset Pyramid " + structureId, exception);
+            return false;
+        }
+    }
+
+    public synchronized Optional<Map<String, String>> pyramidDiagnostics(UUID structureId) {
+        StructureRecord record = repository.get(structureId).orElse(null);
+        if (record == null || !"desert_pyramid".equals(record.structureType())) return Optional.empty();
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("structure", record.structureId().toString());
+        result.put("state", record.state().name());
+        result.put("variant", record.variantId());
+        result.put("content-version", record.activationMetadata().getOrDefault("pyramid-content-version", "0"));
+        for (String key : List.of("pyramid-entry-actor", "pyramid-entry-dx", "pyramid-entry-dz",
+                "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-guardian-encounter-state",
+                "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
+                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius",
+                "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
+            result.put(key, record.activationMetadata().getOrDefault(key, "false"));
+        }
+        return Optional.of(Map.copyOf(result));
+    }
+
     public synchronized Optional<ExplorationStatusSnapshot> status(UUID structureId) {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (record == null) return Optional.empty();
