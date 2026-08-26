@@ -39,11 +39,21 @@ public final class RewardDropComponent implements ExplorationComponent {
         int onlineParticipants = 0;
         int successfulDeliveries = 0;
         for (var playerId : recipients) {
+            if ("desert_pyramid".equals(context.record().structureType())
+                    && playerId.toString().equals(context.record().activationMetadata()
+                    .get("pyramid-reward-delivered-to"))) {
+                onlineParticipants++;
+                successfulDeliveries++;
+                continue;
+            }
             var player = Bukkit.getPlayer(playerId);
             if (player == null || !player.isOnline()) continue;
             onlineParticipants++;
             if (context.ports().rewards().grant(player, rewardId, amount, fallback, spec.options())) {
                 successfulDeliveries++;
+                if ("desert_pyramid".equals(context.record().structureType())) {
+                    context.runtime().sequence().setFlag("pyramid.reward.delivered." + playerId);
+                }
             }
         }
 
