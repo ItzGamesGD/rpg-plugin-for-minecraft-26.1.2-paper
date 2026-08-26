@@ -7,6 +7,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridDirection;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidCompletionRetryPolicy;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
@@ -109,12 +110,14 @@ public final class PyramidPushPillarService {
             }
             // Persist the solved intent before the final completion write so restart recovery
             // never mistakes a solved board for an unsolved puzzle.
-            if (!"completion_pending".equals(record.activationMetadata().get("pyramid-underground-completion-state"))) {
-                record = record.withMetadata("pyramid-underground-completion-state", "completion_pending");
+            if (PyramidUndergroundCompletionState.parse(record.activationMetadata().get("pyramid-underground-completion-state"))
+                    != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
+                record = record.withMetadata("pyramid-underground-completion-state",
+                        PyramidUndergroundCompletionState.COMPLETION_PENDING.value());
                 repository.save(record);
             }
             repository.save(record.withMetadata("pyramid-underground-complete", "true")
-                    .withMetadata("pyramid-underground-completion-state", "complete")
+                    .withMetadata("pyramid-underground-completion-state", PyramidUndergroundCompletionState.COMPLETE.value())
                     .withMetadata("pyramid-content-version",
                             Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
             completionRetryAttempts.remove(structureId);
