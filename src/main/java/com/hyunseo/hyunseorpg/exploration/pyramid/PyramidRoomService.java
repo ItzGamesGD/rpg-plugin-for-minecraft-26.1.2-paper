@@ -153,16 +153,16 @@ public final class PyramidRoomService {
                     int y = pending.startY - index;
                     int endY = pending.candidate.origin().y() + pending.height;
                     if (y >= endY) {
-                        if (index == 0) nudgePlayersFromOpening(pending.world(), pending.candidate.origin(), y);
-                        carveShaftLayer(pending.world(), pending.candidate.origin(), y);
+                        if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
+                        carveShaftLayer(pending.world, pending.candidate.origin(), y);
                         pending.context.world().ifPresent(world -> world.playSound(
                                 new Location(world, pending.candidate.origin().x() + 0.5D, y,
                                         pending.candidate.origin().z() + 0.5D),
-                                org.bukkit.Sound.BLOCK_SANDSTONE_BREAK, 0.65F, 0.7F));
+                                org.bukkit.Sound.BLOCK_SAND_BREAK, 0.65F, 0.7F));
                         scheduleRevealLayer(pending, index + 1);
                         return;
                     }
-                    carveRoom(pending.world(), pending.candidate.origin(), pending.radius, pending.height);
+                    carveRoom(pending.world, pending.candidate.origin(), pending.radius, pending.height);
                     StructureRecord record = withMetadata(pending.context, Map.of(
                             "pyramid-room-created", "true",
                             "pyramid-room-prepared", "true",
