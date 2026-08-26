@@ -166,6 +166,7 @@ public final class PyramidRoomService {
                             pending.snapshots, false, false));
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
                     pending.context.runtime().sequence().setFlag("pyramid.room.created");
+                    pending.context.runtime().sequence().setFlag("pyramid.room.revealed");
                     pendingReveals.remove(structureId);
                     plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
                 } catch (Exception exception) {
