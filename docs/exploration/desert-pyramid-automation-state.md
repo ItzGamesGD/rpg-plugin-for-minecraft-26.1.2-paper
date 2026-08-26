@@ -1,12 +1,12 @@
 # Desert Pyramid Automation State
 
-PHASE: AWAITING_REVIEW
-CURRENT_HEAD: 9601f93199c4baad14f7a60c3523bfd318329d4b
+PHASE: NEEDS_FIX
+CURRENT_HEAD: 5aa6c6904a39d6414a212361b077fe284bd96fa1
 CANDIDATE_HEAD: 9601f93199c4baad14f7a60c3523bfd318329d4b
-LAST_REVIEWED_HEAD: none
+LAST_REVIEWED_HEAD: 9601f93199c4baad14f7a60c3523bfd318329d4b
 LAST_SAFE_HEAD: 3851be385434d314dd7fc54370c342e463316c40
 REPOSITORY_GATE: FAIL
-CI_STATE: PENDING
+CI_STATE: NO_CURRENT_HEAD_RUN
 VERIFIED_SAFE_REGRESSIONS: 0
 HARD_BLOCK: false
 SAFETY_STOP: false
@@ -19,26 +19,19 @@ VERIFIED_SAFE_INVARIANTS:
 - guardian completion does not synthesize underground completion
 - incomplete pillar display spawn cleans partial displays
 
-ADDRESSED_IN_CANDIDATE:
-- Defect 1: contradictory `pyramid-underground-complete=true` plus stale/missing non-COMPLETE state no longer gets hidden by the in-memory reconciliation helper. `PyramidUndergroundCompletionState.reconcile` now returns COMPLETION_PENDING for that contradiction, so the existing repository reconciliation branch performs the durable normalization write.
-
-FILES_CHANGED:
-- src/main/java/com/hyunseo/hyunseorpg/exploration/pyramid/PyramidUndergroundCompletionState.java
-- src/test/java/com/hyunseo/hyunseorpg/exploration/pyramid/PyramidUndergroundCompletionStateTest.java
-
-TESTS_CHANGED:
-- pending state remains detectable after restart when complete flag is true
-- already-normalized COMPLETE remains idempotent
-- true complete flag plus missing/unknown state becomes repair-pending
-- unknown state without complete evidence still fails closed to UNSOLVED
+REVIEW_RESULT:
+- Candidate 9601f93199c4baad14f7a60c3523bfd318329d4b correctly fixes Defect 1 without modifying any previously verified-safe implementation path. `PyramidUndergroundCompletionState.reconcile(true, non-COMPLETE)` now returns COMPLETION_PENDING, so `ExplorationRuntimeManager.reconcilePendingPyramidUndergroundCompletion` enters its existing `completeFlag && !complete` normalization branch and durably writes `pyramid-underground-completion-state=complete` plus the current content version.
+- The changed production surface is limited to the completion-state enum; the companion tests cover contradictory pending/missing/unknown states and already-normalized COMPLETE idempotency.
+- No verified-safe regression incident is counted for this candidate.
+- There is no GitHub Actions workflow run for candidate 9601f93199c4baad14f7a60c3523bfd318329d4b, so CI cannot be marked PASS.
 
 KNOWN_DEFECTS:
-1. Puzzle solved but first completion_pending save failure followed by restart can lose durable solved evidence.
-2. Committed room + pillar start failure can re-enter pyramid_room_reveal instead of bounded pillar-only retry.
-3. PendingRewardService claim can physically deliver before tombstone/pending removal is durably saved, allowing save-failure + crash duplication.
-4. Behavioral tests remain incomplete/too reflective or trivial in several required paths.
-5. CI for candidate HEAD has not yet produced a workflow run; latest prior known run failed.
-6. Status documentation is stale.
-7. Bounded Outpost regression proof is incomplete.
+1. P0 - Restart evidence gap remains: the physical pillar board can become solved before the first durable `pyramid-underground-completion-state=completion_pending` save succeeds. If that first save fails and the server stops before an in-memory retry succeeds, restart has no durable solved evidence and may reconstruct the puzzle as unsolved.
+2. P0 - Committed-room recovery remains unsafe: after the room is committed, a pillar-start failure can leave `pyramid.puzzle.started=false`; heartbeat still re-enters the `pyramid_room_reveal` phase rather than a bounded pillar-only restoration path. A committed carved room must never be subjected to buried/pre-reveal validation again.
+3. P0 - Reward lifetime exactly-once gap remains: `PendingRewardService.claim` can physically add an item to inventory before the completed-token tombstone and pending-removal state are durably saved. Save failure followed by crash/restart can replay the same pending reward.
+4. P1 - Behavioral proof remains incomplete: several required contracts still rely on reflection, enum-only transitions, or trivial arithmetic/list tests instead of repository/runtime-state failure-and-restart behavior. Required coverage still includes persistence failure/restart boundaries, committed-room pillar-only recovery, reward tombstone failure, guardian-first/underground-first stateful flow, and exact 4/4 pillar partial-failure behavior.
+5. P1 - CI remains unproven for the accepted candidate: GitHub Actions reports no run for 9601f93199c4baad14f7a60c3523bfd318329d4b. A successful relevant current-candidate/current-head run is required before completion.
+6. P1 - Status documentation remains stale relative to the automation candidate/current branch history and cannot serve as the final completion certificate yet.
+7. P1 - Bounded Outpost regression proof remains incomplete for loot-exit grace preservation, 24-40 radius behavior, next-wave scheduling, and delayed target chase.
 
-NEXT_REQUIRED_ACTION: independent reviewer must audit candidate 9601f93199c4baad14f7a60c3523bfd318329d4b, verify the runtime normalization branch now persists the contradiction correctly, and inspect current-HEAD CI before returning NEEDS_FIX or another terminal/review state.
+NEXT_REQUIRED_ACTION: modifier should address P0 Defect 2 first: make committed-room recovery pillar-only and bounded, with a behavioral test proving that a committed room never re-enters room reveal after pillar-start failure. After one coherent repair, commit and return PHASE=AWAITING_REVIEW for independent review. Do not combine the reward transaction rewrite into the same repair.
