@@ -14,6 +14,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -29,6 +30,7 @@ public final class PyramidRoomService {
     private final JavaPlugin plugin;
     private final StructureRepository repository;
     private final Map<UUID, RoomSession> sessions = new LinkedHashMap<>();
+    private final Map<UUID, PendingReveal> pendingReveals = new LinkedHashMap<>();
 
     public PyramidRoomService(JavaPlugin plugin, StructureRepository repository) {
         this.plugin = plugin;
@@ -98,12 +100,14 @@ public final class PyramidRoomService {
         return candidate;
     }
 
-    /** Performs the previously preflighted block mutation at the reveal phase. */
+    /** Performs the previously preflighted block mutation as a bounded staged reveal. */
     public synchronized PyramidRoomCandidate reveal(ExplorationEventContext context,
                                                      ExplorationComponentSpec spec) throws IOException {
         UUID structureId = context.runtime().structureId();
         RoomSession existing = sessions.get(structureId);
         if (existing != null && existing.persisted) return existing.candidate();
+        PendingReveal already = pendingReveals.get(structureId);
+        if (already != null) return already.candidate;
         if (existing == null) {
             prepare(context, spec);
             existing = sessions.get(structureId);
@@ -111,7 +115,6 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
-        // Final T+140 validation: the world may have changed since preparation.
         if (!shaftSafe(world, origin, context.record().bounds())
                 || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
@@ -120,29 +123,83 @@ public final class PyramidRoomService {
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
                 context.record().bounds());
+        PendingReveal pending = new PendingReveal(context, spec, existing.candidate, existing.radius,
+                existing.height, existing.shell, snapshots, context.record().bounds().minY() - 1);
+        pendingReveals.put(structureId, pending);
+        context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
+        scheduleRevealLayer(pending, 0);
+        plugin.getLogger().info("Desert Pyramid staged reveal armed: structure=" + structureId
+                + ", layers=3x3, interval=" + Math.max(2, spec.integer("reveal-layer-interval-ticks", 3)) + " ticks");
+        return pending.candidate;
+    }
 
-        try {
-            carve(world, origin, existing.radius, existing.height, context.record().bounds());
-            Map<String, String> metadata = new LinkedHashMap<>();
-            metadata.put("pyramid-room-created", "true");
-            metadata.put("pyramid-room-prepared", "true");
-            metadata.put("pyramid-room-origin", encode(origin));
-            metadata.put("pyramid-room-radius", Integer.toString(existing.radius));
-            metadata.put("pyramid-room-height", Integer.toString(existing.height));
-            metadata.put("pyramid-room-created-at", Instant.now().toString());
-            repository.save(withMetadata(context, metadata));
-        } catch (Exception exception) {
-            restore(world, snapshots);
-            if (exception instanceof IOException io) throw io;
-            throw new IllegalStateException("unable to create Desert Pyramid room", exception);
+    private void scheduleRevealLayer(PendingReveal pending, int index) {
+        long interval = Math.max(2L, pending.spec.integer("reveal-layer-interval-ticks", 3));
+        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            synchronized (PyramidRoomService.this) {
+                UUID structureId = pending.context.runtime().structureId();
+                if (!pendingReveals.containsKey(structureId) || pending.context.runtime().tracker().isClosed()) return;
+                try {
+                    int y = pending.startY - index;
+                    int endY = pending.candidate.origin().y() + pending.height;
+                    if (y >= endY) {
+                        carveShaftLayer(pending.world(), pending.candidate.origin(), y);
+                        pending.context.world().ifPresent(world -> world.playSound(
+                                new Location(world, pending.candidate.origin().x() + 0.5D, y,
+                                        pending.candidate.origin().z() + 0.5D),
+                                org.bukkit.Sound.BLOCK_SANDSTONE_BREAK, 0.65F, 0.7F));
+                        scheduleRevealLayer(pending, index + 1);
+                        return;
+                    }
+                    carveRoom(pending.world(), pending.candidate.origin(), pending.radius, pending.height);
+                    StructureRecord record = withMetadata(pending.context, Map.of(
+                            "pyramid-room-created", "true",
+                            "pyramid-room-prepared", "true",
+                            "pyramid-room-origin", encode(pending.candidate.origin()),
+                            "pyramid-room-radius", Integer.toString(pending.radius),
+                            "pyramid-room-height", Integer.toString(pending.height),
+                            "pyramid-room-created-at", Instant.now().toString()));
+                    repository.save(record);
+                    sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
+                            pending.candidate, pending.radius, pending.height, pending.shell,
+                            pending.snapshots, false, false));
+                    pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+                    pending.context.runtime().sequence().setFlag("pyramid.room.created");
+                    pendingReveals.remove(structureId);
+                    plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
+                } catch (Exception exception) {
+                    restore(pending.world, pending.snapshots);
+                    pendingReveals.remove(structureId);
+                    pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+                    plugin.getLogger().log(java.util.logging.Level.WARNING,
+                            "Desert Pyramid staged reveal rolled back (retryable): " + structureId, exception);
+                }
+            }
+        }, index == 0 ? 0L : interval);
+        pending.context.runtime().tracker().track(task::cancel);
+    }
+
+    private void carveShaftLayer(World world, PyramidBlockPosition origin, int y) {
+        for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
+            for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+                world.getBlockAt(x, y, z).setType(Material.AIR, false);
+            }
         }
-        RoomSession session = new RoomSession(context.runtime(), world, existing.candidate, existing.radius,
-                existing.height, existing.shell, snapshots, false, false);
-        sessions.put(structureId, session);
-        context.runtime().sequence().setFlag("pyramid.room.created");
-        plugin.getLogger().info("Desert Pyramid underground room revealed: structure=" + structureId
-                + ", origin=" + encode(origin) + ", radius=" + existing.radius + ", height=" + existing.height);
-        return existing.candidate;
+    }
+
+    private void carveRoom(World world, PyramidBlockPosition origin, int radius, int height) {
+        Material wall = Material.SANDSTONE;
+        Material trim = Material.CHISELED_SANDSTONE;
+        for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
+            for (int z = origin.z() - radius; z <= origin.z() + radius; z++) {
+                boolean edge = Math.abs(x - origin.x()) == radius || Math.abs(z - origin.z()) == radius;
+                for (int y = origin.y(); y < origin.y() + height; y++) {
+                    world.getBlockAt(x, y, z).setType(edge ? wall : Material.AIR, false);
+                }
+                world.getBlockAt(x, origin.y() - 1, z).setType(wall, false);
+                world.getBlockAt(x, origin.y() + height, z).setType(trim, false);
+            }
+        }
     }
 
     /** Backward-compatible immediate creation entry point for existing callers. */
@@ -346,6 +403,32 @@ public final class PyramidRoomService {
     }
 
     private record BlockSnapshot(int x, int y, int z, org.bukkit.block.data.BlockData data) { }
+
+    private static final class PendingReveal {
+        private final ExplorationEventContext context;
+        private final ExplorationComponentSpec spec;
+        private final PyramidRoomCandidate candidate;
+        private final int radius;
+        private final int height;
+        private final int shell;
+        private final List<BlockSnapshot> snapshots;
+        private final int startY;
+        private final World world;
+
+        private PendingReveal(ExplorationEventContext context, ExplorationComponentSpec spec,
+                              PyramidRoomCandidate candidate, int radius, int height, int shell,
+                              List<BlockSnapshot> snapshots, int startY) {
+            this.context = context;
+            this.spec = spec;
+            this.candidate = candidate;
+            this.radius = radius;
+            this.height = height;
+            this.shell = shell;
+            this.snapshots = snapshots;
+            this.startY = startY;
+            this.world = context.world().orElseThrow();
+        }
+    }
 
     private static final class RoomSession {
         private final com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime;
