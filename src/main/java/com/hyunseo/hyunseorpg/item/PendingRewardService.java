@@ -68,12 +68,15 @@ public final class PendingRewardService {
     /** Durable idempotent mailbox enqueue. The token is persisted as the pending reward id. */
     public synchronized boolean queueItemOnce(UUID uuid, UUID token, ItemStack item, String cause) {
         if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
-        if (completedTokens.containsKey(token)) return true;
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
-        if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) {
+        boolean pendingToken = existing.stream().anyMatch(reward -> token.equals(reward.id()));
+        DeterministicRewardClaimPolicy.State state = DeterministicRewardClaimPolicy.fromDurableEvidence(
+                pendingToken, claimInProgressTokens.containsKey(token), completedTokens.containsKey(token));
+        if (DeterministicRewardClaimPolicy.suppressesQueue(state)) {
             // A previous enqueue may have populated memory but failed its file write.
-            // Retry that durable flush instead of treating the uncertain item as committed.
-            return !dirty || save();
+            // Only a pending list can require that same durable flush; journalled and
+            // completed tokens are intentionally never re-enqueued.
+            return state != DeterministicRewardClaimPolicy.State.PENDING || !dirty || save();
         }
         return add(uuid, PendingReward.item(token, uuid, item, cause));
     }
@@ -101,6 +104,12 @@ public final class PendingRewardService {
             if (deterministic(reward)) {
                 // Journal before the inventory side effect. If the final tombstone save fails,
                 // restart scans the tagged item and converges without issuing another copy.
+                DeterministicRewardClaimPolicy.State claimState = DeterministicRewardClaimPolicy.beginClaim(
+                        DeterministicRewardClaimPolicy.fromDurableEvidence(true, false, false));
+                if (claimState != DeterministicRewardClaimPolicy.State.CLAIM_JOURNALED) {
+                    remaining.add(reward);
+                    continue;
+                }
                 claimInProgressTokens.put(reward.id(), uuid);
                 dirty = true;
                 if (!save()) {
@@ -211,7 +220,9 @@ public final class PendingRewardService {
         for (var entry : new ArrayList<>(claimInProgressTokens.entrySet())) {
             if (!owner.equals(entry.getValue())) continue;
             UUID token = entry.getKey();
-            if (inventoryHasToken(player, token)) {
+            DeterministicRewardClaimPolicy.State recovered =
+                    DeterministicRewardClaimPolicy.recoverInterruptedClaim(inventoryHasToken(player, token));
+            if (recovered == DeterministicRewardClaimPolicy.State.COMPLETED) {
                 completedTokens.put(token, System.currentTimeMillis());
                 rewards.removeIf(reward -> token.equals(reward.id()));
             }
