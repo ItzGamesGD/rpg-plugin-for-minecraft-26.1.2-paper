@@ -26,8 +26,7 @@ public final class InventoryDeliveryService {
     public boolean queueItemOnce(Player player, java.util.UUID token, ItemStack item, String cause) {
         if (player == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0
                 || pendingRewards == null) return false;
-        pendingRewards.queueItemOnce(player.getUniqueId(), token, item, cause);
-        return true;
+        return pendingRewards.queueItemOnce(player.getUniqueId(), token, item, cause);
     }
 
     public void setItemNormalizer(Consumer<ItemStack> itemNormalizer) {
