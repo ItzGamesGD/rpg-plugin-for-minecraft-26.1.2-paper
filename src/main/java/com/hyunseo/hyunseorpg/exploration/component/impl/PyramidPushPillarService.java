@@ -27,6 +27,8 @@ public final class PyramidPushPillarService {
     private final ExplorationPorts ports;
     private final StructureRepository repository;
     private final Map<UUID, Session> sessions = new LinkedHashMap<>();
+    private final Map<UUID, Integer> completionRetryAttempts = new LinkedHashMap<>();
+    private final Map<UUID, org.bukkit.scheduler.BukkitTask> completionRetryTasks = new LinkedHashMap<>();
 
     public PyramidPushPillarService(JavaPlugin plugin, ExplorationPorts ports) {
         this(plugin, ports, null);
@@ -93,8 +95,50 @@ public final class PyramidPushPillarService {
         session.displays.clear();
     }
 
+    private synchronized void persistUndergroundCompletion(UUID structureId,
+                                                               com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime) {
+        if (repository == null) return;
+        try {
+            var record = repository.get(structureId).orElse(null);
+            if (record == null || Boolean.parseBoolean(record.activationMetadata()
+                    .getOrDefault("pyramid-underground-complete", "false"))) {
+                completionRetryAttempts.remove(structureId);
+                runtime.sequence().clearFlag("pyramid.underground.persistence.retry");
+                return;
+            }
+            repository.save(record.withMetadata("pyramid-underground-complete", "true")
+                    .withMetadata("pyramid-content-version",
+                            Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
+            completionRetryAttempts.remove(structureId);
+            org.bukkit.scheduler.BukkitTask task = completionRetryTasks.remove(structureId);
+            if (task != null) task.cancel();
+            runtime.sequence().clearFlag("pyramid.underground.persistence.retry");
+        } catch (java.io.IOException | RuntimeException failure) {
+            runtime.sequence().setFlag("pyramid.underground.persistence.retry");
+            int attempt = completionRetryAttempts.getOrDefault(structureId, 0) + 1;
+            completionRetryAttempts.put(structureId, attempt);
+            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                    "Pyramid underground completion persistence retryable: structure=" + structureId
+                            + ", attempt=" + attempt, failure);
+            if (attempt <= 5 && !completionRetryTasks.containsKey(structureId)) {
+                org.bukkit.scheduler.BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin,
+                        () -> {
+                            synchronized (PyramidPushPillarService.this) {
+                                completionRetryTasks.remove(structureId);
+                                persistUndergroundCompletion(structureId, runtime);
+                            }
+                        }, 40L * attempt);
+                completionRetryTasks.put(structureId, task);
+                runtime.tracker().track(task::cancel);
+            }
+        }
+    }
+
     public synchronized void stop(UUID structureId) {
         Session session = sessions.remove(structureId);
+        org.bukkit.scheduler.BukkitTask retry = completionRetryTasks.remove(structureId);
+        if (retry != null) retry.cancel();
+        completionRetryAttempts.remove(structureId);
         if (session == null) return;
         for (UUID display : session.displays.values()) ports.displays().remove(display);
     }
@@ -173,23 +217,7 @@ public final class PyramidPushPillarService {
                 if (result.allSolved()) {
                     runtime.sequence().clearFlag("pyramid.puzzle.active");
                     runtime.sequence().setFlag("pyramid.puzzle.solved");
-                    if (repository != null) {
-                        try {
-                            repository.get(structureId).ifPresent(record -> {
-                                try {
-                                    repository.save(record.withMetadata("pyramid-underground-complete", "true")
-                                            .withMetadata("pyramid-content-version", Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
-                                } catch (java.io.IOException exception) {
-                                    plugin.getLogger().warning("Pyramid underground completion persistence deferred: structure="
-                                            + structureId + ", reason=" + exception.getMessage());
-                                }
-                            });
-                        } catch (RuntimeException exception) {
-                            runtime.sequence().setFlag("pyramid.underground.persistence.retry");
-                            plugin.getLogger().log(java.util.logging.Level.WARNING,
-                                    "Pyramid underground completion persistence retryable: " + structureId, exception);
-                        }
-                    }
+                    persistUndergroundCompletion(structureId, runtime);
                     player.sendMessage(net.kyori.adventure.text.Component.text("피라미드의 봉인 장치가 해제되었습니다."));
                 }
                 return true;
