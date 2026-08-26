@@ -182,6 +182,13 @@ public final class ExplorationRuntime {
         looter = playerId;
         lootTakenAtTick = Math.max(0L, tick);
     }
+    /** Rolls back an uncommitted loot trigger so a persistence failure remains retryable. */
+    public synchronized void clearLootTaken() {
+        looter = null;
+        lootTakenAtTick = -1L;
+        raidOrigin = null;
+    }
+
     public synchronized boolean lootTaken() { return looter != null; }
     public synchronized UUID looter() { return looter; }
     public synchronized long lootTakenAtTick() { return lootTakenAtTick; }
