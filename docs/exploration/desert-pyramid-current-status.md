@@ -2,7 +2,7 @@
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
 - Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Current audited HEAD: `7701e0553750469c91f3901e810816a958a54fc6`
+- Current audited HEAD: `b85b31dde571ec103fba8cc369246792ed42d583` (update after final commit)
 - Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
 
 ## Canonical flows
@@ -30,7 +30,7 @@ Bukkit primitive ports are composed with HyunseoRPG mob, reward, and cleanup ada
 `pyramid-room-origin/radius/height`, `pyramid-guardian-complete`,
 and `pyramid-underground-complete`.
 
-Completed module metadata is authoritative after restart. Legacy radius-3 geometry is reset to retryable metadata while completion flags are preserved.
+Completed module metadata is authoritative after restart. Legacy radius-3 geometry is reset to retryable metadata while completion flags are preserved. Persisted room-created metadata is checked against bounded shell/floor/roof signatures before reuse; stale records are downgraded. Entry padding is a structure-level policy (default 4.0). Treasure anchors are restricted to canonical normal-chest slots and drive direct shaft planning.
 
 ## Legacy boundary
 
@@ -44,4 +44,4 @@ Historical checkpoint documents are not current implementation evidence.
 
 The bundled Pyramid test was updated for the seven-component canonical configuration.
 Sequence reservation/release and production primitive-port composition tests were added.
-Gradle execution and Paper/client verification remain required before release.
+Room reveal now escalates telegraph effects at T+0/40/80/110/130 and opens 3x3 shaft layers top-to-bottom every bounded interval with rollback snapshots. Guardian/pillar technical failures stay retryable; delayed reveal failures re-arm up to five attempts. `/rpg exploration inspect <uuid>` exposes Pyramid metadata and `/rpg exploration reset <uuid>` clears only that Pyramid. Gradle execution was not available in this workspace (authenticated checkout/tooling unavailable); Paper/client verification remains a live-only requirement.
