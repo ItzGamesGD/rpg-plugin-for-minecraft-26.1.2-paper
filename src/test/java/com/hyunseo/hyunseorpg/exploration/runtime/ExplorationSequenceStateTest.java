@@ -21,6 +21,19 @@ class ExplorationSequenceStateTest {
         assertFalse(state.beginAction("spawn-wave"));
     }
 
+
+    @Test
+    void reservedActionCanBeReleasedButCompletedActionCannotRepeat() {
+        ExplorationSequenceState state = new ExplorationSequenceState();
+        assertTrue(state.beginAction("reveal"));
+        assertFalse(state.beginAction("reveal"));
+        assertTrue(state.releaseAction("reveal"));
+        assertTrue(state.beginAction("reveal"));
+        assertTrue(state.completeAction("reveal"));
+        assertFalse(state.beginAction("reveal"));
+        assertFalse(state.releaseAction("reveal"));
+    }
+
     @Test
     void flagsAndCountersAreRuntimeLocalAndDeterministic() {
         ExplorationSequenceState state = new ExplorationSequenceState();
