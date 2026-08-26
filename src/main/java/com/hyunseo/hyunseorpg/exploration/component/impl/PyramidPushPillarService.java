@@ -9,6 +9,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
+import com.hyunseo.hyunseorpg.exploration.persistence.StructureRepository;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
@@ -23,11 +24,17 @@ import java.util.UUID;
 public final class PyramidPushPillarService {
     private final JavaPlugin plugin;
     private final ExplorationPorts ports;
+    private final StructureRepository repository;
     private final Map<UUID, Session> sessions = new LinkedHashMap<>();
 
     public PyramidPushPillarService(JavaPlugin plugin, ExplorationPorts ports) {
+        this(plugin, ports, null);
+    }
+
+    public PyramidPushPillarService(JavaPlugin plugin, ExplorationPorts ports, StructureRepository repository) {
         this.plugin = plugin;
         this.ports = ports;
+        this.repository = repository;
     }
 
     public synchronized void start(ExplorationEventContext context, ExplorationComponentSpec spec,
@@ -165,6 +172,19 @@ public final class PyramidPushPillarService {
                 if (result.allSolved()) {
                     runtime.sequence().clearFlag("pyramid.puzzle.active");
                     runtime.sequence().setFlag("pyramid.puzzle.solved");
+                    if (repository != null) {
+                        try {
+                            repository.get(structureId).ifPresent(record -> {
+                                try {
+                                    repository.save(record.withMetadata("pyramid-underground-complete", "true")
+                                            .withMetadata("pyramid-content-version", "3"));
+                                } catch (java.io.IOException exception) {
+                                    plugin.getLogger().warning("Pyramid underground completion persistence deferred: structure="
+                                            + structureId + ", reason=" + exception.getMessage());
+                                }
+                            });
+                        } catch (RuntimeException ignored) { }
+                    }
                     player.sendMessage(net.kyori.adventure.text.Component.text("피라미드의 봉인 장치가 해제되었습니다."));
                 }
                 return true;
