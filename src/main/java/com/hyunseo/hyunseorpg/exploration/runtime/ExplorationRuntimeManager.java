@@ -679,10 +679,13 @@ public final class ExplorationRuntimeManager {
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
         if (record == null || from == null || to == null) return false;
         double p = Math.max(0.0D, padding);
-        boolean wasInside = from.getX() >= record.bounds().minX() - p && from.getX() <= record.bounds().maxX() + p
-                && from.getZ() >= record.bounds().minZ() - p && from.getZ() <= record.bounds().maxZ() + p;
-        boolean nowInside = to.getX() >= record.bounds().minX() - p && to.getX() <= record.bounds().maxX() + p
-                && to.getZ() >= record.bounds().minZ() - p && to.getZ() <= record.bounds().maxZ() + p;
+        // The padded perimeter itself is a neutral threshold. Only an actual
+        // outside-to-interior step starts the entry sequence, preventing a player
+        // standing exactly on a border from retriggering it through jitter.
+        boolean wasInside = from.getX() > record.bounds().minX() - p && from.getX() < record.bounds().maxX() + p
+                && from.getZ() > record.bounds().minZ() - p && from.getZ() < record.bounds().maxZ() + p;
+        boolean nowInside = to.getX() > record.bounds().minX() - p && to.getX() < record.bounds().maxX() + p
+                && to.getZ() > record.bounds().minZ() - p && to.getZ() < record.bounds().maxZ() + p;
         return !wasInside && nowInside;
     }
 
