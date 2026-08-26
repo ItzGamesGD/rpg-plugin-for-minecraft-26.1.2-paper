@@ -108,6 +108,7 @@ public final class ExplorationSequenceState {
         if (pendingWait == null || !pendingWait.actionId().equals(normalize(actionId))) return null;
         PendingWait completed = pendingWait;
         pendingWait = null;
+        completeAction(completed.actionId());
         return completed;
     }
 
