@@ -590,6 +590,17 @@ public final class ExplorationRuntimeManager {
                 confirmed = true;
                 plugin.getLogger().info("Exploration objective death event accepted: structure="
                         + runtime.structureId() + ", entity=" + entityId);
+                if (runtime.objectivesCleared()) {
+                    StructureRecord record = repository.get(runtime.structureId()).orElse(null);
+                    if (record != null && "desert_pyramid".equals(record.structureType())) {
+                        try {
+                            markPyramidModuleComplete(record, runtime, "pyramid-guardian-complete");
+                        } catch (IOException exception) {
+                            plugin.getLogger().log(Level.WARNING,
+                                    "Pyramid guardian completion persistence deferred: " + runtime.structureId(), exception);
+                        }
+                    }
+                }
             }
         }
         return confirmed;
