@@ -51,17 +51,32 @@ public final class PyramidRoomService {
         int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 3)), 2, 5);
         int height = clamp(persistedInt(context, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
-        PyramidRoomCandidate candidate = readPersistedCandidate(context, world).orElseGet(() ->
-                Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell))
-                        .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
-
-        if (context.record().activationMetadata().containsKey("pyramid-room-created")) {
+        boolean createdMetadata = Boolean.parseBoolean(context.record().activationMetadata()
+                .getOrDefault("pyramid-room-created", "false"));
+        Optional<PyramidRoomCandidate> persisted = readPersistedCandidate(context, world);
+        if (createdMetadata && persisted.isPresent()
+                && physicalRoomValid(world, persisted.get().origin(), radius, height)) {
+            PyramidRoomCandidate candidate = persisted.get();
             RoomSession restored = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
                     List.of(), true, false);
             sessions.put(structureId, restored);
             context.runtime().sequence().setFlag("pyramid.room.created");
             return candidate;
         }
+        if (createdMetadata) {
+            // Metadata without a bounded physical signature is stale (including
+            // the old radius-4 ghost-room records). Downgrade, preserve module
+            // completion, and let normal preparation rebuild deterministically.
+            StructureRecord downgraded = context.record().withMetadata("pyramid-room-created", null)
+                    .withMetadata("pyramid-room-created-at", null);
+            repository.save(downgraded);
+            context.runtime().sequence().clearFlag("pyramid.room.created");
+            plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
+        }
+        PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
+                buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
+                Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell))
+                        .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
             throw new IllegalStateException("no safe Desert Pyramid access shaft");
@@ -262,6 +277,23 @@ public final class PyramidRoomService {
         for (BlockSnapshot snapshot : snapshots) {
             world.getBlockAt(snapshot.x(), snapshot.y(), snapshot.z()).setBlockData(snapshot.data(), false);
         }
+    }
+
+    /** Bounded signature check used before trusting persisted room-created metadata. */
+    private boolean physicalRoomValid(World world, PyramidBlockPosition origin, int radius, int height) {
+        if (origin == null || !world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
+        Material[] wallTypes = {Material.SANDSTONE, Material.CHISELED_SANDSTONE};
+        java.util.function.Predicate<Material> wall = type -> java.util.Arrays.stream(wallTypes).anyMatch(type::equals);
+        for (int y : new int[] {origin.y(), origin.y() + height}) {
+            for (int x : new int[] {origin.x() - radius, origin.x() + radius}) {
+                for (int z : new int[] {origin.z() - radius, origin.z() + radius}) {
+                    if (!wall.test(world.getBlockAt(x, y, z).getType())) return false;
+                }
+            }
+        }
+        Block floor = world.getBlockAt(origin.x(), origin.y() - 1, origin.z());
+        Block interior = world.getBlockAt(origin.x(), origin.y() + 1, origin.z());
+        return floor.getType().isSolid() && !floor.isLiquid() && interior.getType().isAir();
     }
 
     private boolean protectedBlock(BlockState state) {
