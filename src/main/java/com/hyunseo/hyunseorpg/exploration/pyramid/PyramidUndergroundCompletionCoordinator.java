@@ -31,10 +31,10 @@ public final class PyramidUndergroundCompletionCoordinator {
         PyramidUndergroundCompletionState state = PyramidUndergroundCompletionState.reconcile(complete,
                 record.activationMetadata().get("pyramid-underground-completion-state"));
         if (complete && state == PyramidUndergroundCompletionState.COMPLETE) return record;
-        if (!complete && state != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
-            if (!persistSolvedIntent(repository, structureId)) return null;
-            record = repository.get(structureId).orElse(record);
-        }
+        // Completion is legal only after the same durable pending intent written before
+        // the irreversible final pillar move (or while normalizing a legacy true flag).
+        // This intentionally refuses arbitrary callers from completing an unsolved module.
+        if (!complete && state != PyramidUndergroundCompletionState.COMPLETION_PENDING) return record;
         StructureRecord resolved = record.withMetadata("pyramid-underground-complete", "true")
                 .withMetadata("pyramid-underground-completion-state", PyramidUndergroundCompletionState.COMPLETE.value())
                 .withMetadata("pyramid-content-version",
