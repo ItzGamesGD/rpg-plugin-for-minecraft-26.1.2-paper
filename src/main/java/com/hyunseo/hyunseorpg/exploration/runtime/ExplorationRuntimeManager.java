@@ -534,7 +534,7 @@ public final class ExplorationRuntimeManager {
                 if (progressSequenceWait(record, runtime, currentTick)) continue;
             } catch (Exception exception) {
                 plugin.getLogger().log(Level.WARNING, "Exploration sequence wait failed: " + record.structureId(), exception);
-                abandon(record.structureId());
+                if (!"desert_pyramid".equals(record.structureType())) abandon(record.structureId());
                 continue;
             }
 
@@ -827,7 +827,7 @@ public final class ExplorationRuntimeManager {
                     if (progressSequenceWait(record, runtime, currentTick)) continue;
                 } catch (Exception exception) {
                     plugin.getLogger().log(Level.WARNING, "Exploration movement wait failed: " + record.structureId(), exception);
-                    abandon(record.structureId());
+                    if (!"desert_pyramid".equals(record.structureType())) abandon(record.structureId());
                     continue;
                 }
             }
