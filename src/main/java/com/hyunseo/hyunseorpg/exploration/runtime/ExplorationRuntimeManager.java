@@ -570,9 +570,15 @@ public final class ExplorationRuntimeManager {
                 StructureRecord record = repository.get(structureId).orElse(null);
                 if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) return;
                 runtime.sequence().completeTask(actionId);
-                if (!runtime.sequence().transitionTo(nextPhase, "delayed:" + actionId)) return;
-                try { executeNamedPhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks)); }
-                catch (Exception exception) {
+                if (!runtime.sequence().transitionTo(nextPhase, "delayed:" + actionId)) {
+                    runtime.sequence().releaseAction(actionId);
+                    return;
+                }
+                try {
+                    executeNamedPhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks));
+                    runtime.sequence().completeAction(actionId);
+                } catch (Exception exception) {
+                    runtime.sequence().releaseAction(actionId);
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
                     if (!"desert_pyramid".equals(record.structureType())) abandon(structureId);
                 }
