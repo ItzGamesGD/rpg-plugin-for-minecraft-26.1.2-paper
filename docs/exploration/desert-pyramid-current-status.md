@@ -2,7 +2,7 @@
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
 - Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Audited source revision: `5c1c1c6c0823a51b9e67b03ecead1b34a0fc7886` (the commit immediately preceding this status-only commit)
+- Audited source revision: `ad15ec8f0be61c8245f3cf8f0eadd0ae90de0902` (the commit immediately preceding this status-only commit)
 - Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
 
 ## Canonical flows
@@ -49,7 +49,7 @@ Use `/rpg exploration inspect <structure-uuid>` for bounded state/diagnostics an
 
 ## Tests and live boundary
 
-Executable tests cover canonical YAML, padded cardinal/diagonal crossing, sequence reservation semantics,
+Executable tests cover canonical YAML, padded cardinal/diagonal crossing, sequence reservation semantics, primitive port composition, independent module ordering, reward state transitions, bounded retry policy, runtime continuation hooks, room geometry, and push-board behavior.
 primitive port composition, independent module ordering, reward state transitions, retry bounds, room geometry,
 and push-board behavior. The requested command `./gradlew clean test --no-daemon` was attempted in this
 workspace but cannot execute because the checkout has no Gradle wrapper (`./gradlew: No such file or directory`).
