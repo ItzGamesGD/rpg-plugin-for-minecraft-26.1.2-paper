@@ -17,7 +17,7 @@ public final class PyramidRoomRevealComponent implements ExplorationComponent {
     }
 
     @Override public String type() { return "pyramid_room_reveal"; }
-    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.ACTIVATE; }
+    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.PYRAMID_ROOM_REVEAL; }
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) throws IOException {
