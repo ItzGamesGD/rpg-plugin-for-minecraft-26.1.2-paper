@@ -158,6 +158,7 @@ public final class ExplorationRuntimeManager {
         try {
             if ("desert_pyramid".equals(record.structureType())) {
                 persistent = migratePyramidRecord(persistent);
+                persistent = reconcilePendingPyramidUndergroundCompletion(persistent);
             }
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 persistent = persistent.transitionTo(StructureEventState.ACTIVE, Instant.now())
@@ -1055,6 +1056,18 @@ public final class ExplorationRuntimeManager {
         } catch (Exception exception) {
             plugin.getLogger().log(Level.WARNING, "Pyramid guardian restart recovery deferred: " + record.structureId(), exception);
         }
+    }
+
+    /** Converts a durable solved-but-unfinalized board to module completion before any puzzle restore. */
+    private StructureRecord reconcilePendingPyramidUndergroundCompletion(StructureRecord record) throws IOException {
+        if (!"completion_pending".equals(record.activationMetadata().get("pyramid-underground-completion-state"))
+                || Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) return record;
+        StructureRecord complete = record.withMetadata("pyramid-underground-complete", "true")
+                .withMetadata("pyramid-underground-completion-state", "complete")
+                .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
+        repository.save(complete);
+        plugin.getLogger().info("Recovered pending Pyramid underground completion: structure=" + record.structureId());
+        return complete;
     }
 
     private StructureRecord migratePyramidRecord(StructureRecord record) throws IOException {
