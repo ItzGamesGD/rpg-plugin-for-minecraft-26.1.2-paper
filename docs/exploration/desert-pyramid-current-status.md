@@ -2,7 +2,7 @@
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
 - Reconciliation baseline: `032d89afc0c8245666503d9a8d24d5f31b1da793`
-- Current audited HEAD: `e49c798761251abd174386b76df598f480869fa4`
+- Current audited HEAD: `eda09fdb5c03a212bd222633e0f71bf9161cacae`
 - Status: STATICALLY_IMPLEMENTED / UNIT_EXECUTION_BLOCKED / LIVE_SERVER_RETEST_REQUIRED
 
 ## Canonical flows
