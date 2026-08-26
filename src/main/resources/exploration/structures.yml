@@ -129,6 +129,7 @@ structures:
             phase: pyramid_room_reveal
           - type: pyramid_repel
             phase: pyramid_entry
+            entry-boundary-padding: 4.0
             horizontal-strength: 0.75
             vertical-strength: 0.32
           # CONTENT_TEXT_PENDING: placeholder quiz copy is intentionally config-owned.
