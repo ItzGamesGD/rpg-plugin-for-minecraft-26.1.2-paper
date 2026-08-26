@@ -471,6 +471,18 @@ public final class ExplorationRuntimeManager {
                                     .withMetadata("pyramid-guardian-started", "true"));
                         } catch (Exception exception) {
                             runtime.releaseChoiceForRetry();
+                            runtime.sequence().clearFlag("pyramid.entry.prompted");
+                            runtime.sequence().clearFlag("pyramid.guardian.spawned");
+                            runtime.sequence().clearFlag("pyramid.guardian.started");
+                            try {
+                                repository.save(repository.get(record.structureId()).orElse(record)
+                                        .withMetadata("pyramid-guardian-encounter-state", "not_started")
+                                        .withMetadata("pyramid-guardian-started", null)
+                                        .withMetadata("pyramid-guardian-spawned", null));
+                            } catch (IOException persistenceFailure) {
+                                plugin.getLogger().log(Level.WARNING,
+                                        "Unable to re-arm Pyramid timeout retry: " + record.structureId(), persistenceFailure);
+                            }
                             plugin.getLogger().log(Level.WARNING,
                                     "Pyramid timeout guardian start deferred: " + record.structureId(), exception);
                         }
