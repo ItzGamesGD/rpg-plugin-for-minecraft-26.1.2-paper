@@ -1,5 +1,7 @@
 package com.hyunseo.hyunseorpg.exploration;
 
+import com.hyunseo.hyunseorpg.core.config.ConfigMigrationService;
+
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentRegistry;
 import com.hyunseo.hyunseorpg.exploration.component.impl.DisplayTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ForcedRelocationComponent;
@@ -98,6 +100,17 @@ public final class ExplorationModule {
     }
 
     public synchronized boolean start() {
+        try {
+            ConfigMigrationService.MigrationReport migration =
+                    new ConfigMigrationService(plugin).migrate("exploration", false);
+            if (!migration.success()) {
+                plugin.getLogger().severe("Targeted exploration migration failed; registry load aborted.");
+                return false;
+            }
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Targeted exploration migration failed; registry load aborted.", exception);
+            return false;
+        }
         if (!registry.load()) return false;
         if (!registry.isEnabled()) {
             plugin.getLogger().info("Exploration module is installed but disabled in exploration/structures.yml.");
