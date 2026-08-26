@@ -107,7 +107,14 @@ public final class PyramidPushPillarService {
                 runtime.sequence().clearFlag("pyramid.underground.persistence.retry");
                 return;
             }
+            // Persist the solved intent before the final completion write so restart recovery
+            // never mistakes a solved board for an unsolved puzzle.
+            if (!"completion_pending".equals(record.activationMetadata().get("pyramid-underground-completion-state"))) {
+                record = record.withMetadata("pyramid-underground-completion-state", "completion_pending");
+                repository.save(record);
+            }
             repository.save(record.withMetadata("pyramid-underground-complete", "true")
+                    .withMetadata("pyramid-underground-completion-state", "complete")
                     .withMetadata("pyramid-content-version",
                             Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
             completionRetryAttempts.remove(structureId);
