@@ -662,14 +662,10 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.rpgMenuService.setAlchemyGuiController(alchemyGuiController);
 
         this.explorationModule = new ExplorationModule(this,
-                new ExplorationPorts(
+                BukkitExplorationPorts.compose(
+                        this,
                         ExistingHyunseoRpgAdapters.mobPort(mobService),
-                        null,
-                        null,
-                        null,
-                        null,
                         ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
-                        null,
                         ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
                 null);
 
