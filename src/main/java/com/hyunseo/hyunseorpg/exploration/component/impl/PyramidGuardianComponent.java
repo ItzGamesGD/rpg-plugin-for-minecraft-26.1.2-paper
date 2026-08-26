@@ -31,8 +31,6 @@ public final class PyramidGuardianComponent implements ExplorationComponent {
         }
         World world = player.getWorld();
         Location spawn = safeSurfaceSpawn(world, player.getLocation(), context);
-        context.runtime().sequence().setFlag("pyramid.guardian.spawned");
-
         Map<String, Object> options = new LinkedHashMap<>(spec.options());
         options.putIfAbsent("glowing", true);
         options.putIfAbsent("invulnerable", false);
@@ -42,8 +40,13 @@ public final class PyramidGuardianComponent implements ExplorationComponent {
         int count = Math.max(1, spec.integer("count", 1));
         Collection<UUID> spawned = context.ports().mobs().spawn(mobId, spawn, count, options);
         List<UUID> ids = spawned == null ? List.of() : spawned.stream().filter(java.util.Objects::nonNull).toList();
-        if (ids.isEmpty()) throw new IllegalStateException("pyramid guardian spawn produced no valid entity");
+        if (ids.size() < count) {
+            ids.forEach(id -> context.ports().entityCleanup().removeUnmanaged(world, context.record().bounds(),
+                    org.bukkit.entity.EntityType.ZOMBIE));
+            throw new IllegalStateException("pyramid guardian spawn count mismatch: expected=" + count + ", spawned=" + ids.size());
+        }
         ids.forEach(context.runtime().tracker()::trackEntity);
+        context.runtime().sequence().setFlag("pyramid.guardian.spawned");
         if (spec.bool("objective", true)) context.runtime().trackObjectives(ids);
         context.runtime().setRaidTarget(player.getUniqueId());
         context.runtime().snapshotRaidOrigin(player.getLocation());
