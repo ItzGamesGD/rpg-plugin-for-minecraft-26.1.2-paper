@@ -10,7 +10,6 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
-import org.bukkit.World;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -46,20 +45,27 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
             return;
         }
         if (context.runtime().sequence().flag("pyramid.room.reveal.in_progress")) return;
-        World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
-        PyramidRoomCandidate room = rooms.room(context.runtime().structureId())
-                .orElseThrow(() -> new IllegalStateException("no safe Desert Pyramid puzzle room"));
-        List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
-        if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
-        PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
 
-        // From this point onward the committed room is owned by the pillar runtime. Even if
-        // display creation fails, heartbeat must not route the carved room back through reveal.
+        // From this point onward a committed room is owned by the pillar runtime. Mark that
+        // ownership before any world/session/display lookup so a technical failure cannot make
+        // heartbeat route an already-carved room back through pyramid_room_reveal.
         context.runtime().sequence().setFlag("pyramid.puzzle.started");
         context.runtime().sequence().clearFlag(RETRY_SCHEDULED);
         try {
+            context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
+            PyramidRoomCandidate room = rooms.room(context.runtime().structureId()).orElse(null);
+            if (room == null && Boolean.parseBoolean(context.record().activationMetadata()
+                    .getOrDefault("pyramid-room-created", "false"))) {
+                // prepare() restores a validated committed room session without carving/revealing it.
+                room = rooms.prepare(context, spec);
+            }
+            if (room == null) throw new IllegalStateException("no safe Desert Pyramid puzzle room");
+
+            List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
+            if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
+            PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
             service.start(context, spec, room, board, pillars);
-        } catch (RuntimeException failure) {
+        } catch (Exception failure) {
             int attempt = context.runtime().sequence().incrementCounter(RETRY_ATTEMPTS);
             PyramidPillarRecoveryPolicy.Decision decision = PyramidPillarRecoveryPolicy.afterFailure(attempt);
             if (decision.retry()) {
