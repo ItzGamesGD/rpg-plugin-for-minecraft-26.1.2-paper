@@ -255,6 +255,11 @@ public final class PyramidRoomService {
     }
 
     public synchronized void cleanup(UUID structureId) {
+        PendingReveal pending = pendingReveals.remove(structureId);
+        if (pending != null) {
+            restore(pending.world, pending.snapshots);
+            pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+        }
         RoomSession session = sessions.remove(structureId);
         if (session == null || session.runtime.sequence().flag("pyramid.puzzle.solved") || session.persisted) return;
         boolean revealed = repository.get(structureId)
