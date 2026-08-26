@@ -41,6 +41,16 @@ public record ExplorationStructureDefinition(
         }
     }
 
+    /** Compatibility constructor for callers using the pre-padding canonical shape. */
+    public ExplorationStructureDefinition(String id, String minecraftKey, boolean enabled,
+                                          double selectionChance, double triggerRadius,
+                                          double lootTriggerRadius, long lootTriggerGraceTicks,
+                                          double combatAbandonRadius, long combatAbandonGraceTicks,
+                                          List<StructureVariantDefinition> variants) {
+        this(id, minecraftKey, enabled, selectionChance, triggerRadius, lootTriggerRadius,
+                lootTriggerGraceTicks, combatAbandonRadius, combatAbandonGraceTicks, variants, 4.0D);
+    }
+
     /** Compatibility constructor for pre-loot-exit definitions. */
     public ExplorationStructureDefinition(String id, String minecraftKey, boolean enabled,
                                           double selectionChance, double triggerRadius,
