@@ -325,8 +325,8 @@ public final class ConfigMigrationService {
 
     /**
      * Reconciles the bounded Desert Pyramid runtime components without replacing
-     * the operator's existing component list. Official components are appended
-     * only when their type is absent; legacy official entries are routed to the
+     * the operator's existing component options. Official components are emitted
+     * in canonical dependency order; legacy official entries are routed to the
      * current reveal/guardian phases so loot cannot spawn the guardian directly.
      */
     private boolean migrateDesertPyramidPushPillars(FileConfiguration target,
