@@ -114,7 +114,7 @@ public final class ExplorationRuntimeManager {
                 persistent = migratePyramidRecord(persistent);
             }
             if (record.state() == StructureEventState.UNDISCOVERED) {
-                persistent = record.transitionTo(StructureEventState.ACTIVE, Instant.now())
+                persistent = persistent.transitionTo(StructureEventState.ACTIVE, Instant.now())
                         .withMetadata("activated-by", trigger.getUniqueId().toString())
                         .withMetadata("activated-at", Long.toString(System.currentTimeMillis()));
                 repository.save(persistent);
