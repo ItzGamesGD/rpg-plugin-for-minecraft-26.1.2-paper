@@ -73,7 +73,7 @@ public final class ExplorationRuntimeManager {
         StructureRecord reset = record;
         for (String key : List.of("loot-taken", "looter", "loot-taken-at-tick", "pyramid-entry-actor",
                 "pyramid-entry-dx", "pyramid-entry-dz", "pyramid.entry.prompted", "pyramid-guardian-complete",
-                "pyramid-underground-complete", "pyramid-guardian-encounter-state", "pyramid-guardian-started",
+                "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state", "pyramid-guardian-started",
                 "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
                 "pyramid-room-radius", "pyramid-room-height", "pyramid-reveal-retry-attempts",
@@ -99,7 +99,7 @@ public final class ExplorationRuntimeManager {
         result.put("variant", record.variantId());
         result.put("content-version", record.activationMetadata().getOrDefault("pyramid-content-version", "0"));
         for (String key : List.of("pyramid-entry-actor", "pyramid-entry-dx", "pyramid-entry-dz",
-                "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-guardian-encounter-state",
+                "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state",
                 "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius",
                 "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
