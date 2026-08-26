@@ -1,3 +1,8 @@
+<!-- SUPERSEDED HISTORICAL CHECKPOINT
+AUDITED HEAD: e49c798761251abd174386b76df598f480869fa4
+NOT CURRENT IMPLEMENTATION STATE. See desert-pyramid-current-status.md.
+-->
+
 # Desert Pyramid implementation checkpoint
 
 ## Branch baseline
