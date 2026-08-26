@@ -143,6 +143,7 @@ public final class PyramidRoomService {
                     int y = pending.startY - index;
                     int endY = pending.candidate.origin().y() + pending.height;
                     if (y >= endY) {
+                        if (index == 0) nudgePlayersFromOpening(pending.world(), pending.candidate.origin(), y);
                         carveShaftLayer(pending.world(), pending.candidate.origin(), y);
                         pending.context.world().ifPresent(world -> world.playSound(
                                 new Location(world, pending.candidate.origin().x() + 0.5D, y,
@@ -177,6 +178,29 @@ public final class PyramidRoomService {
             }
         }, index == 0 ? 0L : interval);
         pending.context.runtime().tracker().track(task::cancel);
+    }
+
+    private void nudgePlayersFromOpening(World world, PyramidBlockPosition origin, int y) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!player.getWorld().getUID().equals(world.getUID())) continue;
+            Location location = player.getLocation();
+            if (location.getBlockY() != y + 1
+                    || Math.abs(location.getBlockX() - origin.x()) > 1
+                    || Math.abs(location.getBlockZ() - origin.z()) > 1) continue;
+            Location[] options = {
+                    location.clone().add(2.0D, 0.0D, 0.0D), location.clone().add(-2.0D, 0.0D, 0.0D),
+                    location.clone().add(0.0D, 0.0D, 2.0D), location.clone().add(0.0D, 0.0D, -2.0D)
+            };
+            for (Location safe : options) {
+                Block feet = safe.getBlock();
+                Block head = world.getBlockAt(feet.getX(), feet.getY() + 1, feet.getZ());
+                Block floor = world.getBlockAt(feet.getX(), feet.getY() - 1, feet.getZ());
+                if (feet.isPassable() && head.isPassable() && floor.getType().isSolid()) {
+                    player.teleport(safe);
+                    break;
+                }
+            }
+        }
     }
 
     private void carveShaftLayer(World world, PyramidBlockPosition origin, int y) {
