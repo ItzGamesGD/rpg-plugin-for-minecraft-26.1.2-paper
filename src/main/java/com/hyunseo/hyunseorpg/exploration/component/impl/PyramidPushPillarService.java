@@ -6,6 +6,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidBlockPosition;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridDirection;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidCompletionRetryPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
@@ -120,14 +121,14 @@ public final class PyramidPushPillarService {
             plugin.getLogger().log(java.util.logging.Level.WARNING,
                     "Pyramid underground completion persistence retryable: structure=" + structureId
                             + ", attempt=" + attempt, failure);
-            if (attempt <= 5 && !completionRetryTasks.containsKey(structureId)) {
+            if (PyramidCompletionRetryPolicy.shouldRetry(attempt) && !completionRetryTasks.containsKey(structureId)) {
                 org.bukkit.scheduler.BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin,
                         () -> {
                             synchronized (PyramidPushPillarService.this) {
                                 completionRetryTasks.remove(structureId);
                                 persistUndergroundCompletion(structureId, runtime);
                             }
-                        }, 40L * attempt);
+                        }, PyramidCompletionRetryPolicy.delayTicks(attempt));
                 completionRetryTasks.put(structureId, task);
                 runtime.tracker().track(task::cancel);
             }
