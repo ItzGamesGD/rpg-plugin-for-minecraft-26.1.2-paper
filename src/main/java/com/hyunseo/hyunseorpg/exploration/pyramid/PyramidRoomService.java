@@ -152,6 +152,11 @@ public final class PyramidRoomService {
     public synchronized void cleanup(UUID structureId) {
         RoomSession session = sessions.remove(structureId);
         if (session == null || session.runtime.sequence().flag("pyramid.puzzle.solved") || session.persisted) return;
+        boolean revealed = repository.get(structureId)
+                .map(record -> Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false")))
+                .orElse(false);
+        // A committed room is world-persistent: disable/reload removes runtime objects only.
+        if (revealed) return;
         restore(session.world, session.snapshots);
         plugin.getLogger().info("Desert Pyramid underground room rolled back: structure=" + structureId);
     }
@@ -214,8 +219,12 @@ public final class PyramidRoomService {
             }
         }
         for (int y = origin.y() + height; y < bounds.minY(); y++) {
-            Block block = world.getBlockAt(origin.x(), y, origin.z());
-            snapshots.add(new BlockSnapshot(origin.x(), y, origin.z(), block.getBlockData().clone()));
+            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
+                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+                    Block block = world.getBlockAt(x, y, z);
+                    snapshots.add(new BlockSnapshot(x, y, z, block.getBlockData().clone()));
+                }
+            }
         }
         return List.copyOf(snapshots);
     }
@@ -234,7 +243,11 @@ public final class PyramidRoomService {
             }
         }
         for (int y = origin.y() + height; y < bounds.minY(); y++) {
-            world.getBlockAt(origin.x(), y, origin.z()).setType(Material.AIR, false);
+            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
+                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+                    world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                }
+            }
         }
     }
 
@@ -246,6 +259,7 @@ public final class PyramidRoomService {
 
     private boolean protectedBlock(BlockState state) {
         return state instanceof org.bukkit.inventory.InventoryHolder
+                || state.getType() == Material.TNT
                 || state.getType().name().contains("SPAWNER")
                 || state.getType().name().contains("PORTAL");
     }
@@ -253,8 +267,12 @@ public final class PyramidRoomService {
     private boolean shaftSafe(World world, PyramidBlockPosition origin, StructureBounds bounds) {
         if (!world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
         for (int y = origin.y() + 1; y < bounds.minY(); y++) {
-            Block block = world.getBlockAt(origin.x(), y, origin.z());
-            if (block.isLiquid() || protectedBlock(block.getState())) return false;
+            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
+                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+                    Block block = world.getBlockAt(x, y, z);
+                    if (block.isLiquid() || protectedBlock(block.getState())) return false;
+                }
+            }
         }
         return true;
     }
