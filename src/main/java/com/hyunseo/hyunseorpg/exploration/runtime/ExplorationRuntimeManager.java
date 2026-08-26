@@ -552,6 +552,17 @@ public final class ExplorationRuntimeManager {
                 && Boolean.parseBoolean(current.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
     }
 
+    private double pyramidEntryPadding(ExplorationStructureDefinition definition) {
+        if (definition == null) return 4.0D;
+        return definition.variants().stream()
+                .filter(v -> v.id().equals("guardian_trial"))
+                .flatMap(v -> v.components().stream())
+                .filter(spec -> "pyramid_repel".equalsIgnoreCase(spec.type()))
+                .findFirst()
+                .map(spec -> Math.max(0.0D, spec.decimal("entry-boundary-padding", 4.0D)))
+                .orElse(4.0D);
+    }
+
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
         if (record == null || from == null || to == null) return false;
         double p = Math.max(0.0D, padding);
@@ -679,7 +690,7 @@ public final class ExplorationRuntimeManager {
                 }
             }
             if (record.structureType().equals("desert_pyramid")
-                    && crossesPyramidEntryBoundary(record, from, to, 4.0D)
+                    && crossesPyramidEntryBoundary(record, from, to, pyramidEntryPadding(definition))
                     && !runtime.raidStarted() && !runtime.choicePending()
                     && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
                     && !runtime.sequence().flag("pyramid.entry.prompted")) {
