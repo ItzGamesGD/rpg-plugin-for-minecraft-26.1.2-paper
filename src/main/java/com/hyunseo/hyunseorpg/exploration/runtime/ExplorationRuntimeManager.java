@@ -12,6 +12,7 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationRegistry;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.StructureVariantDefinition;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRewardTransaction;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -223,7 +224,7 @@ public final class ExplorationRuntimeManager {
             if ("desert_pyramid".equals(record.structureType()) && runtime.entryActor() != null
                     && !record.rewardClaimed()) {
                 rewardCheckpoint = record.withMetadata("pyramid-reward-recipient", runtime.entryActor().toString())
-                        .withMetadata("pyramid-reward-state", "pending");
+                        .withMetadata("pyramid-reward-state", PyramidRewardTransaction.State.DELIVERY_PENDING.value());
                 repository.save(rewardCheckpoint);
             }
             executePhase(rewardCheckpoint, runtime, ExplorationComponentPhase.CLEAR, currentTick);
