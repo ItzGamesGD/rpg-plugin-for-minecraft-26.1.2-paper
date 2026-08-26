@@ -13,6 +13,7 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationRegistry;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.StructureVariantDefinition;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRewardTransaction;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -1050,9 +1051,10 @@ public final class ExplorationRuntimeManager {
     /** Converts a durable solved-but-unfinalized board to module completion before any puzzle restore. */
     private StructureRecord reconcilePendingPyramidUndergroundCompletion(StructureRecord record) throws IOException {
         boolean completeFlag = Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
-        String state = record.activationMetadata().getOrDefault("pyramid-underground-completion-state", "unsolved");
+        String state = PyramidUndergroundCompletionState.reconcile(completeFlag,
+                record.activationMetadata().get("pyramid-underground-completion-state")).value();
         if (completeFlag && !"complete".equals(state)) {
-            StructureRecord normalized = record.withMetadata("pyramid-underground-completion-state", "complete")
+            StructureRecord normalized = record.withMetadata("pyramid-underground-completion-state", PyramidUndergroundCompletionState.COMPLETE.value())
                     .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
             repository.save(normalized);
             return normalized;
