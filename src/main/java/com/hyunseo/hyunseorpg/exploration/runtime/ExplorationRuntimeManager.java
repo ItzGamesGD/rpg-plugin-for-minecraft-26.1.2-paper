@@ -543,20 +543,9 @@ public final class ExplorationRuntimeManager {
                 continue;
             }
 
-            if (record.structureType().equals("desert_pyramid")
-                    && runtime.sequence().flag("pyramid.puzzle.solved")
-                    && !runtime.sequence().flag("pyramid.underground.complete")) {
-                try {
-                    markPyramidModuleComplete(record, runtime, "pyramid-underground-complete");
-                    if (pyramidModulesComplete(record.structureId())) {
-                        complete(record.structureId(), currentTick);
-                        continue;
-                    }
-                } catch (IOException exception) {
-                    plugin.getLogger().log(Level.WARNING, "Unable to persist Pyramid underground completion: "
-                            + record.structureId(), exception);
-                }
-            }
+            // Pyramid underground completion is owned exclusively by PyramidPushPillarService.
+            // Its durable completion_pending -> complete transaction is reconciled on activation;
+            // heartbeat must not become a second writer.
 
             if (runtime.objectiveMode()) {
                 if (currentTick <= runtime.activatedAtTick()) {
