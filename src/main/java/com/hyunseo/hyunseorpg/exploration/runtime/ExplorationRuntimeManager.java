@@ -889,6 +889,8 @@ public final class ExplorationRuntimeManager {
                 .findFirst().orElseThrow(() -> new IllegalStateException("missing variant " + record.variantId()));
         ExplorationEventContext context = new ExplorationEventContext(plugin, record, runtime, ports, teleportExemptions, currentTick,
                 this::scheduleSequencePhase);
+        int matched = 0;
+        java.util.List<String> matchedTypes = new java.util.ArrayList<>();
         for (ExplorationComponentSpec spec : variant.components()) {
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
@@ -902,8 +904,25 @@ public final class ExplorationRuntimeManager {
                     && component.type().equals("raid_wave_spawn")
                     && spec.bool("repeat-on-next-wave", false)
                     && matchesSelectedRaidWave(runtime.selectedChoice(), configured);
-            if (defaultPhaseMatch || explicitPhaseMatch || nextWaveRepeat) component.execute(context, spec);
+            if (defaultPhaseMatch || explicitPhaseMatch || nextWaveRepeat) {
+                matched++;
+                matchedTypes.add(component.type());
+                component.execute(context, spec);
+            }
         }
+        if (isRequiredPyramidPhase(record, phase) && matched == 0) {
+            plugin.getLogger().severe("Pyramid required phase matched zero components: structure="
+                    + record.structureId() + ", variant=" + record.variantId() + ", phase=" + phase
+                    + ", matchedTypes=" + matchedTypes);
+            throw new IllegalStateException("required Pyramid phase has no matching components: " + phase);
+        }
+    }
+
+    private boolean isRequiredPyramidPhase(StructureRecord record, String phase) {
+        if (!"desert_pyramid".equals(record.structureType())) return false;
+        return java.util.Set.of("pyramid_entry", "pyramid_quiz", "pyramid_guardian_spawn",
+                "pyramid_loot_trigger", "pyramid_room_reveal", "clear")
+                .contains(phase.trim().toLowerCase(java.util.Locale.ROOT));
     }
 
     static boolean matchesSelectedRaidWave(String selectedChoice, ExplorationComponentPhase configured) {
