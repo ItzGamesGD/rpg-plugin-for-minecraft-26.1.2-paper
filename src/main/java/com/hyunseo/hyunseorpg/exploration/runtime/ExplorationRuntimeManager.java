@@ -459,8 +459,13 @@ public final class ExplorationRuntimeManager {
                     String fallback = runtime.defaultChoice();
                     if (owner != null && runtime.choose(owner, fallback)) {
                         try {
+                            repository.save(repository.get(record.structureId()).orElse(record)
+                                    .withMetadata("pyramid-guardian-encounter-state", "spawn_pending"));
                             executePhase(record, runtime, ExplorationComponentPhase.PYRAMID_GUARDIAN_SPAWN, currentTick);
                             runtime.markRaidStarted();
+                            repository.save(repository.get(record.structureId()).orElse(record)
+                                    .withMetadata("pyramid-guardian-encounter-state", "active")
+                                    .withMetadata("pyramid-guardian-started", "true"));
                         } catch (Exception exception) {
                             runtime.releaseChoiceForRetry();
                             plugin.getLogger().log(Level.WARNING,
