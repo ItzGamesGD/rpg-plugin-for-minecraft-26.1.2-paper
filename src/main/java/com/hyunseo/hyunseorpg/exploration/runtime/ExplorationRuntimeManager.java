@@ -173,7 +173,18 @@ public final class ExplorationRuntimeManager {
         if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE) return false;
         try {
             executePhase(record, runtime, ExplorationComponentPhase.CLEAR, currentTick);
-            StructureRecord completed = record.transitionTo(StructureEventState.CLEARED, Instant.now());
+            StructureRecord rewardCheckpoint = record;
+            if ("desert_pyramid".equals(record.structureType())) {
+                for (UUID recipient : java.util.Set.copyOf(runtime.participants())) {
+                    if (runtime.sequence().flag("pyramid.reward.delivered." + recipient)) {
+                        rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", recipient.toString());
+                    }
+                }
+                if (runtime.entryActor() != null && runtime.sequence().flag("pyramid.reward.delivered." + runtime.entryActor())) {
+                    rewardCheckpoint = rewardCheckpoint.withMetadata("pyramid-reward-delivered-to", runtime.entryActor().toString());
+                }
+            }
+            StructureRecord completed = rewardCheckpoint.transitionTo(StructureEventState.CLEARED, Instant.now());
             if (hasRewardPhase(record)) completed = completed.markRewardClaimed();
             repository.save(completed);
             active.remove(structureId);
