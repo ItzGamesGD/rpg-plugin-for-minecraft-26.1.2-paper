@@ -223,7 +223,7 @@ public final class ExplorationRuntimeManager {
             if ("desert_pyramid".equals(record.structureType()) && runtime.entryActor() != null
                     && !record.rewardClaimed()) {
                 rewardCheckpoint = record.withMetadata("pyramid-reward-recipient", runtime.entryActor().toString())
-                        .withMetadata("pyramid-reward-state", "delivering");
+                        .withMetadata("pyramid-reward-state", "pending");
                 repository.save(rewardCheckpoint);
             }
             executePhase(rewardCheckpoint, runtime, ExplorationComponentPhase.CLEAR, currentTick);
