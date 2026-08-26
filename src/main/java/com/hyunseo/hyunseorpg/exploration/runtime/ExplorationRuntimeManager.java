@@ -632,8 +632,13 @@ public final class ExplorationRuntimeManager {
         if (runtime.sequence().flag(runtimeFlag)) return;
         StructureRecord current = repository.get(record.structureId()).orElse(record);
         if (!Boolean.parseBoolean(current.activationMetadata().getOrDefault(metadataKey, "false"))) {
-            repository.save(current.withMetadata(metadataKey, "true")
-                    .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION)));
+            StructureRecord updated = current.withMetadata(metadataKey, "true")
+                    .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
+            if ("pyramid-guardian-complete".equals(metadataKey)) {
+                updated = updated.withMetadata("pyramid-guardian-encounter-state", "complete")
+                        .withMetadata("pyramid-guardian-started", "true");
+            }
+            repository.save(updated);
         }
         runtime.sequence().setFlag(runtimeFlag);
         plugin.getLogger().info("Desert Pyramid module complete: structure=" + record.structureId()
