@@ -1499,7 +1499,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     }
 
     static List<String> explorationActionCompletion(String prefix) {
-        return filterCompletion(List.of("status", "inspect", "complete", "choose"), prefix);
+        return filterCompletion(List.of("status", "inspect", "reset", "complete", "choose"), prefix);
     }
 
     static List<String> farmingActionCompletion(String prefix) {
