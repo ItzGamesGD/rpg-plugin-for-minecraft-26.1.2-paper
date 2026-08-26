@@ -16,6 +16,7 @@ public final class ExplorationSequenceState {
     private final Set<String> flags = new LinkedHashSet<>();
     private final Map<String, Integer> counters = new LinkedHashMap<>();
     private final Set<String> completedActions = new LinkedHashSet<>();
+    private final Set<String> inFlightActions = new LinkedHashSet<>();
     private final Map<String, BukkitTask> pendingTasks = new LinkedHashMap<>();
     private long physicalMoveEpoch;
     private PendingWait pendingWait;
@@ -47,9 +48,25 @@ public final class ExplorationSequenceState {
         return counter(key) >= threshold;
     }
 
-    /** Reserves a logical action. A duplicate callback for the same id receives false. */
+    /** Reserves an action without falsely marking it completed. */
     public synchronized boolean beginAction(String actionId) {
-        return completedActions.add(requiredKey(actionId));
+        String key = requiredKey(actionId);
+        if (completedActions.contains(key) || !inFlightActions.add(key)) return false;
+        return true;
+    }
+
+    public synchronized boolean completeAction(String actionId) {
+        String key = requiredKey(actionId);
+        if (!inFlightActions.remove(key)) return false;
+        return completedActions.add(key);
+    }
+
+    public synchronized boolean releaseAction(String actionId) {
+        return inFlightActions.remove(requiredKey(actionId));
+    }
+
+    public synchronized boolean actionInFlight(String actionId) {
+        return inFlightActions.contains(normalize(actionId));
     }
 
     public synchronized void trackTask(String taskId, BukkitTask task) {
@@ -77,7 +94,8 @@ public final class ExplorationSequenceState {
         String normalizedAction = requiredKey(actionId);
         String normalizedCondition = requiredKey(condition);
         String normalizedPhase = requiredKey(nextPhase);
-        if (pendingWait != null || !completedActions.add(normalizedAction)) return false;
+        if (pendingWait != null || completedActions.contains(normalizedAction)
+                || !inFlightActions.add(normalizedAction)) return false;
         pendingWait = new PendingWait(normalizedAction, normalizedCondition, normalize(key),
                 threshold, normalizedPhase, physicalMoveEpoch);
         return true;
@@ -100,6 +118,7 @@ public final class ExplorationSequenceState {
         }
         pendingTasks.clear();
         pendingWait = null;
+        inFlightActions.clear();
     }
 
     /** Immutable data for a runtime-owned wait; never serialized with StructureRecord. */
