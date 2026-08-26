@@ -12,18 +12,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Presents a bounded, owner-checked exploration choice before any combat objectives exist. */
+/** Config-driven, owner-checked exploration choice; Outpost defaults remain backward compatible. */
 public final class ChoicePromptComponent implements ExplorationComponent {
     @Override public String type() { return "choice_prompt"; }
     @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.ACTIVATE; }
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
-        UUID owner = context.runtime().looter() != null
-                ? context.runtime().looter()
+        UUID owner = context.runtime().entryActor() != null ? context.runtime().entryActor()
+                : context.runtime().looter() != null ? context.runtime().looter()
                 : context.runtime().participants().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("choice_prompt requires an activating player"));
         Set<String> choices = new LinkedHashSet<>(spec.stringList("choices"));
@@ -36,22 +37,39 @@ public final class ChoicePromptComponent implements ExplorationComponent {
         }
         Player player = Bukkit.getPlayer(owner);
         if (player == null || !player.isOnline()) return;
-        player.sendMessage(Component.text("약탈자들이 습격을 준비합니다!", NamedTextColor.RED));
-        player.sendMessage(choiceButton(context, "tier1", "[1단계 정찰대]", "최대 4마리, heavy 없음", NamedTextColor.GREEN)
-                .append(Component.space())
-                .append(choiceButton(context, "tier2", "[2단계 습격대]", "최대 6마리, heavy 최대 1", NamedTextColor.GOLD))
-                .append(Component.space())
-                .append(choiceButton(context, "tier3", "[3단계 전쟁대]", "최대 8마리, heavy 최대 2", NamedTextColor.RED))
-                .append(Component.space())
-                .append(choiceButton(context, "flee", "[도망치기]", "전투를 시작하지 않습니다", NamedTextColor.GRAY)));
+        player.sendMessage(Component.text(spec.string("prompt-text", "약탈자들이 습격을 준비합니다!"), NamedTextColor.RED));
+        Component buttons = Component.empty();
+        boolean first = true;
+        for (String choice : context.runtime().allowedChoices()) {
+            if (!first) buttons = buttons.append(Component.space());
+            first = false;
+            buttons = buttons.append(choiceButton(context, choice, label(spec, choice), hover(spec, choice)));
+        }
+        player.sendMessage(buttons);
     }
 
-    private Component choiceButton(ExplorationEventContext context, String choice, String label,
-                                   String hover, NamedTextColor color) {
-        if (!context.runtime().allowedChoices().contains(choice)) return Component.empty();
+    private Component choiceButton(ExplorationEventContext context, String choice, String label, String hover) {
         String command = "/rpg exploration choose " + context.record().structureId() + " " + choice;
-        return Component.text(label, color)
+        return Component.text(label, NamedTextColor.GOLD)
                 .clickEvent(ClickEvent.runCommand(command))
                 .hoverEvent(HoverEvent.showText(Component.text(hover, NamedTextColor.YELLOW)));
+    }
+
+    private String label(ExplorationComponentSpec spec, String choice) {
+        Object labels = spec.options().get("choice-labels");
+        if (labels instanceof Map<?, ?> map && map.get(choice) != null) return String.valueOf(map.get(choice));
+        return switch (choice) {
+            case "tier1" -> "[1단계 정찰대]";
+            case "tier2" -> "[2단계 습격대]";
+            case "tier3" -> "[3단계 전쟁대]";
+            case "flee" -> "[도망치기]";
+            default -> "[" + choice + "]";
+        };
+    }
+
+    private String hover(ExplorationComponentSpec spec, String choice) {
+        Object hovers = spec.options().get("choice-hover");
+        if (hovers instanceof Map<?, ?> map && map.get(choice) != null) return String.valueOf(map.get(choice));
+        return "선택";
     }
 }
