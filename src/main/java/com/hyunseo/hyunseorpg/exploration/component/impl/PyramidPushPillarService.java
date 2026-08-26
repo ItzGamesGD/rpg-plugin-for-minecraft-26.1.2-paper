@@ -169,7 +169,7 @@ public final class PyramidPushPillarService {
         };
     }
 
-    private static final class Session {
+    private final class Session {
         private final UUID structureId;
         private final com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime;
         private final org.bukkit.World world;
