@@ -242,6 +242,8 @@ public final class ExplorationRuntimeManager {
         for (StructureRecord record : repository.index().nearby(container.getWorld().getUID(),
                 container.getX(), container.getZ(), 1.0D)) {
             if (!isLootContainerInStructure(record, container)) continue;
+            if ("desert_pyramid".equals(record.structureType())
+                    && !isValidPyramidTreasureContainer(record, container)) continue;
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 activate(record, player, currentTick);
             }
@@ -253,6 +255,11 @@ public final class ExplorationRuntimeManager {
                         .withMetadata("loot-taken", "true")
                         .withMetadata("looter", player.getUniqueId().toString())
                         .withMetadata("loot-taken-at-tick", Long.toString(currentTick));
+                if (record.structureType().equals("desert_pyramid")) {
+                    updated = updated.withMetadata("pyramid-treasure-x", Integer.toString(container.getBlockX()))
+                            .withMetadata("pyramid-treasure-y", Integer.toString(container.getBlockY()))
+                            .withMetadata("pyramid-treasure-z", Integer.toString(container.getBlockZ()));
+                }
                 repository.save(updated);
                 marked = true;
                 if (record.structureType().equals("desert_pyramid")) {
@@ -283,6 +290,19 @@ public final class ExplorationRuntimeManager {
         if (record == null || container == null || container.getWorld() == null
                 || !record.worldId().equals(container.getWorld().getUID())) return false;
         return isLootContainerInStructure(record, container.getX(), container.getY(), container.getZ());
+    }
+
+    static boolean isValidPyramidTreasureContainer(StructureRecord record, Location container) {
+        if (record == null || container == null || container.getWorld() == null
+                || !"desert_pyramid".equals(record.structureType())
+                || !record.worldId().equals(container.getWorld().getUID())) return false;
+        org.bukkit.Material type = container.getBlock().getType();
+        if (type != org.bukkit.Material.CHEST && type != org.bukkit.Material.TRAPPED_CHEST) return false;
+        double dx = Math.abs(container.getBlockX() + 0.5D - record.bounds().centerX());
+        double dz = Math.abs(container.getBlockZ() + 0.5D - record.bounds().centerZ());
+        return dx <= 3.5D && dz <= 3.5D
+                && container.getY() >= record.bounds().minY() - 8
+                && container.getY() <= record.bounds().maxY() + 2;
     }
 
     public static boolean isLootContainerInStructure(StructureRecord record, double x, double y, double z) {
