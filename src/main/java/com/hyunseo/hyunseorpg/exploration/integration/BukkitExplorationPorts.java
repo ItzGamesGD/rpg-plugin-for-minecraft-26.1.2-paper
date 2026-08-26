@@ -44,6 +44,23 @@ public final class BukkitExplorationPorts {
                 ExplorationPorts.StructureEntityCleanupPort.NOOP);
     }
 
+    /** Compose real Bukkit primitives with HyunseoRPG domain adapters. */
+    public static ExplorationPorts compose(JavaPlugin plugin,
+                                           ExplorationPorts.MobSpawnPort mobs,
+                                           ExplorationPorts.RewardPort rewards,
+                                           ExplorationPorts.StructureEntityCleanupPort cleanup) {
+        ExplorationPorts primitives = safeDefaults(plugin);
+        return new ExplorationPorts(
+                mobs,
+                primitives.displays(),
+                primitives.interactions(),
+                primitives.worldMutations(),
+                primitives.teleports(),
+                rewards,
+                primitives.puzzles(),
+                cleanup);
+    }
+
     private static Collection<UUID> spawnVanillaOnly(String rawId, Location location, int count, Map<String, Object> options) {
         String id = rawId == null ? "" : rawId.trim().toLowerCase(Locale.ROOT);
         if (!id.startsWith("vanilla:") || location.getWorld() == null) return List.of();
