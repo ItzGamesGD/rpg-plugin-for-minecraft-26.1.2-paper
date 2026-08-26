@@ -334,28 +334,6 @@ public final class PyramidRoomService {
         return List.copyOf(snapshots);
     }
 
-    private void carve(World world, PyramidBlockPosition origin, int radius, int height, StructureBounds bounds) {
-        Material wall = Material.SANDSTONE;
-        Material trim = Material.CHISELED_SANDSTONE;
-        for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
-            for (int z = origin.z() - radius; z <= origin.z() + radius; z++) {
-                boolean edge = Math.abs(x - origin.x()) == radius || Math.abs(z - origin.z()) == radius;
-                for (int y = origin.y(); y < origin.y() + height; y++) {
-                    world.getBlockAt(x, y, z).setType(edge ? wall : Material.AIR, false);
-                }
-                world.getBlockAt(x, origin.y() - 1, z).setType(wall, false);
-                world.getBlockAt(x, origin.y() + height, z).setType(trim, false);
-            }
-        }
-        for (int y = origin.y() + height; y < bounds.minY(); y++) {
-            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
-                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
-                    world.getBlockAt(x, y, z).setType(Material.AIR, false);
-                }
-            }
-        }
-    }
-
     private void restore(World world, List<BlockSnapshot> snapshots) {
         for (BlockSnapshot snapshot : snapshots) {
             world.getBlockAt(snapshot.x(), snapshot.y(), snapshot.z()).setBlockData(snapshot.data(), false);
