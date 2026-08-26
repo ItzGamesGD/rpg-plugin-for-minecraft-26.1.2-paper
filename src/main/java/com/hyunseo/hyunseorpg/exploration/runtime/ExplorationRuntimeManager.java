@@ -353,7 +353,22 @@ public final class ExplorationRuntimeManager {
             if (runtime.choiceExpired(currentTick)) {
                 plugin.getLogger().info("Exploration choice timed out: structure=" + record.structureType()
                         + ", id=" + record.structureId() + ", default=" + runtime.defaultChoice());
-                abandon(record.structureId());
+                if ("desert_pyramid".equals(record.structureType())) {
+                    UUID owner = runtime.choiceOwner();
+                    String fallback = runtime.defaultChoice();
+                    if (owner != null && runtime.choose(owner, fallback)) {
+                        try {
+                            executePhase(record, runtime, ExplorationComponentPhase.PYRAMID_GUARDIAN_SPAWN, currentTick);
+                            runtime.markRaidStarted();
+                        } catch (Exception exception) {
+                            runtime.releaseChoiceForRetry();
+                            plugin.getLogger().log(Level.WARNING,
+                                    "Pyramid timeout guardian start deferred: " + record.structureId(), exception);
+                        }
+                    }
+                } else {
+                    abandon(record.structureId());
+                }
                 continue;
             }
 
