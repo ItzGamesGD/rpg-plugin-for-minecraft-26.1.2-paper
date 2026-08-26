@@ -932,7 +932,8 @@ public final class ExplorationRuntimeManager {
         int version;
         try { version = Integer.parseInt(record.activationMetadata().getOrDefault("pyramid-content-version", "0")); }
         catch (NumberFormatException ignored) { version = 0; }
-        if (version >= CURRENT_PYRAMID_CONTENT_VERSION) return record;
+        boolean obsoleteRadius = "3".equals(record.activationMetadata().get("pyramid-room-radius"));
+        if (version >= CURRENT_PYRAMID_CONTENT_VERSION && !obsoleteRadius) return record;
         StructureRecord migrated = record.withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
         if ("3".equals(record.activationMetadata().get("pyramid-room-radius"))) {
             for (String key : List.of("pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
