@@ -25,6 +25,11 @@ public final class RewardDropComponent implements ExplorationComponent {
                 throw new IllegalStateException("reward_drop recipient looter is unavailable");
             }
             recipients = java.util.List.of(context.runtime().looter());
+        } else if (recipient.equals("entry_actor")) {
+            if (context.runtime().entryActor() == null) {
+                throw new IllegalStateException("reward_drop recipient entry_actor is unavailable");
+            }
+            recipients = java.util.List.of(context.runtime().entryActor());
         } else if (recipient.equals("participants")) {
             recipients = context.runtime().participants();
         } else {
