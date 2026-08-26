@@ -11,6 +11,10 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,6 +47,41 @@ final class ExplorationRuntimeManagerTest {
                 new Location(null, -10, 64, 0), new Location(null, -9, 64, 0), 4.0D));
         assertFalse(ExplorationRuntimeManager.crossesPyramidEntryBoundary(record,
                 new Location(null, 0, 64, 0), new Location(null, 10, 64, 0), 4.0D));
+    }
+
+    @ParameterizedTest
+    @MethodSource("cardinalAndDiagonalEntries")
+    void allEightPaddedEntryDirectionsCrossOnce(double fromX, double fromZ, double toX, double toZ) {
+        StructureRecord record = pyramidRecord();
+        assertTrue(ExplorationRuntimeManager.crossesPyramidEntryBoundary(record,
+                new Location(null, fromX, 64, fromZ), new Location(null, toX, 64, toZ), 4.0D));
+    }
+
+    static Stream<Arguments> cardinalAndDiagonalEntries() {
+        return Stream.of(
+                Arguments.of(-10D, 0D, -4D, 0D), Arguments.of(10D, 0D, 4D, 0D),
+                Arguments.of(0D, -10D, 0D, -4D), Arguments.of(0D, 10D, 0D, 4D),
+                Arguments.of(-10D, -10D, -4D, -4D), Arguments.of(10D, -10D, 4D, -4D),
+                Arguments.of(-10D, 10D, -4D, 4D), Arguments.of(10D, 10D, 4D, 4D));
+    }
+
+    @Test
+    void boundaryOnlyTriggersOutsideToInside() {
+        StructureRecord record = pyramidRecord();
+        assertFalse(ExplorationRuntimeManager.crossesPyramidEntryBoundary(record,
+                new Location(null, -4D, 64, 0D), new Location(null, -3D, 64, 0D), 4.0D));
+        assertFalse(ExplorationRuntimeManager.crossesPyramidEntryBoundary(record,
+                new Location(null, -10D, 64, 0D), new Location(null, -9D, 64, 0D), 4.0D));
+        assertFalse(ExplorationRuntimeManager.crossesPyramidEntryBoundary(record,
+                new Location(null, 0D, 64, 0D), new Location(null, 10D, 64, 0D), 4.0D));
+    }
+
+    private static StructureRecord pyramidRecord() {
+        UUID world = UUID.randomUUID();
+        return new StructureRecord(UUID.randomUUID(), world, "desert_pyramid",
+                "minecraft:desert_pyramid", new StructureAnchor(world, 0, 64, 0),
+                new StructureBounds(-5, 50, -5, 5, 80, 5), true, "guardian_trial",
+                StructureEventState.ACTIVE, Map.of(), false, Instant.now(), null, 1);
     }
 
     @Test
