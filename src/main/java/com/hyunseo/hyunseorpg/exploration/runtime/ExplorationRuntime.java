@@ -125,13 +125,19 @@ public final class ExplorationRuntime {
     public synchronized UUID raidTarget() { return raidTarget; }
     /** Actual exterior boundary crosser; deliberately distinct from proximity participants. */
     public synchronized void markPyramidEntry(UUID playerId, double deltaX, double deltaZ) {
-        if (playerId == null || entryActor != null) return;
+        if (playerId == null) return;
+        // A new crossing may replace a stale pending actor; callers gate this
+        // method so an already-started encounter cannot be stolen.
         entryActor = playerId;
         entryDeltaX = deltaX;
         entryDeltaZ = deltaZ;
     }
     public synchronized UUID entryActor() { return entryActor; }
     public synchronized void restorePyramidEntryActor(UUID playerId) { if (entryActor == null) entryActor = playerId; }
+    public synchronized void restorePyramidEntryDirection(double deltaX, double deltaZ) {
+        entryDeltaX = deltaX;
+        entryDeltaZ = deltaZ;
+    }
     public synchronized double entryDeltaX() { return entryDeltaX; }
     public synchronized double entryDeltaZ() { return entryDeltaZ; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
