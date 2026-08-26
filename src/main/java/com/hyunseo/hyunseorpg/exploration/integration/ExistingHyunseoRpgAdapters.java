@@ -135,25 +135,39 @@ public final class ExistingHyunseoRpgAdapters {
 
     public static ExplorationPorts.RewardPort itemRewardPort(RPGItemService itemService,
                                                               InventoryDeliveryService deliveryService) {
-        return (player, rewardId, amount, fallback, options) -> {
-            int safeAmount = Math.max(1, amount);
-            String normalized = rewardId == null ? "" : rewardId.trim();
-            if (normalized.regionMatches(true, 0, "vanilla:", 0, "vanilla:".length())) {
-                try {
-                    Material material = Material.valueOf(normalized.substring("vanilla:".length())
-                            .trim().toUpperCase(java.util.Locale.ROOT));
-                    if (!material.isItem()) return false;
-                    deliveryService.giveOrDrop(player, fallback, new ItemStack(material, safeAmount));
-                    return true;
-                } catch (IllegalArgumentException ignored) {
-                    return false;
-                }
+        return new ExplorationPorts.RewardPort() {
+            @Override
+            public boolean grant(Player player, String rewardId, int amount, Location fallback,
+                                 Map<String, Object> options) {
+                ItemStack item = createItem(itemService, rewardId, amount);
+                if (item == null) return false;
+                deliveryService.giveOrDrop(player, fallback, item);
+                return true;
             }
-            return itemService.create(normalized, safeAmount)
-                    .map(item -> {
-                        deliveryService.giveOrDrop(player, fallback, item);
-                        return true;
-                    }).orElse(false);
+
+            @Override
+            public boolean enqueueDurable(Player player, String rewardId, int amount, Location fallback,
+                                          Map<String, Object> options, String idempotencyToken) {
+                ItemStack item = createItem(itemService, rewardId, amount);
+                if (item == null || player == null) return false;
+                UUID token = UUID.nameUUIDFromBytes((idempotencyToken == null ? "" : idempotencyToken)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                return deliveryService.queueItemOnce(player, token, item, "exploration-pyramid:" + idempotencyToken);
+            }
+
+            private ItemStack createItem(RPGItemService service, String rewardId, int amount) {
+                int safeAmount = Math.max(1, amount);
+                String normalized = rewardId == null ? "" : rewardId.trim();
+                if (normalized.regionMatches(true, 0, "vanilla:", 0, "vanilla:".length())) {
+                    try {
+                        Material material = Material.valueOf(normalized.substring("vanilla:".length())
+                                .trim().toUpperCase(java.util.Locale.ROOT));
+                        return material.isItem() ? new ItemStack(material, safeAmount) : null;
+                    } catch (IllegalArgumentException ignored) {
+                        return null;
+                    }
+                }
+                return service.create(normalized, safeAmount).orElse(null);
+            }
         };
-    }
-}
+    }}
