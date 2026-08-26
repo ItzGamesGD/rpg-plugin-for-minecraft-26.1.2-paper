@@ -8,6 +8,7 @@ public enum ExplorationComponentPhase {
     LOOT_EXIT,
     PYRAMID_LOOT_TRIGGER,
     PYRAMID_GUARDIAN_SPAWN,
+    PYRAMID_ROOM_REVEAL,
     PYRAMID_PUZZLE,
     CHOICE_TIER_1,
     CHOICE_TIER_2,
