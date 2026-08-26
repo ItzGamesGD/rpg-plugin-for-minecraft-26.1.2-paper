@@ -369,13 +369,18 @@ public final class ExplorationRuntimeManager {
         if (record == null || container == null || container.getWorld() == null
                 || !"desert_pyramid".equals(record.structureType())
                 || !record.worldId().equals(container.getWorld().getUID())) return false;
-        org.bukkit.Material type = container.getBlock().getType();
-        if (type != org.bukkit.Material.CHEST && type != org.bukkit.Material.TRAPPED_CHEST) return false;
-        double dx = Math.abs(container.getBlockX() + 0.5D - record.bounds().centerX());
-        double dz = Math.abs(container.getBlockZ() + 0.5D - record.bounds().centerZ());
-        return dx <= 3.5D && dz <= 3.5D
-                && container.getY() >= record.bounds().minY() - 8
-                && container.getY() <= record.bounds().maxY() + 2;
+        // Vanilla desert pyramids use four normal chests at deterministic
+        // treasure-room corner slots; arbitrary containers in the broad bounds
+        // are intentionally rejected.
+        if (container.getBlock().getType() != org.bukkit.Material.CHEST) return false;
+        int centerX = (int) Math.floor(record.bounds().centerX());
+        int centerZ = (int) Math.floor(record.bounds().centerZ());
+        int dx = container.getBlockX() - centerX;
+        int dz = container.getBlockZ() - centerZ;
+        boolean canonicalSlot = Math.abs(dx) == 2 && Math.abs(dz) == 2;
+        return canonicalSlot
+                && container.getY() >= record.bounds().minY()
+                && container.getY() <= record.bounds().minY() + 3;
     }
 
     public static boolean isLootContainerInStructure(StructureRecord record, double x, double y, double z) {
