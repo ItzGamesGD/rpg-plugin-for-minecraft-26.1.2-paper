@@ -184,7 +184,11 @@ public final class PyramidPushPillarService {
                                             + structureId + ", reason=" + exception.getMessage());
                                 }
                             });
-                        } catch (RuntimeException ignored) { }
+                        } catch (RuntimeException exception) {
+                            runtime.sequence().setFlag("pyramid.underground.persistence.retry");
+                            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                                    "Pyramid underground completion persistence retryable: " + structureId, exception);
+                        }
                     }
                     player.sendMessage(net.kyori.adventure.text.Component.text("피라미드의 봉인 장치가 해제되었습니다."));
                 }
