@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ExplorationRuntimeManagerTest {
@@ -47,6 +48,23 @@ final class ExplorationRuntimeManagerTest {
     @Test
     void currentPyramidContentVersionIsMonotonic() {
         assertTrue(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION >= 3);
+    }
+
+    @Test
+    void entryActorCanBeReplacedAndLootReservationCanRollback() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), UUID.randomUUID(),
+                "desert_pyramid", "guardian_trial", StructureEventState.ACTIVE);
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        runtime.markPyramidEntry(first, -1.0D, 0.0D);
+        runtime.markPyramidEntry(second, 0.0D, 1.0D);
+        assertEquals(second, runtime.entryActor());
+        assertEquals(0.0D, runtime.entryDeltaX());
+        assertEquals(1.0D, runtime.entryDeltaZ());
+        runtime.markLootTaken(first, 10L);
+        assertTrue(runtime.lootTaken());
+        runtime.clearLootTaken();
+        assertFalse(runtime.lootTaken());
     }
 
 }
