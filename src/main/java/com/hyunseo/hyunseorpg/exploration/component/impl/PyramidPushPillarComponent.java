@@ -35,6 +35,12 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
         if (!"desert_pyramid".equals(context.record().structureType())) {
             throw new IllegalArgumentException("pyramid_push_pillars requires desert_pyramid");
         }
+        if (Boolean.parseBoolean(context.record().activationMetadata()
+                .getOrDefault("pyramid-underground-complete", "false"))) {
+            // Persistent module completion is authoritative across restart.
+            return;
+        }
+        if (context.runtime().sequence().flag("pyramid.room.reveal.in_progress")) return;
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         PyramidRoomCandidate room = rooms.room(context.runtime().structureId())
                 .orElseThrow(() -> new IllegalStateException("no safe Desert Pyramid puzzle room"));
