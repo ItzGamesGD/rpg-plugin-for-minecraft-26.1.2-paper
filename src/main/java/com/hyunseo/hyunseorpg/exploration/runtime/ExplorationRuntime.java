@@ -131,6 +131,7 @@ public final class ExplorationRuntime {
         entryDeltaZ = deltaZ;
     }
     public synchronized UUID entryActor() { return entryActor; }
+    public synchronized void restorePyramidEntryActor(UUID playerId) { if (entryActor == null) entryActor = playerId; }
     public synchronized double entryDeltaX() { return entryDeltaX; }
     public synchronized double entryDeltaZ() { return entryDeltaZ; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
@@ -162,6 +163,14 @@ public final class ExplorationRuntime {
     public synchronized String defaultChoice() { return defaultChoice; }
     public synchronized Set<String> allowedChoices() { return allowedChoices; }
     public synchronized String selectedChoice() { return selectedChoice; }
+    /** Releases a failed Pyramid choice without making the runtime terminal. */
+    public synchronized void releaseChoiceForRetry() {
+        choiceOwner = null;
+        choicePromptId = "";
+        allowedChoices = Set.of();
+        selectedChoice = "";
+        choiceExpiresAtTick = -1L;
+    }
     public synchronized void markLootTaken(UUID playerId, long tick) {
         if (playerId == null) return;
         looter = playerId;
