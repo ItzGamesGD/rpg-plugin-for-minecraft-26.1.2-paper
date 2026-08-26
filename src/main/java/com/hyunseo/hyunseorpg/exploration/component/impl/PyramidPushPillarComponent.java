@@ -28,7 +28,7 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
     }
 
     @Override public String type() { return "pyramid_push_pillars"; }
-    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.PYRAMID_PUZZLE; }
+    @Override public ExplorationComponentPhase defaultPhase() { return ExplorationComponentPhase.PYRAMID_ROOM_REVEAL; }
 
     @Override
     public void execute(ExplorationEventContext context, ExplorationComponentSpec spec) {
