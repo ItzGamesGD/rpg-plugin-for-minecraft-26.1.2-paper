@@ -91,6 +91,7 @@ public final class ExplorationModule {
         ExplorationComponentRegistry componentRegistry = defaultComponents();
         this.runtimes = new ExplorationRuntimeManager(plugin, registry, repository, componentRegistry,
                 effectivePorts, new TeleportExemptionService());
+        this.pyramidRooms.setRevealCompletion(context -> this.runtimes.continuePyramidPuzzle(context));
         this.listeners = List.of(
                 new ChunkLoadExplorationListener(detection),
                 new ExplorationPlayerMovementListener(runtimes, tickCounter),
