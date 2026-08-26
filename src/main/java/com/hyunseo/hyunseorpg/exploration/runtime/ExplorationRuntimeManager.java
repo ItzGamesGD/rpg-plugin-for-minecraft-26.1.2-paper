@@ -31,6 +31,7 @@ import java.util.logging.Level;
 
 /** E3-E5 runtime coordinator. Persistent state transition always precedes runtime activation. */
 public final class ExplorationRuntimeManager {
+    public static final int CURRENT_PYRAMID_CONTENT_VERSION = 3;
     private static final long TELEPORT_EXEMPTION_TICKS = 60L;
     public enum ChoiceResult { ACCEPTED, FLED, NOT_FOUND, NOT_PENDING, NOT_OWNER, OUT_OF_RANGE, INVALID_CHOICE, SPAWN_FAILED }
     private final JavaPlugin plugin;
@@ -138,7 +139,8 @@ public final class ExplorationRuntimeManager {
                 executePhase(persistent, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
                 runtime.markLootExitPrompted();
             }
-            if (runtime.lootTaken() && persistent.structureType().equals("desert_pyramid")) {
+            if (runtime.lootTaken() && persistent.structureType().equals("desert_pyramid")
+                    && !Boolean.parseBoolean(persistent.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) {
                 // Delayed Bukkit tasks are intentionally not persisted. Re-arm the
                 // deterministic room reveal, or restore the already-created room
                 // and its puzzle displays, after a reload/reconnect.
@@ -242,6 +244,11 @@ public final class ExplorationRuntimeManager {
                 runtime.releaseChoiceForRetry();
                 runtime.sequence().clearFlag("pyramid.guardian.spawned");
                 runtime.sequence().clearFlag("pyramid.guardian.started");
+                // Re-arm the exterior crossing after a technical spawn failure. The
+                // actor/direction remain persisted so the next valid entrant may replace
+                // this pending attempt without a terminal state.
+                runtime.sequence().clearFlag("pyramid.entry.prompted");
+                runtime.sequence().clearFlag("pyramid.guardian.encounter.started");
                 return ChoiceResult.SPAWN_FAILED;
             }
             abandon(structureId);
@@ -549,7 +556,7 @@ public final class ExplorationRuntimeManager {
         StructureRecord current = repository.get(record.structureId()).orElse(record);
         if (!Boolean.parseBoolean(current.activationMetadata().getOrDefault(metadataKey, "false"))) {
             repository.save(current.withMetadata(metadataKey, "true")
-                    .withMetadata("pyramid-content-version", "2"));
+                    .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION)));
         }
         runtime.sequence().setFlag(runtimeFlag);
         plugin.getLogger().info("Desert Pyramid module complete: structure=" + record.structureId()
@@ -571,7 +578,7 @@ public final class ExplorationRuntimeManager {
                 .filter(spec -> "pyramid_repel".equalsIgnoreCase(spec.type()))
                 .findFirst()
                 .map(spec -> Math.max(0.0D, spec.decimal("entry-boundary-padding", 4.0D)))
-                .orElse(4.0D);
+                .orElse(definition.entryBoundaryPadding());
     }
 
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
@@ -839,8 +846,8 @@ public final class ExplorationRuntimeManager {
         int version;
         try { version = Integer.parseInt(record.activationMetadata().getOrDefault("pyramid-content-version", "0")); }
         catch (NumberFormatException ignored) { version = 0; }
-        if (version >= 3) return record;
-        StructureRecord migrated = record.withMetadata("pyramid-content-version", "3");
+        if (version >= CURRENT_PYRAMID_CONTENT_VERSION) return record;
+        StructureRecord migrated = record.withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
         if ("3".equals(record.activationMetadata().get("pyramid-room-radius"))) {
             for (String key : List.of("pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
                     "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at")) {
@@ -856,7 +863,16 @@ public final class ExplorationRuntimeManager {
     private void restorePyramidState(StructureRecord record, ExplorationRuntime runtime, Player trigger) {
         if (!"desert_pyramid".equals(record.structureType())) return;
         UUID actor = parseUuid(record.activationMetadata().get("pyramid-entry-actor"));
-        if (actor != null) runtime.restorePyramidEntryActor(actor);
+        if (actor != null) {
+            runtime.restorePyramidEntryActor(actor);
+            runtime.addParticipant(actor);
+        }
+        String dx = record.activationMetadata().get("pyramid-entry-dx");
+        String dz = record.activationMetadata().get("pyramid-entry-dz");
+        if (dx != null && dz != null) {
+            try { runtime.restorePyramidEntryDirection(Double.parseDouble(dx), Double.parseDouble(dz)); }
+            catch (NumberFormatException ignored) { }
+        }
         if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))) {
             runtime.sequence().setFlag("pyramid.guardian.complete");
         }
