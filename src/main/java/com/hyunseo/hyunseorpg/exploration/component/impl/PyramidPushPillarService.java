@@ -10,6 +10,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureRepository;
+import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntimeManager;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
@@ -177,7 +178,7 @@ public final class PyramidPushPillarService {
                             repository.get(structureId).ifPresent(record -> {
                                 try {
                                     repository.save(record.withMetadata("pyramid-underground-complete", "true")
-                                            .withMetadata("pyramid-content-version", "3"));
+                                            .withMetadata("pyramid-content-version", Integer.toString(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION)));
                                 } catch (java.io.IOException exception) {
                                     plugin.getLogger().warning("Pyramid underground completion persistence deferred: structure="
                                             + structureId + ", reason=" + exception.getMessage());
