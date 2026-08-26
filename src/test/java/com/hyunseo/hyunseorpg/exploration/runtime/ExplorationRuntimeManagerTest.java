@@ -52,8 +52,7 @@ final class ExplorationRuntimeManagerTest {
 
     @Test
     void entryActorCanBeReplacedAndLootReservationCanRollback() {
-        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), UUID.randomUUID(),
-                "desert_pyramid", "guardian_trial", StructureEventState.ACTIVE);
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "guardian_trial");
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
         runtime.markPyramidEntry(first, -1.0D, 0.0D);
