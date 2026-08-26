@@ -35,7 +35,7 @@ public final class PyramidRoomComponent implements ExplorationComponent {
             Location center = new Location(world, anchorX + 0.5D,
                     context.record().bounds().minY(), anchorZ + 0.5D);
             world.spawnParticle(Particle.FALLING_DUST, center, 18, 2.5D, 0.2D, 2.5D, 0.01D);
-            world.playSound(center, Sound.BLOCK_SANDSTONE_BREAK, 0.45F, 0.8F);
+            world.playSound(center, Sound.BLOCK_SAND_BREAK, 0.45F, 0.8F);
             scheduleTelegraph(context, center, 40L, 12, 0.35F);
             scheduleTelegraph(context, center, 80L, 18, 0.45F);
             scheduleTelegraph(context, center, 110L, 26, 0.60F);
@@ -60,7 +60,7 @@ public final class PyramidRoomComponent implements ExplorationComponent {
             context.world().ifPresent(world -> {
                 world.spawnParticle(Particle.FALLING_DUST, center, particles,
                         1.5D + particles * 0.04D, 0.15D, 1.5D + particles * 0.04D, 0.01D);
-                world.playSound(center, Sound.BLOCK_SANDSTONE_BREAK, volume,
+                world.playSound(center, Sound.BLOCK_SAND_BREAK, volume,
                         delay >= 110L ? 0.65F : 0.8F);
             });
         }, delay);
