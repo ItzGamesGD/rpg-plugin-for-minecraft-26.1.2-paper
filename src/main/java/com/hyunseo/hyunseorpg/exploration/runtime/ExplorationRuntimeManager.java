@@ -615,14 +615,7 @@ public final class ExplorationRuntimeManager {
     }
 
     private double pyramidEntryPadding(ExplorationStructureDefinition definition) {
-        if (definition == null) return 4.0D;
-        return definition.variants().stream()
-                .filter(v -> v.id().equals("guardian_trial"))
-                .flatMap(v -> v.components().stream())
-                .filter(spec -> "pyramid_repel".equalsIgnoreCase(spec.type()))
-                .findFirst()
-                .map(spec -> Math.max(0.0D, spec.decimal("entry-boundary-padding", 4.0D)))
-                .orElse(definition.entryBoundaryPadding());
+        return definition == null ? 4.0D : definition.entryBoundaryPadding();
     }
 
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
