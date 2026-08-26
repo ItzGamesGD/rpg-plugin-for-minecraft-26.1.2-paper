@@ -184,7 +184,7 @@ structures:
           - type: reward_drop
             phase: clear
             # BALANCE_POLICY_PENDING: do not use radius-history as a recipient set.
-            recipient: looter
+            recipient: entry_actor
             reward-id: vanilla:GOLD_INGOT
             amount: 4
 
