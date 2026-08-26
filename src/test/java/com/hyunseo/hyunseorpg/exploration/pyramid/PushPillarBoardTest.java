@@ -69,6 +69,18 @@ class PushPillarBoardTest {
     }
 
     @Test
+    void finalMoveCanBeDetectedBeforeItMutatesTheSolvedBoard() {
+        PushPillarBoard board = new PushPillarBoard(List.of(
+                pillar("sun", new PyramidGridPoint(0, 0), new PyramidGridPoint(1, 0),
+                        new PyramidGridPoint(0, 0), new PyramidGridPoint(1, 0))
+        ), 0);
+
+        assertTrue(board.wouldCompleteMove("sun", PyramidGridDirection.EAST, 1));
+        assertFalse(board.allSolved());
+        assertTrue(board.tryMove("sun", PyramidGridDirection.EAST, 1).allSolved());
+    }
+
+    @Test
     void invalidDefinitionsFailBeforeAnyRuntimeBoardIsCreated() {
         assertThrows(IllegalArgumentException.class, () -> new PushPillarDefinition(
             "sun", "S", "yellow", new PyramidGridPoint(0, 0), new PyramidGridPoint(1, 0),
