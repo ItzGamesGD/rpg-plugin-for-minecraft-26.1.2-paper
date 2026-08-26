@@ -28,8 +28,14 @@ public final class PyramidRoomComponent implements ExplorationComponent {
         }
         rooms.prepare(context, spec);
         context.world().ifPresent(world -> {
-            Location center = new Location(world, context.record().bounds().centerX(),
-                    context.record().bounds().minY(), context.record().bounds().centerZ());
+            int anchorX = context.record().activationMetadata().containsKey("pyramid-treasure-x")
+                    ? Integer.parseInt(context.record().activationMetadata().get("pyramid-treasure-x"))
+                    : (int) Math.floor(context.record().bounds().centerX());
+            int anchorZ = context.record().activationMetadata().containsKey("pyramid-treasure-z")
+                    ? Integer.parseInt(context.record().activationMetadata().get("pyramid-treasure-z"))
+                    : (int) Math.floor(context.record().bounds().centerZ());
+            Location center = new Location(world, anchorX + 0.5D,
+                    context.record().bounds().minY(), anchorZ + 0.5D);
             world.spawnParticle(Particle.FALLING_DUST, center, 18, 2.5D, 0.2D, 2.5D, 0.01D);
             world.playSound(center, Sound.BLOCK_SANDSTONE_BREAK, 0.45F, 0.8F);
             scheduleTelegraph(context, center, 40L, 12, 0.35F);
