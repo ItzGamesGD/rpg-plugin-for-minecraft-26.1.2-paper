@@ -150,7 +150,7 @@ structures:
             objective: true
             glowing: true
           - type: pyramid_push_pillars
-            phase: pyramid_room_reveal
+            phase: pyramid_pillar_restore
             cooldown-ticks: 8
             contact-radius: 1.65
             grid-scale: 1.0
