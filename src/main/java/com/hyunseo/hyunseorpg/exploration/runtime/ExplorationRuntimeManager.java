@@ -359,7 +359,10 @@ public final class ExplorationRuntimeManager {
                 plugin.getLogger().info("Exploration structure loot armed: structure=" + record.structureId()
                         + ", looter=" + player.getUniqueId());
             } catch (IOException exception) {
-                plugin.getLogger().log(Level.WARNING, "Unable to persist outpost loot state: " + record.structureId(), exception);
+                // The in-memory trigger was only a reservation; roll it back when the
+                // durable checkpoint cannot be written so the chest remains retryable.
+                runtime.clearLootTaken();
+                plugin.getLogger().log(Level.WARNING, "Unable to persist outpost loot state; trigger rolled back: " + record.structureId(), exception);
             }
         }
         return marked;
