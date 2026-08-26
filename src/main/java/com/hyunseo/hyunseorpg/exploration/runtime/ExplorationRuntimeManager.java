@@ -277,6 +277,8 @@ public final class ExplorationRuntimeManager {
             runtime.snapshotRaidOrigin(player.getLocation());
             runtime.clearCombatAbandonExit();
             if (record.structureType().equals("desert_pyramid")) {
+                repository.save(repository.get(structureId).orElse(record)
+                        .withMetadata("pyramid-guardian-encounter-state", "spawn_pending"));
                 executePhase(record, runtime, ExplorationComponentPhase.PYRAMID_GUARDIAN_SPAWN, currentTick);
             } else {
                 executePhase(record, runtime, phaseForChoice(choice), currentTick);
