@@ -97,6 +97,32 @@ public final class PyramidPushPillarService {
         session.displays.clear();
     }
 
+    /**
+     * Durably records the solved intent before the final board mutation.
+     * A failed first save leaves the board movable, so restart never loses
+     * evidence of an already-solved board.
+     */
+    private synchronized boolean persistSolvedIntent(UUID structureId) {
+        if (repository == null) return true;
+        try {
+            var record = repository.get(structureId).orElse(null);
+            if (record == null) return false;
+            if (Boolean.parseBoolean(record.activationMetadata()
+                    .getOrDefault("pyramid-underground-complete", "false"))) return true;
+            if (PyramidUndergroundCompletionState.parse(record.activationMetadata()
+                    .get("pyramid-underground-completion-state"))
+                    == PyramidUndergroundCompletionState.COMPLETION_PENDING) return true;
+            repository.save(record.withMetadata("pyramid-underground-completion-state",
+                    PyramidUndergroundCompletionState.COMPLETION_PENDING.value()));
+            return true;
+        } catch (java.io.IOException | RuntimeException failure) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                    "Pyramid final pillar move deferred until solved intent is durable: structure=" + structureId,
+                    failure);
+            return false;
+        }
+    }
+
     private synchronized void persistUndergroundCompletion(UUID structureId,
                                                                com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime) {
         if (repository == null) return;
@@ -215,6 +241,14 @@ public final class PyramidPushPillarService {
                 double towardX = pillar.getX() - from.getX();
                 double towardZ = pillar.getZ() - from.getZ();
                 if (moveX * towardX + moveZ * towardZ <= 0.0D) continue;
+                // The last move is an irreversible logical solve. Persist the pending
+                // intent before mutating the board so a crash cannot erase all evidence.
+                if (board.wouldCompleteMove(definition.id(), direction, tick)
+                        && !persistSolvedIntent(structureId)) {
+                    player.sendMessage(net.kyori.adventure.text.Component.text(
+                            "피라미드 장치가 잠시 불안정합니다. 잠시 후 다시 시도하십시오."));
+                    return true;
+                }
                 PushPillarBoard.MoveResult result = board.tryMove(definition.id(), direction, tick);
                 if (!result.moved()) continue;
                 Location moved = location(result.position());
