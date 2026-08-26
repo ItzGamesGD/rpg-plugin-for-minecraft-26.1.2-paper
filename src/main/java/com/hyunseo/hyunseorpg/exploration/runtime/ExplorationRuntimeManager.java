@@ -1049,8 +1049,15 @@ public final class ExplorationRuntimeManager {
 
     /** Converts a durable solved-but-unfinalized board to module completion before any puzzle restore. */
     private StructureRecord reconcilePendingPyramidUndergroundCompletion(StructureRecord record) throws IOException {
-        if (!"completion_pending".equals(record.activationMetadata().get("pyramid-underground-completion-state"))
-                || Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) return record;
+        boolean completeFlag = Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
+        String state = record.activationMetadata().getOrDefault("pyramid-underground-completion-state", "unsolved");
+        if (completeFlag && !"complete".equals(state)) {
+            StructureRecord normalized = record.withMetadata("pyramid-underground-completion-state", "complete")
+                    .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
+            repository.save(normalized);
+            return normalized;
+        }
+        if (!"completion_pending".equals(state) || completeFlag) return record;
         StructureRecord complete = record.withMetadata("pyramid-underground-complete", "true")
                 .withMetadata("pyramid-underground-completion-state", "complete")
                 .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
