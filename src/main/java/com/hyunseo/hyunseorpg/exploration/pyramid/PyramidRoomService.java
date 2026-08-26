@@ -300,9 +300,13 @@ public final class PyramidRoomService {
         int outer = radius + shell;
         int minY = origin.y() - 1 - shell;
         int maxY = origin.y() + height + shell;
-        for (int x = origin.x() - outer; x <= origin.x() + outer; x += 16) {
-            for (int z = origin.z() - outer; z <= origin.z() + outer; z += 16) {
-                if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+        int minChunkX = (origin.x() - outer) >> 4;
+        int maxChunkX = (origin.x() + outer) >> 4;
+        int minChunkZ = (origin.z() - outer) >> 4;
+        int maxChunkZ = (origin.z() + outer) >> 4;
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                if (!world.isChunkLoaded(chunkX, chunkZ)) return false;
             }
         }
         for (int x = origin.x() - outer; x <= origin.x() + outer; x++) {
