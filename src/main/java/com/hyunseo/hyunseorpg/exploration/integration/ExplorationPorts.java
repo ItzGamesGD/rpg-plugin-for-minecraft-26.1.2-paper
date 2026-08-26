@@ -87,6 +87,12 @@ public record ExplorationPorts(
     public interface RewardPort {
         RewardPort NOOP = (player, rewardId, amount, fallback, options) -> false;
         boolean grant(Player player, String rewardId, int amount, Location fallback, Map<String, Object> options);
+
+        /** Durable idempotent delivery hook used by completion transactions. */
+        default boolean enqueueDurable(Player player, String rewardId, int amount, Location fallback,
+                                       Map<String, Object> options, String idempotencyToken) {
+            return grant(player, rewardId, amount, fallback, options);
+        }
     }
 
     @FunctionalInterface
