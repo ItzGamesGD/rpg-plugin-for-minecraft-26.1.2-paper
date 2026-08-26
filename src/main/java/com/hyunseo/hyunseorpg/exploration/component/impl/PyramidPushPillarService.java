@@ -50,8 +50,17 @@ public final class PyramidPushPillarService {
                 if (display != null) session.displays.put(definition.id(), display);
             }
         } catch (RuntimeException exception) {
-            for (UUID display : session.displays.values()) ports.displays().remove(display);
+            cleanupDisplays(session);
             throw exception;
+        }
+        if (session.displays.size() != definitions.size()) {
+            int expected = definitions.size();
+            int spawned = session.displays.size();
+            cleanupDisplays(session);
+            plugin.getLogger().warning("Pyramid pillars failed: structure=" + session.structureId
+                    + ", expected=" + expected + ", spawned=" + spawned);
+            throw new IllegalStateException("Pyramid pillar display spawn incomplete: expected="
+                    + expected + ", spawned=" + spawned);
         }
         sessions.put(session.structureId, session);
         plugin.getLogger().info("Desert Pyramid push-pillar puzzle activated: structure="
@@ -66,6 +75,14 @@ public final class PyramidPushPillarService {
                     || !session.world.getUID().equals(to.getWorld().getUID())) continue;
             if (session.tryPush(player, from, to, currentTick)) return;
         }
+    }
+
+    private void cleanupDisplays(Session session) {
+        for (UUID display : session.displays.values()) {
+            try { ports.displays().remove(display); }
+            catch (RuntimeException ignored) { }
+        }
+        session.displays.clear();
     }
 
     public synchronized void stop(UUID structureId) {
