@@ -75,7 +75,9 @@ public final class PyramidRoomService {
         }
         PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
                 buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
-                Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell))
+                Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
+                        persistedInt(context, "pyramid-treasure-x", (int) Math.floor(bounds.centerX())),
+                        persistedInt(context, "pyramid-treasure-z", (int) Math.floor(bounds.centerZ()))))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
@@ -188,26 +190,20 @@ public final class PyramidRoomService {
     }
 
     private PyramidRoomCandidate findBuriedCandidate(World world, StructureBounds bounds,
-                                                      int radius, int height, int shell) {
-        int centerX = (int) Math.floor(bounds.centerX());
-        int centerZ = (int) Math.floor(bounds.centerZ());
+                                                      int radius, int height, int shell,
+                                                      int anchorX, int anchorZ) {
+        // Underground origin is anchored to the verified treasure-floor chest;
+        // offset NORTH/SOUTH/EAST/WEST candidates would create an unrelated hole.
+        int centerX = anchorX;
+        int centerZ = anchorZ;
         int highest = bounds.minY() - 4;
         int lowest = Math.max(world.getMinHeight() + shell + 2, highest - 32);
-        for (PyramidRoomCandidate.Slot slot : PyramidRoomCandidate.Slot.values()) {
-            int x = centerX;
-            int z = centerZ;
-            switch (slot) {
-                case NORTH -> z -= 6;
-                case SOUTH -> z += 6;
-                case EAST -> x += 6;
-                case WEST -> x -= 6;
-                case CENTER -> { }
-            }
-            for (int y = highest; y >= lowest; y--) {
-                PyramidBlockPosition origin = new PyramidBlockPosition(x, y, z);
-                if (buried(world, origin, radius, height, shell)) {
-                    return new PyramidRoomCandidate(slot, origin, PyramidRoomOrientation.NORTH);
-                }
+        int x = centerX;
+        int z = centerZ;
+        for (int y = highest; y >= lowest; y--) {
+            PyramidBlockPosition origin = new PyramidBlockPosition(x, y, z);
+            if (buried(world, origin, radius, height, shell)) {
+                return new PyramidRoomCandidate(PyramidRoomCandidate.Slot.CENTER, origin, PyramidRoomOrientation.NORTH);
             }
         }
         return null;
