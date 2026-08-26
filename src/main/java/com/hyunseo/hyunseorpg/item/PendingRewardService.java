@@ -61,8 +61,7 @@ public final class PendingRewardService {
         if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
         if (existing.stream().anyMatch(reward -> token.equals(reward.id()))) return true;
-        add(uuid, PendingReward.item(token, uuid, item, cause));
-        return pending.getOrDefault(uuid, List.of()).stream().anyMatch(reward -> token.equals(reward.id()));
+        return add(uuid, PendingReward.item(token, uuid, item, cause));
     }
 
     public synchronized void queueCoins(UUID uuid, long amount, String cause) {
@@ -107,8 +106,8 @@ public final class PendingRewardService {
         if (count > 0) player.sendActionBar(Component.text("미수령 보상: " + count + "개", NamedTextColor.YELLOW));
     }
 
-    public synchronized void save() {
-        if (!dirty) return;
+    public synchronized boolean save() {
+        if (!dirty) return true;
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("schema-version", 1);
         for (Map.Entry<UUID, List<PendingReward>> entry : pending.entrySet()) {
@@ -128,16 +127,18 @@ public final class PendingRewardService {
             yaml.save(temp);
             Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             dirty = false;
+            return true;
         } catch (IOException exception) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to save pending rewards", exception);
+            return false;
         }
     }
 
-    private void add(UUID uuid, PendingReward reward) {
+    private boolean add(UUID uuid, PendingReward reward) {
         if (reward.item() != null) itemNormalizer.accept(reward.item());
         pending.computeIfAbsent(uuid, ignored -> new ArrayList<>()).add(reward);
         dirty = true;
-        save();
+        return save();
     }
 
     private void load() {
