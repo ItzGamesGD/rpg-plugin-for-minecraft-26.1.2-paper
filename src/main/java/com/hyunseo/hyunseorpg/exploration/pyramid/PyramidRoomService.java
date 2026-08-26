@@ -48,7 +48,7 @@ public final class PyramidRoomService {
 
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureBounds bounds = context.record().bounds();
-        int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 3)), 2, 5);
+        int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
         int height = clamp(persistedInt(context, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
         boolean createdMetadata = Boolean.parseBoolean(context.record().activationMetadata()
