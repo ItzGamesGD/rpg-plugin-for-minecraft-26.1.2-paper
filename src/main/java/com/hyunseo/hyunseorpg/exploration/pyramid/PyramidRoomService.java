@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /** Pyramid-only underground room planner, builder and lifecycle owner. */
 public final class PyramidRoomService {
@@ -31,10 +32,16 @@ public final class PyramidRoomService {
     private final StructureRepository repository;
     private final Map<UUID, RoomSession> sessions = new LinkedHashMap<>();
     private final Map<UUID, PendingReveal> pendingReveals = new LinkedHashMap<>();
+    private Consumer<ExplorationEventContext> revealCompletion = context -> { };
 
     public PyramidRoomService(JavaPlugin plugin, StructureRepository repository) {
         this.plugin = plugin;
         this.repository = repository;
+    }
+
+    /** Registers the explicit happy-path continuation into the pillar component. */
+    public synchronized void setRevealCompletion(Consumer<ExplorationEventContext> continuation) {
+        this.revealCompletion = continuation == null ? context -> { } : continuation;
     }
 
     /**
@@ -169,6 +176,9 @@ public final class PyramidRoomService {
                     pending.context.runtime().sequence().setFlag("pyramid.room.revealed");
                     pendingReveals.remove(structureId);
                     plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
+                    // Continue directly into the puzzle; heartbeat recovery remains only
+                    // a restart fallback and is not part of the normal happy path.
+                    revealCompletion.accept(pending.context);
                 } catch (Exception exception) {
                     restore(pending.world, pending.snapshots);
                     pendingReveals.remove(structureId);
