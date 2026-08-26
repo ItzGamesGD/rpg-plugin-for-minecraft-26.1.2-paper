@@ -85,8 +85,8 @@ public final class PyramidRoomService {
         PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
                 buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
-                        persistedInt(context, "pyramid-treasure-x", (int) Math.floor(bounds.centerX())),
-                        persistedInt(context, "pyramid-treasure-z", (int) Math.floor(bounds.centerZ()))))
+                        persistedInt(context, "pyramid-treasure-center-x", (int) Math.floor(bounds.centerX())),
+                        persistedInt(context, "pyramid-treasure-center-z", (int) Math.floor(bounds.centerZ()))))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
@@ -94,6 +94,9 @@ public final class PyramidRoomService {
         }
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("pyramid-room-prepared", "true");
+        // Trigger chest establishes identity; the direct shaft is always the treasure-chamber centre.
+        metadata.put("pyramid-treasure-center-x", Integer.toString((int) Math.floor(bounds.centerX())));
+        metadata.put("pyramid-treasure-center-z", Integer.toString((int) Math.floor(bounds.centerZ())));
         metadata.put("pyramid-room-origin", encode(candidate.origin()));
         metadata.put("pyramid-room-radius", Integer.toString(radius));
         metadata.put("pyramid-room-height", Integer.toString(height));
@@ -289,8 +292,8 @@ public final class PyramidRoomService {
     private PyramidRoomCandidate findBuriedCandidate(World world, StructureBounds bounds,
                                                       int radius, int height, int shell,
                                                       int anchorX, int anchorZ) {
-        // Underground origin is anchored to the verified treasure-floor chest;
-        // offset NORTH/SOUTH/EAST/WEST candidates would create an unrelated hole.
+        // The clicked chest identifies vanilla loot, but the shaft must remain at the
+        // shared treasure-chamber centre, never beneath one of its four corner chests.
         int centerX = anchorX;
         int centerZ = anchorZ;
         int highest = bounds.minY() - 4;
