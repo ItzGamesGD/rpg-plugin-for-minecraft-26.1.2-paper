@@ -25,14 +25,14 @@ class PyramidUndergroundCompletionStateTest {
         assertEquals(first, second);
     }
 
-    @Test void completeFlagDoesNotHideMissingOrUnknownPersistedState() {
-        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+    @Test void completeFlagTurnsMissingOrUnknownPersistedStateIntoRepairPending() {
+        assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING,
                 PyramidUndergroundCompletionState.reconcile(true, null));
-        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+        assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING,
                 PyramidUndergroundCompletionState.reconcile(true, "legacy-garbage"));
     }
 
-    @Test void unknownLegacyStateFailsClosedToUnsolved() {
+    @Test void unknownLegacyStateWithoutCompleteEvidenceFailsClosedToUnsolved() {
         assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
                 PyramidUndergroundCompletionState.reconcile(false, "legacy-garbage"));
     }
