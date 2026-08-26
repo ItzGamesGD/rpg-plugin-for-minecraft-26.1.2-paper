@@ -375,6 +375,10 @@ public final class ConfigMigrationService {
                     }
                 }
                 case "pyramid_repel" -> {
+                    if (copy.get("entry-boundary-padding") == null) {
+                        copy.put("entry-boundary-padding", 4.0D);
+                        changed = true;
+                    }
                     if (!"pyramid_entry".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
                         copy.put("phase", "pyramid_entry");
                         changed = true;
