@@ -1050,8 +1050,15 @@ public final class ExplorationRuntimeManager {
         }
     }
 
-    /** Restart recovery delegates to the same durable transaction used by the live pillar service. */
+    /** Restart recovery delegates only pending/legacy completion evidence to the live pillar transaction. */
     private StructureRecord reconcilePendingPyramidUndergroundCompletion(StructureRecord record) throws IOException {
+        boolean complete = Boolean.parseBoolean(record.activationMetadata()
+                .getOrDefault("pyramid-underground-complete", "false"));
+        PyramidUndergroundCompletionState state = PyramidUndergroundCompletionState.parse(record.activationMetadata()
+                .get("pyramid-underground-completion-state"));
+        if (!complete && state != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
+            return record;
+        }
         var reconciled = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
         if (reconciled != null && reconciled != record
                 && Boolean.parseBoolean(reconciled.activationMetadata()
