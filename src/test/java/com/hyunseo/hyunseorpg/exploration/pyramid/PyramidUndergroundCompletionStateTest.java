@@ -3,26 +3,33 @@ package com.hyunseo.hyunseorpg.exploration.pyramid;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /** Behavioural contract for the only durable underground-completion vocabulary. */
 class PyramidUndergroundCompletionStateTest {
-    @Test void pendingStateSurvivesRestartAndConvergesToComplete() {
+    @Test void pendingStateSurvivesRestartUntilRepositoryNormalizesIt() {
         var afterRestart = PyramidUndergroundCompletionState.reconcile(false, "completion_pending");
         assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING, afterRestart);
-        var afterDurableRetry = PyramidUndergroundCompletionState.reconcile(true, afterRestart.value());
-        assertEquals(PyramidUndergroundCompletionState.COMPLETE, afterDurableRetry);
+
+        // The complete flag is authoritative for gameplay, but the stale marker must
+        // remain visible so ExplorationRuntimeManager performs the durable write.
+        var contradictory = PyramidUndergroundCompletionState.reconcile(true, afterRestart.value());
+        assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING, contradictory);
+        assertNotEquals(PyramidUndergroundCompletionState.COMPLETE, contradictory);
     }
 
-    @Test void repeatedRecoveryIsIdempotent() {
-        var first = PyramidUndergroundCompletionState.reconcile(true, "completion_pending");
+    @Test void alreadyNormalizedCompleteStateIsIdempotent() {
+        var first = PyramidUndergroundCompletionState.reconcile(true, "complete");
         var second = PyramidUndergroundCompletionState.reconcile(true, first.value());
         assertEquals(PyramidUndergroundCompletionState.COMPLETE, first);
         assertEquals(first, second);
     }
 
-    @Test void durableCompleteFlagWinsOverStalePendingMarker() {
-        assertEquals(PyramidUndergroundCompletionState.COMPLETE,
-                PyramidUndergroundCompletionState.reconcile(true, "completion_pending"));
+    @Test void completeFlagDoesNotHideMissingOrUnknownPersistedState() {
+        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+                PyramidUndergroundCompletionState.reconcile(true, null));
+        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+                PyramidUndergroundCompletionState.reconcile(true, "legacy-garbage"));
     }
 
     @Test void unknownLegacyStateFailsClosedToUnsolved() {
