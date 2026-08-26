@@ -14,7 +14,8 @@ public record ExplorationStructureDefinition(
         long lootTriggerGraceTicks,
         double combatAbandonRadius,
         long combatAbandonGraceTicks,
-        List<StructureVariantDefinition> variants
+        List<StructureVariantDefinition> variants,
+        double entryBoundaryPadding
 ) {
     public ExplorationStructureDefinition {
         id = normalize(id);
@@ -31,6 +32,9 @@ public record ExplorationStructureDefinition(
             throw new IllegalArgumentException("combatAbandonRadius < triggerRadius");
         }
         if (combatAbandonGraceTicks < 1L) throw new IllegalArgumentException("combatAbandonGraceTicks < 1");
+        if (!Double.isFinite(entryBoundaryPadding) || entryBoundaryPadding < 0.0D) {
+            throw new IllegalArgumentException("entryBoundaryPadding < 0");
+        }
         variants = List.copyOf(variants == null ? List.of() : variants);
         if (enabled && selectionChance > 0.0D && variants.stream().noneMatch(StructureVariantDefinition::enabled)) {
             throw new IllegalArgumentException("enabled RPG structure requires at least one enabled variant");
