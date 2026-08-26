@@ -112,6 +112,7 @@ public final class ExplorationModule {
             return false;
         }
         if (!registry.load()) return false;
+        if (!validatePyramidDefinition()) return false;
         if (!registry.isEnabled()) {
             plugin.getLogger().info("Exploration module is installed but disabled in exploration/structures.yml.");
             return true;
@@ -184,6 +185,42 @@ public final class ExplorationModule {
                     return center.distanceSquared(closest) * 8.0D + projected;
                 }))
                 .map(record -> record.structureId());
+    }
+
+    private boolean validatePyramidDefinition() {
+        var definition = registry.get("desert_pyramid").orElse(null);
+        if (definition == null) return true;
+        var variant = definition.variants().stream()
+                .filter(candidate -> candidate.id().equals("guardian_trial")).findFirst().orElse(null);
+        if (variant == null) {
+            plugin.getLogger().severe("Pyramid validation failed: missing guardian_trial variant");
+            return false;
+        }
+        java.util.Map<String, String> phases = new java.util.LinkedHashMap<>();
+        for (var spec : variant.components()) {
+            String type = spec.type().trim().toLowerCase(java.util.Locale.ROOT);
+            if (phases.put(type, spec.string("phase", "").trim().toLowerCase(java.util.Locale.ROOT)) != null) {
+                plugin.getLogger().severe("Pyramid validation failed: duplicate official component " + type);
+                return false;
+            }
+        }
+        java.util.Map<String, String> required = java.util.Map.of(
+                "pyramid_room", "pyramid_loot_trigger",
+                "pyramid_room_reveal", "pyramid_room_reveal",
+                "pyramid_repel", "pyramid_entry",
+                "choice_prompt", "pyramid_quiz",
+                "pyramid_guardian", "pyramid_guardian_spawn",
+                "pyramid_push_pillars", "pyramid_room_reveal",
+                "reward_drop", "clear");
+        for (var entry : required.entrySet()) {
+            String actual = phases.get(entry.getKey());
+            if (actual == null || !actual.equals(entry.getValue())) {
+                plugin.getLogger().severe("Pyramid validation failed: component=" + entry.getKey()
+                        + ", expectedPhase=" + entry.getValue() + ", actualPhase=" + actual);
+                return false;
+            }
+        }
+        return true;
     }
 
     private ExplorationComponentRegistry defaultComponents() {
