@@ -453,12 +453,14 @@ public final class ExplorationRuntimeManager {
             if ("desert_pyramid".equals(record.structureType())
                     && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
                     && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
-                    && !runtime.sequence().flag("pyramid.puzzle.started")
-                    && !runtime.sequence().flag("pyramid.room.reveal.in_progress")) {
+                    && !runtime.sequence().flag("pyramid.puzzle.started")) {
                 try {
-                    executeNamedPhase(record, runtime, "pyramid_room_reveal", currentTick);
+                    // A committed room is already carved geometry. Heartbeat recovery
+                    // may restore only the pillar session; it must never replay reveal.
+                    continuePyramidPuzzle(new ExplorationEventContext(plugin, record, runtime, ports,
+                            teleportExemptions, currentTick, this::scheduleSequencePhase));
                 } catch (Exception exception) {
-                    plugin.getLogger().log(Level.WARNING, "Pyramid puzzle restore deferred (retryable): " + record.structureId(), exception);
+                    plugin.getLogger().log(Level.WARNING, "Pyramid pillar restore deferred (retryable): " + record.structureId(), exception);
                 }
             }
 
