@@ -105,6 +105,12 @@ public final class PendingRewardService {
             }
             ItemStack item = reward.item();
             if (item == null) continue;
+            if (deterministic(reward)
+                    && (completedTokens.containsKey(reward.id()) || manualRecoveryTokens.containsKey(reward.id()))) {
+                // A durable tombstone or quarantine always wins over a stale mailbox
+                // obligation loaded from an older/partially written snapshot.
+                continue;
+            }
             if (deterministic(reward)) {
                 // Journal before the inventory side effect. If the final tombstone save fails,
                 // restart scans the tagged item and converges without issuing another copy.
