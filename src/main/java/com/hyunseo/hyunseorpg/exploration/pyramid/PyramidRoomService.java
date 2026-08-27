@@ -137,7 +137,7 @@ public final class PyramidRoomService {
         if (!shaftSafe(world, origin, currentRecord.bounds())
                 || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
-                    + structureId + ", origin=" + encode(origin) + ", shaftProgress=" + shaftProgress);
+                    + structureId + ", origin=" + encode(origin));
             throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
@@ -150,7 +150,7 @@ public final class PyramidRoomService {
                 existing.height, existing.shell, snapshots, currentRecord.bounds().minY() - 1);
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
-        scheduleRevealLayer(pending, shaftProgress);
+        scheduleRevealLayer(pending, 0);
         plugin.getLogger().info("Desert Pyramid staged reveal armed: structure=" + structureId
                 + ", layers=3x3, interval=" + Math.max(2, spec.integer("reveal-layer-interval-ticks", 3)) + " ticks");
         return pending.candidate;
