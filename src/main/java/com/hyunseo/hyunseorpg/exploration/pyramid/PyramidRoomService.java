@@ -91,9 +91,10 @@ public final class PyramidRoomService {
             plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
         }
         final StructureRecord preparedRecord = effectiveRecord;
-        int shaftProgress = persistedInt(preparedRecord, "pyramid-shaft-reveal-progress", 0);
+        // Staged carving is presentation-only; no per-layer durable progress is
+        // trusted or replayed after a reload. A prepared room must still be intact.
         PyramidRoomCandidate candidate = readPersistedCandidate(preparedRecord).filter(value ->
-                shaftProgress > 0 || buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
+                buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
                         persistedInt(preparedRecord, "pyramid-treasure-center-x", treasureCenter.x()),
                         persistedInt(preparedRecord, "pyramid-treasure-center-z", treasureCenter.z())))
@@ -104,7 +105,6 @@ public final class PyramidRoomService {
         }
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("pyramid-room-prepared", "true");
-        metadata.put("pyramid-shaft-reveal-progress", "0");
         // Trigger chest establishes identity; the direct shaft is always the treasure-chamber centre.
         metadata.put("pyramid-treasure-center-x", Integer.toString(treasureCenter.x()));
         metadata.put("pyramid-treasure-center-z", Integer.toString(treasureCenter.z()));
@@ -137,16 +137,19 @@ public final class PyramidRoomService {
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
         StructureRecord currentRecord = repository.get(structureId).orElse(context.record());
-        int shaftProgress = Math.max(0, persistedInt(currentRecord, "pyramid-shaft-reveal-progress", 0));
         if (!shaftSafe(world, origin, currentRecord.bounds())
-                || (shaftProgress == 0 && !buried(world, origin, existing.radius, existing.height, existing.shell))) {
+                || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
                     + structureId + ", origin=" + encode(origin) + ", shaftProgress=" + shaftProgress);
             throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
                 currentRecord.bounds());
-        PendingReveal pending = new PendingReveal(context, currentRecord, spec, existing.candidate, existing.radius,
+        // Mark presentation as in-flight before world mutation. A reload in this
+        // window is handled as failed-closed rather than guessing partial progress.
+        StructureRecord revealRecord = currentRecord.withMetadata("pyramid-reveal-in-progress", "true");
+        repository.save(revealRecord);
+        PendingReveal pending = new PendingReveal(context, revealRecord, spec, existing.candidate, existing.radius,
                 existing.height, existing.shell, snapshots, currentRecord.bounds().minY() - 1);
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
@@ -168,11 +171,6 @@ public final class PyramidRoomService {
                     if (y >= endY) {
                         if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
                         carveShaftLayer(pending.world, pending.candidate.origin(), y);
-                        StructureRecord progressRecord = withMetadata(pending.record, Map.of(
-                                "pyramid-room-prepared", "true",
-                                "pyramid-room-origin", encode(pending.candidate.origin()),
-                                "pyramid-shaft-reveal-progress", Integer.toString(index + 1)));
-                        repository.save(progressRecord);
                         pending.context.world().ifPresent(world -> world.playSound(
                                 new Location(world, pending.candidate.origin().x() + 0.5D, y,
                                         pending.candidate.origin().z() + 0.5D),
@@ -181,13 +179,17 @@ public final class PyramidRoomService {
                         return;
                     }
                     carveRoom(pending.world, pending.candidate.origin(), pending.radius, pending.height);
-                    StructureRecord record = withMetadata(pending.record, Map.of(
+                    // Merge underground-owned fields into the latest record so a
+                    // concurrent guardian update cannot be overwritten.
+                    StructureRecord latest = repository.get(structureId).orElse(pending.record);
+                    StructureRecord record = withMetadata(latest, Map.of(
                             "pyramid-room-created", "true",
                             "pyramid-room-prepared", "true",
                             "pyramid-room-origin", encode(pending.candidate.origin()),
                             "pyramid-room-radius", Integer.toString(pending.radius),
                             "pyramid-room-height", Integer.toString(pending.height),
                             "pyramid-room-created-at", Instant.now().toString()))
+                            .withMetadata("pyramid-reveal-in-progress", null)
                             .withMetadata("pyramid-shaft-reveal-progress", null);
                     repository.save(record);
                     sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
@@ -205,8 +207,16 @@ public final class PyramidRoomService {
                     restore(pending.world, pending.snapshots);
                     pendingReveals.remove(structureId);
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+                    try {
+                        StructureRecord latest = repository.get(structureId).orElse(pending.record);
+                        if (latest.state() == com.hyunseo.hyunseorpg.exploration.model.StructureEventState.ACTIVE) {
+                            repository.save(latest.transitionTo(
+                                    com.hyunseo.hyunseorpg.exploration.model.StructureEventState.ABANDONED,
+                                    Instant.now()).withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
+                        }
+                    } catch (Exception ignored) { }
                     plugin.getLogger().log(java.util.logging.Level.WARNING,
-                            "Desert Pyramid staged reveal rolled back (retryable): " + structureId, exception);
+                            "Desert Pyramid staged reveal failed closed: " + structureId, exception);
                 }
             }
         }, index == 0 ? 0L : interval);
