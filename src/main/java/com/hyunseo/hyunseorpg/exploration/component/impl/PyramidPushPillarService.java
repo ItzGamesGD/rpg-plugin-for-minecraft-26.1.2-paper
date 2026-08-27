@@ -167,6 +167,22 @@ public final class PyramidPushPillarService {
         }
     }
 
+    public synchronized void markRecoveryRequired(ExplorationEventContext context, String reason) {
+        if (context == null) return;
+        UUID structureId = context.runtime().structureId();
+        try {
+            if (repository != null) {
+                var latest = repository.get(structureId).orElse(context.record());
+                repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                        .withMetadata("pyramid-failure-reason", reason == null ? "pillar-state-invalid" : reason));
+            }
+        } catch (Exception ignored) { }
+        context.runtime().sequence().cancelPendingTasks();
+        stop(structureId);
+        plugin.getLogger().severe("Pyramid progression frozen: recovery required for structure=" + structureId
+                + " (" + (reason == null ? "pillar-state-invalid" : reason) + ")");
+    }
+
     public synchronized void stop(UUID structureId) {
         Session session = sessions.remove(structureId);
         org.bukkit.scheduler.BukkitTask retry = completionRetryTasks.remove(structureId);
