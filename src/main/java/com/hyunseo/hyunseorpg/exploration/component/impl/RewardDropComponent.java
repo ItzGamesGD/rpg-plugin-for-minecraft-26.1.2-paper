@@ -37,6 +37,12 @@ public final class RewardDropComponent implements ExplorationComponent {
         }
 
         boolean pyramid = "desert_pyramid".equals(context.record().structureType());
+        if (pyramid && "RECOVERY_REQUIRED".equals(context.record().activationMetadata()
+                .getOrDefault("pyramid-failure-state", ""))) {
+            context.plugin().getLogger().warning("Pyramid reward refused: recovery required for "
+                    + context.record().structureId());
+            return;
+        }
         if (pyramid) {
             String rewardState = context.record().activationMetadata().getOrDefault("pyramid-reward-state", "pending");
             if ("finalized".equalsIgnoreCase(rewardState) || "delivered".equalsIgnoreCase(rewardState)) return;
