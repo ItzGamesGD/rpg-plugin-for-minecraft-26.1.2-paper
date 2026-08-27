@@ -160,27 +160,27 @@ structures:
               - id: sun
                 symbol-id: sun
                 color: red
-                initial: "-1,-1"
-                target: "1,-1"
-                allowed: ["-1,-1", "0,-1", "1,-1"]
+                initial: "-3,-3"
+                target: "-1,-1"
+                allowed: ["-3,-3", "-2,-3", "-2,-2", "-1,-2", "-1,-1"]
               - id: moon
                 symbol-id: moon
                 color: blue
-                initial: "-1,0"
-                target: "1,0"
-                allowed: ["-1,0", "0,0", "1,0"]
+                initial: "3,-3"
+                target: "1,-1"
+                allowed: ["3,-3", "2,-3", "2,-2", "1,-2", "1,-1"]
               - id: emerald
                 symbol-id: emerald
                 color: green
-                initial: "-1,1"
-                target: "1,1"
-                allowed: ["-1,1", "0,1", "1,1"]
+                initial: "-3,3"
+                target: "-1,1"
+                allowed: ["-3,3", "-2,3", "-2,2", "-1,2", "-1,1"]
               - id: amethyst
                 symbol-id: amethyst
                 color: purple
-                initial: "0,-1"
-                target: "0,1"
-                allowed: ["0,-1", "0,0", "0,1"]
+                initial: "3,3"
+                target: "1,1"
+                allowed: ["3,3", "2,3", "2,2", "1,2", "1,1"]
           - type: reward_drop
             phase: clear
             # BALANCE_POLICY_PENDING: do not use radius-history as a recipient set.
