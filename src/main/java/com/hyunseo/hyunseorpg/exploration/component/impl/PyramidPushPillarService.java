@@ -103,14 +103,16 @@ public final class PyramidPushPillarService {
      * A failed first save leaves the board movable, so restart never loses
      * evidence of an already-solved board.
      */
-    private synchronized boolean persistSolvedIntent(UUID structureId) {
+    private boolean persistSolvedIntentAndLogicalPosition(UUID structureId, String pillarId,
+                                                             PyramidGridPoint position) {
         if (repository == null) return true;
         try {
-            return PyramidUndergroundCompletionCoordinator.persistSolvedIntent(repository, structureId);
+            return PyramidUndergroundCompletionCoordinator.persistSolvedIntentAndLogicalPosition(
+                    repository, structureId, pillarId, position);
         } catch (java.io.IOException | RuntimeException failure) {
             plugin.getLogger().log(java.util.logging.Level.WARNING,
-                    "Pyramid final pillar move deferred until solved intent is durable: structure=" + structureId,
-                    failure);
+                    "Pyramid final pillar move deferred until solved intent and logical position are durable: structure="
+                            + structureId, failure);
             return false;
         }
     }
@@ -234,18 +236,20 @@ public final class PyramidPushPillarService {
                 double towardX = pillar.getX() - from.getX();
                 double towardZ = pillar.getZ() - from.getZ();
                 if (moveX * towardX + moveZ * towardZ <= 0.0D) continue;
-                // The last move is an irreversible logical solve. Persist the pending
-                // intent before mutating the board so a crash cannot erase all evidence.
-                if (board.wouldCompleteMove(definition.id(), direction, tick)
-                        && !persistSolvedIntent(structureId)) {
+                // The final move commits solved intent and its logical position in one
+                // durable snapshot before changing the in-memory board. This prevents a
+                // pending marker from surviving a later logical-position save failure.
+                boolean finalMove = board.wouldCompleteMove(definition.id(), direction, tick);
+                PyramidGridPoint previous = board.currentPosition(definition.id()).orElse(null);
+                PyramidGridPoint destination = previous == null ? null : previous.translate(direction);
+                if (finalMove && !persistSolvedIntentAndLogicalPosition(structureId, definition.id(), destination)) {
                     player.sendMessage(net.kyori.adventure.text.Component.text(
                             "피라미드 장치가 잠시 불안정합니다. 잠시 후 다시 시도하십시오."));
                     return true;
                 }
-                PyramidGridPoint previous = board.currentPosition(definition.id()).orElse(null);
                 PushPillarBoard.MoveResult result = board.tryMove(definition.id(), direction, tick);
                 if (!result.moved()) continue;
-                if (!persistLogicalPosition(structureId, definition.id(), result.position(), result.solvedNow())) {
+                if (!finalMove && !persistLogicalPosition(structureId, definition.id(), result.position(), result.solvedNow())) {
                     board.rollbackMove(definition.id(), previous);
                     player.sendMessage(net.kyori.adventure.text.Component.text(
                             "피라미드 장치가 잠시 불안정합니다. 이동이 저장되지 않았습니다."));
