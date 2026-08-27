@@ -11,6 +11,20 @@ import java.util.UUID;
 public final class PyramidUndergroundCompletionCoordinator {
     private PyramidUndergroundCompletionCoordinator() { }
 
+    public static boolean persistSolvedIntentAndLogicalPosition(StructureRepository repository, UUID structureId,
+                                                                   String pillarId, PyramidGridPoint position) throws IOException {
+        StructureRecord record = repository.get(structureId).orElse(null);
+        if (record == null || pillarId == null || position == null) return false;
+        if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) return true;
+        StructureRecord next = record.withMetadata("pyramid-underground-completion-state",
+                PyramidUndergroundCompletionState.COMPLETION_PENDING.value())
+                .withMetadata("pyramid-pillar-position-" + pillarId,
+                        position.x() + "," + position.z())
+                .withMetadata("pyramid-pillar-solved-" + pillarId, "true");
+        if (next != record) repository.save(next);
+        return true;
+    }
+
     public static boolean persistSolvedIntent(StructureRepository repository, UUID structureId) throws IOException {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (record == null) return false;
