@@ -9,6 +9,9 @@ import org.bukkit.event.block.BlockPlaceEvent;
 
 /** Prevents normal player edits to an active Desert Pyramid puzzle's owned geometry. */
 public final class PyramidPuzzleProtectionListener implements Listener {
+    /** Pure policy used by both Bukkit handlers: only owned geometry is cancelled. */
+    public static boolean shouldCancelBlockEdit(boolean protectedBlock) { return protectedBlock; }
+
     private final ExplorationRuntimeManager runtimes;
 
     public PyramidPuzzleProtectionListener(ExplorationRuntimeManager runtimes) {
@@ -17,7 +20,7 @@ public final class PyramidPuzzleProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        if (runtimes.isPyramidPuzzleProtected(event.getBlock())) {
+        if (shouldCancelBlockEdit(runtimes.isPyramidPuzzleProtected(event.getBlock()))) {
             event.setCancelled(true);
         }
     }
