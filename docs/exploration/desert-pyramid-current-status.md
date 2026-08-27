@@ -1,9 +1,9 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
-- Candidate implementation checkpoint: `8cbfaf08c0d1e6fe4b70b05d9c1436593d2242c9` (documentation commits may advance the tip)
+- Candidate implementation checkpoint: `e2098cd260890a1e946b81b15fb1bad5a803ece6` (documentation commits may advance the tip)
 - Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
-- CI: the candidate implementation runs the Exploration workflow `./gradlew clean test --no-daemon`; the final documentation tip must be rechecked by GitHub Actions.
+- CI: fresh verification is required for the simplified recovery implementation tip via `./gradlew clean test --no-daemon`.
 - Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
 
 ## Durable underground completion
@@ -12,7 +12,7 @@
 
 ## Repository and shaft recovery
 
-`StructureRepository` persists the complete world snapshot before publishing index mutations, so failed saves leave no candidate or ghost record. Staged Pyramid shaft progress is persisted after each 3x3 layer and resumed from that checkpoint after reload; committed rooms restore pillars only and never replay room carving.
+`StructureRepository` persists the complete world snapshot before publishing index mutations, so failed saves leave no candidate or ghost record. Staged shaft carving is presentation-only; it has no per-layer durable checkpoint. An interrupted or ambiguous reveal is marked `RECOVERY_REQUIRED` and is never replayed or reconstructed automatically. Committed rooms restore pillars only and never replay room carving.
 
 ## Room, pillar, and entry contracts
 
@@ -24,4 +24,4 @@ Pyramid rewards use deterministic tokens. A durable claim journal is written bef
 
 ## Legacy/reset and live validation
 
-Migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`. Reset and diagnostics include completion state, reward state, staged shaft progress, and stale-room metadata cleanup. Paper/client retesting remains required for visual timing, terrain-safe guardian spawn, display interaction, TNT protection, and client-visible repel direction.
+Migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`. Reset and diagnostics include completion state, reward state, recovery-required reason, and committed-room metadata. Paper/client retesting remains required for visual timing, terrain-safe guardian spawn, display interaction, TNT protection, and client-visible repel direction.
