@@ -23,6 +23,12 @@ public final class PushPillarBoard {
     private final long cooldownTicks;
 
     public PushPillarBoard(Collection<PushPillarDefinition> definitions, long cooldownTicks) {
+        this(definitions, cooldownTicks, Map.of());
+    }
+
+    /** Reconstructs only from durable logical positions; display coordinates are never read. */
+    public PushPillarBoard(Collection<PushPillarDefinition> definitions, long cooldownTicks,
+                           Map<String, PyramidGridPoint> restoredPositions) {
         Objects.requireNonNull(definitions, "definitions");
         if (definitions.isEmpty()) {
             throw new IllegalArgumentException("at least one pillar is required");
@@ -37,17 +43,28 @@ public final class PushPillarBoard {
         this.cooldownTicks = cooldownTicks;
         this.pillarsById = new LinkedHashMap<>();
         this.occupancy = new LinkedHashMap<>();
+        Map<String, PyramidGridPoint> restored = restoredPositions == null ? Map.of() : restoredPositions;
 
         Set<PyramidGridPoint> targets = new LinkedHashSet<>();
         for (PushPillarDefinition definition : definitions) {
-            if (pillarsById.putIfAbsent(definition.id(), new PillarState(definition)) != null) {
+            PyramidGridPoint position = restored.getOrDefault(definition.id(), definition.initialPosition());
+            if (!definition.allowedCells().contains(position)) {
+                throw new IllegalArgumentException("restored pillar position is outside its legal path: " + definition.id());
+            }
+            if (pillarsById.putIfAbsent(definition.id(), new PillarState(definition, position)) != null) {
                 throw new IllegalArgumentException("duplicate pillar id: " + definition.id());
             }
-            if (occupancy.putIfAbsent(definition.initialPosition(), definition.id()) != null) {
-                throw new IllegalArgumentException("duplicate initial cell: " + definition.initialPosition());
+            if (occupancy.putIfAbsent(position, definition.id()) != null) {
+                throw new IllegalArgumentException("duplicate pillar cell: " + position);
             }
             if (!targets.add(definition.targetPosition())) {
                 throw new IllegalArgumentException("duplicate target cell: " + definition.targetPosition());
+            }
+        }
+        for (PillarState state : pillarsById.values()) {
+            if (state.currentPosition.equals(state.definition.targetPosition())) {
+                state.solved = true;
+                solvedIds.add(state.definition.id());
             }
         }
     }
@@ -142,9 +159,9 @@ public final class PushPillarBoard {
         private boolean solved;
         private long nextAllowedMoveTick = Long.MIN_VALUE;
 
-        private PillarState(PushPillarDefinition definition) {
+        private PillarState(PushPillarDefinition definition, PyramidGridPoint position) {
             this.definition = definition;
-            this.currentPosition = definition.initialPosition();
+            this.currentPosition = position;
         }
     }
 
