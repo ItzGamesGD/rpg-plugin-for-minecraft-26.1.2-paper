@@ -55,6 +55,17 @@ final class PyramidUndergroundCompletionCoordinatorTest {
     }
 
     @Test
+    void recoveryRequiredPendingStateCannotCompleteOrReward() throws IOException {
+        PersistedStorage storage = new PersistedStorage(pyramid(Map.of(
+                "pyramid-underground-completion-state", "completion_pending",
+                "pyramid-failure-state", "RECOVERY_REQUIRED")));
+        StructureRecord unchanged = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        assertEquals("completion_pending", unchanged.activationMetadata().get("pyramid-underground-completion-state"));
+        assertFalse(Boolean.parseBoolean(unchanged.activationMetadata().getOrDefault("pyramid-underground-complete", "false")));
+        assertEquals(0, storage.saveCalls);
+    }
+
+    @Test
     void unsolvedRecordCannotBeCompletedByRecoveryOrAnArbitraryCaller() throws IOException {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
         StructureRecord unchanged = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
