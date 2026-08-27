@@ -117,6 +117,8 @@ final class ExplorationRuntimeManagerTest {
                 Instant.now(), null, 1);
         assertTrue(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false));
         assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, true));
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false, true, false));
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false, false, true));
         assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(
                 committed.withMetadata("pyramid-underground-complete", "true"), false));
     }
