@@ -350,7 +350,14 @@ public final class ExplorationRuntimeManager {
                 runtime.sequence().cancelPendingTasks();
                 return false;
             }
-            StructureRecord completed = rewardCheckpoint.transitionTo(StructureEventState.CLEARED, Instant.now());
+            StructureRecord completionBase = latestAfterClear;
+            if ("desert_pyramid".equals(record.structureType())) {
+                for (String key : List.of("pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
+                    String value = rewardCheckpoint.activationMetadata().get(key);
+                    if (value != null) completionBase = completionBase.withMetadata(key, value);
+                }
+            }
+            StructureRecord completed = completionBase.transitionTo(StructureEventState.CLEARED, Instant.now());
             if (hasRewardPhase(record)) completed = completed.markRewardClaimed();
             repository.save(completed);
             active.remove(structureId);
