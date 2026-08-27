@@ -211,7 +211,7 @@ public final class ExplorationModule {
                 "pyramid_repel", "pyramid_entry",
                 "choice_prompt", "pyramid_quiz",
                 "pyramid_guardian", "pyramid_guardian_spawn",
-                "pyramid_push_pillars", "pyramid_room_reveal",
+                "pyramid_push_pillars", "pyramid_pillar_restore",
                 "reward_drop", "clear");
         for (var entry : required.entrySet()) {
             String actual = phases.get(entry.getKey());
