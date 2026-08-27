@@ -4,7 +4,7 @@ PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
 CANDIDATE_HEAD: e2098cd260890a1e946b81b15fb1bad5a803ece6 (implementation tip; docs commits may advance the branch tip)
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
-CI_STATE: fresh GitHub Actions verification required for the simplified recovery implementation tip
+CI_STATE: final-tip GitHub Actions verification in progress for the simplified recovery implementation
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
