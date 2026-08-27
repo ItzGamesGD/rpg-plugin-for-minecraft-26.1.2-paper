@@ -112,7 +112,7 @@ public final class ExplorationRuntimeManager {
                 "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state",
                 "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
-                "pyramid-reveal-retry-attempts", "pyramid-failure-state", "pyramid-failure-reason",
+                "pyramid-failure-state", "pyramid-failure-reason",
                 "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             result.put(key, record.activationMetadata().getOrDefault(key, "false"));
         }
