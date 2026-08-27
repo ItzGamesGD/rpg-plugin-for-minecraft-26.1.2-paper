@@ -46,7 +46,16 @@ class DesertPyramidContentTest {
             assertEquals(Boolean.TRUE, components.get(4).get("objective"));
             assertEquals("pyramid_push_pillars", components.get(5).get("type"));
             assertEquals("pyramid_pillar_restore", components.get(5).get("phase"));
-            assertEquals(4, ((List<?>) components.get(5).get("pillars")).size());
+            List<?> pillars = (List<?>) components.get(5).get("pillars");
+            assertEquals(4, pillars.size());
+            assertEquals("-3,-3", ((Map<?, ?>) pillars.get(0)).get("initial"));
+            assertEquals("-1,-1", ((Map<?, ?>) pillars.get(0)).get("target"));
+            assertEquals("3,-3", ((Map<?, ?>) pillars.get(1)).get("initial"));
+            assertEquals("1,-1", ((Map<?, ?>) pillars.get(1)).get("target"));
+            assertEquals("-3,3", ((Map<?, ?>) pillars.get(2)).get("initial"));
+            assertEquals("-1,1", ((Map<?, ?>) pillars.get(2)).get("target"));
+            assertEquals("3,3", ((Map<?, ?>) pillars.get(3)).get("initial"));
+            assertEquals("1,1", ((Map<?, ?>) pillars.get(3)).get("target"));
             assertEquals("reward_drop", components.get(6).get("type"));
             assertEquals("clear", components.get(6).get("phase"));
             assertEquals("entry_actor", components.get(6).get("recipient"));
