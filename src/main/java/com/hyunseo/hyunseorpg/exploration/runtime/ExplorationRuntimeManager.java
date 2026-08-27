@@ -266,9 +266,9 @@ public final class ExplorationRuntimeManager {
                 // Delayed Bukkit tasks are intentionally not persisted. Re-arm the
                 // deterministic room reveal, or restore the already-created room
                 // and its puzzle displays, after a reload/reconnect.
-                if (Boolean.parseBoolean(persistent.activationMetadata().getOrDefault("pyramid-room-created", "false"))) {
-                    // A committed room is post-carve state. Restore/retry only the pillar
-                    // component; replaying room reveal would incorrectly require it to be buried.
+                if (isCommittedPyramidRoomReadyForReload(persistent, runtime.sequence().flag("pyramid.puzzle.started"))) {
+                    // A committed room is post-carve state. Restore the pillar
+                    // component once; room reveal is never replayed.
                     continuePyramidPuzzle(new ExplorationEventContext(plugin, persistent, runtime, ports,
                             teleportExemptions, currentTick, this::scheduleSequencePhase));
                 } else {
@@ -741,8 +741,8 @@ public final class ExplorationRuntimeManager {
         return definition == null ? 4.0D : definition.entryBoundaryPadding();
     }
 
-    /** A committed room can only restore its pillar session; reveal is never a heartbeat action. */
-    static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted) {
+    /** A committed room may restore pillars once during deterministic activation/reload. */
+    static boolean isCommittedPyramidRoomReadyForReload(StructureRecord record, boolean puzzleStarted) {
         return record != null
                 && "desert_pyramid".equals(record.structureType())
                 && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
