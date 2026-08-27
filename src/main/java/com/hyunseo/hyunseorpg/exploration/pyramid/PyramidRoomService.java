@@ -196,8 +196,8 @@ public final class PyramidRoomService {
                     pending.context.runtime().sequence().setFlag("pyramid.room.revealed");
                     pendingReveals.remove(structureId);
                     plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
-                    // Continue directly into the puzzle; heartbeat recovery remains only
-                    // a restart fallback and is not part of the normal happy path.
+                    // Continue directly into the puzzle; reload restoration is handled only during
+                    // deterministic activation and is not a heartbeat recovery path.
                     revealCompletion.accept(pending.context);
                 } catch (Exception exception) {
                     restore(pending.world, pending.snapshots);
