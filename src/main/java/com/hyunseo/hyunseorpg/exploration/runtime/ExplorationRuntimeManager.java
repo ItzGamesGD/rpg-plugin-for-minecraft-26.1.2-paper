@@ -482,9 +482,7 @@ public final class ExplorationRuntimeManager {
             if (definition == null) continue;
 
             if (shouldRestoreCommittedPyramidPillars(record,
-                    runtime.sequence().flag("pyramid.puzzle.started"),
-                    runtime.sequence().flag("pyramid.puzzle.restore.retry.scheduled"),
-                    runtime.sequence().flag("pyramid.puzzle.restore.retry.exhausted"))) {
+                    runtime.sequence().flag("pyramid.puzzle.started"))) {
                 try {
                     // A committed room is already carved geometry. Heartbeat recovery
                     // may restore only the pillar session; it must never replay reveal.
@@ -711,20 +709,13 @@ public final class ExplorationRuntimeManager {
 
     /** A committed room can only restore its pillar session; reveal is never a heartbeat action. */
     static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted) {
-        return shouldRestoreCommittedPyramidPillars(record, puzzleStarted, false, false);
-    }
-
-    static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted,
-                                                         boolean retryScheduled, boolean retryExhausted) {
         return record != null
                 && "desert_pyramid".equals(record.structureType())
                 && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
                 && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
                 && !"RECOVERY_REQUIRED".equals(record.activationMetadata().getOrDefault("pyramid-failure-state", ""))
                 && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-reveal-in-progress", "false"))
-                && !puzzleStarted
-                && !retryScheduled
-                && !retryExhausted;
+                && !puzzleStarted;
     }
 
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
