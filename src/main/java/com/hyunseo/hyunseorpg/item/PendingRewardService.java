@@ -72,9 +72,10 @@ public final class PendingRewardService {
         if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
         boolean pendingToken = existing.stream().anyMatch(reward -> token.equals(reward.id()));
-        DeterministicRewardClaimPolicy.State state = DeterministicRewardClaimPolicy.fromDurableEvidence(
-                pendingToken, claimInProgressTokens.containsKey(token),
-                completedTokens.containsKey(token) || manualRecoveryTokens.containsKey(token));
+        DeterministicRewardClaimPolicy.State state = manualRecoveryTokens.containsKey(token)
+                ? DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED
+                : DeterministicRewardClaimPolicy.fromDurableEvidence(
+                pendingToken, claimInProgressTokens.containsKey(token), completedTokens.containsKey(token));
         if (DeterministicRewardClaimPolicy.suppressesQueue(state)) {
             // A previous enqueue may have populated memory but failed its file write.
             // Only a pending list can require that same durable flush; journalled and
