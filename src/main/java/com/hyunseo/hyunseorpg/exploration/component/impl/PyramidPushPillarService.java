@@ -298,7 +298,9 @@ public final class PyramidPushPillarService {
         }
 
         private void portsMove(UUID display, Location location) {
-            ports.displays().move(display, location);
+            if (!ports.displays().move(display, location)) {
+                throw new IllegalStateException("pillar-display-missing-or-invalid");
+            }
         }
 
         private void failClosedRepresentation(RuntimeException failure) {
