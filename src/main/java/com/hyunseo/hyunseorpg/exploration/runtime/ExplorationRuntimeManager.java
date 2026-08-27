@@ -164,10 +164,18 @@ public final class ExplorationRuntimeManager {
             if ("desert_pyramid".equals(record.structureType())) {
                 persistent = migratePyramidRecord(persistent);
                 persistent = reconcilePendingPyramidUndergroundCompletion(persistent);
-                if ("RECOVERY_REQUIRED".equals(persistent.activationMetadata()
-                        .getOrDefault("pyramid-failure-state", ""))
-                        || Boolean.parseBoolean(persistent.activationMetadata()
-                        .getOrDefault("pyramid-reveal-in-progress", "false"))) {
+                boolean recoveryRequired = "RECOVERY_REQUIRED".equals(persistent.activationMetadata()
+                        .getOrDefault("pyramid-failure-state", ""));
+                boolean revealInterrupted = Boolean.parseBoolean(persistent.activationMetadata()
+                        .getOrDefault("pyramid-reveal-in-progress", "false"));
+                if (revealInterrupted && !recoveryRequired) {
+                    persistent = persistent.withMetadata("pyramid-reveal-in-progress", null)
+                            .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                            .withMetadata("pyramid-failure-reason", "reveal-interrupted-during-reload");
+                    repository.save(persistent);
+                    recoveryRequired = true;
+                }
+                if (recoveryRequired) {
                     plugin.getLogger().warning("Pyramid activation refused: recovery required for "
                             + persistent.structureId());
                     return false;
