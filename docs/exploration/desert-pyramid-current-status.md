@@ -1,30 +1,27 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
+- Candidate implementation checkpoint: `27d5c0791b1302b36b3f73b8fc3d780719b4375b` (documentation commits may advance the tip)
 - Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
-- CI: GitHub Actions run [33023357959](https://github.com/ItzGamesGD/rpg-plugin-for-minecraft-26.1.2-paper/actions/runs/33023357959) passed `./gradlew clean test --no-daemon` (283 tests, 2 skipped).
+- CI: the candidate implementation runs the Exploration workflow `./gradlew clean test --no-daemon`; the final documentation tip must be rechecked by GitHub Actions.
 - Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
 
 ## Durable underground completion
 
-The live final-pillar operation persists `pyramid-underground-completion-state=completion_pending` before it mutates the final solved board. `PyramidUndergroundCompletionCoordinator` is the sole durable pending-to-complete transaction; the pillar service owns normal live completion and restart/retry recovery calls that same coordinator. It rejects an unsolved record, is idempotent, and normalizes legacy `pyramid-underground-complete=true + completion_pending` to `complete`.
+`PyramidUndergroundCompletionCoordinator` is the sole durable pending-to-complete authority. The final pillar move persists `completion_pending` before the irreversible board mutation; a failed repository save does not publish a false in-memory record. Restart and heartbeat recovery reconcile only pending/legacy contradictory evidence through the same coordinator, and repeated reconciliation is idempotent.
 
-This preserves independent guardian and underground modules. Guardian completion cannot start the room/pillars, and underground completion cannot start the guardian.
+## Repository and shaft recovery
 
-## Room, shaft, and pillar recovery
+`StructureRepository` persists the complete world snapshot before publishing index mutations, so failed saves leave no candidate or ghost record. Staged Pyramid shaft progress is persisted after each 3x3 layer and resumed from that checkpoint after reload; committed rooms restore pillars only and never replay room carving.
 
-The current configuration uses a room radius of 4 (9x9 footprint, 7x7 usable interior), a consistent staged 3x3 shaft, and four required pillar displays. Partial display creation is cleaned up. A committed room uses `pyramid_pillar_restore` with bounded pillar-only retry; it never replays room reveal.
+## Room, pillar, and entry contracts
 
-Config migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`, matching the bundled configuration and runtime recovery path.
+The room uses radius 4 (9x9 footprint with a 7x7 usable interior), a consistent 3x3 shaft, protected special blocks, staged top-to-bottom reveal, and four required pillar displays. Partial display creation is cleaned before bounded pillar-only retry. Entry records the actual actor and movement vector; guardian spawn remains above ground and independent of underground state. The four canonical vanilla chest offsets are strict chest-only slots at horizontal ±2/±2 from the structure center and share one canonical center.
 
 ## Reward transaction
 
-Pyramid rewards are durably queued with deterministic tokens. Claim records a durable pre-delivery journal before an exact inventory insertion and tags the delivered item with that token. If final tombstone persistence fails, restart reconciliation finds the tagged item and persists the completed tombstone without another delivery. Pending, journalled, and completed tokens suppress repeated queue/finalization attempts.
+Pyramid rewards use deterministic tokens. A durable claim journal is written before exact tagged inventory delivery. Completed tombstones survive restart; stale mailbox rows are ignored when a completion tombstone exists. If delivery occurs but final persistence fails, restart either observes the tagged item and completes the tombstone or moves the token to durable `manual-recovery-required` quarantine when the item is no longer observable. Quarantined tokens are fail-closed and can never be automatically reissued, including after Pyramid finalization retry.
 
-## Entry and restart behavior
+## Legacy/reset and live validation
 
-Pyramid entry captures the real actor and movement vector. A padded boundary triggers only on an actual outside-to-interior crossing; the perimeter itself is neutral against movement jitter. Restart recovery restores durable module, room, guardian, and reward evidence without replaying committed geometry.
-
-## Remaining live-only validation
-
-Run a Paper server retest for staged shaft timing, TNT/special-block protection in a generated Pyramid, real display interaction, guardian safe-spawn terrain, and client-visible repel direction. These are intentionally not claimed as live verified.
+Migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`. Reset and diagnostics include completion state, reward state, and staged shaft progress. Paper/client retesting remains required for visual timing, terrain-safe guardian spawn, display interaction, TNT protection, and client-visible repel direction.
