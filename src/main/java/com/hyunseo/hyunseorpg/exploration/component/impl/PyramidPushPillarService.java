@@ -26,7 +26,7 @@ import java.util.UUID;
 
 /** Live contact/display adapter for the Pyramid push-pillar board. */
 public final class PyramidPushPillarService {
-    static boolean displayMoveSucceeded(boolean moved) { return moved; }
+    public static boolean displayMoveSucceeded(boolean moved) { return moved; }
     private final JavaPlugin plugin;
     private final ExplorationPorts ports;
     private final StructureRepository repository;
