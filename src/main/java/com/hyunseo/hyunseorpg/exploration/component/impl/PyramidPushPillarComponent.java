@@ -34,9 +34,10 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
         if (!"desert_pyramid".equals(context.record().structureType())) {
             throw new IllegalArgumentException("pyramid_push_pillars requires desert_pyramid");
         }
-        if (Boolean.parseBoolean(context.record().activationMetadata()
-                .getOrDefault("pyramid-underground-complete", "false"))) {
-            // Persistent module completion is authoritative across restart.
+        Map<String, String> metadata = context.record().activationMetadata();
+        if (Boolean.parseBoolean(metadata.getOrDefault("pyramid-underground-complete", "false"))
+                || "RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) {
+            // Recovery-required structures are terminal until an explicit administrative reset.
             return;
         }
         if (context.runtime().sequence().flag("pyramid.room.reveal.in_progress")) return;
