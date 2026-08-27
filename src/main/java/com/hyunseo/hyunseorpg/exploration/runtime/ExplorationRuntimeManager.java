@@ -80,7 +80,7 @@ public final class ExplorationRuntimeManager {
                 "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state", "pyramid-guardian-started",
                 "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
-                "pyramid-room-radius", "pyramid-room-height", "pyramid-reveal-retry-attempts",
+                "pyramid-room-radius", "pyramid-room-height",
                 "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to",
                 "pyramid-reveal-in-progress", "pyramid-failure-state", "pyramid-failure-reason")) {
             reset = reset.withMetadata(key, null);
