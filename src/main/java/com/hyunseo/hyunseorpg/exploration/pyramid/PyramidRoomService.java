@@ -136,16 +136,17 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
-        int shaftProgress = Math.max(0, persistedInt(context.record(), "pyramid-shaft-reveal-progress", 0));
-        if (!shaftSafe(world, origin, context.record().bounds())
+        StructureRecord currentRecord = repository.get(structureId).orElse(context.record());
+        int shaftProgress = Math.max(0, persistedInt(currentRecord, "pyramid-shaft-reveal-progress", 0));
+        if (!shaftSafe(world, origin, currentRecord.bounds())
                 || (shaftProgress == 0 && !buried(world, origin, existing.radius, existing.height, existing.shell))) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
                     + structureId + ", origin=" + encode(origin) + ", shaftProgress=" + shaftProgress);
             throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
-                context.record().bounds());
-        PendingReveal pending = new PendingReveal(context, spec, existing.candidate, existing.radius,
+                currentRecord.bounds());
+        PendingReveal pending = new PendingReveal(context, currentRecord, spec, existing.candidate, existing.radius,
                 existing.height, existing.shell, snapshots, context.record().bounds().minY() - 1);
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
@@ -167,7 +168,7 @@ public final class PyramidRoomService {
                     if (y >= endY) {
                         if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
                         carveShaftLayer(pending.world, pending.candidate.origin(), y);
-                        StructureRecord progressRecord = withMetadata(pending.context.record(), Map.of(
+                        StructureRecord progressRecord = withMetadata(pending.record, Map.of(
                                 "pyramid-room-prepared", "true",
                                 "pyramid-room-origin", encode(pending.candidate.origin()),
                                 "pyramid-shaft-reveal-progress", Integer.toString(index + 1)));
@@ -180,7 +181,7 @@ public final class PyramidRoomService {
                         return;
                     }
                     carveRoom(pending.world, pending.candidate.origin(), pending.radius, pending.height);
-                    StructureRecord record = withMetadata(pending.context.record(), Map.of(
+                    StructureRecord record = withMetadata(pending.record, Map.of(
                             "pyramid-room-created", "true",
                             "pyramid-room-prepared", "true",
                             "pyramid-room-origin", encode(pending.candidate.origin()),
@@ -461,6 +462,7 @@ public final class PyramidRoomService {
 
     private static final class PendingReveal {
         private final ExplorationEventContext context;
+        private final StructureRecord record;
         private final ExplorationComponentSpec spec;
         private final PyramidRoomCandidate candidate;
         private final int radius;
@@ -470,10 +472,11 @@ public final class PyramidRoomService {
         private final int startY;
         private final World world;
 
-        private PendingReveal(ExplorationEventContext context, ExplorationComponentSpec spec,
+        private PendingReveal(ExplorationEventContext context, StructureRecord record, ExplorationComponentSpec spec,
                               PyramidRoomCandidate candidate, int radius, int height, int shell,
                               List<BlockSnapshot> snapshots, int startY) {
             this.context = context;
+            this.record = record;
             this.spec = spec;
             this.candidate = candidate;
             this.radius = radius;
