@@ -294,10 +294,21 @@ public final class ExplorationRuntimeManager {
         }
     }
 
+    /** Central fail-closed gate for Pyramid completion and reward finalization. */
+    public static boolean pyramidCompletionAllowed(String structureType, Map<String, String> metadata) {
+        if (!"desert_pyramid".equals(structureType) || metadata == null) return true;
+        return !"RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""));
+    }
+
     public synchronized boolean complete(UUID structureId, long currentTick) {
         ExplorationRuntime runtime = active.get(structureId);
         StructureRecord record = repository.get(structureId).orElse(null);
         if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE) return false;
+        if (!pyramidCompletionAllowed(record.structureType(), record.activationMetadata())) {
+            plugin.getLogger().warning("Pyramid completion refused: recovery required for " + structureId);
+            runtime.sequence().cancelPendingTasks();
+            return false;
+        }
         try {
             StructureRecord rewardCheckpoint = record;
             if ("desert_pyramid".equals(record.structureType()) && runtime.entryActor() != null
@@ -716,6 +727,11 @@ public final class ExplorationRuntimeManager {
         String runtimeFlag = metadataKey.replace('-', '.');
         if (runtime.sequence().flag(runtimeFlag)) return;
         StructureRecord current = repository.get(record.structureId()).orElse(record);
+        if (!pyramidCompletionAllowed(current.structureType(), current.activationMetadata())) {
+            plugin.getLogger().warning("Pyramid module completion refused: recovery required for " + record.structureId());
+            runtime.sequence().cancelPendingTasks();
+            return;
+        }
         if (!Boolean.parseBoolean(current.activationMetadata().getOrDefault(metadataKey, "false"))) {
             StructureRecord updated = current.withMetadata(metadataKey, "true")
                     .withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
