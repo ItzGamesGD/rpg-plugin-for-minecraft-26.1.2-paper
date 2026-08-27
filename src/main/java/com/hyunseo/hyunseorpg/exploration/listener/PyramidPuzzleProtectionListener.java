@@ -27,7 +27,7 @@ public final class PyramidPuzzleProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
-        if (runtimes.isPyramidPuzzleProtected(event.getBlock())) {
+        if (shouldCancelBlockEdit(runtimes.isPyramidPuzzleProtected(event.getBlock()))) {
             event.setCancelled(true);
         }
     }
