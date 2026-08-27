@@ -90,12 +90,13 @@ public final class PyramidRoomService {
             context.runtime().sequence().clearFlag("pyramid.room.created");
             plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
         }
-        int shaftProgress = persistedInt(effectiveRecord, "pyramid-shaft-reveal-progress", 0);
-        PyramidRoomCandidate candidate = readPersistedCandidate(effectiveRecord).filter(value ->
+        final StructureRecord preparedRecord = effectiveRecord;
+        int shaftProgress = persistedInt(preparedRecord, "pyramid-shaft-reveal-progress", 0);
+        PyramidRoomCandidate candidate = readPersistedCandidate(preparedRecord).filter(value ->
                 shaftProgress > 0 || buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
-                        persistedInt(effectiveRecord, "pyramid-treasure-center-x", treasureCenter.x()),
-                        persistedInt(effectiveRecord, "pyramid-treasure-center-z", treasureCenter.z())))
+                        persistedInt(preparedRecord, "pyramid-treasure-center-x", treasureCenter.x()),
+                        persistedInt(preparedRecord, "pyramid-treasure-center-z", treasureCenter.z())))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
@@ -110,7 +111,7 @@ public final class PyramidRoomService {
         metadata.put("pyramid-room-origin", encode(candidate.origin()));
         metadata.put("pyramid-room-radius", Integer.toString(radius));
         metadata.put("pyramid-room-height", Integer.toString(height));
-        repository.save(withMetadata(effectiveRecord, metadata));
+        repository.save(withMetadata(preparedRecord, metadata));
         RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
                 List.of(), false, true);
         sessions.put(structureId, session);
