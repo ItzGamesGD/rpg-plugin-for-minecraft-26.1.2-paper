@@ -39,6 +39,24 @@ final class ExplorationConfigDataTest {
     }
 
     @Test
+    void pyramidPillarComponentUsesPillarOnlyRecoveryPhase() {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream("exploration/structures.yml")) {
+            assertNotNull(stream);
+            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            List<Map<?, ?>> components = yaml.getMapList(
+                    "structures.desert_pyramid.variants.guardian_trial.components");
+            Map<?, ?> pillars = components.stream()
+                    .filter(component -> "pyramid_push_pillars".equals(component.get("type")))
+                    .findFirst().orElseThrow();
+            assertEquals("pyramid_pillar_restore", pillars.get("phase"));
+            assertEquals("pyramid_pillar_restore", pillars.get("recovery-phase"));
+        } catch (Exception exception) {
+            throw new AssertionError(exception);
+        }
+    }
+
+    @Test
     void everyRegisteredStructureHasAStableNamespacedKeyAndSafeChance() {
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream("exploration/structures.yml")) {
             assertNotNull(stream);
