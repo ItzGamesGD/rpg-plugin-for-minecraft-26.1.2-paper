@@ -63,7 +63,8 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
 
             List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
             if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
-            PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
+            PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)),
+                    readLogicalPositions(context, pillars));
             service.start(context, spec, room, board, pillars);
         } catch (Exception failure) {
             // The started marker represents an active pillar session, not a failed
@@ -137,6 +138,24 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
             catch (NumberFormatException ignored) { return null; }
         }
         return null;
+    }
+
+    private Map<String, PyramidGridPoint> readLogicalPositions(ExplorationEventContext context,
+                                                                 List<PushPillarDefinition> pillars) {
+        Map<String, PyramidGridPoint> restored = new java.util.LinkedHashMap<>();
+        for (PushPillarDefinition pillar : pillars) {
+            String raw = context.record().activationMetadata().get("pyramid-pillar-position-" + pillar.id());
+            if (raw == null || raw.isBlank()) continue;
+            String[] parts = raw.split(",");
+            if (parts.length != 2) throw new IllegalStateException("invalid durable pillar position: " + pillar.id());
+            try {
+                restored.put(pillar.id(), new PyramidGridPoint(Integer.parseInt(parts[0].trim()),
+                        Integer.parseInt(parts[1].trim())));
+            } catch (NumberFormatException failure) {
+                throw new IllegalStateException("invalid durable pillar position: " + pillar.id(), failure);
+            }
+        }
+        return Map.copyOf(restored);
     }
 
     private String text(Object value) { return value == null ? "" : String.valueOf(value).trim(); }
