@@ -58,6 +58,7 @@ public final class PyramidRoomService {
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureBounds bounds = context.record().bounds();
         PyramidTreasureCenterPolicy.Center treasureCenter = PyramidTreasureCenterPolicy.from(bounds);
+        StructureRecord effectiveRecord = context.record();
         int radius = clamp(persistedInt(effectiveRecord, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
         int height = clamp(persistedInt(effectiveRecord, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
