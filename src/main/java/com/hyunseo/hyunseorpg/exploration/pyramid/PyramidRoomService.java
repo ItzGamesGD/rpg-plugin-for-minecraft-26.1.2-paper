@@ -57,6 +57,7 @@ public final class PyramidRoomService {
 
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureBounds bounds = context.record().bounds();
+        PyramidTreasureCenterPolicy.Center treasureCenter = PyramidTreasureCenterPolicy.from(bounds);
         int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
         int height = clamp(persistedInt(context, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
@@ -86,8 +87,8 @@ public final class PyramidRoomService {
         PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
                 shaftProgress > 0 || buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
-                        persistedInt(context, "pyramid-treasure-center-x", (int) Math.floor(bounds.centerX())),
-                        persistedInt(context, "pyramid-treasure-center-z", (int) Math.floor(bounds.centerZ()))))
+                        persistedInt(context, "pyramid-treasure-center-x", treasureCenter.x()),
+                        persistedInt(context, "pyramid-treasure-center-z", treasureCenter.z())))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
@@ -97,8 +98,8 @@ public final class PyramidRoomService {
         metadata.put("pyramid-room-prepared", "true");
         metadata.put("pyramid-shaft-reveal-progress", "0");
         // Trigger chest establishes identity; the direct shaft is always the treasure-chamber centre.
-        metadata.put("pyramid-treasure-center-x", Integer.toString((int) Math.floor(bounds.centerX())));
-        metadata.put("pyramid-treasure-center-z", Integer.toString((int) Math.floor(bounds.centerZ())));
+        metadata.put("pyramid-treasure-center-x", Integer.toString(treasureCenter.x()));
+        metadata.put("pyramid-treasure-center-z", Integer.toString(treasureCenter.z()));
         metadata.put("pyramid-room-origin", encode(candidate.origin()));
         metadata.put("pyramid-room-radius", Integer.toString(radius));
         metadata.put("pyramid-room-height", Integer.toString(height));
