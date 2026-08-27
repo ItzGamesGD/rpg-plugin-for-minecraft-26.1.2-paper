@@ -32,12 +32,71 @@ final class StructureRepositoryTest {
         assertEquals(record, repository.get(record.structureId()).orElseThrow());
     }
 
+    @Test
+    void failedSaveDoesNotPublishCandidateToTheIndexAndRetryCanCommit() throws IOException {
+        UUID world = UUID.randomUUID();
+        StructureRecord original = record(world);
+        FailingStorage storage = new FailingStorage(original);
+        StructureRepository repository = new StructureRepository(storage, new StructureIndex());
+        repository.ensureWorldLoaded(world);
+
+        StructureRecord candidate = original.withMetadata("pyramid-underground-completion-state", "completion_pending");
+        storage.failNextSave = true;
+        assertThrows(IOException.class, () -> repository.save(candidate));
+        assertEquals(original, repository.get(original.structureId()).orElseThrow(),
+                "failed durable writes must not become in-memory evidence");
+
+        repository.save(candidate);
+        assertEquals(candidate, repository.get(candidate.structureId()).orElseThrow());
+        assertEquals(candidate, storage.durable.getFirst());
+    }
+
+    @Test
+    void failedCreateDoesNotLeaveGhostRegistration() throws IOException {
+        UUID world = UUID.randomUUID();
+        StructureRecord candidate = record(world);
+        FailingStorage storage = new FailingStorage(null);
+        StructureRepository repository = new StructureRepository(storage, new StructureIndex());
+        repository.ensureWorldLoaded(world);
+        storage.failNextSave = true;
+
+        assertThrows(IOException.class, () -> repository.createIfAbsent(candidate));
+        assertTrue(repository.get(candidate.structureId()).isEmpty());
+        assertEquals(0, repository.index().size());
+
+        assertTrue(repository.createIfAbsent(candidate));
+        assertEquals(candidate, repository.get(candidate.structureId()).orElseThrow());
+    }
+
     private StructureRecord record(UUID world) {
         return new StructureRecord(UUID.randomUUID(), world, "swamp_hut", "minecraft:swamp_hut",
                 new StructureAnchor(world, 0, 64, 0),
                 new StructureBounds(-4, 60, -4, 4, 70, 4),
                 false, "", StructureEventState.VANILLA, Map.of(), false,
                 Instant.now(), null, 1);
+    }
+
+    private static final class FailingStorage implements StructureStorage {
+        private List<StructureRecord> durable;
+        private boolean failNextSave;
+
+        private FailingStorage(StructureRecord initial) {
+            this.durable = initial == null ? List.of() : List.of(initial);
+        }
+
+        @Override
+        public List<StructureRecord> loadWorld(UUID worldId) {
+            return List.copyOf(durable);
+        }
+
+        @Override
+        public void saveWorld(UUID worldId, List<StructureRecord> records) throws IOException {
+            if (failNextSave) {
+                failNextSave = false;
+                throw new IOException("simulated save failure");
+            }
+            durable = List.copyOf(records);
+        }
     }
 
     private static final class RetryingStorage implements StructureStorage {
