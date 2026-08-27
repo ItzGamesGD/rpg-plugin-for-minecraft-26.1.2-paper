@@ -35,15 +35,32 @@ public final class StructureRepository {
 
     public synchronized boolean createIfAbsent(StructureRecord record) throws IOException {
         ensureWorldLoaded(record.worldId());
-        if (!index.register(record)) return false;
-        saveWorld(record.worldId());
+        if (index.get(record.structureId()).isPresent()) return false;
+        List<StructureRecord> next = new java.util.ArrayList<>(index.getWorld(record.worldId()));
+        next.add(record);
+        // Persist the candidate snapshot before publishing it to the in-memory index.
+        // A failed write therefore cannot leave a ghost registration.
+        storage.saveWorld(record.worldId(), List.copyOf(next));
+        index.register(record);
         return true;
     }
 
     public synchronized void save(StructureRecord record) throws IOException {
         ensureWorldLoaded(record.worldId());
+        List<StructureRecord> next = new java.util.ArrayList<>(index.getWorld(record.worldId()));
+        boolean replaced = false;
+        for (int i = 0; i < next.size(); i++) {
+            if (next.get(i).structureId().equals(record.structureId())) {
+                next.set(i, record);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) next.add(record);
+        // Publish only after the durable snapshot succeeds. This prevents a failed
+        // pending-intent write from being mistaken for durable evidence on retry.
+        storage.saveWorld(record.worldId(), List.copyOf(next));
         index.upsert(record);
-        saveWorld(record.worldId());
     }
 
     public synchronized void flushAll() throws IOException {
