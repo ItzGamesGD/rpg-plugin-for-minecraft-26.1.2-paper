@@ -66,6 +66,10 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
             PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)));
             service.start(context, spec, room, board, pillars);
         } catch (Exception failure) {
+            // The started marker represents an active pillar session, not a failed
+            // reservation. Clear it before scheduling recovery so a reload/heartbeat
+            // can re-enter the pillar-only restore path if the delayed task is lost.
+            context.runtime().sequence().clearFlag("pyramid.puzzle.started");
             int attempt = context.runtime().sequence().incrementCounter(RETRY_ATTEMPTS);
             PyramidPillarRecoveryPolicy.Decision decision = PyramidPillarRecoveryPolicy.afterFailure(attempt);
             if (decision.retry()) {
