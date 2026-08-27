@@ -29,6 +29,7 @@ public final class PyramidUndergroundCompletionCoordinator {
     public static boolean persistSolvedIntent(StructureRepository repository, UUID structureId) throws IOException {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (record == null) return false;
+        if ("RECOVERY_REQUIRED".equals(record.activationMetadata().get("pyramid-failure-state"))) return false;
         if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) return true;
         if (PyramidUndergroundCompletionState.parse(record.activationMetadata()
                 .get("pyramid-underground-completion-state")) == PyramidUndergroundCompletionState.COMPLETION_PENDING) return true;
@@ -41,6 +42,7 @@ public final class PyramidUndergroundCompletionCoordinator {
     public static StructureRecord complete(StructureRepository repository, UUID structureId) throws IOException {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (record == null) return null;
+        if ("RECOVERY_REQUIRED".equals(record.activationMetadata().get("pyramid-failure-state"))) return record;
         boolean complete = Boolean.parseBoolean(record.activationMetadata()
                 .getOrDefault("pyramid-underground-complete", "false"));
         PyramidUndergroundCompletionState state = PyramidUndergroundCompletionState.reconcile(complete,
