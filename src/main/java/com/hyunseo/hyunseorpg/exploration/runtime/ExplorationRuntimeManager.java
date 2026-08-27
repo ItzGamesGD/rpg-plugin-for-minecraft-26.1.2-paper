@@ -81,7 +81,8 @@ public final class ExplorationRuntimeManager {
                 "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
                 "pyramid-room-radius", "pyramid-room-height", "pyramid-shaft-reveal-progress", "pyramid-reveal-retry-attempts",
-                "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
+                "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to",
+                "pyramid-reveal-in-progress", "pyramid-failure-state", "pyramid-failure-reason")) {
             reset = reset.withMetadata(key, null);
         }
         try {
@@ -163,6 +164,14 @@ public final class ExplorationRuntimeManager {
             if ("desert_pyramid".equals(record.structureType())) {
                 persistent = migratePyramidRecord(persistent);
                 persistent = reconcilePendingPyramidUndergroundCompletion(persistent);
+                if (Boolean.parseBoolean(persistent.activationMetadata()
+                        .getOrDefault("pyramid-failure-state", "").equals("RECOVERY_REQUIRED"))
+                        || Boolean.parseBoolean(persistent.activationMetadata()
+                        .getOrDefault("pyramid-reveal-in-progress", "false"))) {
+                    plugin.getLogger().warning("Pyramid activation refused: recovery required for "
+                            + persistent.structureId());
+                    return false;
+                }
             }
             if (record.state() == StructureEventState.UNDISCOVERED) {
                 persistent = persistent.transitionTo(StructureEventState.ACTIVE, Instant.now())
