@@ -67,6 +67,49 @@ public final class ExplorationRuntimeManager {
         return java.util.List.copyOf(active.values());
     }
 
+
+    /** Returns whether a block is owned by an active Pyramid puzzle and must not be modified. */
+    public synchronized boolean isPyramidPuzzleProtected(org.bukkit.block.Block block) {
+        if (block == null || block.getWorld() == null) return false;
+        for (ExplorationRuntime runtime : active.values()) {
+            if (!runtime.sequence().flag("pyramid.puzzle.active")) continue;
+            StructureRecord record = repository.get(runtime.structureId()).orElse(null);
+            if (record == null || record.state() != StructureEventState.ACTIVE
+                    || !"desert_pyramid".equals(record.structureType())) continue;
+            Map<String, String> metadata = record.activationMetadata();
+            if ("RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) continue;
+            if (!record.worldId().equals(block.getWorld().getUID())) continue;
+            int x = block.getX(), y = block.getY(), z = block.getZ();
+            String originRaw = metadata.get("pyramid-room-origin");
+            int radius = parseInt(metadata.get("pyramid-room-radius"), 4);
+            int height = parseInt(metadata.get("pyramid-room-height"), 4);
+            if (originRaw != null) {
+                String[] parts = originRaw.split(",");
+                if (parts.length == 3) {
+                    try {
+                        int ox = Integer.parseInt(parts[0].trim());
+                        int oy = Integer.parseInt(parts[1].trim());
+                        int oz = Integer.parseInt(parts[2].trim());
+                        if (Math.abs(x - ox) <= radius && Math.abs(z - oz) <= radius
+                                && y >= oy - 1 && y < oy + height) return true;
+                    } catch (NumberFormatException ignored) { return true; }
+                }
+            }
+            int centerX = parseInt(metadata.get("pyramid-treasure-center-x"), Integer.MIN_VALUE);
+            int centerZ = parseInt(metadata.get("pyramid-treasure-center-z"), Integer.MIN_VALUE);
+            int treasureY = parseInt(metadata.get("pyramid-treasure-y"), Integer.MIN_VALUE);
+            if (centerX != Integer.MIN_VALUE && centerZ != Integer.MIN_VALUE && treasureY != Integer.MIN_VALUE
+                    && Math.abs(x - centerX) <= 1 && Math.abs(z - centerZ) <= 1
+                    && y >= treasureY - 1 && y <= treasureY + 1) return true;
+        }
+        return false;
+    }
+
+    private int parseInt(String raw, int fallback) {
+        try { return raw == null ? fallback : Integer.parseInt(raw); }
+        catch (NumberFormatException ignored) { return fallback; }
+    }
+
     /** Builds a non-mutating diagnostic view for one persistent structure. */
     /** Clears one Pyramid's retry/progression metadata without touching other structures. */
     public synchronized boolean resetPyramid(UUID structureId) {
