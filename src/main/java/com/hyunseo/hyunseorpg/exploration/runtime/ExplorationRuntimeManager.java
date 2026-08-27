@@ -709,6 +709,7 @@ public final class ExplorationRuntimeManager {
                 && "desert_pyramid".equals(record.structureType())
                 && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
                 && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
+                && !"RECOVERY_REQUIRED".equals(record.activationMetadata().getOrDefault("pyramid-failure-state", ""))
                 && !puzzleStarted
                 && !retryScheduled
                 && !retryExhausted;
