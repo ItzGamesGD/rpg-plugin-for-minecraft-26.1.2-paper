@@ -79,20 +79,13 @@ public final class PyramidRoomService {
             return candidate;
         }
         if (createdMetadata) {
-            // Metadata without a bounded physical signature is stale (including
-            // the old radius-4 ghost-room records). Downgrade, preserve module
-            // completion, and let normal preparation rebuild deterministically.
-            effectiveRecord = effectiveRecord
-                    .withMetadata("pyramid-room-created", null)
-                    .withMetadata("pyramid-room-created-at", null)
-                    .withMetadata("pyramid-room-prepared", null)
-                    .withMetadata("pyramid-room-origin", null)
-                    .withMetadata("pyramid-room-radius", null)
-                    .withMetadata("pyramid-room-height", null)
-                    .withMetadata("pyramid-shaft-reveal-progress", null);
-            repository.save(effectiveRecord);
-            context.runtime().sequence().clearFlag("pyramid.room.created");
-            plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
+            // A committed-room signature mismatch is external corruption. Keep
+            // the durable evidence for diagnostics and freeze progression; never
+            // silently discard metadata and re-carve a different room.
+            repository.save(effectiveRecord
+                    .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                    .withMetadata("pyramid-failure-reason", "committed-room-signature-mismatch"));
+            throw new IllegalStateException("Pyramid committed room is corrupted; administrative reset required");
         }
         final StructureRecord preparedRecord = effectiveRecord;
         // Staged carving is presentation-only; no per-layer durable progress is
