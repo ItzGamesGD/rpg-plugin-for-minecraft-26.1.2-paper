@@ -82,8 +82,9 @@ public final class PyramidRoomService {
             context.runtime().sequence().clearFlag("pyramid.room.created");
             plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
         }
+        int shaftProgress = persistedInt(context, "pyramid-shaft-reveal-progress", 0);
         PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
-                buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
+                shaftProgress > 0 || buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
                         persistedInt(context, "pyramid-treasure-center-x", (int) Math.floor(bounds.centerX())),
                         persistedInt(context, "pyramid-treasure-center-z", (int) Math.floor(bounds.centerZ()))))
@@ -94,6 +95,7 @@ public final class PyramidRoomService {
         }
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("pyramid-room-prepared", "true");
+        metadata.put("pyramid-shaft-reveal-progress", "0");
         // Trigger chest establishes identity; the direct shaft is always the treasure-chamber centre.
         metadata.put("pyramid-treasure-center-x", Integer.toString((int) Math.floor(bounds.centerX())));
         metadata.put("pyramid-treasure-center-z", Integer.toString((int) Math.floor(bounds.centerZ())));
@@ -125,10 +127,11 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
+        int shaftProgress = Math.max(0, persistedInt(context, "pyramid-shaft-reveal-progress", 0));
         if (!shaftSafe(world, origin, context.record().bounds())
-                || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
+                || (shaftProgress == 0 && !buried(world, origin, existing.radius, existing.height, existing.shell))) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
-                    + structureId + ", origin=" + encode(origin));
+                    + structureId + ", origin=" + encode(origin) + ", shaftProgress=" + shaftProgress);
             throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
@@ -137,7 +140,7 @@ public final class PyramidRoomService {
                 existing.height, existing.shell, snapshots, context.record().bounds().minY() - 1);
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
-        scheduleRevealLayer(pending, 0);
+        scheduleRevealLayer(pending, shaftProgress);
         plugin.getLogger().info("Desert Pyramid staged reveal armed: structure=" + structureId
                 + ", layers=3x3, interval=" + Math.max(2, spec.integer("reveal-layer-interval-ticks", 3)) + " ticks");
         return pending.candidate;
@@ -155,6 +158,11 @@ public final class PyramidRoomService {
                     if (y >= endY) {
                         if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
                         carveShaftLayer(pending.world, pending.candidate.origin(), y);
+                        StructureRecord progressRecord = withMetadata(pending.context, Map.of(
+                                "pyramid-room-prepared", "true",
+                                "pyramid-room-origin", encode(pending.candidate.origin()),
+                                "pyramid-shaft-reveal-progress", Integer.toString(index + 1)));
+                        repository.save(progressRecord);
                         pending.context.world().ifPresent(world -> world.playSound(
                                 new Location(world, pending.candidate.origin().x() + 0.5D, y,
                                         pending.candidate.origin().z() + 0.5D),
@@ -169,7 +177,8 @@ public final class PyramidRoomService {
                             "pyramid-room-origin", encode(pending.candidate.origin()),
                             "pyramid-room-radius", Integer.toString(pending.radius),
                             "pyramid-room-height", Integer.toString(pending.height),
-                            "pyramid-room-created-at", Instant.now().toString()));
+                            "pyramid-room-created-at", Instant.now().toString(),
+                            "pyramid-shaft-reveal-progress", null));
                     repository.save(record);
                     sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
                             pending.candidate, pending.radius, pending.height, pending.shell,
