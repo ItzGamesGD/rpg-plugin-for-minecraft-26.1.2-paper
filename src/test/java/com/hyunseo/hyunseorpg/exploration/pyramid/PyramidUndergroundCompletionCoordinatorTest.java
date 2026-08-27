@@ -65,6 +65,24 @@ final class PyramidUndergroundCompletionCoordinatorTest {
     }
 
     @Test
+    void failedIntentIsNotVisibleToTheSameLiveRepositoryAndRetryCanPersistIt() throws IOException {
+        PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
+        StructureRepository repository = repository(storage);
+        storage.failNextSave = true;
+
+        assertThrows(IOException.class, () -> PyramidUndergroundCompletionCoordinator
+                .persistSolvedIntent(repository, storage.recordId()));
+        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+                PyramidUndergroundCompletionState.parse(repository.get(storage.recordId()).orElseThrow()
+                        .activationMetadata().get("pyramid-underground-completion-state")));
+
+        assertTrue(PyramidUndergroundCompletionCoordinator.persistSolvedIntent(repository, storage.recordId()));
+        assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING,
+                PyramidUndergroundCompletionState.parse(repository.get(storage.recordId()).orElseThrow()
+                        .activationMetadata().get("pyramid-underground-completion-state")));
+    }
+
+    @Test
     void failedIntentWriteLeavesNoSolvedEvidenceForRestartBecauseTheFinalMoveMustNotProceed() throws IOException {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
         StructureRepository first = repository(storage);
