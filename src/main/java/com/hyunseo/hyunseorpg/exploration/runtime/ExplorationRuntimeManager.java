@@ -79,7 +79,7 @@ public final class ExplorationRuntimeManager {
                 "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state", "pyramid-guardian-started",
                 "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
-                "pyramid-room-radius", "pyramid-room-height", "pyramid-reveal-retry-attempts",
+                "pyramid-room-radius", "pyramid-room-height", "pyramid-shaft-reveal-progress", "pyramid-reveal-retry-attempts",
                 "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             reset = reset.withMetadata(key, null);
         }
@@ -104,7 +104,7 @@ public final class ExplorationRuntimeManager {
         for (String key : List.of("pyramid-entry-actor", "pyramid-entry-dx", "pyramid-entry-dz",
                 "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state",
                 "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
-                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius",
+                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius", "pyramid-shaft-reveal-progress",
                 "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             result.put(key, record.activationMetadata().getOrDefault(key, "false"));
         }
@@ -1091,7 +1091,7 @@ public final class ExplorationRuntimeManager {
         StructureRecord migrated = record.withMetadata("pyramid-content-version", Integer.toString(CURRENT_PYRAMID_CONTENT_VERSION));
         if ("3".equals(record.activationMetadata().get("pyramid-room-radius"))) {
             for (String key : List.of("pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
-                    "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at")) {
+                    "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-shaft-reveal-progress")) {
                 migrated = migrated.withMetadata(key, null);
             }
             plugin.getLogger().warning("Migrated obsolete Pyramid geometry: structure="
