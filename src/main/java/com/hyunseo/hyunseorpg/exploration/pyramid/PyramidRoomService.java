@@ -58,12 +58,12 @@ public final class PyramidRoomService {
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureBounds bounds = context.record().bounds();
         PyramidTreasureCenterPolicy.Center treasureCenter = PyramidTreasureCenterPolicy.from(bounds);
-        int radius = clamp(persistedInt(context, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
-        int height = clamp(persistedInt(context, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
+        int radius = clamp(persistedInt(effectiveRecord, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
+        int height = clamp(persistedInt(effectiveRecord, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
-        boolean createdMetadata = Boolean.parseBoolean(context.record().activationMetadata()
+        boolean createdMetadata = Boolean.parseBoolean(effectiveRecord.activationMetadata()
                 .getOrDefault("pyramid-room-created", "false"));
-        Optional<PyramidRoomCandidate> persisted = readPersistedCandidate(context, world);
+        Optional<PyramidRoomCandidate> persisted = readPersistedCandidate(effectiveRecord);
         if (createdMetadata && persisted.isPresent()
                 && physicalRoomValid(world, persisted.get().origin(), radius, height)) {
             PyramidRoomCandidate candidate = persisted.get();
@@ -77,18 +77,24 @@ public final class PyramidRoomService {
             // Metadata without a bounded physical signature is stale (including
             // the old radius-4 ghost-room records). Downgrade, preserve module
             // completion, and let normal preparation rebuild deterministically.
-            StructureRecord downgraded = context.record().withMetadata("pyramid-room-created", null)
-                    .withMetadata("pyramid-room-created-at", null);
-            repository.save(downgraded);
+            effectiveRecord = effectiveRecord
+                    .withMetadata("pyramid-room-created", null)
+                    .withMetadata("pyramid-room-created-at", null)
+                    .withMetadata("pyramid-room-prepared", null)
+                    .withMetadata("pyramid-room-origin", null)
+                    .withMetadata("pyramid-room-radius", null)
+                    .withMetadata("pyramid-room-height", null)
+                    .withMetadata("pyramid-shaft-reveal-progress", null);
+            repository.save(effectiveRecord);
             context.runtime().sequence().clearFlag("pyramid.room.created");
             plugin.getLogger().warning("Stale Pyramid room metadata downgraded: structure=" + structureId);
         }
-        int shaftProgress = persistedInt(context, "pyramid-shaft-reveal-progress", 0);
-        PyramidRoomCandidate candidate = readPersistedCandidate(context, world).filter(value ->
+        int shaftProgress = persistedInt(effectiveRecord, "pyramid-shaft-reveal-progress", 0);
+        PyramidRoomCandidate candidate = readPersistedCandidate(effectiveRecord).filter(value ->
                 shaftProgress > 0 || buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
                 Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
-                        persistedInt(context, "pyramid-treasure-center-x", treasureCenter.x()),
-                        persistedInt(context, "pyramid-treasure-center-z", treasureCenter.z())))
+                        persistedInt(effectiveRecord, "pyramid-treasure-center-x", treasureCenter.x()),
+                        persistedInt(effectiveRecord, "pyramid-treasure-center-z", treasureCenter.z())))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
         if (!shaftSafe(world, candidate.origin(), bounds)) {
@@ -103,7 +109,7 @@ public final class PyramidRoomService {
         metadata.put("pyramid-room-origin", encode(candidate.origin()));
         metadata.put("pyramid-room-radius", Integer.toString(radius));
         metadata.put("pyramid-room-height", Integer.toString(height));
-        repository.save(withMetadata(context, metadata));
+        repository.save(withMetadata(effectiveRecord, metadata));
         RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
                 List.of(), false, true);
         sessions.put(structureId, session);
@@ -128,7 +134,7 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
-        int shaftProgress = Math.max(0, persistedInt(context, "pyramid-shaft-reveal-progress", 0));
+        int shaftProgress = Math.max(0, persistedInt(context.record(), "pyramid-shaft-reveal-progress", 0));
         if (!shaftSafe(world, origin, context.record().bounds())
                 || (shaftProgress == 0 && !buried(world, origin, existing.radius, existing.height, existing.shell))) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
@@ -159,7 +165,7 @@ public final class PyramidRoomService {
                     if (y >= endY) {
                         if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
                         carveShaftLayer(pending.world, pending.candidate.origin(), y);
-                        StructureRecord progressRecord = withMetadata(pending.context, Map.of(
+                        StructureRecord progressRecord = withMetadata(pending.context.record(), Map.of(
                                 "pyramid-room-prepared", "true",
                                 "pyramid-room-origin", encode(pending.candidate.origin()),
                                 "pyramid-shaft-reveal-progress", Integer.toString(index + 1)));
@@ -172,7 +178,7 @@ public final class PyramidRoomService {
                         return;
                     }
                     carveRoom(pending.world, pending.candidate.origin(), pending.radius, pending.height);
-                    StructureRecord record = withMetadata(pending.context, Map.of(
+                    StructureRecord record = withMetadata(pending.context.record(), Map.of(
                             "pyramid-room-created", "true",
                             "pyramid-room-prepared", "true",
                             "pyramid-room-origin", encode(pending.candidate.origin()),
@@ -412,14 +418,18 @@ public final class PyramidRoomService {
         return true;
     }
 
-    private StructureRecord withMetadata(ExplorationEventContext context, Map<String, String> values) {
-        var record = context.record();
+    private StructureRecord withMetadata(StructureRecord base, Map<String, String> values) {
+        var record = base;
         for (var entry : values.entrySet()) record = record.withMetadata(entry.getKey(), entry.getValue());
         return record;
     }
 
-    private Optional<PyramidRoomCandidate> readPersistedCandidate(ExplorationEventContext context, World world) {
-        String encoded = context.record().activationMetadata().get("pyramid-room-origin");
+    private StructureRecord withMetadata(ExplorationEventContext context, Map<String, String> values) {
+        return withMetadata(context.record(), values);
+    }
+
+    private Optional<PyramidRoomCandidate> readPersistedCandidate(StructureRecord record) {
+        String encoded = record.activationMetadata().get("pyramid-room-origin");
         if (encoded == null) return Optional.empty();
         String[] parts = encoded.split(",");
         if (parts.length != 3) return Optional.empty();
@@ -438,8 +448,8 @@ public final class PyramidRoomService {
 
     private int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
 
-    private int persistedInt(ExplorationEventContext context, String key, int fallback) {
-        String value = context.record().activationMetadata().get(key);
+    private int persistedInt(StructureRecord record, String key, int fallback) {
+        String value = record.activationMetadata().get(key);
         if (value == null) return fallback;
         try { return Integer.parseInt(value); }
         catch (NumberFormatException ignored) { return fallback; }
