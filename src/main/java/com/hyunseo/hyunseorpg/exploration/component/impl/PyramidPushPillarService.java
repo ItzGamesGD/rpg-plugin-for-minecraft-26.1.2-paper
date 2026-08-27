@@ -308,7 +308,7 @@ public final class PyramidPushPillarService {
                 var latest = repository == null ? null : repository.get(structureId).orElse(null);
                 if (latest != null) {
                     repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
-                            .withMetadata("pyramid-failure-reason", "pillar-display-corrupted"));
+                            .withMetadata("pyramid-failure-reason", "pillar-display-missing-or-invalid"));
                 }
             } catch (Exception ignored) { }
             runtime.sequence().cancelPendingTasks();
