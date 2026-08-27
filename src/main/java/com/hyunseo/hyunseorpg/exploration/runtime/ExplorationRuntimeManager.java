@@ -68,6 +68,24 @@ public final class ExplorationRuntimeManager {
     }
 
 
+    /** Pure geometry policy used by the Bukkit protection adapter and deterministic tests. */
+    public static boolean pyramidGeometryProtected(int x, int y, int z,
+                                                    int originX, int originY, int originZ,
+                                                    int radius, int height,
+                                                    int treasureX, int treasureY, int treasureZ) {
+        boolean inRoom = Math.abs(x - originX) <= radius
+                && Math.abs(z - originZ) <= radius
+                && y >= originY - 1 && y <= originY + height;
+        if (inRoom) return true;
+        boolean inShaft = Math.abs(x - treasureX) <= 1
+                && Math.abs(z - treasureZ) <= 1;
+        if (!inShaft) return false;
+        int shaftA = originY + height;
+        int shaftMin = Math.min(shaftA, treasureY);
+        int shaftMax = Math.max(shaftA, treasureY);
+        return y >= shaftMin && y <= shaftMax;
+    }
+
     /** Returns whether a block is owned by an active Pyramid puzzle and must not be modified. */
     public synchronized boolean isPyramidPuzzleProtected(org.bukkit.block.Block block) {
         if (block == null || block.getWorld() == null) return false;
@@ -79,43 +97,23 @@ public final class ExplorationRuntimeManager {
             Map<String, String> metadata = record.activationMetadata();
             if ("RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) continue;
             if (!record.worldId().equals(block.getWorld().getUID())) continue;
-            int x = block.getX(), y = block.getY(), z = block.getZ();
             String originRaw = metadata.get("pyramid-room-origin");
-            int radius = parseInt(metadata.get("pyramid-room-radius"), 4);
-            int height = parseInt(metadata.get("pyramid-room-height"), 4);
-            if (originRaw != null) {
-                String[] parts = originRaw.split(",");
-                if (parts.length == 3) {
-                    try {
-                        int ox = Integer.parseInt(parts[0].trim());
-                        int oy = Integer.parseInt(parts[1].trim());
-                        int oz = Integer.parseInt(parts[2].trim());
-                        if (Math.abs(x - ox) <= radius && Math.abs(z - oz) <= radius
-                                && y >= oy - 1 && y <= oy + height) return true;
-                    } catch (NumberFormatException ignored) { return true; }
-                }
-            }
-            int centerX = parseInt(metadata.get("pyramid-treasure-center-x"), Integer.MIN_VALUE);
-            int centerZ = parseInt(metadata.get("pyramid-treasure-center-z"), Integer.MIN_VALUE);
-            int treasureY = parseInt(metadata.get("pyramid-treasure-y"), Integer.MIN_VALUE);
-            if (centerX != Integer.MIN_VALUE && centerZ != Integer.MIN_VALUE && treasureY != Integer.MIN_VALUE
-                    && Math.abs(x - centerX) <= 1 && Math.abs(z - centerZ) <= 1) {
-                // Protect the complete committed shaft, not only the treasure-chamber layer.
-                int originY = Integer.MIN_VALUE;
-                String originRaw2 = metadata.get("pyramid-room-origin");
-                if (originRaw2 != null) {
-                    String[] parts2 = originRaw2.split(",");
-                    if (parts2.length == 3) {
-                        try { originY = Integer.parseInt(parts2[1].trim()); } catch (NumberFormatException ignored) { }
-                    }
-                }
-                if (originY != Integer.MIN_VALUE) {
-                    int shaftA = originY + height;
-                    int shaftMin = Math.min(shaftA, treasureY);
-                    int shaftMax = Math.max(shaftA, treasureY);
-                    if (y >= shaftMin && y <= shaftMax) return true;
-                }
-                if (y >= treasureY - 1 && y <= treasureY + 1) return true;
+            if (originRaw == null) continue;
+            String[] parts = originRaw.split(",");
+            if (parts.length != 3) continue;
+            try {
+                int ox = Integer.parseInt(parts[0].trim());
+                int oy = Integer.parseInt(parts[1].trim());
+                int oz = Integer.parseInt(parts[2].trim());
+                int radius = parseInt(metadata.get("pyramid-room-radius"), 4);
+                int height = parseInt(metadata.get("pyramid-room-height"), 4);
+                int treasureX = parseInt(metadata.get("pyramid-treasure-center-x"), ox);
+                int treasureY = parseInt(metadata.get("pyramid-treasure-y"), oy);
+                int treasureZ = parseInt(metadata.get("pyramid-treasure-center-z"), oz);
+                if (pyramidGeometryProtected(block.getX(), block.getY(), block.getZ(),
+                        ox, oy, oz, radius, height, treasureX, treasureY, treasureZ)) return true;
+            } catch (NumberFormatException ignored) {
+                return true;
             }
         }
         return false;
