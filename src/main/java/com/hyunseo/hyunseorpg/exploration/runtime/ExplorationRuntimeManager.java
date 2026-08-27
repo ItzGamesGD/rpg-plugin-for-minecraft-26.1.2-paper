@@ -971,8 +971,9 @@ public final class ExplorationRuntimeManager {
         if (source == null || !"desert_pyramid".equals(source.record().structureType())
                 || source.runtime().tracker().isClosed()) return;
         StructureRecord record = repository.get(source.runtime().structureId()).orElse(source.record());
-        if (Boolean.parseBoolean(record.activationMetadata().getOrDefault(
-                "pyramid-underground-complete", "false"))) return;
+        Map<String, String> metadata = record.activationMetadata();
+        if (Boolean.parseBoolean(metadata.getOrDefault("pyramid-underground-complete", "false"))
+                || "RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) return;
         ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
         if (definition == null) return;
         StructureVariantDefinition variant = definition.variants().stream()
