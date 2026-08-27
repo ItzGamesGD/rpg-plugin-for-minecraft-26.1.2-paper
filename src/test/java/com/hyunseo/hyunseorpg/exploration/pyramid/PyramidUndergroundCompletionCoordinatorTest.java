@@ -83,6 +83,31 @@ final class PyramidUndergroundCompletionCoordinatorTest {
     }
 
     @Test
+    void atomicSolvedIntentIncludesLogicalPositionAndFailedSaveLeavesBothUnchanged() throws IOException {
+        PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
+        StructureRepository repository = repository(storage);
+        storage.failNextSave = true;
+
+        assertThrows(IOException.class, () -> PyramidUndergroundCompletionCoordinator
+                .persistSolvedIntentAndLogicalPosition(repository, storage.recordId(), "a", new PyramidGridPoint(1, 2)));
+
+        StructureRecord unchanged = repository.get(storage.recordId()).orElseThrow();
+        assertEquals(PyramidUndergroundCompletionState.UNSOLVED,
+                PyramidUndergroundCompletionState.parse(unchanged.activationMetadata()
+                        .get("pyramid-underground-completion-state")));
+        assertFalse(unchanged.activationMetadata().containsKey("pyramid-pillar-position-a"));
+
+        assertTrue(PyramidUndergroundCompletionCoordinator.persistSolvedIntentAndLogicalPosition(
+                repository, storage.recordId(), "a", new PyramidGridPoint(1, 2)));
+        StructureRecord durable = repository.get(storage.recordId()).orElseThrow();
+        assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING,
+                PyramidUndergroundCompletionState.parse(durable.activationMetadata()
+                        .get("pyramid-underground-completion-state")));
+        assertEquals("1,2", durable.activationMetadata().get("pyramid-pillar-position-a"));
+        assertEquals("true", durable.activationMetadata().get("pyramid-pillar-solved-a"));
+    }
+
+    @Test
     void failedIntentWriteLeavesNoSolvedEvidenceForRestartBecauseTheFinalMoveMustNotProceed() throws IOException {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
         StructureRepository first = repository(storage);
