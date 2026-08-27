@@ -1,9 +1,9 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
-- Final candidate implementation checkpoint: `b967ebc7a75ce049947ec43190f6e859f00935d8`
+- Final candidate implementation checkpoint: `5182a6ac3c34ec710261d4917441263b690f09d3`
 - Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
-- CI: fresh final-tip GitHub Actions clean compile and JUnit verification passed (runs 277/278).
+- CI: fresh final-tip GitHub Actions verification is running for the latest recovery-simplification commits; prior final-tip runs 279/280 passed.
 - Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
 
 ## Durable underground completion
