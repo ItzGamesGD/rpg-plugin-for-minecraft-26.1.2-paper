@@ -59,6 +59,10 @@ public final class PyramidRoomService {
         StructureBounds bounds = context.record().bounds();
         PyramidTreasureCenterPolicy.Center treasureCenter = PyramidTreasureCenterPolicy.from(bounds);
         StructureRecord effectiveRecord = context.record();
+        if (Boolean.parseBoolean(effectiveRecord.activationMetadata()
+                .getOrDefault("pyramid-reveal-in-progress", "false"))) {
+            throw new IllegalStateException("Pyramid reveal is marked recovery-required");
+        }
         int radius = clamp(persistedInt(effectiveRecord, "pyramid-room-radius", spec.integer("room-radius", 4)), 2, 5);
         int height = clamp(persistedInt(effectiveRecord, "pyramid-room-height", spec.integer("room-height", 4)), 3, 6);
         int shell = clamp(spec.integer("safety-shell", 2), 1, 3);
@@ -209,11 +213,9 @@ public final class PyramidRoomService {
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
                     try {
                         StructureRecord latest = repository.get(structureId).orElse(pending.record);
-                        if (latest.state() == com.hyunseo.hyunseorpg.exploration.model.StructureEventState.ACTIVE) {
-                            repository.save(latest.transitionTo(
-                                    com.hyunseo.hyunseorpg.exploration.model.StructureEventState.ABANDONED,
-                                    Instant.now()).withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
-                        }
+                        repository.save(latest.withMetadata("pyramid-reveal-in-progress", null)
+                                .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                                .withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
                     } catch (Exception ignored) { }
                     plugin.getLogger().log(java.util.logging.Level.WARNING,
                             "Desert Pyramid staged reveal failed closed: " + structureId, exception);
