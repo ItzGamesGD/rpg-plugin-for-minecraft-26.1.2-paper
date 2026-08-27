@@ -28,9 +28,11 @@ public final class PyramidRoomComponent implements ExplorationComponent {
         }
         rooms.prepare(context, spec);
         context.world().ifPresent(world -> {
-            int anchorX = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-x"),
+            // Telegraph at the canonical chamber centre, never at the clicked
+            // corner chest. The chest is only the progression trigger.
+            int anchorX = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-center-x"),
                     (int) Math.floor(context.record().bounds().centerX()));
-            int anchorZ = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-z"),
+            int anchorZ = parseAnchor(context.record().activationMetadata().get("pyramid-treasure-center-z"),
                     (int) Math.floor(context.record().bounds().centerZ()));
             Location center = new Location(world, anchorX + 0.5D,
                     context.record().bounds().minY(), anchorZ + 0.5D);
