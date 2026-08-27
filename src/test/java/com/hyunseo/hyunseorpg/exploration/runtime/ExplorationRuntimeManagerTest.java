@@ -108,7 +108,7 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
-    void committedRoomRecoveryRequestsPillarsAndNeverReveal() {
+    void committedRoomReloadPolicyAllowsPillarsWithoutRetryState() {
         UUID world = UUID.randomUUID();
         StructureRecord committed = new StructureRecord(UUID.randomUUID(), world, "desert_pyramid",
                 "minecraft:desert_pyramid", new StructureAnchor(world, 0, 64, 0),
@@ -117,8 +117,6 @@ final class ExplorationRuntimeManagerTest {
                 Instant.now(), null, 1);
         assertTrue(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false));
         assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, true));
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false, true, false));
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false, false, true));
         assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(
                 committed.withMetadata("pyramid-underground-complete", "true"), false));
     }
@@ -179,7 +177,7 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
-    void recoveryRequiredPyramidCannotResumePillarOrRewardProgression() {
+    void recoveryRequiredPyramidCannotResumePillarProgression() {
         StructureRecord record = pyramidRecord()
                 .withMetadata("pyramid-room-created", "true")
                 .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED");
