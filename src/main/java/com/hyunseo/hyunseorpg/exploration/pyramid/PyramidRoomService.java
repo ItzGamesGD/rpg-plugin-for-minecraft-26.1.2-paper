@@ -147,7 +147,7 @@ public final class PyramidRoomService {
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
                 currentRecord.bounds());
         PendingReveal pending = new PendingReveal(context, currentRecord, spec, existing.candidate, existing.radius,
-                existing.height, existing.shell, snapshots, context.record().bounds().minY() - 1);
+                existing.height, existing.shell, snapshots, currentRecord.bounds().minY() - 1);
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
         scheduleRevealLayer(pending, shaftProgress);
