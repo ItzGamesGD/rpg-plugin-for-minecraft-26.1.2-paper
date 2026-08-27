@@ -129,6 +129,21 @@ public final class PushPillarBoard {
         return state == null ? Optional.empty() : Optional.of(state.currentPosition);
     }
 
+    /** Rolls back one just-applied move when its durable logical state cannot be committed. */
+    public synchronized boolean rollbackMove(String pillarId, PyramidGridPoint previousPosition) {
+        PillarState state = pillarsById.get(pillarId);
+        if (state == null || previousPosition == null || occupancy.containsKey(previousPosition)) return false;
+        occupancy.remove(state.currentPosition);
+        occupancy.put(previousPosition, pillarId);
+        if (state.solved) {
+            state.solved = false;
+            solvedIds.remove(pillarId);
+        }
+        state.currentPosition = previousPosition;
+        state.nextAllowedMoveTick = Long.MIN_VALUE;
+        return true;
+    }
+
     public synchronized boolean isSolved(String pillarId) {
         PillarState state = pillarsById.get(pillarId);
         return state != null && state.solved;
