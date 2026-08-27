@@ -22,6 +22,11 @@ class PyramidRuntimeContractTest {
                 .anyMatch(field -> field.getName().equals("completionRetryTasks")));
     }
 
+    @Test void failedDisplayMoveIsNotAcceptedAsProgress() {
+        assertFalse(PyramidPushPillarService.displayMoveSucceeded(false));
+        assertTrue(PyramidPushPillarService.displayMoveSucceeded(true));
+    }
+
     @Test void rewardPortExposesDurableIdempotentHook() throws Exception {
         Method method = com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts.RewardPort.class
                 .getMethod("enqueueDurable", org.bukkit.entity.Player.class, String.class, int.class,
