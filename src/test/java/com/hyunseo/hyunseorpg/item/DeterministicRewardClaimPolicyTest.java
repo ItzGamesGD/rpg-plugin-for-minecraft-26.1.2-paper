@@ -42,4 +42,12 @@ final class DeterministicRewardClaimPolicyTest {
         assertEquals(DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED, afterRestart);
         assertTrue(DeterministicRewardClaimPolicy.suppressesQueue(afterRestart));
     }
+
+    @Test
+    void quarantinedOrCompletedEvidenceSuppressesStaleMailboxRows() {
+        assertTrue(DeterministicRewardClaimPolicy.suppressesQueue(
+                DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED));
+        assertTrue(DeterministicRewardClaimPolicy.suppressesQueue(
+                DeterministicRewardClaimPolicy.State.COMPLETED));
+    }
 }
