@@ -178,4 +178,20 @@ final class ExplorationRuntimeManagerTest {
         assertFalse(runtime.lootTaken());
     }
 
+    @Test
+    void recoveryRequiredPyramidCannotResumePillarOrRewardProgression() {
+        StructureRecord record = pyramidRecord()
+                .withMetadata("pyramid-room-created", "true")
+                .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED");
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(record, false));
+        assertEquals("RECOVERY_REQUIRED", record.activationMetadata().get("pyramid-failure-state"));
+    }
+
+    @Test
+    void interruptedRevealEvidenceIsExplicitAndNotAReplayCheckpoint() {
+        StructureRecord record = pyramidRecord().withMetadata("pyramid-reveal-in-progress", "true");
+        assertEquals("true", record.activationMetadata().get("pyramid-reveal-in-progress"));
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(record, false));
+    }
+
 }
