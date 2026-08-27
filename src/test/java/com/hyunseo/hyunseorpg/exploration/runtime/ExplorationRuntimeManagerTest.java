@@ -115,9 +115,9 @@ final class ExplorationRuntimeManagerTest {
                 new StructureBounds(-5, 50, -5, 5, 80, 5), true, "guardian_trial",
                 StructureEventState.ACTIVE, Map.of("pyramid-room-created", "true"), false,
                 Instant.now(), null, 1);
-        assertTrue(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false));
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, true));
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(
+        assertTrue(ExplorationRuntimeManager.isCommittedPyramidRoomReadyForReload(committed, false));
+        assertFalse(ExplorationRuntimeManager.isCommittedPyramidRoomReadyForReload(committed, true));
+        assertFalse(ExplorationRuntimeManager.isCommittedPyramidRoomReadyForReload(
                 committed.withMetadata("pyramid-underground-complete", "true"), false));
     }
 
@@ -181,7 +181,7 @@ final class ExplorationRuntimeManagerTest {
         StructureRecord record = pyramidRecord()
                 .withMetadata("pyramid-room-created", "true")
                 .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED");
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(record, false));
+        assertFalse(ExplorationRuntimeManager.isCommittedPyramidRoomReadyForReload(record, false));
         assertEquals("RECOVERY_REQUIRED", record.activationMetadata().get("pyramid-failure-state"));
     }
 
@@ -189,7 +189,7 @@ final class ExplorationRuntimeManagerTest {
     void interruptedRevealEvidenceIsExplicitAndNotAReplayCheckpoint() {
         StructureRecord record = pyramidRecord().withMetadata("pyramid-reveal-in-progress", "true");
         assertEquals("true", record.activationMetadata().get("pyramid-reveal-in-progress"));
-        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(record, false));
+        assertFalse(ExplorationRuntimeManager.isCommittedPyramidRoomReadyForReload(record, false));
     }
 
 }
