@@ -453,10 +453,7 @@ public final class ExplorationRuntimeManager {
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
 
-            if ("desert_pyramid".equals(record.structureType())
-                    && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
-                    && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
-                    && !runtime.sequence().flag("pyramid.puzzle.started")) {
+            if (shouldRestoreCommittedPyramidPillars(record, runtime.sequence().flag("pyramid.puzzle.started"))) {
                 try {
                     // A committed room is already carved geometry. Heartbeat recovery
                     // may restore only the pillar session; it must never replay reveal.
@@ -679,6 +676,15 @@ public final class ExplorationRuntimeManager {
 
     private double pyramidEntryPadding(ExplorationStructureDefinition definition) {
         return definition == null ? 4.0D : definition.entryBoundaryPadding();
+    }
+
+    /** A committed room can only restore its pillar session; reveal is never a heartbeat action. */
+    static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted) {
+        return record != null
+                && "desert_pyramid".equals(record.structureType())
+                && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
+                && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
+                && !puzzleStarted;
     }
 
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
