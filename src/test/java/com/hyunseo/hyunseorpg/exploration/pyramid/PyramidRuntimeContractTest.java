@@ -40,4 +40,9 @@ class PyramidRuntimeContractTest {
                 org.bukkit.inventory.ItemStack.class, String.class);
         assertEquals(boolean.class, method.getReturnType());
     }
+    @Test void pyramidProtectionCancelsOnlyOwnedGeometry() {
+        assertTrue(com.hyunseo.hyunseorpg.exploration.listener.PyramidPuzzleProtectionListener.shouldCancelBlockEdit(true));
+        assertFalse(com.hyunseo.hyunseorpg.exploration.listener.PyramidPuzzleProtectionListener.shouldCancelBlockEdit(false));
+    }
+
 }
