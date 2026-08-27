@@ -352,7 +352,7 @@ public final class ExplorationRuntimeManager {
                 runtime.sequence().cancelPendingTasks();
                 return false;
             }
-            StructureRecord completed = latestAfterClear.transitionTo(StructureEventState.CLEARED, Instant.now());
+            StructureRecord completed = rewardCheckpoint.transitionTo(StructureEventState.CLEARED, Instant.now());
             if (hasRewardPhase(record)) completed = completed.markRewardClaimed();
             repository.save(completed);
             active.remove(structureId);
