@@ -2,25 +2,23 @@
 
 PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
-CANDIDATE_HEAD: d16dac5bfef4e340604af21b4f508481a0103298
+CANDIDATE_HEAD: a3b595f76a3820d3af37bdf65ddf31f40344eb5f
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
-CI_STATE: latest candidate workflows passed (runs 293/294)
+CI_STATE: final candidate workflows running
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
 
-VERIFIED IMPLEMENTATION:
-- PyramidUndergroundCompletionCoordinator is the sole durable pending-to-complete authority; recovery-required structures fail closed.
-- Final pillar intent and logical position persist before irreversible board mutation.
-- StructureRepository publishes index changes only after durable world snapshot success; failed save/create leaves no false pending or ghost record.
-- Shaft staging is presentation-only (3x3 top-to-bottom); interrupted/ambiguous reveals and damaged room signatures fail closed without speculative reconstruction.
-- Durable logical pillar positions are authoritative; reload restores displays from them only.
-- Four strict vanilla chest slots (horizontal ±2/±2 from bounds center, chest-only) map to one canonical treasure center.
-- Deterministic reward journal/tombstones and manual-recovery quarantine prevent duplicate delivery after ambiguous persistence.
-- Reset and diagnostics expose underground, reward, logical pillar, and recovery-required metadata. Guardian and underground modules remain independent.
+IMPLEMENTATION:
+- Display move false is representation corruption: RECOVERY_REQUIRED, task cancellation, no completion/reward.
+- Active Pyramid room/shaft geometry is protected from ordinary player edits.
+- Pillar activation is single-shot with 4/4 spawn requirement and partial cleanup; obsolete pillar retry/recovery machinery and heartbeat restore are removed.
+- Durable logical pillar positions remain authoritative for normal reload reconstruction.
+- Persist-first StructureRepository, presentation-only staged shaft reveal, module independence, and fail-closed reward quarantine remain intact.
 
 VALIDATION:
-- Latest candidate push and pull-request workflows passed compile and JUnit (runs 293/294).
+- Focused Pyramid display/reload policy tests and existing repository/Pyramid/config/Outpost suites are included.
+- Final candidate CI is required to pass on the updated branch.
 
 LIVE VALIDATION:
-- LIVE_SERVER_RETEST_REQUIRED: Paper/client execution remains required for world mutation timing, staged visuals, terrain-safe guardian spawning, TNT/special-block protection, display interaction, and repel direction.
+- LIVE_SERVER_RETEST_REQUIRED for Paper/client visuals, staged timing, terrain-safe guardian spawning, TNT/display interaction, and repel direction.
