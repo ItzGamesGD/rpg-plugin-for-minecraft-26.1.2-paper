@@ -91,7 +91,7 @@ public final class ExplorationRuntimeManager {
                         int oy = Integer.parseInt(parts[1].trim());
                         int oz = Integer.parseInt(parts[2].trim());
                         if (Math.abs(x - ox) <= radius && Math.abs(z - oz) <= radius
-                                && y >= oy - 1 && y < oy + height) return true;
+                                && y >= oy - 1 && y <= oy + height) return true;
                     } catch (NumberFormatException ignored) { return true; }
                 }
             }
@@ -99,8 +99,24 @@ public final class ExplorationRuntimeManager {
             int centerZ = parseInt(metadata.get("pyramid-treasure-center-z"), Integer.MIN_VALUE);
             int treasureY = parseInt(metadata.get("pyramid-treasure-y"), Integer.MIN_VALUE);
             if (centerX != Integer.MIN_VALUE && centerZ != Integer.MIN_VALUE && treasureY != Integer.MIN_VALUE
-                    && Math.abs(x - centerX) <= 1 && Math.abs(z - centerZ) <= 1
-                    && y >= treasureY - 1 && y <= treasureY + 1) return true;
+                    && Math.abs(x - centerX) <= 1 && Math.abs(z - centerZ) <= 1) {
+                // Protect the complete committed shaft, not only the treasure-chamber layer.
+                int originY = Integer.MIN_VALUE;
+                String originRaw2 = metadata.get("pyramid-room-origin");
+                if (originRaw2 != null) {
+                    String[] parts2 = originRaw2.split(",");
+                    if (parts2.length == 3) {
+                        try { originY = Integer.parseInt(parts2[1].trim()); } catch (NumberFormatException ignored) { }
+                    }
+                }
+                if (originY != Integer.MIN_VALUE) {
+                    int shaftA = originY + height;
+                    int shaftMin = Math.min(shaftA, treasureY);
+                    int shaftMax = Math.max(shaftA, treasureY);
+                    if (y >= shaftMin && y <= shaftMax) return true;
+                }
+                if (y >= treasureY - 1 && y <= treasureY + 1) return true;
+            }
         }
         return false;
     }
