@@ -105,8 +105,8 @@ public final class ExplorationRuntimeManager {
         for (String key : List.of("pyramid-entry-actor", "pyramid-entry-dx", "pyramid-entry-dz",
                 "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state",
                 "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
-                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius", "pyramid-shaft-reveal-progress",
-                "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
+                "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height", "pyramid-shaft-reveal-progress",
+                "pyramid-reveal-retry-attempts", "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             result.put(key, record.activationMetadata().getOrDefault(key, "false"));
         }
         return Optional.of(Map.copyOf(result));
