@@ -67,6 +67,19 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
                     readLogicalPositions(context, pillars));
             service.start(context, spec, room, board, pillars);
         } catch (Exception failure) {
+            // Invalid durable/configuration state is external corruption or an
+            // impossible invariant. Freeze the structure; never retry into a
+            // speculative reconstruction. Transient display-creation failures
+            // retain the bounded pillar-only retry policy below.
+            if (failure instanceof IllegalArgumentException
+                    || (failure instanceof IllegalStateException && failure.getMessage() != null
+                    && (failure.getMessage().contains("invalid durable pillar position")
+                    || failure.getMessage().contains("corrupted")))) {
+                context.runtime().sequence().clearFlag("pyramid.puzzle.started");
+                service.markRecoveryRequired(context, "pillar-state-invalid");
+                context.runtime().sequence().setFlag(RETRY_EXHAUSTED);
+                return;
+            }
             // The started marker represents an active pillar session, not a failed
             // reservation. Clear it before scheduling recovery so a reload/heartbeat
             // can re-enter the pillar-only restore path if the delayed task is lost.
