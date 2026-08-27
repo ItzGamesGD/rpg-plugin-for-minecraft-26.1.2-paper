@@ -4,12 +4,13 @@ package com.hyunseo.hyunseorpg.item;
  * Pure, durable-token policy used by the pending-reward mailbox.
  *
  * <p>The journal is written before inventory mutation. On restart a tagged
- * delivered item finalizes the token; an absent tag leaves the obligation
- * pending. A completed token always suppresses any later queue attempt.</p>
+ * delivered item finalizes the token; if the tag is gone, the token is
+ * quarantined for manual recovery instead of returning to pending. A completed
+ * or quarantined token always suppresses any later queue attempt.</p>
  */
 public final class DeterministicRewardClaimPolicy {
     public enum State {
-        ABSENT, PENDING, CLAIM_JOURNALED, COMPLETED
+        ABSENT, PENDING, CLAIM_JOURNALED, COMPLETED, MANUAL_RECOVERY_REQUIRED
     }
 
     private DeterministicRewardClaimPolicy() { }
@@ -21,7 +22,8 @@ public final class DeterministicRewardClaimPolicy {
     }
 
     public static boolean suppressesQueue(State state) {
-        return state == State.PENDING || state == State.CLAIM_JOURNALED || state == State.COMPLETED;
+        return state == State.PENDING || state == State.CLAIM_JOURNALED
+                || state == State.COMPLETED || state == State.MANUAL_RECOVERY_REQUIRED;
     }
 
     public static State beginClaim(State state) {
@@ -30,7 +32,7 @@ public final class DeterministicRewardClaimPolicy {
 
     /** Reconstructs durable mailbox state after an interrupted inventory delivery. */
     public static State recoverInterruptedClaim(boolean taggedItemPresent) {
-        return taggedItemPresent ? State.COMPLETED : State.PENDING;
+        return taggedItemPresent ? State.COMPLETED : State.MANUAL_RECOVERY_REQUIRED;
     }
 
     public static State finishClaim(State state) {
