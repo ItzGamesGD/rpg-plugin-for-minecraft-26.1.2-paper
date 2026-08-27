@@ -108,6 +108,20 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
+    void committedRoomRecoveryRequestsPillarsAndNeverReveal() {
+        UUID world = UUID.randomUUID();
+        StructureRecord committed = new StructureRecord(UUID.randomUUID(), world, "desert_pyramid",
+                "minecraft:desert_pyramid", new StructureAnchor(world, 0, 64, 0),
+                new StructureBounds(-5, 50, -5, 5, 80, 5), true, "guardian_trial",
+                StructureEventState.ACTIVE, Map.of("pyramid-room-created", "true"), false,
+                Instant.now(), null, 1);
+        assertTrue(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, false));
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(committed, true));
+        assertFalse(ExplorationRuntimeManager.shouldRestoreCommittedPyramidPillars(
+                committed.withMetadata("pyramid-underground-complete", "true"), false));
+    }
+
+    @Test
     void currentPyramidContentVersionIsMonotonic() {
         assertTrue(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION >= 3);
     }
