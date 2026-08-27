@@ -33,6 +33,7 @@ import com.hyunseo.hyunseorpg.exploration.listener.ExplorationPlayerMovementList
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationChestLootListener;
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationObjectiveDeathListener;
 import com.hyunseo.hyunseorpg.exploration.listener.PyramidPushPillarListener;
+import com.hyunseo.hyunseorpg.exploration.listener.PyramidPuzzleProtectionListener;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureIndex;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureRepository;
 import com.hyunseo.hyunseorpg.exploration.persistence.YamlStructureStorage;
@@ -97,7 +98,8 @@ public final class ExplorationModule {
                 new ExplorationPlayerMovementListener(runtimes, tickCounter),
                 new ExplorationChestLootListener(runtimes, tickCounter),
                 new ExplorationObjectiveDeathListener(runtimes),
-                new PyramidPushPillarListener(pyramidPuzzles, tickCounter));
+                new PyramidPushPillarListener(pyramidPuzzles, tickCounter),
+                new PyramidPuzzleProtectionListener(runtimes));
     }
 
     public synchronized boolean start() {
