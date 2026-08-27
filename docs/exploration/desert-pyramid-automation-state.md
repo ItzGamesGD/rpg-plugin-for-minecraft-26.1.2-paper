@@ -2,24 +2,25 @@
 
 PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
-CANDIDATE_HEAD: 9c28d3d7c41d04c33fb49c56a678f8b7fe15ee3e (subsequent status-only commits may advance the branch)
+CANDIDATE_HEAD: 86ab8a38b0376cd3671d3acc4474b2eaf24deda3 (automation-state commit may advance the branch tip)
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
-CI_STATE: PASS — GitHub Actions run 33023357959, `./gradlew clean test --no-daemon`
+CI_STATE: pending GitHub Actions verification for the final candidate tip
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
 
 VERIFIED IMPLEMENTATION:
-- `PyramidUndergroundCompletionCoordinator` is the single durable pending-to-complete transaction; the live pillar service, restart recovery, and retry all converge through it.
-- The final pillar move writes durable `completion_pending` before it mutates the solved board. A failed first save leaves that move unperformed.
-- Legacy `complete=true + completion_pending` is normalized by the same coordinator; an unsolved record cannot be completed by generic recovery.
-- Config migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`; committed rooms recover pillars without replaying room reveal.
-- Deterministic exploration rewards use a durable pre-delivery journal plus an item token. Restart observes a tagged delivered item and writes the completed tombstone; queue/finalization retries suppress the same token.
-- Padded Pyramid entry requires an actual outside-to-interior crossing. The neutral perimeter itself cannot jitter-trigger an encounter.
+- `PyramidUndergroundCompletionCoordinator` is the single durable pending-to-complete transaction; solved intent is persisted before the irreversible final pillar move.
+- `StructureRepository` publishes index changes only after durable world snapshot success; failed save/create operations leave no false pending or ghost record.
+- Restart/heartbeat recovery reconciles pending underground completion and committed rooms without replaying room reveal; pillar startup failures clear transient ownership so bounded pillar-only recovery remains reachable.
+- Pyramid staged shaft reveal is a durable 3x3 top-to-bottom checkpoint sequence and resumes from persisted layer progress after reload.
+- Four strict vanilla chest slots (horizontal ±2/±2 from the bounds center, chest-only) map to the canonical treasure center.
+- Deterministic Pyramid rewards journal before tagged exact delivery. Completed tokens and manual-recovery quarantine are durable and suppress stale queue/finalization retries, including when a delivered item is no longer in player storage.
+- Reset and diagnostics expose the introduced underground, reward, and shaft-progress metadata. Guardian and underground modules remain independent.
 
 VALIDATION:
-- GitHub Actions run 33023357959: PASS (clean compile and 283 JUnit tests; 2 skipped).
-- A prior boundary test failure was repaired as a real inclusive-boundary behavior mismatch and rerun green.
+- Prior Exploration workflow runs passed clean compile and JUnit execution.
+- The final candidate tip must have a fresh successful Exploration workflow before independent review.
 
 LIVE VALIDATION:
-- LIVE_SERVER_RETEST_REQUIRED: Paper/client execution remains required for world mutation timing, visual staged reveal, and in-game interaction confirmation.
+- LIVE_SERVER_RETEST_REQUIRED: Paper/client execution remains required for world mutation timing, visual staged reveal, terrain-safe guardian spawning, TNT/special-block protection, display interaction, and client-visible repel direction.
