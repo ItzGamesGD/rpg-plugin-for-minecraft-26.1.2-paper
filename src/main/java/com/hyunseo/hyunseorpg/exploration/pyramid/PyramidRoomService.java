@@ -177,8 +177,8 @@ public final class PyramidRoomService {
                             "pyramid-room-origin", encode(pending.candidate.origin()),
                             "pyramid-room-radius", Integer.toString(pending.radius),
                             "pyramid-room-height", Integer.toString(pending.height),
-                            "pyramid-room-created-at", Instant.now().toString(),
-                            "pyramid-shaft-reveal-progress", null));
+                            "pyramid-room-created-at", Instant.now().toString()))
+                            .withMetadata("pyramid-shaft-reveal-progress", null);
                     repository.save(record);
                     sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
                             pending.candidate, pending.radius, pending.height, pending.shell,
