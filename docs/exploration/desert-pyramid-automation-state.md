@@ -2,9 +2,9 @@
 
 PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
-CANDIDATE_HEAD: a3b595f76a3820d3af37bdf65ddf31f40344eb5f
+CANDIDATE_HEAD: 990981251d1baeab5065b2df7cb66c0765af612e
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
-CI_STATE: final candidate workflows running
+CI_STATE: candidate push run 337 passed; fresh verification is required after handoff-doc updates
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
@@ -17,8 +17,8 @@ IMPLEMENTATION:
 - Persist-first StructureRepository, presentation-only staged shaft reveal, module independence, and fail-closed reward quarantine remain intact.
 
 VALIDATION:
-- Focused Pyramid display/reload policy tests and existing repository/Pyramid/config/Outpost suites are included.
-- Final candidate CI is required to pass on the updated branch.
+- Focused Pyramid display/protection/reload-policy tests and existing repository/Pyramid/config/Outpost suites are included.
+- Candidate push workflow 337 passed; final handoff candidate must pass fresh push and pull-request workflows.
 
 LIVE VALIDATION:
 - LIVE_SERVER_RETEST_REQUIRED for Paper/client visuals, staged timing, terrain-safe guardian spawning, TNT/display interaction, and repel direction.
