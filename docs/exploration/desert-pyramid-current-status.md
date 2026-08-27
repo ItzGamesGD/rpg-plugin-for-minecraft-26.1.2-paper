@@ -1,7 +1,7 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
-- Candidate implementation checkpoint: `27d5c0791b1302b36b3f73b8fc3d780719b4375b` (documentation commits may advance the tip)
+- Candidate implementation checkpoint: `b1d10a9ec9381d8c2a92d52664b7271554d323b0` (documentation commits may advance the tip)
 - Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
 - CI: the candidate implementation runs the Exploration workflow `./gradlew clean test --no-daemon`; the final documentation tip must be rechecked by GitHub Actions.
 - Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
@@ -16,7 +16,7 @@
 
 ## Room, pillar, and entry contracts
 
-The room uses radius 4 (9x9 footprint with a 7x7 usable interior), a consistent 3x3 shaft, protected special blocks, staged top-to-bottom reveal, and four required pillar displays. Partial display creation is cleaned before bounded pillar-only retry. Entry records the actual actor and movement vector; guardian spawn remains above ground and independent of underground state. The four canonical vanilla chest offsets are strict chest-only slots at horizontal ±2/±2 from the structure center and share one canonical center.
+The room uses radius 4 (9x9 footprint with a 7x7 usable interior), a consistent 3x3 shaft, protected special blocks, staged top-to-bottom reveal, and four required pillar displays. Partial display creation is cleaned before bounded pillar-only retry. Entry records the actual actor and movement vector; guardian spawn remains above ground and independent of underground state. The four canonical vanilla chest offsets are strict chest-only slots at horizontal ±2/±2 from the bounds center (the target Paper geometry) and share one canonical center.
 
 ## Reward transaction
 
@@ -24,4 +24,4 @@ Pyramid rewards use deterministic tokens. A durable claim journal is written bef
 
 ## Legacy/reset and live validation
 
-Migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`. Reset and diagnostics include completion state, reward state, and staged shaft progress. Paper/client retesting remains required for visual timing, terrain-safe guardian spawn, display interaction, TNT protection, and client-visible repel direction.
+Migration canonicalizes `pyramid_push_pillars` to `pyramid_pillar_restore`. Reset and diagnostics include completion state, reward state, staged shaft progress, and stale-room metadata cleanup. Paper/client retesting remains required for visual timing, terrain-safe guardian spawn, display interaction, TNT protection, and client-visible repel direction.
