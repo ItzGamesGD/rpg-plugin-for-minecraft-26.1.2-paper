@@ -33,6 +33,8 @@ public final class PendingRewardService {
     private final Map<UUID, Long> completedTokens = new LinkedHashMap<>();
     /** Durable pre-delivery journal for deterministic exploration rewards. */
     private final Map<UUID, UUID> claimInProgressTokens = new LinkedHashMap<>();
+    /** Ambiguous post-delivery tokens are quarantined; they can never be reissued automatically. */
+    private final Map<UUID, Long> manualRecoveryTokens = new LinkedHashMap<>();
     private final NamespacedKey deliveryTokenKey;
     private Consumer<ItemStack> itemNormalizer = item -> { };
     private boolean dirty;
@@ -71,7 +73,8 @@ public final class PendingRewardService {
         List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
         boolean pendingToken = existing.stream().anyMatch(reward -> token.equals(reward.id()));
         DeterministicRewardClaimPolicy.State state = DeterministicRewardClaimPolicy.fromDurableEvidence(
-                pendingToken, claimInProgressTokens.containsKey(token), completedTokens.containsKey(token));
+                pendingToken, claimInProgressTokens.containsKey(token),
+                completedTokens.containsKey(token) || manualRecoveryTokens.containsKey(token));
         if (DeterministicRewardClaimPolicy.suppressesQueue(state)) {
             // A previous enqueue may have populated memory but failed its file write.
             // Only a pending list can require that same durable flush; journalled and
@@ -162,6 +165,8 @@ public final class PendingRewardService {
             yaml.set("claim-in-progress." + token.getKey(), token.getValue().toString());
         for (Map.Entry<UUID, Long> token : completedTokens.entrySet())
             yaml.set("completed-tokens." + token.getKey(), token.getValue());
+        for (Map.Entry<UUID, Long> token : manualRecoveryTokens.entrySet())
+            yaml.set("manual-recovery-required." + token.getKey(), token.getValue());
         for (Map.Entry<UUID, List<PendingReward>> entry : pending.entrySet()) {
             int index = 0;
             for (PendingReward reward : entry.getValue()) {
@@ -225,6 +230,12 @@ public final class PendingRewardService {
             if (recovered == DeterministicRewardClaimPolicy.State.COMPLETED) {
                 completedTokens.put(token, System.currentTimeMillis());
                 rewards.removeIf(reward -> token.equals(reward.id()));
+            } else if (recovered == DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED) {
+                // The physical item may have moved outside player storage. Failing closed
+                // is the only safe automatic choice: retain durable quarantine evidence
+                // and remove the obligation so a later retry can never duplicate it.
+                manualRecoveryTokens.put(token, System.currentTimeMillis());
+                rewards.removeIf(reward -> token.equals(reward.id()));
             }
             claimInProgressTokens.remove(token);
             changed = true;
@@ -259,6 +270,11 @@ public final class PendingRewardService {
         ConfigurationSection completed = yaml.getConfigurationSection("completed-tokens");
         if (completed != null) for (String token : completed.getKeys(false)) {
             try { completedTokens.put(UUID.fromString(token), completed.getLong(token)); } catch (IllegalArgumentException ignored) { }
+        }
+        ConfigurationSection manual = yaml.getConfigurationSection("manual-recovery-required");
+        if (manual != null) for (String token : manual.getKeys(false)) {
+            try { manualRecoveryTokens.put(UUID.fromString(token), manual.getLong(token)); }
+            catch (IllegalArgumentException ignored) { }
         }
         ConfigurationSection inProgress = yaml.getConfigurationSection("claim-in-progress");
         if (inProgress != null) for (String token : inProgress.getKeys(false)) {
