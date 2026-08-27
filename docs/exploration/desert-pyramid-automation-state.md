@@ -2,9 +2,9 @@
 
 PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
-CANDIDATE_HEAD: bc48f8c3ec5f1b67c1699006b1492744365fa715
+CANDIDATE_HEAD: 617a0aa0d90786744ac29c5323c6b9c42e6db19c
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
-CI_STATE: fresh final-tip GitHub Actions verification in progress
+CI_STATE: latest candidate workflow verification in progress
 HARD_BLOCK: false
 SAFETY_STOP: false
 STOP_REASON: none
@@ -20,7 +20,7 @@ VERIFIED IMPLEMENTATION:
 - Reset and diagnostics expose underground, reward, logical pillar, and recovery-required metadata. Guardian and underground modules remain independent.
 
 VALIDATION:
-- Earlier workflows passed compile and JUnit; a fresh workflow for the current candidate is required and running.
+- Earlier workflows passed compile and JUnit; workflows for the latest candidate are running.
 
 LIVE VALIDATION:
 - LIVE_SERVER_RETEST_REQUIRED: Paper/client execution remains required for world mutation timing, staged visuals, terrain-safe guardian spawning, TNT/special-block protection, display interaction, and repel direction.
