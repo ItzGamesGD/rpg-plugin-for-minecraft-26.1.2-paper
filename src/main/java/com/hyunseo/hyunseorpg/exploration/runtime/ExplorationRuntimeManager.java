@@ -826,9 +826,8 @@ public final class ExplorationRuntimeManager {
                 } catch (Exception exception) {
                     runtime.sequence().releaseAction(actionId);
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
-                    if ("desert_pyramid".equals(record.structureType()) && "pyramid_room_reveal".equalsIgnoreCase(nextPhase)) {
-                        schedulePyramidRevealRetry(record, runtime, nextPhase);
-                    } else if (!"desert_pyramid".equals(record.structureType())) abandon(structureId);
+                    if (!"desert_pyramid".equals(record.structureType())) abandon(structureId);
+                    else plugin.getLogger().warning("Pyramid delayed phase failed; progression remains fail-closed: " + structureId);
                 }
             }
         }, Math.max(0L, delayTicks));
@@ -836,27 +835,6 @@ public final class ExplorationRuntimeManager {
         return true;
     }
 
-
-    private void schedulePyramidRevealRetry(StructureRecord record, ExplorationRuntime runtime, String nextPhase) {
-        int attempts;
-        try { attempts = Integer.parseInt(record.activationMetadata().getOrDefault("pyramid-reveal-retry-attempts", "0")); }
-        catch (NumberFormatException ignored) { attempts = 0; }
-        if (attempts >= 5) {
-            plugin.getLogger().warning("Pyramid reveal remains recoverably blocked after bounded retries: structure=" + record.structureId());
-            return;
-        }
-        try {
-            StructureRecord updated = record.withMetadata("pyramid-reveal-retry-attempts", Integer.toString(attempts + 1));
-            repository.save(updated);
-            String actionId = "pyramid_room_reveal_retry_" + (attempts + 1);
-            if (!scheduleSequencePhase(new ExplorationEventContext(plugin, updated, runtime, ports, teleportExemptions,
-                    0L, this::scheduleSequencePhase), actionId, 60L, nextPhase)) {
-                plugin.getLogger().warning("Pyramid reveal retry reservation already active: structure=" + record.structureId());
-            }
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Unable to persist Pyramid reveal retry checkpoint: " + record.structureId(), exception);
-        }
-    }
 
     private String formatLocation(Location location) {
         if (location == null || location.getWorld() == null) return "unknown";
