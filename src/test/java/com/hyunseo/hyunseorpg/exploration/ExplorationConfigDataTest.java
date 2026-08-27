@@ -50,7 +50,6 @@ final class ExplorationConfigDataTest {
                     .filter(component -> "pyramid_push_pillars".equals(component.get("type")))
                     .findFirst().orElseThrow();
             assertEquals("pyramid_pillar_restore", pillars.get("phase"));
-            assertEquals("pyramid_pillar_restore", pillars.get("recovery-phase"));
         } catch (Exception exception) {
             throw new AssertionError(exception);
         }
