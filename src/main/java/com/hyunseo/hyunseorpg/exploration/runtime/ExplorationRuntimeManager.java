@@ -13,6 +13,7 @@ import com.hyunseo.hyunseorpg.exploration.registry.ExplorationRegistry;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinition;
 import com.hyunseo.hyunseorpg.exploration.registry.StructureVariantDefinition;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRewardTransaction;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidTreasureCenterPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionCoordinator;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
 import org.bukkit.Bukkit;
@@ -400,10 +401,9 @@ public final class ExplorationRuntimeManager {
                                               int blockX, int blockY, int blockZ) {
         if (record == null || !"desert_pyramid".equals(record.structureType())
                 || type != org.bukkit.Material.CHEST) return false;
-        int centerX = (int) Math.floor(record.bounds().centerX());
-        int centerZ = (int) Math.floor(record.bounds().centerZ());
-        return Math.abs(blockX - centerX) == 2
-                && Math.abs(blockZ - centerZ) == 2
+        PyramidTreasureCenterPolicy.Center center = PyramidTreasureCenterPolicy.from(record.bounds());
+        return Math.abs(blockX - center.x()) == 2
+                && Math.abs(blockZ - center.z()) == 2
                 && blockY >= record.bounds().minY()
                 && blockY <= record.bounds().minY() + 3;
     }
