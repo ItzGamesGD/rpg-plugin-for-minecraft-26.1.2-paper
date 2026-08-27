@@ -524,18 +524,9 @@ public final class ExplorationRuntimeManager {
             ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
             if (definition == null) continue;
 
-            if (shouldRestoreCommittedPyramidPillars(record,
-                    runtime.sequence().flag("pyramid.puzzle.started"))) {
-                try {
-                    // A committed room is already carved geometry. Heartbeat recovery
-                    // may restore only the pillar session; it must never replay reveal.
-                    continuePyramidPuzzle(new ExplorationEventContext(plugin, record, runtime, ports,
-                            teleportExemptions, currentTick, this::scheduleSequencePhase));
-                } catch (Exception exception) {
-                    plugin.getLogger().log(Level.WARNING, "Pyramid pillar restore deferred (retryable): " + record.structureId(), exception);
-                }
-            }
-
+            // Pyramid pillar activation is intentionally single-shot. A committed room is
+            // restored only during deterministic activation/reload; failures are marked
+            // RECOVERY_REQUIRED and never retried by heartbeat.
             if (runtime.choiceExpired(currentTick)) {
                 plugin.getLogger().info("Exploration choice timed out: structure=" + record.structureType()
                         + ", id=" + record.structureId() + ", default=" + runtime.defaultChoice());
@@ -761,14 +752,6 @@ public final class ExplorationRuntimeManager {
                 && !puzzleStarted;
     }
 
-
-    /** Compatibility overload for older callers; retry flags are no longer runtime state. */
-    @Deprecated
-    static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted,
-                                                         boolean retryScheduled, boolean retryExhausted) {
-        return shouldRestoreCommittedPyramidPillars(record, puzzleStarted)
-                && !retryScheduled && !retryExhausted;
-    }
 
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
         if (record == null || from == null || to == null) return false;
