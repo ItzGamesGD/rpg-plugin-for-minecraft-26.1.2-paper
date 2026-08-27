@@ -115,6 +115,11 @@ public final class ExplorationRuntimeManager {
                 "pyramid-reveal-retry-attempts", "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             result.put(key, record.activationMetadata().getOrDefault(key, "false"));
         }
+        record.activationMetadata().forEach((key, value) -> {
+            if (key.startsWith("pyramid-pillar-position-") || key.startsWith("pyramid-pillar-solved-")) {
+                result.put(key, value);
+            }
+        });
         return Optional.of(Map.copyOf(result));
     }
 
