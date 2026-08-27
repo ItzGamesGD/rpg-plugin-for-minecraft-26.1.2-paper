@@ -8,6 +8,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarDefinition;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarConfigurationValidator;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
 
             List<PushPillarDefinition> pillars = parsePillars(spec.options().get("pillars"));
             if (pillars.isEmpty()) throw new IllegalArgumentException("pyramid_push_pillars requires pillars");
+            PyramidPillarConfigurationValidator.requireValid(pillars);
             PushPillarBoard board = new PushPillarBoard(pillars, Math.max(0L, spec.integer("cooldown-ticks", 8)),
                     readLogicalPositions(context, pillars));
             service.start(context, spec, room, board, pillars);
