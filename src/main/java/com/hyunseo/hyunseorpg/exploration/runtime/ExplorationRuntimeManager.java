@@ -718,6 +718,15 @@ public final class ExplorationRuntimeManager {
                 && !puzzleStarted;
     }
 
+
+    /** Compatibility overload for older callers; retry flags are no longer runtime state. */
+    @Deprecated
+    static boolean shouldRestoreCommittedPyramidPillars(StructureRecord record, boolean puzzleStarted,
+                                                         boolean retryScheduled, boolean retryExhausted) {
+        return shouldRestoreCommittedPyramidPillars(record, puzzleStarted)
+                && !retryScheduled && !retryExhausted;
+    }
+
     static boolean crossesPyramidEntryBoundary(StructureRecord record, Location from, Location to, double padding) {
         if (record == null || from == null || to == null) return false;
         double p = Math.max(0.0D, padding);
