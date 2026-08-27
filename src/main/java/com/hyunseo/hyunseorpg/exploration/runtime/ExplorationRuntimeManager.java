@@ -710,6 +710,7 @@ public final class ExplorationRuntimeManager {
                 && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-room-created", "false"))
                 && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))
                 && !"RECOVERY_REQUIRED".equals(record.activationMetadata().getOrDefault("pyramid-failure-state", ""))
+                && !Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-reveal-in-progress", "false"))
                 && !puzzleStarted
                 && !retryScheduled
                 && !retryExhausted;
