@@ -15,6 +15,7 @@ public final class PyramidUndergroundCompletionCoordinator {
                                                                    String pillarId, PyramidGridPoint position) throws IOException {
         StructureRecord record = repository.get(structureId).orElse(null);
         if (record == null || pillarId == null || position == null) return false;
+        if ("RECOVERY_REQUIRED".equals(record.activationMetadata().get("pyramid-failure-state"))) return false;
         if (Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"))) return true;
         StructureRecord next = record.withMetadata("pyramid-underground-completion-state",
                 PyramidUndergroundCompletionState.COMPLETION_PENDING.value())
