@@ -154,7 +154,7 @@ final class ExplorationRuntimeManagerTest {
         runtime.markLootTriggerExit(10L);
         assertEquals(10L, runtime.lootTriggerExitAtTick());
         runtime.clearLootTriggerExit();
-        assertEquals(null, runtime.lootTriggerExitAtTick());
+        assertNull(runtime.lootTriggerExitAtTick());
         runtime.markLootTriggerExit(20L);
         runtime.clearCombatAbandonExit();
         assertEquals(20L, runtime.lootTriggerExitAtTick());
