@@ -85,6 +85,29 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
+    void exactlyFourVanillaTreasureSlotsShareOneCanonicalCenterAndRejectOtherContainers() {
+        StructureRecord record = pyramidRecord();
+        int centerX = (int) Math.floor(record.bounds().centerX());
+        int centerZ = (int) Math.floor(record.bounds().centerZ());
+        for (int dx : new int[] {-2, 2}) {
+            for (int dz : new int[] {-2, 2}) {
+                assertTrue(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                        org.bukkit.Material.CHEST, centerX + dx, record.bounds().minY(), centerZ + dz));
+            }
+        }
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.CHEST, centerX, record.bounds().minY(), centerZ));
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.TRAPPED_CHEST, centerX + 2, record.bounds().minY(), centerZ + 2));
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.BARREL, centerX + 2, record.bounds().minY(), centerZ + 2));
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.SHULKER_BOX, centerX + 2, record.bounds().minY(), centerZ + 2));
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.CHEST, centerX + 3, record.bounds().minY(), centerZ + 2));
+    }
+
+    @Test
     void currentPyramidContentVersionIsMonotonic() {
         assertTrue(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION >= 3);
     }
