@@ -85,6 +85,11 @@ public final class ExplorationRuntimeManager {
                 "pyramid-reveal-in-progress", "pyramid-failure-state", "pyramid-failure-reason")) {
             reset = reset.withMetadata(key, null);
         }
+        for (String key : record.activationMetadata().keySet()) {
+            if (key.startsWith("pyramid-pillar-position-") || key.startsWith("pyramid-pillar-solved-")) {
+                reset = reset.withMetadata(key, null);
+            }
+        }
         try {
             repository.save(reset);
             lastEndReasons.remove(structureId);
