@@ -4,7 +4,6 @@ import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponent;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidGridPoint;
-import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarRecoveryPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomCandidate;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PushPillarBoard;
@@ -19,10 +18,6 @@ import java.util.Set;
 
 /** Connects the Pyramid-specific logical pillar board to the live runtime. */
 public final class PyramidPushPillarComponent implements ExplorationComponent {
-    private static final String RETRY_ATTEMPTS = "pyramid.pillar.restore.retry.attempts";
-    private static final String RETRY_SCHEDULED = "pyramid.puzzle.restore.retry.scheduled";
-    private static final String RETRY_EXHAUSTED = "pyramid.puzzle.restore.retry.exhausted";
-
     private final PyramidPushPillarService service;
     private final PyramidRoomService rooms;
 
@@ -50,7 +45,6 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
         // ownership before any world/session/display lookup so a technical failure cannot make
         // heartbeat route an already-carved room back through pyramid_room_reveal.
         context.runtime().sequence().setFlag("pyramid.puzzle.started");
-        context.runtime().sequence().clearFlag(RETRY_SCHEDULED);
         try {
             context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
             PyramidRoomCandidate room = rooms.room(context.runtime().structureId()).orElse(null);
@@ -67,46 +61,15 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
                     readLogicalPositions(context, pillars));
             service.start(context, spec, room, board, pillars);
         } catch (Exception failure) {
-            // Invalid durable/configuration state is external corruption or an
-            // impossible invariant. Freeze the structure; never retry into a
-            // speculative reconstruction. Transient display-creation failures
-            // retain the bounded pillar-only retry policy below.
-            if (failure instanceof IllegalArgumentException
-                    || (failure instanceof IllegalStateException && failure.getMessage() != null
-                    && (failure.getMessage().contains("invalid durable pillar position")
-                    || failure.getMessage().contains("corrupted")))) {
-                context.runtime().sequence().clearFlag("pyramid.puzzle.started");
-                service.markRecoveryRequired(context, "pillar-state-invalid");
-                context.runtime().sequence().setFlag(RETRY_EXHAUSTED);
-                return;
-            }
-            // The started marker represents an active pillar session, not a failed
-            // reservation. Clear it before scheduling recovery so a reload/heartbeat
-            // can re-enter the pillar-only restore path if the delayed task is lost.
             context.runtime().sequence().clearFlag("pyramid.puzzle.started");
-            int attempt = context.runtime().sequence().incrementCounter(RETRY_ATTEMPTS);
-            PyramidPillarRecoveryPolicy.Decision decision = PyramidPillarRecoveryPolicy.afterFailure(attempt);
-            if (decision.retry()) {
-                String actionId = "pyramid_pillar_restore_retry_" + attempt;
-                boolean scheduled = context.sequenceScheduler().schedule(
-                        context, actionId, decision.delayTicks(), decision.phase());
-                if (scheduled || context.runtime().sequence().actionInFlight(actionId)) {
-                    context.runtime().sequence().setFlag(RETRY_SCHEDULED);
-                    context.plugin().getLogger().log(java.util.logging.Level.WARNING,
-                            "Pyramid pillar restore deferred: structure=" + context.record().structureId()
-                                    + ", attempt=" + attempt, failure);
-                    return;
-                }
-            }
-            context.runtime().sequence().setFlag(RETRY_EXHAUSTED);
+            service.markRecoveryRequired(context, failure.getMessage() == null
+                    ? "pillar-activation-failed" : failure.getMessage());
             context.plugin().getLogger().log(java.util.logging.Level.SEVERE,
-                    "Pyramid pillar restore exhausted without replaying room reveal: structure="
-                            + context.record().structureId() + ", attempt=" + attempt, failure);
+                    "Pyramid pillar activation failed closed: structure=" + context.record().structureId(), failure);
             return;
+
         }
 
-        context.runtime().sequence().clearFlag(RETRY_SCHEDULED);
-        context.runtime().sequence().clearFlag(RETRY_EXHAUSTED);
         context.runtime().sequence().setFlag("pyramid.room.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.active");
