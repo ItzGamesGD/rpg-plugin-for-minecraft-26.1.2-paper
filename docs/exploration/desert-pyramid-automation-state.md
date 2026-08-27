@@ -2,7 +2,7 @@
 
 PHASE: AWAITING_REVIEW
 CURRENT_BRANCH: fix/desert-pyramid-full-flow-reconciliation
-CANDIDATE_HEAD: b06538966e48cbb63d900fd40feea8d946ed5b17 (automation-state commit may advance the branch tip)
+CANDIDATE_HEAD: 8cbfaf08c0d1e6fe4b70b05d9c1436593d2242c9 (automation-state commit may advance the branch tip)
 REPOSITORY_GATE: PASS_PENDING_INDEPENDENT_REVIEW
 CI_STATE: pending GitHub Actions verification for the final documentation tip
 HARD_BLOCK: false
