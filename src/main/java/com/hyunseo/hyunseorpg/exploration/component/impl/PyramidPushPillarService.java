@@ -55,7 +55,7 @@ public final class PyramidPushPillarService {
                 Math.max(0, spec.integer("display-y-offset", 0)));
         try {
             for (PushPillarDefinition definition : definitions) {
-                Location location = session.location(definition.initialPosition());
+                Location location = session.location(board.currentPosition(definition.id()).orElse(definition.initialPosition()));
                 Map<String, Object> options = new LinkedHashMap<>(spec.options());
                 options.put("material", material(definition.color(), spec.string("display-material", "SANDSTONE")));
                 options.put("glowing", true);
@@ -111,6 +111,24 @@ public final class PyramidPushPillarService {
             plugin.getLogger().log(java.util.logging.Level.WARNING,
                     "Pyramid final pillar move deferred until solved intent is durable: structure=" + structureId,
                     failure);
+            return false;
+        }
+    }
+
+    private boolean persistLogicalPosition(UUID structureId, String pillarId,
+                                           PyramidGridPoint position, boolean solved) {
+        if (repository == null || position == null) return repository == null;
+        try {
+            var latest = repository.get(structureId).orElse(null);
+            if (latest == null) return false;
+            var next = latest.withMetadata("pyramid-pillar-position-" + pillarId,
+                            position.x() + "," + position.z())
+                    .withMetadata("pyramid-pillar-solved-" + pillarId, Boolean.toString(solved));
+            repository.save(next);
+            return true;
+        } catch (java.io.IOException | RuntimeException failure) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                    "Pyramid logical pillar state was not persisted: structure=" + structureId, failure);
             return false;
         }
     }
@@ -224,8 +242,15 @@ public final class PyramidPushPillarService {
                             "피라미드 장치가 잠시 불안정합니다. 잠시 후 다시 시도하십시오."));
                     return true;
                 }
+                PyramidGridPoint previous = board.currentPosition(definition.id()).orElse(null);
                 PushPillarBoard.MoveResult result = board.tryMove(definition.id(), direction, tick);
                 if (!result.moved()) continue;
+                if (!persistLogicalPosition(structureId, definition.id(), result.position(), result.solvedNow())) {
+                    board.rollbackMove(definition.id(), previous);
+                    player.sendMessage(net.kyori.adventure.text.Component.text(
+                            "피라미드 장치가 잠시 불안정합니다. 이동이 저장되지 않았습니다."));
+                    return true;
+                }
                 Location moved = location(result.position());
                 UUID display = displays.get(definition.id());
                 if (display != null) {
