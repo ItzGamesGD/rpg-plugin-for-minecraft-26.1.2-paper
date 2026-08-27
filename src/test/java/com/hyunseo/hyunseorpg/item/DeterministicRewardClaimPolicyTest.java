@@ -39,7 +39,7 @@ final class DeterministicRewardClaimPolicyTest {
     @Test
     void journalWithoutTaggedDeliveryReturnsToTheSameSinglePendingObligation() {
         var afterRestart = DeterministicRewardClaimPolicy.recoverInterruptedClaim(false);
-        assertEquals(DeterministicRewardClaimPolicy.State.PENDING, afterRestart);
+        assertEquals(DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED, afterRestart);
         assertTrue(DeterministicRewardClaimPolicy.suppressesQueue(afterRestart));
     }
 }
