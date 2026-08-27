@@ -1,7 +1,7 @@
 # Desert Pyramid Current Implementation Status
 
 - Working branch: `fix/desert-pyramid-full-flow-reconciliation`
-- Candidate implementation checkpoint: `b06538966e48cbb63d900fd40feea8d946ed5b17` (documentation commits may advance the tip)
+- Candidate implementation checkpoint: `8cbfaf08c0d1e6fe4b70b05d9c1436593d2242c9` (documentation commits may advance the tip)
 - Repository gate: `PASS_PENDING_INDEPENDENT_REVIEW`
 - CI: the candidate implementation runs the Exploration workflow `./gradlew clean test --no-daemon`; the final documentation tip must be rechecked by GitHub Actions.
 - Live runtime status: `LIVE_SERVER_RETEST_REQUIRED`
