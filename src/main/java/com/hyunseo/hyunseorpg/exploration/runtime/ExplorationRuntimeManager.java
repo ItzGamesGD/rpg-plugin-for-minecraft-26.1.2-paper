@@ -346,7 +346,13 @@ public final class ExplorationRuntimeManager {
                         .withMetadata("pyramid-reward-state", "delivered");
                 }
             }
-            StructureRecord completed = rewardCheckpoint.transitionTo(StructureEventState.CLEARED, Instant.now());
+            StructureRecord latestAfterClear = repository.get(structureId).orElse(rewardCheckpoint);
+            if (!pyramidCompletionAllowed(latestAfterClear.structureType(), latestAfterClear.activationMetadata())) {
+                plugin.getLogger().warning("Pyramid completion aborted after CLEAR phase: recovery required for " + structureId);
+                runtime.sequence().cancelPendingTasks();
+                return false;
+            }
+            StructureRecord completed = latestAfterClear.transitionTo(StructureEventState.CLEARED, Instant.now());
             if (hasRewardPhase(record)) completed = completed.markRewardClaimed();
             repository.save(completed);
             active.remove(structureId);
