@@ -257,8 +257,14 @@ public final class PyramidPushPillarService {
                 }
                 Location moved = location(result.position());
                 UUID display = displays.get(definition.id());
-                if (display != null) {
+                try {
+                    if (display == null) throw new IllegalStateException("missing pillar display: " + definition.id());
                     portsMove(display, moved);
+                } catch (RuntimeException corruption) {
+                    failClosedRepresentation(corruption);
+                    player.sendMessage(net.kyori.adventure.text.Component.text(
+                            "피라미드 장치가 손상되어 진행을 중지했습니다. 관리자에게 초기화를 요청하십시오."));
+                    return true;
                 }
                 player.sendMessage(net.kyori.adventure.text.Component.text(
                         result.solvedNow() ? "피라미드 기둥 하나가 제자리에 놓였습니다." : "피라미드 기둥이 이동했습니다."));
@@ -277,6 +283,20 @@ public final class PyramidPushPillarService {
 
         private void portsMove(UUID display, Location location) {
             ports.displays().move(display, location);
+        }
+
+        private void failClosedRepresentation(RuntimeException failure) {
+            try {
+                var latest = repository == null ? null : repository.get(structureId).orElse(null);
+                if (latest != null) {
+                    repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                            .withMetadata("pyramid-failure-reason", "pillar-display-corrupted"));
+                }
+            } catch (Exception ignored) { }
+            runtime.sequence().cancelPendingTasks();
+            PyramidPushPillarService.this.stop(structureId);
+            plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                    "Pyramid pillar representation failed closed: structure=" + structureId, failure);
         }
 
         private Location location(PyramidGridPoint point) {
