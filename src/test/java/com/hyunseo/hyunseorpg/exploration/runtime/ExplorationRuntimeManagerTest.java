@@ -127,6 +127,40 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
+    void outpostLootExitGraceSurvivesProximityAndWaveSchedulingKeepsTarget() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "tier1");
+        UUID looter = UUID.randomUUID();
+        runtime.addParticipant(looter);
+        runtime.markLootTaken(looter, 100L);
+        runtime.markLootTriggerExit(140L);
+
+        runtime.configureRaidWaveSequence(java.util.List.of("tier1", "tier2"), 20L);
+        runtime.setRaidTarget(looter);
+        assertTrue(runtime.scheduleNextRaidWave(200L));
+        assertEquals(220L, runtime.nextRaidWaveAtTick());
+        assertFalse(runtime.nextRaidWaveDue(219L));
+        assertTrue(runtime.nextRaidWaveDue(220L));
+        assertEquals(looter, runtime.raidTarget());
+        assertEquals(140L, runtime.lootTriggerExitAtTick(),
+                "proximity activation must not erase an armed loot-exit grace timer");
+        assertTrue(runtime.advanceRaidWave());
+        assertEquals(2, runtime.raidWaveNumber());
+        assertEquals(140L, runtime.lootTriggerExitAtTick());
+    }
+
+    @Test
+    void outpostGraceTimerCanBeClearedOnlyByExplicitReturnOrTeleport() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "tier1");
+        runtime.markLootTriggerExit(10L);
+        assertEquals(10L, runtime.lootTriggerExitAtTick());
+        runtime.clearLootTriggerExit();
+        assertEquals(null, runtime.lootTriggerExitAtTick());
+        runtime.markLootTriggerExit(20L);
+        runtime.clearCombatAbandonExit();
+        assertEquals(20L, runtime.lootTriggerExitAtTick());
+    }
+
+    @Test
     void entryActorCanBeReplacedAndLootReservationCanRollback() {
         ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "guardian_trial");
         UUID first = UUID.randomUUID();
