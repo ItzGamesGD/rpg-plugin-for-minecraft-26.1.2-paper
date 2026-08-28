@@ -86,16 +86,31 @@ public final class ExplorationRuntimeManager {
         return y >= shaftMin && y <= shaftMax;
     }
 
-    /** Returns whether a block is owned by an active Pyramid puzzle and must not be modified. */
+    /** Small ownership gate kept separate from the coordinate predicate for lifecycle testing. */
+    public static boolean pyramidGeometryOwned(Map<String, String> metadata,
+                                               boolean prepared, boolean revealing,
+                                               boolean started, boolean active) {
+        Map<String, String> state = metadata == null ? Map.of() : metadata;
+        return Boolean.parseBoolean(state.getOrDefault("pyramid-room-prepared", "false"))
+                || Boolean.parseBoolean(state.getOrDefault("pyramid-room-created", "false"))
+                || Boolean.parseBoolean(state.getOrDefault("pyramid-reveal-in-progress", "false"))
+                || prepared || revealing || started || active;
+    }
+
+    /** Returns whether a block is owned by prepared/revealing/committed Pyramid geometry. */
     public synchronized boolean isPyramidPuzzleProtected(org.bukkit.block.Block block) {
         if (block == null || block.getWorld() == null) return false;
         for (ExplorationRuntime runtime : active.values()) {
-            if (!runtime.sequence().flag("pyramid.puzzle.active")) continue;
             StructureRecord record = repository.get(runtime.structureId()).orElse(null);
             if (record == null || record.state() != StructureEventState.ACTIVE
                     || !"desert_pyramid".equals(record.structureType())) continue;
             Map<String, String> metadata = record.activationMetadata();
-            if ("RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) continue;
+            boolean geometryOwned = pyramidGeometryOwned(metadata,
+                    runtime.sequence().flag("pyramid.room.prepared"),
+                    runtime.sequence().flag("pyramid.room.reveal.in_progress"),
+                    runtime.sequence().flag("pyramid.puzzle.started"),
+                    runtime.sequence().flag("pyramid.puzzle.active"));
+            if (!geometryOwned) continue;
             if (!record.worldId().equals(block.getWorld().getUID())) continue;
             String originRaw = metadata.get("pyramid-room-origin");
             if (originRaw == null) continue;
@@ -108,7 +123,9 @@ public final class ExplorationRuntimeManager {
                 int radius = parseInt(metadata.get("pyramid-room-radius"), 4);
                 int height = parseInt(metadata.get("pyramid-room-height"), 4);
                 int treasureX = parseInt(metadata.get("pyramid-treasure-center-x"), ox);
-                int treasureY = parseInt(metadata.get("pyramid-treasure-y"), oy);
+                // reveal() carves from one block below the structure piece's minimum Y
+                // through the room ceiling; the trigger chest Y is not the shaft top.
+                int treasureY = (int) Math.floor(record.bounds().minY()) - 1;
                 int treasureZ = parseInt(metadata.get("pyramid-treasure-center-z"), oz);
                 if (pyramidGeometryProtected(block.getX(), block.getY(), block.getZ(),
                         ox, oy, oz, radius, height, treasureX, treasureY, treasureZ)) return true;
@@ -1158,8 +1175,12 @@ public final class ExplorationRuntimeManager {
         if (!complete && state != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
             return record;
         }
-        var reconciled = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
-        if (reconciled != null && reconciled != record
+        var result = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
+        StructureRecord reconciled = result.record();
+        if (result.status() == PyramidUndergroundCompletionCoordinator.CompletionStatus.PERSISTENCE_FAILED) {
+            throw new IOException("Pyramid underground completion reconciliation save failed");
+        }
+        if (result.completed() && reconciled != null && reconciled != record
                 && Boolean.parseBoolean(reconciled.activationMetadata()
                 .getOrDefault("pyramid-underground-complete", "false"))) {
             plugin.getLogger().info("Recovered pending Pyramid underground completion: structure=" + record.structureId());

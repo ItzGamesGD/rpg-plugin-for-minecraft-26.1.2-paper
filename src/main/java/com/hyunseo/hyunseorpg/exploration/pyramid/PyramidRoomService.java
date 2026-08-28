@@ -208,7 +208,12 @@ public final class PyramidRoomService {
                         repository.save(latest.withMetadata("pyramid-reveal-in-progress", null)
                                 .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
                                 .withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
-                    } catch (Exception ignored) { }
+                    } catch (Exception persistenceFailure) {
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                                "Failed to persist RECOVERY_REQUIRED after staged reveal failure; runtime remains frozen: "
+                                        + structureId, persistenceFailure);
+                    }
+                    pending.context.runtime().sequence().cancelPendingTasks();
                     plugin.getLogger().log(java.util.logging.Level.WARNING,
                             "Desert Pyramid staged reveal failed closed: " + structureId, exception);
                 }

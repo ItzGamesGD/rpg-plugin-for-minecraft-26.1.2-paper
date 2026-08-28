@@ -140,8 +140,18 @@ public final class PyramidPushPillarService {
                                                            com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime) {
         if (repository == null) return;
         try {
-            var record = PyramidUndergroundCompletionCoordinator.complete(repository, structureId);
-            if (record == null) return;
+            var result = PyramidUndergroundCompletionCoordinator.complete(repository, structureId);
+            if (!result.completed()) {
+                if (result.status() == PyramidUndergroundCompletionCoordinator.CompletionStatus.BLOCKED_RECOVERY_REQUIRED) {
+                    runtime.sequence().cancelPendingTasks();
+                    stop(structureId);
+                    return;
+                }
+                if (result.status() == PyramidUndergroundCompletionCoordinator.CompletionStatus.PERSISTENCE_FAILED) {
+                    throw new java.io.IOException("Pyramid underground completion save failed");
+                }
+                return;
+            }
             completionRetryAttempts.remove(structureId);
             runtime.sequence().setFlag("pyramid.underground.complete");
             org.bukkit.scheduler.BukkitTask task = completionRetryTasks.remove(structureId);
@@ -171,17 +181,29 @@ public final class PyramidPushPillarService {
     public synchronized void markRecoveryRequired(ExplorationEventContext context, String reason) {
         if (context == null) return;
         UUID structureId = context.runtime().structureId();
-        try {
-            if (repository != null) {
-                var latest = repository.get(structureId).orElse(context.record());
-                repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
-                        .withMetadata("pyramid-failure-reason", reason == null ? "pillar-state-invalid" : reason));
-            }
-        } catch (Exception ignored) { }
+        persistRecoveryRequired(structureId, context.record(), reason);
         context.runtime().sequence().cancelPendingTasks();
         stop(structureId);
         plugin.getLogger().severe("Pyramid progression frozen: recovery required for structure=" + structureId
                 + " (" + (reason == null ? "pillar-state-invalid" : reason) + ")");
+    }
+
+    private boolean persistRecoveryRequired(UUID structureId,
+                                            com.hyunseo.hyunseorpg.exploration.model.StructureRecord fallback,
+                                            String reason) {
+        if (repository == null) return false;
+        String failureReason = reason == null ? "pillar-state-invalid" : reason;
+        try {
+            var latest = repository.get(structureId).orElse(fallback);
+            repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                    .withMetadata("pyramid-failure-reason", failureReason));
+            return true;
+        } catch (Exception persistenceFailure) {
+            plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                    "Failed to persist RECOVERY_REQUIRED; Pyramid remains frozen in memory: structure="
+                            + structureId + ", reason=" + failureReason, persistenceFailure);
+            return false;
+        }
     }
 
     public synchronized void stop(UUID structureId) {
@@ -305,13 +327,8 @@ public final class PyramidPushPillarService {
         }
 
         private void failClosedRepresentation(RuntimeException failure) {
-            try {
-                var latest = repository == null ? null : repository.get(structureId).orElse(null);
-                if (latest != null) {
-                    repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
-                            .withMetadata("pyramid-failure-reason", "pillar-display-missing-or-invalid"));
-                }
-            } catch (Exception ignored) { }
+            PyramidPushPillarService.this.persistRecoveryRequired(structureId, null,
+                    "pillar-display-missing-or-invalid");
             runtime.sequence().cancelPendingTasks();
             PyramidPushPillarService.this.stop(structureId);
             plugin.getLogger().log(java.util.logging.Level.SEVERE,

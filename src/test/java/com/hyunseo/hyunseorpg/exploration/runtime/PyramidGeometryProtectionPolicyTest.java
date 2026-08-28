@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 class PyramidGeometryProtectionPolicyTest {
     @Test
     void roomFloorWallsAndCeilingAreProtected() {
@@ -32,5 +34,17 @@ class PyramidGeometryProtectionPolicyTest {
     void unrelatedNearbyCoordinatesRemainUnprotected() {
         assertFalse(ExplorationRuntimeManager.pyramidGeometryProtected(10, 95, 10,
                 0, 100, 0, 4, 4, 0, 90, 0));
+    }
+
+    @Test
+    void ownershipStartsAtPrepareAndEndsAfterCleanup() {
+        assertTrue(ExplorationRuntimeManager.pyramidGeometryOwned(
+                Map.of("pyramid-room-prepared", "true"), false, false, false, false));
+        assertTrue(ExplorationRuntimeManager.pyramidGeometryOwned(
+                Map.of(), false, true, false, false));
+        assertTrue(ExplorationRuntimeManager.pyramidGeometryOwned(
+                Map.of("pyramid-room-created", "true"), false, false, false, false));
+        assertFalse(ExplorationRuntimeManager.pyramidGeometryOwned(
+                Map.of(), false, false, false, false));
     }
 }

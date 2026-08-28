@@ -14,6 +14,8 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomRevealCompon
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarConfigurationValidator;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarDefinitionParser;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
@@ -222,6 +224,17 @@ public final class ExplorationModule {
                         + ", expectedPhase=" + entry.getValue() + ", actualPhase=" + actual);
                 return false;
             }
+        }
+        var pillarSpec = variant.components().stream()
+                .filter(spec -> "pyramid_push_pillars".equals(spec.type().trim().toLowerCase(java.util.Locale.ROOT)))
+                .findFirst().orElse(null);
+        try {
+            PyramidPillarConfigurationValidator.requireValid(PyramidPillarDefinitionParser.parse(
+                    pillarSpec == null ? null : pillarSpec.options().get("pillars")));
+        } catch (IllegalArgumentException invalid) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Pyramid validation failed before runtime/world mutation: " + invalid.getMessage(), invalid);
+            return false;
         }
         return true;
     }
