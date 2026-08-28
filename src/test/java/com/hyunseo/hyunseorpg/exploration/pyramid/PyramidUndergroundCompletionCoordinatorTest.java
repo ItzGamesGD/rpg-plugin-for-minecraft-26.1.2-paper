@@ -28,7 +28,9 @@ final class PyramidUndergroundCompletionCoordinatorTest {
                 "pyramid-underground-completion-state", "completion_pending")));
         StructureRepository first = repository(storage);
 
-        StructureRecord completed = PyramidUndergroundCompletionCoordinator.complete(first, storage.recordId());
+        var completion = PyramidUndergroundCompletionCoordinator.complete(first, storage.recordId());
+        StructureRecord completed = completion.record();
+        assertEquals(PyramidUndergroundCompletionCoordinator.CompletionStatus.COMPLETED, completion.status());
         assertTrue(Boolean.parseBoolean(completed.activationMetadata().get("pyramid-underground-complete")));
         assertEquals("complete", completed.activationMetadata().get("pyramid-underground-completion-state"));
         assertEquals(1, storage.saveCalls);
@@ -47,7 +49,7 @@ final class PyramidUndergroundCompletionCoordinatorTest {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of(
                 "pyramid-underground-complete", "true",
                 "pyramid-underground-completion-state", "completion_pending")));
-        StructureRecord completed = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        StructureRecord completed = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId()).record();
 
         assertEquals("true", completed.activationMetadata().get("pyramid-underground-complete"));
         assertEquals("complete", completed.activationMetadata().get("pyramid-underground-completion-state"));
@@ -59,7 +61,9 @@ final class PyramidUndergroundCompletionCoordinatorTest {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of(
                 "pyramid-underground-completion-state", "completion_pending",
                 "pyramid-failure-state", "RECOVERY_REQUIRED")));
-        StructureRecord unchanged = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        var result = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        StructureRecord unchanged = result.record();
+        assertEquals(PyramidUndergroundCompletionCoordinator.CompletionStatus.BLOCKED_RECOVERY_REQUIRED, result.status());
         assertEquals("completion_pending", unchanged.activationMetadata().get("pyramid-underground-completion-state"));
         assertFalse(Boolean.parseBoolean(unchanged.activationMetadata().getOrDefault("pyramid-underground-complete", "false")));
         assertEquals(0, storage.saveCalls);
@@ -68,8 +72,10 @@ final class PyramidUndergroundCompletionCoordinatorTest {
     @Test
     void unsolvedRecordCannotBeCompletedByRecoveryOrAnArbitraryCaller() throws IOException {
         PersistedStorage storage = new PersistedStorage(pyramid(Map.of()));
-        StructureRecord unchanged = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        var result = PyramidUndergroundCompletionCoordinator.complete(repository(storage), storage.recordId());
+        StructureRecord unchanged = result.record();
 
+        assertEquals(PyramidUndergroundCompletionCoordinator.CompletionStatus.NOT_ELIGIBLE, result.status());
         assertFalse(Boolean.parseBoolean(unchanged.activationMetadata()
                 .getOrDefault("pyramid-underground-complete", "false")));
         assertEquals(0, storage.saveCalls);
@@ -91,6 +97,24 @@ final class PyramidUndergroundCompletionCoordinatorTest {
         assertEquals(PyramidUndergroundCompletionState.COMPLETION_PENDING,
                 PyramidUndergroundCompletionState.parse(repository.get(storage.recordId()).orElseThrow()
                         .activationMetadata().get("pyramid-underground-completion-state")));
+    }
+
+    @Test
+    void completionSaveFailureIsExplicitAndRetryCompletes() throws IOException {
+        PersistedStorage storage = new PersistedStorage(pyramid(Map.of(
+                "pyramid-underground-completion-state", "completion_pending")));
+        StructureRepository repository = repository(storage);
+        storage.failNextSave = true;
+
+        var failed = PyramidUndergroundCompletionCoordinator.complete(repository, storage.recordId());
+        assertEquals(PyramidUndergroundCompletionCoordinator.CompletionStatus.PERSISTENCE_FAILED, failed.status());
+        assertFalse(Boolean.parseBoolean(repository.get(storage.recordId()).orElseThrow()
+                .activationMetadata().getOrDefault("pyramid-underground-complete", "false")));
+
+        var retried = PyramidUndergroundCompletionCoordinator.complete(repository, storage.recordId());
+        assertEquals(PyramidUndergroundCompletionCoordinator.CompletionStatus.COMPLETED, retried.status());
+        assertTrue(Boolean.parseBoolean(retried.record().activationMetadata()
+                .getOrDefault("pyramid-underground-complete", "false")));
     }
 
     @Test
