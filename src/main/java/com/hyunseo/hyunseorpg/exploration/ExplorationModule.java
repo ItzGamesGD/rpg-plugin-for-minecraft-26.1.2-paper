@@ -14,6 +14,8 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomRevealCompon
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarConfigurationValidator;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarDefinitionParser;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
@@ -221,6 +223,22 @@ public final class ExplorationModule {
                 plugin.getLogger().severe("Pyramid validation failed: component=" + entry.getKey()
                         + ", expectedPhase=" + entry.getValue() + ", actualPhase=" + actual);
                 return false;
+            }
+        }
+        for (var configuredVariant : definition.variants()) {
+            int pillarComponentIndex = 0;
+            for (var spec : configuredVariant.components()) {
+                if (!"pyramid_push_pillars".equals(spec.type())) continue;
+                String context = "structure=desert_pyramid, variant=" + configuredVariant.id()
+                        + ", pillarComponent=" + pillarComponentIndex++;
+                try {
+                    PyramidPillarConfigurationValidator.requireValid(
+                            PyramidPillarDefinitionParser.parse(spec.options().get("pillars"), context));
+                } catch (IllegalArgumentException invalid) {
+                    plugin.getLogger().log(Level.SEVERE,
+                            "Pyramid validation failed before runtime/world mutation: " + invalid.getMessage(), invalid);
+                    return false;
+                }
             }
         }
         return true;
