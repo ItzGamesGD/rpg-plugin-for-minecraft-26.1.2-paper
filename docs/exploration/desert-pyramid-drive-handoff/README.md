@@ -8,28 +8,29 @@ Branch: `fix/desert-pyramid-full-flow-reconciliation`
 
 Main: do not modify.
 
-## Source Drive search result
+## Source Drive documents
 
-The Drive folder `18EGs87jL06ylRUMCap6gmVTg522yrcct` and broad `DESERT_PYRAMID` / `PYRAMID` searches returned three native Google Docs:
+Transferred on 2026-08-28 UTC from the currently authoritative Drive handoff set:
 
 1. `DESERT_PYRAMID_CURRENT_WORK`
 2. `DESERT_PYRAMID_STABLE_SPEC`
 3. `DESERT_PYRAMID_ARCHIVE_INDEX`
-
-The user referred to four Drive documents, but only these three Pyramid Drive documents were visible to the connector at transfer time. This README is therefore included as the fourth GitHub handoff file and records the transfer scope.
+4. `HYUNSEORPG_WORK_OPERATING_PROTOCOL`
 
 ## Files
 
 - `DESERT_PYRAMID_CURRENT_WORK.md` — current repair queue, live findings, and Codex Cloud next actions.
 - `DESERT_PYRAMID_STABLE_SPEC.md` — stable gameplay/runtime invariants.
 - `DESERT_PYRAMID_ARCHIVE_INDEX.md` — archive policy and current-document routing.
+- `HYUNSEORPG_WORK_OPERATING_PROTOCOL.md` — standing Work/task execution protocol, including manual vs automation mode rules.
 
 ## Usage rule
 
-For implementation work, read in this order:
+For Desert Pyramid implementation or review work, read in this order:
 
-1. `DESERT_PYRAMID_CURRENT_WORK.md`
-2. `DESERT_PYRAMID_STABLE_SPEC.md` only where stable contract comparison is needed
-3. `DESERT_PYRAMID_ARCHIVE_INDEX.md` only to confirm that archive material is non-authoritative by default
+1. `HYUNSEORPG_WORK_OPERATING_PROTOCOL.md` for execution-mode handling.
+2. `DESERT_PYRAMID_CURRENT_WORK.md` for current branch, defects, gates, and next repair queue.
+3. `DESERT_PYRAMID_STABLE_SPEC.md` only where stable contract comparison is needed.
+4. `DESERT_PYRAMID_ARCHIVE_INDEX.md` only to confirm archive routing and non-authoritative status.
 
 Do not preload historical Pyramid archive material unless `CURRENT_WORK` explicitly names a specific archived item.
