@@ -89,22 +89,23 @@ final class ExplorationRuntimeManagerTest {
         StructureRecord record = pyramidRecord();
         int centerX = (int) Math.floor(record.bounds().centerX());
         int centerZ = (int) Math.floor(record.bounds().centerZ());
-        for (int dx : new int[] {-2, 2}) {
-            for (int dz : new int[] {-2, 2}) {
-                assertTrue(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                        org.bukkit.Material.CHEST, centerX + dx, record.bounds().minY(), centerZ + dz));
-            }
+        int chestY = record.bounds().minY() - 11;
+        for (int[] offset : new int[][] {{-2, 0}, {2, 0}, {0, -2}, {0, 2}}) {
+            assertTrue(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                    org.bukkit.Material.CHEST, centerX + offset[0], chestY, centerZ + offset[1]));
         }
         assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                org.bukkit.Material.CHEST, centerX, record.bounds().minY(), centerZ));
+                org.bukkit.Material.CHEST, centerX, chestY, centerZ));
         assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                org.bukkit.Material.TRAPPED_CHEST, centerX + 2, record.bounds().minY(), centerZ + 2));
+                org.bukkit.Material.TRAPPED_CHEST, centerX + 2, chestY, centerZ));
         assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                org.bukkit.Material.BARREL, centerX + 2, record.bounds().minY(), centerZ + 2));
+                org.bukkit.Material.BARREL, centerX + 2, chestY, centerZ));
         assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                org.bukkit.Material.SHULKER_BOX, centerX + 2, record.bounds().minY(), centerZ + 2));
+                org.bukkit.Material.SHULKER_BOX, centerX + 2, chestY, centerZ));
         assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
-                org.bukkit.Material.CHEST, centerX + 3, record.bounds().minY(), centerZ + 2));
+                org.bukkit.Material.CHEST, centerX + 2, chestY, centerZ + 2));
+        assertFalse(ExplorationRuntimeManager.isValidPyramidTreasureSlot(record,
+                org.bukkit.Material.CHEST, centerX + 2, record.bounds().minY(), centerZ));
     }
 
     @Test

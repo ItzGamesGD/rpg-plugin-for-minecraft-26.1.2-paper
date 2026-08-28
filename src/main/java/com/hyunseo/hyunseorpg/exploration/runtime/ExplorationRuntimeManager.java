@@ -510,11 +510,8 @@ public final class ExplorationRuntimeManager {
                                               int blockX, int blockY, int blockZ) {
         if (record == null || !"desert_pyramid".equals(record.structureType())
                 || type != org.bukkit.Material.CHEST) return false;
-        PyramidTreasureCenterPolicy.Center center = PyramidTreasureCenterPolicy.from(record.bounds());
-        return Math.abs(blockX - center.x()) == 2
-                && Math.abs(blockZ - center.z()) == 2
-                && blockY >= record.bounds().minY()
-                && blockY <= record.bounds().minY() + 3;
+        return PyramidTreasureCenterPolicy.isVanillaTreasureSlot(
+                record.bounds(), blockX, blockY, blockZ);
     }
 
     public static boolean isLootContainerInStructure(StructureRecord record, double x, double y, double z) {
