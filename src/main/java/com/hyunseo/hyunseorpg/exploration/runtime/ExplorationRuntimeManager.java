@@ -1186,11 +1186,12 @@ public final class ExplorationRuntimeManager {
             if (latest == null) throw new IllegalStateException("Pyramid progression is recovery-quarantined");
             record = latest;
         }
+        StructureRecord resolvedRecord = record;
         ExplorationStructureDefinition definition = registry.get(record.structureType())
-                .orElseThrow(() -> new IllegalStateException("missing structure definition " + record.structureType()));
+                .orElseThrow(() -> new IllegalStateException("missing structure definition " + resolvedRecord.structureType()));
         StructureVariantDefinition variant = definition.variants().stream()
-                .filter(candidate -> candidate.id().equals(record.variantId()))
-                .findFirst().orElseThrow(() -> new IllegalStateException("missing variant " + record.variantId()));
+                .filter(candidate -> candidate.id().equals(resolvedRecord.variantId()))
+                .findFirst().orElseThrow(() -> new IllegalStateException("missing variant " + resolvedRecord.variantId()));
         ExplorationEventContext context = new ExplorationEventContext(plugin, record, runtime, ports, teleportExemptions, currentTick,
                 this::scheduleSequencePhase);
         int matched = 0;
