@@ -44,13 +44,17 @@ public final class ExplorationChestLootListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (!REMOVAL_ACTIONS.contains(event.getAction())) return;
+        if (!isLootRemovalAction(event.getAction())) return;
         Inventory top = event.getView().getTopInventory();
         if (event.getClickedInventory() != top) return;
         if (event.getCurrentItem() == null || event.getCurrentItem().getType().isAir()) return;
         Location location = resolveLocation(top);
         if (!isSupportedLootContainer(location)) return;
         runtimes.markLootTaken(location, player, tickCounter.get());
+    }
+
+    static boolean isLootRemovalAction(InventoryAction action) {
+        return action != null && REMOVAL_ACTIONS.contains(action);
     }
 
     private Location resolveLocation(Inventory inventory) {

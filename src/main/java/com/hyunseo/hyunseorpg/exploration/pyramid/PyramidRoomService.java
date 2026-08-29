@@ -56,9 +56,9 @@ public final class PyramidRoomService {
         if (existing != null) return existing.candidate();
 
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
-        StructureBounds bounds = context.record().bounds();
+        StructureRecord effectiveRecord = authoritativePyramidRecord(structureId);
+        StructureBounds bounds = effectiveRecord.bounds();
         PyramidTreasureCenterPolicy.Center treasureCenter = PyramidTreasureCenterPolicy.from(bounds);
-        StructureRecord effectiveRecord = context.record();
         if (Boolean.parseBoolean(effectiveRecord.activationMetadata()
                 .getOrDefault("pyramid-reveal-in-progress", "false"))) {
             throw new IllegalStateException("Pyramid reveal is marked recovery-required");
@@ -82,7 +82,8 @@ public final class PyramidRoomService {
             // A committed-room signature mismatch is external corruption. Keep
             // the durable evidence for diagnostics and freeze progression; never
             // silently discard metadata and re-carve a different room.
-            repository.save(effectiveRecord
+            StructureRecord latest = authoritativePyramidRecord(structureId);
+            repository.save(latest
                     .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
                     .withMetadata("pyramid-failure-reason", "committed-room-signature-mismatch"));
             throw new IllegalStateException("Pyramid committed room is corrupted; administrative reset required");
@@ -97,7 +98,7 @@ public final class PyramidRoomService {
                         persistedInt(preparedRecord, "pyramid-treasure-center-z", treasureCenter.z())))
                         .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
 
-        if (!shaftSafe(world, candidate.origin(), bounds)) {
+        if (!shaftSafe(world, candidate.origin(), radius, height, bounds)) {
             throw new IllegalStateException("no safe Desert Pyramid access shaft");
         }
         Map<String, String> metadata = new LinkedHashMap<>();
@@ -108,7 +109,9 @@ public final class PyramidRoomService {
         metadata.put("pyramid-room-origin", encode(candidate.origin()));
         metadata.put("pyramid-room-radius", Integer.toString(radius));
         metadata.put("pyramid-room-height", Integer.toString(height));
-        repository.save(withMetadata(preparedRecord, metadata));
+        // The preflight may be expensive enough for an independent guardian update
+        // to commit first. Merge only underground-owned fields into the latest record.
+        repository.save(mergeUndergroundMetadata(authoritativePyramidRecord(structureId), metadata));
         RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
                 List.of(), false, true);
         sessions.put(structureId, session);
@@ -133,8 +136,12 @@ public final class PyramidRoomService {
         if (existing == null) throw new IllegalStateException("pyramid room preparation is unavailable");
         World world = existing.world;
         PyramidBlockPosition origin = existing.candidate.origin();
-        StructureRecord currentRecord = repository.get(structureId).orElse(context.record());
-        if (!shaftSafe(world, origin, currentRecord.bounds())
+        StructureRecord currentRecord = repository.get(structureId).orElse(null);
+        if (currentRecord == null || !"desert_pyramid".equals(currentRecord.structureType())) {
+            context.runtime().sequence().cancelPendingTasks();
+            throw new IllegalStateException("authoritative Pyramid record missing before reveal");
+        }
+        if (!shaftSafe(world, origin, existing.radius, existing.height, currentRecord.bounds())
                 || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
                     + structureId + ", origin=" + encode(origin));
@@ -147,7 +154,8 @@ public final class PyramidRoomService {
         StructureRecord revealRecord = currentRecord.withMetadata("pyramid-reveal-in-progress", "true");
         repository.save(revealRecord);
         PendingReveal pending = new PendingReveal(context, revealRecord, spec, existing.candidate, existing.radius,
-                existing.height, existing.shell, snapshots, currentRecord.bounds().minY() - 1);
+                existing.height, existing.shell, snapshots,
+                PyramidRoomGeometry.of(origin, existing.radius, existing.height, currentRecord.bounds()).shaftTopY());
         pendingReveals.put(structureId, pending);
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
         scheduleRevealLayer(pending, 0);
@@ -164,10 +172,12 @@ public final class PyramidRoomService {
                 if (!pendingReveals.containsKey(structureId) || pending.context.runtime().tracker().isClosed()) return;
                 try {
                     int y = pending.startY - index;
-                    int endY = pending.candidate.origin().y() + pending.height;
+                    PyramidRoomGeometry geometry = PyramidRoomGeometry.of(pending.candidate.origin(),
+                            pending.radius, pending.height, pending.record.bounds());
+                    int endY = geometry.shaftBottomY();
                     if (y >= endY) {
                         if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
-                        carveShaftLayer(pending.world, pending.candidate.origin(), y);
+                        carveShaftLayer(pending.world, geometry, y);
                         pending.context.world().ifPresent(world -> world.playSound(
                                 new Location(world, pending.candidate.origin().x() + 0.5D, y,
                                         pending.candidate.origin().z() + 0.5D),
@@ -175,11 +185,11 @@ public final class PyramidRoomService {
                         scheduleRevealLayer(pending, index + 1);
                         return;
                     }
-                    carveRoom(pending.world, pending.candidate.origin(), pending.radius, pending.height);
+                    carveRoom(pending.world, geometry);
                     // Merge underground-owned fields into the latest record so a
                     // concurrent guardian update cannot be overwritten.
-                    StructureRecord latest = repository.get(structureId).orElse(pending.record);
-                    StructureRecord record = withMetadata(latest, Map.of(
+                    StructureRecord latest = authoritativePyramidRecord(structureId);
+                    StructureRecord record = mergeUndergroundMetadata(latest, Map.of(
                             "pyramid-room-created", "true",
                             "pyramid-room-prepared", "true",
                             "pyramid-room-origin", encode(pending.candidate.origin()),
@@ -204,11 +214,16 @@ public final class PyramidRoomService {
                     pendingReveals.remove(structureId);
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
                     try {
-                        StructureRecord latest = repository.get(structureId).orElse(pending.record);
+                        StructureRecord latest = authoritativePyramidRecord(structureId);
                         repository.save(latest.withMetadata("pyramid-reveal-in-progress", null)
                                 .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
                                 .withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
-                    } catch (Exception ignored) { }
+                    } catch (Exception persistenceFailure) {
+                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                                "Failed to persist RECOVERY_REQUIRED after staged reveal failure; runtime remains frozen: "
+                                        + structureId, persistenceFailure);
+                    }
+                    pending.context.runtime().sequence().cancelPendingTasks();
                     plugin.getLogger().log(java.util.logging.Level.WARNING,
                             "Desert Pyramid staged reveal failed closed: " + structureId, exception);
                 }
@@ -240,15 +255,20 @@ public final class PyramidRoomService {
         }
     }
 
-    private void carveShaftLayer(World world, PyramidBlockPosition origin, int y) {
-        for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
-            for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+    private void carveShaftLayer(World world, PyramidRoomGeometry geometry, int y) {
+        for (int x = geometry.shaftCenterX() - geometry.shaftRadius();
+             x <= geometry.shaftCenterX() + geometry.shaftRadius(); x++) {
+            for (int z = geometry.shaftCenterZ() - geometry.shaftRadius();
+                 z <= geometry.shaftCenterZ() + geometry.shaftRadius(); z++) {
                 world.getBlockAt(x, y, z).setType(Material.AIR, false);
             }
         }
     }
 
-    private void carveRoom(World world, PyramidBlockPosition origin, int radius, int height) {
+    private void carveRoom(World world, PyramidRoomGeometry geometry) {
+        PyramidBlockPosition origin = geometry.origin();
+        int radius = geometry.roomRadius();
+        int height = geometry.roomHeight();
         Material wall = Material.SANDSTONE;
         Material trim = Material.CHISELED_SANDSTONE;
         for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
@@ -358,18 +378,24 @@ public final class PyramidRoomService {
 
     private List<BlockSnapshot> snapshot(World world, PyramidBlockPosition origin, int radius, int height,
                                          StructureBounds bounds) {
+        PyramidRoomGeometry geometry = PyramidRoomGeometry.of(origin, radius, height, bounds);
         List<BlockSnapshot> snapshots = new ArrayList<>();
-        for (int x = origin.x() - radius; x <= origin.x() + radius; x++) {
-            for (int z = origin.z() - radius; z <= origin.z() + radius; z++) {
-                for (int y = origin.y() - 1; y <= origin.y() + height; y++) {
+        for (int x = geometry.origin().x() - geometry.roomRadius();
+             x <= geometry.origin().x() + geometry.roomRadius(); x++) {
+            for (int z = geometry.origin().z() - geometry.roomRadius();
+                 z <= geometry.origin().z() + geometry.roomRadius(); z++) {
+                for (int y = geometry.origin().y() - 1;
+                     y <= geometry.origin().y() + geometry.roomHeight(); y++) {
                     Block block = world.getBlockAt(x, y, z);
                     snapshots.add(new BlockSnapshot(x, y, z, block.getBlockData().clone()));
                 }
             }
         }
-        for (int y = origin.y() + height; y < bounds.minY(); y++) {
-            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
-                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+        for (int y = geometry.shaftBottomY(); y <= geometry.shaftTopY(); y++) {
+            for (int x = geometry.shaftCenterX() - geometry.shaftRadius();
+                 x <= geometry.shaftCenterX() + geometry.shaftRadius(); x++) {
+                for (int z = geometry.shaftCenterZ() - geometry.shaftRadius();
+                     z <= geometry.shaftCenterZ() + geometry.shaftRadius(); z++) {
                     Block block = world.getBlockAt(x, y, z);
                     snapshots.add(new BlockSnapshot(x, y, z, block.getBlockData().clone()));
                 }
@@ -387,11 +413,15 @@ public final class PyramidRoomService {
     /** Bounded signature check used before trusting persisted room-created metadata. */
     private boolean physicalRoomValid(World world, PyramidBlockPosition origin, int radius, int height) {
         if (origin == null || !world.isChunkLoaded(origin.x() >> 4, origin.z() >> 4)) return false;
+        PyramidRoomGeometry geometry = PyramidRoomGeometry.resolved(origin, radius, height,
+                origin.x(), origin.z(), origin.y() + height, origin.y() + height);
         Material[] wallTypes = {Material.SANDSTONE, Material.CHISELED_SANDSTONE};
         java.util.function.Predicate<Material> wall = type -> java.util.Arrays.stream(wallTypes).anyMatch(type::equals);
-        for (int y : new int[] {origin.y(), origin.y() + height}) {
-            for (int x : new int[] {origin.x() - radius, origin.x() + radius}) {
-                for (int z : new int[] {origin.z() - radius, origin.z() + radius}) {
+        for (int y : new int[] {geometry.origin().y(), geometry.origin().y() + geometry.roomHeight()}) {
+            for (int x : new int[] {geometry.origin().x() - geometry.roomRadius(),
+                    geometry.origin().x() + geometry.roomRadius()}) {
+                for (int z : new int[] {geometry.origin().z() - geometry.roomRadius(),
+                        geometry.origin().z() + geometry.roomRadius()}) {
                     if (!wall.test(world.getBlockAt(x, y, z).getType())) return false;
                 }
             }
@@ -408,15 +438,17 @@ public final class PyramidRoomService {
                 || state.getType().name().contains("PORTAL");
     }
 
-    private boolean shaftSafe(World world, PyramidBlockPosition origin, StructureBounds bounds) {
-        for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
-            for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+    private boolean shaftSafe(World world, PyramidBlockPosition origin, int radius, int height,
+                              StructureBounds bounds) {
+        PyramidRoomGeometry geometry = PyramidRoomGeometry.of(origin, radius, height, bounds);
+        for (int x = origin.x() - geometry.shaftRadius(); x <= origin.x() + geometry.shaftRadius(); x++) {
+            for (int z = origin.z() - geometry.shaftRadius(); z <= origin.z() + geometry.shaftRadius(); z++) {
                 if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
             }
         }
-        for (int y = origin.y() + 1; y < bounds.minY(); y++) {
-            for (int x = origin.x() - 1; x <= origin.x() + 1; x++) {
-                for (int z = origin.z() - 1; z <= origin.z() + 1; z++) {
+        for (int y = geometry.shaftBottomY(); y <= geometry.shaftTopY(); y++) {
+            for (int x = origin.x() - geometry.shaftRadius(); x <= origin.x() + geometry.shaftRadius(); x++) {
+                for (int z = origin.z() - geometry.shaftRadius(); z <= origin.z() + geometry.shaftRadius(); z++) {
                     Block block = world.getBlockAt(x, y, z);
                     if (block.isLiquid() || protectedBlock(block.getState())) return false;
                 }
@@ -425,14 +457,22 @@ public final class PyramidRoomService {
         return true;
     }
 
-    private StructureRecord withMetadata(StructureRecord base, Map<String, String> values) {
+    static StructureRecord mergeUndergroundMetadata(StructureRecord base, Map<String, String> values) {
+        if (base == null || !"desert_pyramid".equals(base.structureType())) {
+            throw new IllegalArgumentException("latest authoritative record must be desert_pyramid");
+        }
         var record = base;
         for (var entry : values.entrySet()) record = record.withMetadata(entry.getKey(), entry.getValue());
         return record;
     }
 
-    private StructureRecord withMetadata(ExplorationEventContext context, Map<String, String> values) {
-        return withMetadata(context.record(), values);
+    private StructureRecord authoritativePyramidRecord(UUID structureId) {
+        StructureRecord latest = repository.get(structureId).orElse(null);
+        if (latest == null) throw new IllegalStateException("authoritative Pyramid StructureRecord is missing");
+        if (!"desert_pyramid".equals(latest.structureType())) {
+            throw new IllegalStateException("authoritative StructureRecord is not desert_pyramid");
+        }
+        return latest;
     }
 
     private Optional<PyramidRoomCandidate> readPersistedCandidate(StructureRecord record) {
