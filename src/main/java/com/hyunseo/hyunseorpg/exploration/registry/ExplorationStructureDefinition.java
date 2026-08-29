@@ -14,7 +14,8 @@ public record ExplorationStructureDefinition(
         long lootTriggerGraceTicks,
         double combatAbandonRadius,
         long combatAbandonGraceTicks,
-        List<StructureVariantDefinition> variants
+        List<StructureVariantDefinition> variants,
+        double entryBoundaryPadding
 ) {
     public ExplorationStructureDefinition {
         id = normalize(id);
@@ -31,10 +32,23 @@ public record ExplorationStructureDefinition(
             throw new IllegalArgumentException("combatAbandonRadius < triggerRadius");
         }
         if (combatAbandonGraceTicks < 1L) throw new IllegalArgumentException("combatAbandonGraceTicks < 1");
+        if (!Double.isFinite(entryBoundaryPadding) || entryBoundaryPadding < 0.0D) {
+            throw new IllegalArgumentException("entryBoundaryPadding < 0");
+        }
         variants = List.copyOf(variants == null ? List.of() : variants);
         if (enabled && selectionChance > 0.0D && variants.stream().noneMatch(StructureVariantDefinition::enabled)) {
             throw new IllegalArgumentException("enabled RPG structure requires at least one enabled variant");
         }
+    }
+
+    /** Compatibility constructor for callers using the pre-padding canonical shape. */
+    public ExplorationStructureDefinition(String id, String minecraftKey, boolean enabled,
+                                          double selectionChance, double triggerRadius,
+                                          double lootTriggerRadius, long lootTriggerGraceTicks,
+                                          double combatAbandonRadius, long combatAbandonGraceTicks,
+                                          List<StructureVariantDefinition> variants) {
+        this(id, minecraftKey, enabled, selectionChance, triggerRadius, lootTriggerRadius,
+                lootTriggerGraceTicks, combatAbandonRadius, combatAbandonGraceTicks, variants, 4.0D);
     }
 
     /** Compatibility constructor for pre-loot-exit definitions. */

@@ -25,8 +25,17 @@ public final class ExplorationPlayerMovementListener implements Listener {
         var from = event.getFrom();
         var to = event.getTo();
         if (to == null) return;
-        if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) return;
+        // PlayerMoveEvent also fires for look-only updates. Sequence movement waits need exact XYZ changes,
+        // not a block-coordinate approximation that discards legitimate short movement.
+        if (!positionChanged(from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ())) return;
         runtimes.onPhysicalMove(event.getPlayer(), from, to, tickCounter.get());
+    }
+
+    static boolean positionChanged(double fromX, double fromY, double fromZ,
+                                   double toX, double toY, double toZ) {
+        return Double.compare(fromX, toX) != 0
+                || Double.compare(fromY, toY) != 0
+                || Double.compare(fromZ, toZ) != 0;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

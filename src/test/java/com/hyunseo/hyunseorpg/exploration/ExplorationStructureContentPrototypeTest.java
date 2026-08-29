@@ -21,7 +21,7 @@ final class ExplorationStructureContentPrototypeTest {
                 new java.io.InputStreamReader(resource)
         );
 
-        assertFalse(yaml.getBoolean("enabled", true));
+        assertTrue(yaml.getBoolean("enabled", false));
         assertFalse(yaml.getBoolean("structures.pillager_outpost.enabled", true));
         assertEquals(0.0D, yaml.getDouble("structures.pillager_outpost.selection-chance"), 0.000001D);
 

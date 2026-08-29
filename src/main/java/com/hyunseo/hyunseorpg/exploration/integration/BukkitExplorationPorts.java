@@ -22,15 +22,43 @@ public final class BukkitExplorationPorts {
     private BukkitExplorationPorts() { }
 
     public static ExplorationPorts safeDefaults(JavaPlugin plugin) {
+        ExplorationPorts.DisplayPort displays = new ExplorationPorts.DisplayPort() {
+            @Override public UUID spawn(String kind, Location location, Map<String, Object> options) {
+                return spawnDisplay(kind, location, options);
+            }
+            @Override public boolean move(UUID entityId, Location location) {
+                return moveDisplay(entityId, location);
+            }
+            @Override public boolean remove(UUID entityId) {
+                return removeEntity(entityId);
+            }
+        };
         return new ExplorationPorts(
                 BukkitExplorationPorts::spawnVanillaOnly,
-                BukkitExplorationPorts::spawnDisplay,
+                displays,
                 BukkitExplorationPorts::spawnInteraction,
                 BukkitExplorationPorts::temporaryBlock,
                 (player, location, options) -> player.teleport(location),
                 ExplorationPorts.RewardPort.NOOP,
                 ExplorationPorts.PuzzlePort.NOOP,
                 ExplorationPorts.StructureEntityCleanupPort.NOOP);
+    }
+
+    /** Compose real Bukkit primitives with HyunseoRPG domain adapters. */
+    public static ExplorationPorts compose(JavaPlugin plugin,
+                                           ExplorationPorts.MobSpawnPort mobs,
+                                           ExplorationPorts.RewardPort rewards,
+                                           ExplorationPorts.StructureEntityCleanupPort cleanup) {
+        ExplorationPorts primitives = safeDefaults(plugin);
+        return new ExplorationPorts(
+                mobs,
+                primitives.displays(),
+                primitives.interactions(),
+                primitives.worldMutations(),
+                primitives.teleports(),
+                rewards,
+                primitives.puzzles(),
+                cleanup);
     }
 
     private static Collection<UUID> spawnVanillaOnly(String rawId, Location location, int count, Map<String, Object> options) {
@@ -43,6 +71,12 @@ public final class BukkitExplorationPorts {
         List<UUID> result = new ArrayList<>();
         for (int i = 0; i < Math.max(1, count); i++) {
             Entity entity = location.getWorld().spawnEntity(location, type);
+            if (entity instanceof org.bukkit.entity.LivingEntity living) {
+                if (options.containsKey("ai")) living.setAI(Boolean.parseBoolean(String.valueOf(options.get("ai"))));
+                if (options.containsKey("invulnerable")) {
+                    living.setInvulnerable(Boolean.parseBoolean(String.valueOf(options.get("invulnerable"))));
+                }
+            }
             result.add(entity.getUniqueId());
         }
         return List.copyOf(result);
@@ -56,6 +90,20 @@ public final class BukkitExplorationPorts {
         display.setBlock(material.createBlockData());
         display.setGlowing(Boolean.parseBoolean(String.valueOf(options.getOrDefault("glowing", "false"))));
         return display.getUniqueId();
+    }
+
+    private static boolean moveDisplay(UUID entityId, Location location) {
+        if (entityId == null || location == null || location.getWorld() == null) return false;
+        Entity entity = Bukkit.getEntity(entityId);
+        if (!(entity instanceof BlockDisplay display) || !entity.getWorld().equals(location.getWorld())) return false;
+        return display.teleport(location);
+    }
+
+    private static boolean removeEntity(UUID entityId) {
+        Entity entity = entityId == null ? null : Bukkit.getEntity(entityId);
+        if (entity == null) return false;
+        entity.remove();
+        return true;
     }
 
     private static UUID spawnInteraction(String interactionId, Location location, Map<String, Object> options) {

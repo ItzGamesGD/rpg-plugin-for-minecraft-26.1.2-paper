@@ -17,8 +17,15 @@ public record ExplorationEventContext(
         ExplorationRuntime runtime,
         ExplorationPorts ports,
         TeleportExemptionService teleportExemptions,
-        long currentTick
+        long currentTick,
+        ExplorationSequenceScheduler sequenceScheduler
 ) {
+    public ExplorationEventContext(JavaPlugin plugin, StructureRecord record, ExplorationRuntime runtime,
+                                   ExplorationPorts ports, TeleportExemptionService teleportExemptions,
+                                   long currentTick) {
+        this(plugin, record, runtime, ports, teleportExemptions, currentTick,
+                (context, actionId, delayTicks, nextPhase) -> false);
+    }
     public Optional<World> world() { return Optional.ofNullable(Bukkit.getWorld(record.worldId())); }
     public Optional<Location> anchorLocation() {
         return world().map(world -> new Location(world, record.anchor().x(), record.anchor().y(), record.anchor().z()));

@@ -14,6 +14,7 @@ public final class ExplorationRuntime {
     private final String variantId;
     private final long activatedAtTick;
     private final RuntimeObjectTracker tracker = new RuntimeObjectTracker();
+    private final ExplorationSequenceState sequence = new ExplorationSequenceState();
     private final Set<UUID> participants = new LinkedHashSet<>();
     private final Set<UUID> objectiveEntities = new LinkedHashSet<>();
     private boolean objectiveMode;
@@ -37,6 +38,9 @@ public final class ExplorationRuntime {
     private long nextRaidWaveDelayTicks = 30L;
     private Long nextRaidWaveAtTick;
     private UUID raidTarget;
+    private UUID entryActor;
+    private double entryDeltaX;
+    private double entryDeltaZ;
 
     public ExplorationRuntime(UUID structureId, String variantId) {
         this(structureId, variantId, 0L);
@@ -52,6 +56,8 @@ public final class ExplorationRuntime {
     public String variantId() { return variantId; }
     public long activatedAtTick() { return activatedAtTick; }
     public RuntimeObjectTracker tracker() { return tracker; }
+    /** Runtime-only state for generic sequence waits, flags, counters and task ownership. */
+    public ExplorationSequenceState sequence() { return sequence; }
     public synchronized void addParticipant(UUID playerId) { if (playerId != null) participants.add(playerId); }
     public synchronized Set<UUID> participants() { return Set.copyOf(participants); }
     public synchronized void trackObjectives(java.util.Collection<UUID> ids) {
@@ -117,6 +123,23 @@ public final class ExplorationRuntime {
     public synchronized Long nextRaidWaveAtTick() { return nextRaidWaveAtTick; }
     public synchronized void setRaidTarget(UUID playerId) { raidTarget = playerId; }
     public synchronized UUID raidTarget() { return raidTarget; }
+    /** Actual exterior boundary crosser; deliberately distinct from proximity participants. */
+    public synchronized void markPyramidEntry(UUID playerId, double deltaX, double deltaZ) {
+        if (playerId == null) return;
+        // A new crossing may replace a stale pending actor; callers gate this
+        // method so an already-started encounter cannot be stolen.
+        entryActor = playerId;
+        entryDeltaX = deltaX;
+        entryDeltaZ = deltaZ;
+    }
+    public synchronized UUID entryActor() { return entryActor; }
+    public synchronized void restorePyramidEntryActor(UUID playerId) { if (entryActor == null) entryActor = playerId; }
+    public synchronized void restorePyramidEntryDirection(double deltaX, double deltaZ) {
+        entryDeltaX = deltaX;
+        entryDeltaZ = deltaZ;
+    }
+    public synchronized double entryDeltaX() { return entryDeltaX; }
+    public synchronized double entryDeltaZ() { return entryDeltaZ; }
     public synchronized boolean beginChoice(UUID owner, String promptId, Set<String> choices,
                                             String fallback, long expiresAtTick) {
         if (owner == null || choicePending() || !selectedChoice.isBlank()) return false;
@@ -146,11 +169,26 @@ public final class ExplorationRuntime {
     public synchronized String defaultChoice() { return defaultChoice; }
     public synchronized Set<String> allowedChoices() { return allowedChoices; }
     public synchronized String selectedChoice() { return selectedChoice; }
+    /** Releases a failed Pyramid choice without making the runtime terminal. */
+    public synchronized void releaseChoiceForRetry() {
+        choiceOwner = null;
+        choicePromptId = "";
+        allowedChoices = Set.of();
+        selectedChoice = "";
+        choiceExpiresAtTick = -1L;
+    }
     public synchronized void markLootTaken(UUID playerId, long tick) {
         if (playerId == null) return;
         looter = playerId;
         lootTakenAtTick = Math.max(0L, tick);
     }
+    /** Rolls back an uncommitted loot trigger so a persistence failure remains retryable. */
+    public synchronized void clearLootTaken() {
+        looter = null;
+        lootTakenAtTick = -1L;
+        raidOrigin = null;
+    }
+
     public synchronized boolean lootTaken() { return looter != null; }
     public synchronized UUID looter() { return looter; }
     public synchronized long lootTakenAtTick() { return lootTakenAtTick; }

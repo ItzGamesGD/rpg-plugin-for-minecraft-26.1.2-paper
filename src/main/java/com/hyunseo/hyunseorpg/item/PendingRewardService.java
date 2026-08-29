@@ -3,10 +3,13 @@ package com.hyunseo.hyunseorpg.item;
 import com.hyunseo.hyunseorpg.economy.CoinService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -26,6 +29,13 @@ public final class PendingRewardService {
     private final CoinService coins;
     private final File file;
     private final Map<UUID, List<PendingReward>> pending = new LinkedHashMap<>();
+    /** Idempotent mailbox tokens survive claim/removal; normal random rewards are not recorded here. */
+    private final Map<UUID, Long> completedTokens = new LinkedHashMap<>();
+    /** Durable pre-delivery journal for deterministic exploration rewards. */
+    private final Map<UUID, UUID> claimInProgressTokens = new LinkedHashMap<>();
+    /** Ambiguous post-delivery tokens are quarantined; they can never be reissued automatically. */
+    private final Map<UUID, Long> manualRecoveryTokens = new LinkedHashMap<>();
+    private final NamespacedKey deliveryTokenKey;
     private Consumer<ItemStack> itemNormalizer = item -> { };
     private boolean dirty;
 
@@ -33,6 +43,7 @@ public final class PendingRewardService {
         this.plugin = plugin;
         this.coins = coins;
         this.file = new File(plugin.getDataFolder(), "pending-rewards.yml");
+        this.deliveryTokenKey = new NamespacedKey(plugin, "pending_reward_token");
         load();
     }
 
@@ -56,6 +67,24 @@ public final class PendingRewardService {
         add(uuid, PendingReward.item(UUID.randomUUID(), uuid, item, cause));
     }
 
+    /** Durable idempotent mailbox enqueue. The token is persisted as the pending reward id. */
+    public synchronized boolean queueItemOnce(UUID uuid, UUID token, ItemStack item, String cause) {
+        if (uuid == null || token == null || item == null || item.getType().isAir() || item.getAmount() <= 0) return false;
+        List<PendingReward> existing = pending.getOrDefault(uuid, List.of());
+        boolean pendingToken = existing.stream().anyMatch(reward -> token.equals(reward.id()));
+        DeterministicRewardClaimPolicy.State state = manualRecoveryTokens.containsKey(token)
+                ? DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED
+                : DeterministicRewardClaimPolicy.fromDurableEvidence(
+                pendingToken, claimInProgressTokens.containsKey(token), completedTokens.containsKey(token));
+        if (DeterministicRewardClaimPolicy.suppressesQueue(state)) {
+            // A previous enqueue may have populated memory but failed its file write.
+            // Only a pending list can require that same durable flush; journalled and
+            // completed tokens are intentionally never re-enqueued.
+            return state != DeterministicRewardClaimPolicy.State.PENDING || !dirty || save();
+        }
+        return add(uuid, PendingReward.item(token, uuid, item, cause));
+    }
+
     public synchronized void queueCoins(UUID uuid, long amount, String cause) {
         if (uuid == null || amount <= 0L) return;
         add(uuid, PendingReward.coins(UUID.randomUUID(), uuid, amount, cause));
@@ -64,6 +93,7 @@ public final class PendingRewardService {
     public synchronized int claim(Player player) {
         if (player == null) return 0;
         UUID uuid = player.getUniqueId();
+        reconcileInterruptedClaims(player);
         List<PendingReward> rewards = new ArrayList<>(pending.getOrDefault(uuid, List.of()));
         int claimed = 0;
         List<PendingReward> remaining = new ArrayList<>();
@@ -75,6 +105,42 @@ public final class PendingRewardService {
             }
             ItemStack item = reward.item();
             if (item == null) continue;
+            if (deterministic(reward)
+                    && (completedTokens.containsKey(reward.id()) || manualRecoveryTokens.containsKey(reward.id()))) {
+                // A durable tombstone or quarantine always wins over a stale mailbox
+                // obligation loaded from an older/partially written snapshot.
+                continue;
+            }
+            if (deterministic(reward)) {
+                // Journal before the inventory side effect. If the final tombstone save fails,
+                // restart scans the tagged item and converges without issuing another copy.
+                DeterministicRewardClaimPolicy.State claimState = DeterministicRewardClaimPolicy.beginClaim(
+                        DeterministicRewardClaimPolicy.fromDurableEvidence(true, false, false));
+                if (claimState != DeterministicRewardClaimPolicy.State.CLAIM_JOURNALED) {
+                    remaining.add(reward);
+                    continue;
+                }
+                claimInProgressTokens.put(reward.id(), uuid);
+                dirty = true;
+                if (!save()) {
+                    claimInProgressTokens.remove(reward.id());
+                    dirty = true;
+                    remaining.add(reward);
+                    continue;
+                }
+                ItemStack tagged = taggedItem(reward.id(), item);
+                if (!giveExactly(player, tagged)) {
+                    claimInProgressTokens.remove(reward.id());
+                    dirty = true;
+                    save();
+                    remaining.add(reward);
+                    continue;
+                }
+                completedTokens.put(reward.id(), System.currentTimeMillis());
+                claimInProgressTokens.remove(reward.id());
+                claimed++;
+                continue;
+            }
             itemNormalizer.accept(item);
             Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone());
             if (leftovers.isEmpty()) {
@@ -98,10 +164,16 @@ public final class PendingRewardService {
         if (count > 0) player.sendActionBar(Component.text("미수령 보상: " + count + "개", NamedTextColor.YELLOW));
     }
 
-    public synchronized void save() {
-        if (!dirty) return;
+    public synchronized boolean save() {
+        if (!dirty) return true;
         YamlConfiguration yaml = new YamlConfiguration();
-        yaml.set("schema-version", 1);
+        yaml.set("schema-version", 3);
+        for (Map.Entry<UUID, UUID> token : claimInProgressTokens.entrySet())
+            yaml.set("claim-in-progress." + token.getKey(), token.getValue().toString());
+        for (Map.Entry<UUID, Long> token : completedTokens.entrySet())
+            yaml.set("completed-tokens." + token.getKey(), token.getValue());
+        for (Map.Entry<UUID, Long> token : manualRecoveryTokens.entrySet())
+            yaml.set("manual-recovery-required." + token.getKey(), token.getValue());
         for (Map.Entry<UUID, List<PendingReward>> entry : pending.entrySet()) {
             int index = 0;
             for (PendingReward reward : entry.getValue()) {
@@ -119,21 +191,105 @@ public final class PendingRewardService {
             yaml.save(temp);
             Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             dirty = false;
+            return true;
         } catch (IOException exception) {
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to save pending rewards", exception);
+            return false;
         }
     }
 
-    private void add(UUID uuid, PendingReward reward) {
+    private boolean deterministic(PendingReward reward) {
+        return reward != null && reward.cause().startsWith("exploration:");
+    }
+
+    private ItemStack taggedItem(UUID token, ItemStack source) {
+        ItemStack tagged = source.clone();
+        itemNormalizer.accept(tagged);
+        ItemMeta meta = tagged.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(deliveryTokenKey, PersistentDataType.STRING, token.toString());
+            tagged.setItemMeta(meta);
+        }
+        return tagged;
+    }
+
+    private boolean giveExactly(Player player, ItemStack item) {
+        ItemStack[] before = player.getInventory().getStorageContents();
+        ItemStack[] snapshot = new ItemStack[before.length];
+        for (int i = 0; i < before.length; i++) snapshot[i] = before[i] == null ? null : before[i].clone();
+        try {
+            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item);
+            if (leftovers.isEmpty()) return true;
+        } catch (RuntimeException ignored) { }
+        player.getInventory().setStorageContents(snapshot);
+        return false;
+    }
+
+    private void reconcileInterruptedClaims(Player player) {
+        UUID owner = player.getUniqueId();
+        boolean changed = false;
+        List<PendingReward> rewards = new ArrayList<>(pending.getOrDefault(owner, List.of()));
+        for (var entry : new ArrayList<>(claimInProgressTokens.entrySet())) {
+            if (!owner.equals(entry.getValue())) continue;
+            UUID token = entry.getKey();
+            DeterministicRewardClaimPolicy.State recovered =
+                    DeterministicRewardClaimPolicy.recoverInterruptedClaim(inventoryHasToken(player, token));
+            if (recovered == DeterministicRewardClaimPolicy.State.COMPLETED) {
+                completedTokens.put(token, System.currentTimeMillis());
+                rewards.removeIf(reward -> token.equals(reward.id()));
+            } else if (recovered == DeterministicRewardClaimPolicy.State.MANUAL_RECOVERY_REQUIRED) {
+                // The physical item may have moved outside player storage. Failing closed
+                // is the only safe automatic choice: retain durable quarantine evidence
+                // and remove the obligation so a later retry can never duplicate it.
+                manualRecoveryTokens.put(token, System.currentTimeMillis());
+                rewards.removeIf(reward -> token.equals(reward.id()));
+            }
+            claimInProgressTokens.remove(token);
+            changed = true;
+        }
+        if (rewards.isEmpty()) pending.remove(owner); else pending.put(owner, rewards);
+        if (changed) {
+            dirty = true;
+            save();
+        }
+    }
+
+    private boolean inventoryHasToken(Player player, UUID token) {
+        for (ItemStack stack : player.getInventory().getStorageContents()) {
+            if (stack == null || stack.getType().isAir()) continue;
+            ItemMeta meta = stack.getItemMeta();
+            if (meta != null && token.toString().equals(meta.getPersistentDataContainer()
+                    .get(deliveryTokenKey, PersistentDataType.STRING))) return true;
+        }
+        return false;
+    }
+
+    private boolean add(UUID uuid, PendingReward reward) {
         if (reward.item() != null) itemNormalizer.accept(reward.item());
         pending.computeIfAbsent(uuid, ignored -> new ArrayList<>()).add(reward);
         dirty = true;
-        save();
+        return save();
     }
 
     private void load() {
         if (!file.isFile()) return;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        ConfigurationSection completed = yaml.getConfigurationSection("completed-tokens");
+        if (completed != null) for (String token : completed.getKeys(false)) {
+            try { completedTokens.put(UUID.fromString(token), completed.getLong(token)); } catch (IllegalArgumentException ignored) { }
+        }
+        ConfigurationSection manual = yaml.getConfigurationSection("manual-recovery-required");
+        if (manual != null) for (String token : manual.getKeys(false)) {
+            try { manualRecoveryTokens.put(UUID.fromString(token), manual.getLong(token)); }
+            catch (IllegalArgumentException ignored) { }
+        }
+        ConfigurationSection inProgress = yaml.getConfigurationSection("claim-in-progress");
+        if (inProgress != null) for (String token : inProgress.getKeys(false)) {
+            try {
+                UUID owner = UUID.fromString(inProgress.getString(token, ""));
+                claimInProgressTokens.put(UUID.fromString(token), owner);
+            } catch (IllegalArgumentException ignored) { }
+        }
         ConfigurationSection players = yaml.getConfigurationSection("players");
         if (players == null) return;
         for (String rawUuid : players.getKeys(false)) {

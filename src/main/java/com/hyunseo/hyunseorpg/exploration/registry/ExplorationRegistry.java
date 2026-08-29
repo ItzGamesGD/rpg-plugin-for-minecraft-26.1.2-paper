@@ -151,8 +151,9 @@ public final class ExplorationRegistry {
                         parseComponents(variant.getMapList("components"))));
             }
         }
+        double entryPadding = Math.max(0.0D, section.getDouble("entry-boundary-padding", 4.0D));
         return new ExplorationStructureDefinition(id, minecraftKey, structureEnabled, chance, trigger,
-                lootTrigger, lootGrace, combatAbandon, combatGrace, variants);
+                lootTrigger, lootGrace, combatAbandon, combatGrace, variants, entryPadding);
     }
 
     private List<ExplorationComponentSpec> parseComponents(List<Map<?, ?>> rawList) {

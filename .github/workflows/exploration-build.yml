@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "codex/exploration-*"
+      - "fix/desert-pyramid-full-flow-reconciliation"
   pull_request:
     branches:
       - "codex/exploration-*"

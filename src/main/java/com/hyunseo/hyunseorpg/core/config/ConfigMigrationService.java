@@ -314,12 +314,118 @@ public final class ConfigMigrationService {
                 changed |= migrateOutpostLootTrigger(target, fileName, lines);
                 changed |= disableOutpostScoutPrototype(target, fileName, lines);
                 changed |= migrateOutpostRaidWaveSequence(target, fileName, lines);
+                changed |= migrateDesertPyramidPushPillars(target, defaults, fileName, lines);
                 if (changed) {
                     lines.add(fileName + ": added missing exploration keys without overwriting operator values");
                 }
             }
             if (changed) mark(target, fileName, changedFiles, lines, "exploration migration staged");
         }
+    }
+
+    /**
+     * Reconciles the bounded Desert Pyramid runtime components without replacing
+     * the operator's existing component options. Official components are emitted
+     * in canonical dependency order; legacy official entries are routed to the
+     * current reveal/guardian phases so loot cannot spawn the guardian directly.
+     */
+    private boolean migrateDesertPyramidPushPillars(FileConfiguration target,
+                                                    FileConfiguration defaults,
+                                                    String fileName,
+                                                    List<String> lines) {
+        String path = "structures.desert_pyramid.variants.guardian_trial.components";
+        List<Map<?, ?>> configured = target.getMapList(path);
+        List<Map<?, ?>> bundled = defaults.getMapList(path);
+        if (bundled.isEmpty()) return false;
+        List<String> officialOrder = List.of("pyramid_room", "pyramid_room_reveal", "pyramid_repel",
+                "choice_prompt", "pyramid_guardian", "pyramid_push_pillars", "reward_drop");
+        Map<String, Map<String, Object>> byType = new LinkedHashMap<>();
+        List<Map<String, Object>> extras = new ArrayList<>();
+        boolean changed = false;
+        for (Map<?, ?> raw : configured) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            raw.forEach((key, value) -> copy.put(String.valueOf(key), value));
+            String type = normalize(String.valueOf(copy.getOrDefault("type", "")));
+            if ("sequence_delay".equals(type)
+                    && "pyramid_guardian_delay".equalsIgnoreCase(String.valueOf(copy.getOrDefault("action-id", "")))) {
+                changed = true;
+                lines.add(fileName + ": removed legacy Pyramid guardian delay");
+                continue;
+            }
+            if (!officialOrder.contains(type)) {
+                extras.add(copy);
+                continue;
+            }
+            if (byType.put(type, copy) != null) changed = true;
+            switch (type) {
+                case "pyramid_room" -> {
+                    if (copy.get("room-radius") == null || "3".equals(String.valueOf(copy.get("room-radius")))) {
+                        copy.put("room-radius", 4);
+                        changed = true;
+                    }
+                    copy.putIfAbsent("action-id", "pyramid_room_reveal");
+                    copy.putIfAbsent("reveal-delay-ticks", 140);
+                    copy.putIfAbsent("reveal-phase", "pyramid_room_reveal");
+                    copy.putIfAbsent("safety-shell", 2);
+                }
+                case "pyramid_room_reveal" -> {
+                    if (!"pyramid_room_reveal".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_room_reveal");
+                        changed = true;
+                    }
+                }
+                case "pyramid_repel" -> {
+                    if (!"pyramid_entry".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_entry");
+                        changed = true;
+                    }
+                }
+                case "choice_prompt" -> {
+                    if (!"pyramid_quiz".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_quiz");
+                        changed = true;
+                    }
+                }
+                case "pyramid_guardian" -> {
+                    if (!"pyramid_guardian_spawn".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_guardian_spawn");
+                        changed = true;
+                    }
+                }
+                case "pyramid_push_pillars" -> {
+                    String canonicalPhase = canonicalPyramidPhase(type);
+                    if (!canonicalPhase.equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", canonicalPhase);
+                        changed = true;
+                    }
+                }
+                default -> { }
+            }
+        }
+        List<Map<String, Object>> canonical = new ArrayList<>();
+        for (String type : officialOrder) {
+            Map<String, Object> value = byType.get(type);
+            if (value == null) {
+                Map<?, ?> source = bundled.stream()
+                        .filter(entry -> type.equalsIgnoreCase(String.valueOf(entry.get("type"))))
+                        .findFirst().orElse(null);
+                if (source == null) continue;
+                value = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : source.entrySet()) {
+                    value.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+                changed = true;
+                lines.add(fileName + ": added missing canonical Pyramid " + type);
+            }
+            canonical.add(value);
+        }
+        canonical.addAll(extras);
+        if (!canonical.equals(configured)) {
+            changed = true;
+            lines.add(fileName + ": canonicalized Desert Pyramid component order and phases");
+        }
+        if (changed) target.set(path, canonical);
+        return changed;
     }
 
     private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
@@ -2659,6 +2765,11 @@ public final class ConfigMigrationService {
 
     private static String firstNonBlank(String first, String fallback) {
         return first == null || first.isBlank() ? fallback : first;
+    }
+
+    /** Canonical current phase for migrated Desert Pyramid components. */
+    static String canonicalPyramidPhase(String type) {
+        return "pyramid_push_pillars".equals(normalize(type)) ? "pyramid_pillar_restore" : "";
     }
 
     private static String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }

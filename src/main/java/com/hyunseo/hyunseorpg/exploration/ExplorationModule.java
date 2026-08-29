@@ -1,14 +1,27 @@
 package com.hyunseo.hyunseorpg.exploration;
 
+import com.hyunseo.hyunseorpg.core.config.ConfigMigrationService;
+
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentRegistry;
 import com.hyunseo.hyunseorpg.exploration.component.impl.DisplayTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ForcedRelocationComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.InteractionTargetComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PuzzleComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidGuardianComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRepelComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomRevealComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidStartupDefinitionValidator;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ScriptedSpawnComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.SequenceDelayComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.SequenceStateComponent;
+import com.hyunseo.hyunseorpg.exploration.component.impl.SequenceWaitComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.TemporarySealComponent;
 import com.hyunseo.hyunseorpg.exploration.detection.DeterministicStructureSelector;
 import com.hyunseo.hyunseorpg.exploration.detection.ReflectivePaperStructureCandidateProvider;
@@ -20,6 +33,8 @@ import com.hyunseo.hyunseorpg.exploration.listener.ChunkLoadExplorationListener;
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationPlayerMovementListener;
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationChestLootListener;
 import com.hyunseo.hyunseorpg.exploration.listener.ExplorationObjectiveDeathListener;
+import com.hyunseo.hyunseorpg.exploration.listener.PyramidPushPillarListener;
+import com.hyunseo.hyunseorpg.exploration.listener.PyramidPuzzleProtectionListener;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureIndex;
 import com.hyunseo.hyunseorpg.exploration.persistence.StructureRepository;
 import com.hyunseo.hyunseorpg.exploration.persistence.YamlStructureStorage;
@@ -56,6 +71,8 @@ public final class ExplorationModule {
     private final ExplorationRuntimeManager runtimes;
     private final AtomicLong tickCounter = new AtomicLong();
     private final List<Listener> listeners;
+    private final PyramidPushPillarService pyramidPuzzles;
+    private final PyramidRoomService pyramidRooms;
     private BukkitTask heartbeatTask;
 
     public ExplorationModule(JavaPlugin plugin) {
@@ -67,6 +84,8 @@ public final class ExplorationModule {
         this.registry = new ExplorationRegistry(plugin);
         this.repository = new StructureRepository(new YamlStructureStorage(plugin), new StructureIndex());
         ExplorationPorts effectivePorts = ports == null ? BukkitExplorationPorts.safeDefaults(plugin) : ports;
+        this.pyramidRooms = new PyramidRoomService(plugin, repository);
+        this.pyramidPuzzles = new PyramidPushPillarService(plugin, effectivePorts, repository);
         StructureCandidateProvider effectiveProvider = candidateProvider == null
                 ? new ReflectivePaperStructureCandidateProvider(plugin) : candidateProvider;
         this.detection = new StructureDetectionService(plugin, registry, effectiveProvider, repository,
@@ -74,15 +93,31 @@ public final class ExplorationModule {
         ExplorationComponentRegistry componentRegistry = defaultComponents();
         this.runtimes = new ExplorationRuntimeManager(plugin, registry, repository, componentRegistry,
                 effectivePorts, new TeleportExemptionService());
+        this.pyramidPuzzles.setRecoveryAuthority(this.runtimes::markPyramidRecoveryRequired);
+        this.pyramidRooms.setRevealCompletion(context -> this.runtimes.continuePyramidPuzzle(context));
         this.listeners = List.of(
                 new ChunkLoadExplorationListener(detection),
                 new ExplorationPlayerMovementListener(runtimes, tickCounter),
                 new ExplorationChestLootListener(runtimes, tickCounter),
-                new ExplorationObjectiveDeathListener(runtimes));
+                new ExplorationObjectiveDeathListener(runtimes),
+                new PyramidPushPillarListener(pyramidPuzzles, tickCounter),
+                new PyramidPuzzleProtectionListener(runtimes));
     }
 
     public synchronized boolean start() {
+        try {
+            ConfigMigrationService.MigrationReport migration =
+                    new ConfigMigrationService(plugin).migrate("exploration", false);
+            if (!migration.success()) {
+                plugin.getLogger().severe("Targeted exploration migration failed; registry load aborted.");
+                return false;
+            }
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Targeted exploration migration failed; registry load aborted.", exception);
+            return false;
+        }
         if (!registry.load()) return false;
+        if (!validatePyramidDefinition()) return false;
         if (!registry.isEnabled()) {
             plugin.getLogger().info("Exploration module is installed but disabled in exploration/structures.yml.");
             return true;
@@ -105,6 +140,8 @@ public final class ExplorationModule {
         heartbeatTask = null;
         listeners.forEach(HandlerList::unregisterAll);
         runtimes.shutdown();
+        pyramidPuzzles.stopAll();
+        pyramidRooms.stopAll();
         try { repository.flushAll(); }
         catch (IOException exception) { plugin.getLogger().log(Level.SEVERE, "Unable to flush exploration persistence", exception); }
     }
@@ -155,9 +192,24 @@ public final class ExplorationModule {
                 .map(record -> record.structureId());
     }
 
+    private boolean validatePyramidDefinition() {
+        var definition = registry.get("desert_pyramid").orElse(null);
+        try {
+            PyramidStartupDefinitionValidator.requireValid(definition);
+            return true;
+        } catch (IllegalArgumentException invalid) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Pyramid startup validation failed before module activation: " + invalid.getMessage(), invalid);
+            return false;
+        }
+    }
+
     private ExplorationComponentRegistry defaultComponents() {
         return new ExplorationComponentRegistry()
                 .register(new ScriptedSpawnComponent())
+                .register(new SequenceDelayComponent())
+                .register(new SequenceStateComponent())
+                .register(new SequenceWaitComponent())
                 .register(new ChoicePromptComponent())
                 .register(new RaidWaveSpawnComponent(registry))
                 .register(new DisplayTargetComponent())
@@ -165,6 +217,11 @@ public final class ExplorationModule {
                 .register(new TemporarySealComponent())
                 .register(new ForcedRelocationComponent())
                 .register(new RewardDropComponent())
+                .register(new PyramidRoomComponent(pyramidRooms))
+                .register(new PyramidRoomRevealComponent(pyramidRooms))
+                .register(new PyramidRepelComponent())
+                .register(new PyramidGuardianComponent())
+                .register(new PyramidPushPillarComponent(pyramidPuzzles, pyramidRooms))
                 .register(new PuzzleComponent());
     }
 }
