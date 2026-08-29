@@ -14,6 +14,7 @@ import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidRoomRevealCompon
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.PyramidPushPillarService;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomService;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidStartupDefinitionValidator;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RewardDropComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.ChoicePromptComponent;
 import com.hyunseo.hyunseorpg.exploration.component.impl.RaidWaveSpawnComponent;
@@ -92,6 +93,7 @@ public final class ExplorationModule {
         ExplorationComponentRegistry componentRegistry = defaultComponents();
         this.runtimes = new ExplorationRuntimeManager(plugin, registry, repository, componentRegistry,
                 effectivePorts, new TeleportExemptionService());
+        this.pyramidPuzzles.setRecoveryAuthority(this.runtimes::markPyramidRecoveryRequired);
         this.pyramidRooms.setRevealCompletion(context -> this.runtimes.continuePyramidPuzzle(context));
         this.listeners = List.of(
                 new ChunkLoadExplorationListener(detection),
@@ -192,38 +194,14 @@ public final class ExplorationModule {
 
     private boolean validatePyramidDefinition() {
         var definition = registry.get("desert_pyramid").orElse(null);
-        if (definition == null) return true;
-        var variant = definition.variants().stream()
-                .filter(candidate -> candidate.id().equals("guardian_trial")).findFirst().orElse(null);
-        if (variant == null) {
-            plugin.getLogger().severe("Pyramid validation failed: missing guardian_trial variant");
+        try {
+            PyramidStartupDefinitionValidator.requireValid(definition);
+            return true;
+        } catch (IllegalArgumentException invalid) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Pyramid startup validation failed before module activation: " + invalid.getMessage(), invalid);
             return false;
         }
-        java.util.Map<String, String> phases = new java.util.LinkedHashMap<>();
-        for (var spec : variant.components()) {
-            String type = spec.type().trim().toLowerCase(java.util.Locale.ROOT);
-            if (phases.put(type, spec.string("phase", "").trim().toLowerCase(java.util.Locale.ROOT)) != null) {
-                plugin.getLogger().severe("Pyramid validation failed: duplicate official component " + type);
-                return false;
-            }
-        }
-        java.util.Map<String, String> required = java.util.Map.of(
-                "pyramid_room", "pyramid_loot_trigger",
-                "pyramid_room_reveal", "pyramid_room_reveal",
-                "pyramid_repel", "pyramid_entry",
-                "choice_prompt", "pyramid_quiz",
-                "pyramid_guardian", "pyramid_guardian_spawn",
-                "pyramid_push_pillars", "pyramid_pillar_restore",
-                "reward_drop", "clear");
-        for (var entry : required.entrySet()) {
-            String actual = phases.get(entry.getKey());
-            if (actual == null || !actual.equals(entry.getValue())) {
-                plugin.getLogger().severe("Pyramid validation failed: component=" + entry.getKey()
-                        + ", expectedPhase=" + entry.getValue() + ", actualPhase=" + actual);
-                return false;
-            }
-        }
-        return true;
     }
 
     private ExplorationComponentRegistry defaultComponents() {
