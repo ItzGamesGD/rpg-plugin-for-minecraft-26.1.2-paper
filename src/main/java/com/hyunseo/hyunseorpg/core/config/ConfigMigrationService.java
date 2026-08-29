@@ -341,6 +341,14 @@ public final class ConfigMigrationService {
         if (bundled.isEmpty()) return false;
         List<String> officialOrder = List.of("pyramid_room", "pyramid_room_reveal", "pyramid_repel",
                 "choice_prompt", "pyramid_guardian", "pyramid_push_pillars", "reward_drop");
+        Map<String, Map<String, Object>> bundledByType = new LinkedHashMap<>();
+        for (Map<?, ?> raw : bundled) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            raw.forEach((key, value) -> {
+                if (key != null) copy.put(String.valueOf(key), value);
+            });
+            bundledByType.put(normalize(String.valueOf(copy.getOrDefault("type", ""))), copy);
+        }
         Map<String, Map<String, Object>> byType = new LinkedHashMap<>();
         List<Map<String, Object>> extras = new ArrayList<>();
         boolean changed = false;
@@ -359,8 +367,23 @@ public final class ConfigMigrationService {
                 continue;
             }
             if (byType.put(type, copy) != null) changed = true;
+            Map<String, Object> bundledComponent = bundledByType.get(type);
+            if (bundledComponent != null) {
+                changed |= copyMissingPyramidFields(copy, bundledComponent,
+                        type.equals("pyramid_room")
+                                ? List.of("room-radius", "room-height", "safety-shell", "reject-containers",
+                                "action-id", "reveal-delay-ticks", "reveal-phase")
+                                : type.equals("pyramid_room_reveal") || type.equals("pyramid_repel")
+                                || type.equals("pyramid_guardian") || type.equals("pyramid_push_pillars")
+                                || type.equals("reward_drop")
+                                ? new ArrayList<>(bundledComponent.keySet()) : List.of());
+            }
             switch (type) {
                 case "pyramid_room" -> {
+                    if (!"pyramid_loot_trigger".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
+                        copy.put("phase", "pyramid_loot_trigger");
+                        changed = true;
+                    }
                     if (copy.get("room-radius") == null || "3".equals(String.valueOf(copy.get("room-radius")))) {
                         copy.put("room-radius", 4);
                         changed = true;
@@ -387,10 +410,15 @@ public final class ConfigMigrationService {
                         copy.put("phase", "pyramid_quiz");
                         changed = true;
                     }
+                    changed |= repairPyramidChoiceContract(copy, bundledComponent);
                 }
                 case "pyramid_guardian" -> {
                     if (!"pyramid_guardian_spawn".equalsIgnoreCase(String.valueOf(copy.get("phase")))) {
                         copy.put("phase", "pyramid_guardian_spawn");
+                        changed = true;
+                    }
+                    if (!copy.containsKey("mob-id") || String.valueOf(copy.get("mob-id")).isBlank()) {
+                        copy.put("mob-id", bundledComponent.get("mob-id"));
                         changed = true;
                     }
                 }
@@ -437,6 +465,74 @@ public final class ConfigMigrationService {
         }
         if (changed) target.set(path, canonical);
         return changed;
+    }
+
+    private boolean copyMissingPyramidFields(Map<String, Object> target,
+                                              Map<String, Object> defaults,
+                                              List<String> keys) {
+        boolean changed = false;
+        for (String key : keys) {
+            if (target.containsKey(key) && target.get(key) != null) continue;
+            if (!defaults.containsKey(key)) continue;
+            target.put(key, defaults.get(key));
+            changed = true;
+        }
+        return changed;
+    }
+
+    private boolean repairPyramidChoiceContract(Map<String, Object> target,
+                                                Map<String, Object> defaults) {
+        if (defaults == null) return false;
+        boolean changed = false;
+        String promptId = String.valueOf(target.getOrDefault("prompt-id", "")).trim();
+        String canonicalPromptId = String.valueOf(defaults.getOrDefault("prompt-id", "pyramid_entry_quiz"));
+        if (promptId.isBlank() || promptId.toLowerCase(Locale.ROOT).startsWith("outpost_")
+                || !promptId.equalsIgnoreCase(canonicalPromptId)) {
+            target.put("prompt-id", canonicalPromptId);
+            changed = true;
+        }
+        String promptText = String.valueOf(target.getOrDefault("prompt-text", "")).trim();
+        String promptLower = promptText.toLowerCase(Locale.ROOT);
+        if (promptText.isBlank() || promptLower.contains("outpost")
+                || promptText.contains("약탈자") || promptText.contains("습격")) {
+            target.put("prompt-text", defaults.getOrDefault("prompt-text", "피라미드의 수수께끼가 길을 막습니다."));
+            changed = true;
+        }
+        List<String> choices = pyramidChoiceValues(target.get("choices"));
+        if (choices.isEmpty() || choices.stream().anyMatch(value -> !value.startsWith("answer_"))) {
+            target.put("choices", defaults.get("choices"));
+            choices = pyramidChoiceValues(defaults.get("choices"));
+            changed = true;
+        }
+        String defaultChoice = String.valueOf(target.getOrDefault("default-choice", "")).trim();
+        if (!choices.contains(defaultChoice)) {
+            target.put("default-choice", defaults.getOrDefault("default-choice", choices.get(0)));
+            changed = true;
+        }
+        Object labels = target.get("choice-labels");
+        if (!(labels instanceof Map<?, ?> labelMap)
+                || choices.stream().anyMatch(choice -> !labelMap.containsKey(choice))) {
+            target.put("choice-labels", defaults.get("choice-labels"));
+            changed = true;
+        }
+        if (changed && !Boolean.parseBoolean(String.valueOf(target.getOrDefault("enabled", true)))) {
+            // An incomplete Pyramid choice is not an intentional feature flag;
+            // repair it into the current production contract so the dispatcher
+            // does not leave the required quiz phase empty.
+            target.put("enabled", true);
+        }
+        return changed;
+    }
+
+    private List<String> pyramidChoiceValues(Object raw) {
+        if (!(raw instanceof Iterable<?> values)) return List.of();
+        List<String> result = new ArrayList<>();
+        for (Object value : values) {
+            if (value == null) continue;
+            String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+            if (!normalized.isBlank()) result.add(normalized);
+        }
+        return result;
     }
 
     private boolean isValidPyramidPillars(Object raw) {

@@ -57,6 +57,27 @@ final class PyramidStartupDefinitionValidatorTest {
         assertRejected(duplicateTarget);
     }
 
+    @Test
+    void disabledRequiredComponentFailsClosedBeforeRuntime() {
+        List<ExplorationComponentSpec> components = requiredComponents();
+        components.set(0, new ExplorationComponentSpec("pyramid_room",
+                Map.of("phase", "pyramid_loot_trigger", "enabled", false)));
+        assertThrows(IllegalArgumentException.class,
+                () -> PyramidStartupDefinitionValidator.requireValid(definitionWithComponents(components)));
+    }
+
+    @Test
+    void incompletePyramidChoiceCannotUseOutpostChoices() {
+        List<ExplorationComponentSpec> components = requiredComponents();
+        components.set(3, new ExplorationComponentSpec("choice_prompt", Map.of(
+                "phase", "pyramid_quiz",
+                "prompt-id", "pyramid_entry_quiz",
+                "choices", List.of("tier1", "flee"),
+                "default-choice", "flee")));
+        assertThrows(IllegalArgumentException.class,
+                () -> PyramidStartupDefinitionValidator.requireValid(definitionWithComponents(components)));
+    }
+
     private static void assertRejected(Object pillars) {
         assertThrows(IllegalArgumentException.class,
                 () -> PyramidStartupDefinitionValidator.requireValid(definition(pillars)));
@@ -112,7 +133,11 @@ final class PyramidStartupDefinitionValidatorTest {
     private static List<ExplorationComponentSpec> requiredComponents() {
         return new ArrayList<>(List.of(
                 spec("pyramid_room", "pyramid_loot_trigger"), spec("pyramid_room_reveal", "pyramid_room_reveal"),
-                spec("pyramid_repel", "pyramid_entry"), spec("choice_prompt", "pyramid_quiz"),
+                spec("pyramid_repel", "pyramid_entry"), new ExplorationComponentSpec("choice_prompt", Map.of(
+                        "phase", "pyramid_quiz", "prompt-id", "pyramid_entry_quiz",
+                        "prompt-text", "피라미드의 수수께끼가 길을 막습니다.",
+                        "choices", List.of("answer_a", "answer_b", "answer_c"),
+                        "default-choice", "answer_a")),
                 spec("pyramid_guardian", "pyramid_guardian_spawn"),
                 new ExplorationComponentSpec("pyramid_push_pillars", Map.of("phase", "pyramid_pillar_restore",
                         "pillars", validThree())), spec("reward_drop", "clear")));

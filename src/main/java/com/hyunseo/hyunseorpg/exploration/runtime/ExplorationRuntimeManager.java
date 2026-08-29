@@ -357,6 +357,7 @@ public final class ExplorationRuntimeManager {
                 return true;
             }
             if (runtime.lootTaken()
+                    && "pillager_outpost".equals(record.structureType())
                     && Boolean.parseBoolean(persistent.activationMetadata().getOrDefault("loot-exit-prompted", "false"))) {
                 executePhase(persistent, runtime, ExplorationComponentPhase.LOOT_EXIT, currentTick);
                 runtime.markLootExitPrompted();
@@ -491,6 +492,15 @@ public final class ExplorationRuntimeManager {
         if (player == null || !player.getUniqueId().equals(runtime.choiceOwner())) return ChoiceResult.NOT_OWNER;
         String choice = normalizeChoice(rawChoice);
         if (!runtime.allowedChoices().contains(choice)) return ChoiceResult.INVALID_CHOICE;
+        if ("desert_pyramid".equals(record.structureType())
+                && isPyramidOutpostLeak("pyramid_quiz", new ExplorationComponentSpec("choice_prompt",
+                Map.of("choices", runtime.allowedChoices(), "prompt-id", runtime.choicePromptId())))) {
+            plugin.getLogger().severe("Pyramid choice state contains Outpost contract; refusing choice: structure="
+                    + structureId + ", choiceId=" + runtime.choicePromptId() + ", choices=" + runtime.allowedChoices());
+            return ChoiceResult.INVALID_CHOICE;
+        }
+        if ("desert_pyramid".equals(record.structureType())
+                && !choice.startsWith("answer_")) return ChoiceResult.INVALID_CHOICE;
         ExplorationStructureDefinition definition = registry.get(record.structureType()).orElse(null);
         if (!"flee".equals(choice) && !runtime.lootTaken() && (definition == null || !record.worldId().equals(player.getWorld().getUID())
                 || distanceSquared(record, player.getLocation()) > definition.combatAbandonRadius() * definition.combatAbandonRadius())) {
@@ -562,9 +572,26 @@ public final class ExplorationRuntimeManager {
             ExplorationRuntime runtime = active.get(record.structureId());
             StructureRecord currentRecord = repository.get(record.structureId()).orElse(record);
             boolean pyramid = "desert_pyramid".equals(record.structureType());
+            boolean rehydratedPyramid = false;
+            if (shouldRehydratePyramid(record, runtime, currentRecord)) {
+                // A retryable ACTIVE record can outlive its ephemeral runtime after
+                // reload or a failed delayed task. Recreate only this Pyramid runtime
+                // before processing the repeated chest interaction.
+                activate(currentRecord, player, currentTick);
+                runtime = active.get(record.structureId());
+                currentRecord = repository.get(record.structureId()).orElse(currentRecord);
+                rehydratedPyramid = runtime != null;
+            }
             boolean retryingPyramid = pyramid && runtime != null && runtime.lootTaken()
                     && PyramidLootTriggerPolicy.isRetryable(currentRecord.activationMetadata());
             if (runtime == null || (runtime.lootTaken() && !retryingPyramid)) continue;
+            if (rehydratedPyramid && runtime.lootTaken()) {
+                // activate() already restored the prepared room and reserved the
+                // delayed reveal. Do not schedule the same action a second time
+                // for the click that caused rehydration.
+                marked = true;
+                continue;
+            }
             if (!runtime.lootTaken()) runtime.markLootTaken(player.getUniqueId(), currentTick);
             UUID looterId = runtime.looter() == null ? player.getUniqueId() : runtime.looter();
             long lootTakenAtTick = runtime.lootTakenAtTick() < 0L
@@ -1079,6 +1106,8 @@ public final class ExplorationRuntimeManager {
             plugin.getLogger().log(Level.SEVERE, "Unable to persist retryable Pyramid delayed phase: " + structureId,
                     persistenceFailure);
         }
+        ExplorationRuntime failed = active.remove(structureId);
+        if (failed != null) safeCleanup(failed);
     }
 
 
@@ -1210,6 +1239,11 @@ public final class ExplorationRuntimeManager {
         int matched = 0;
         for (ExplorationComponentSpec spec : variant.components()) {
             if (!"pyramid_push_pillars".equalsIgnoreCase(spec.type())) continue;
+            if (!spec.bool("enabled", true)) {
+                plugin.getLogger().severe("Pyramid puzzle component is disabled: structure="
+                        + record.structureId() + ", variant=" + record.variantId());
+                continue;
+            }
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
             try {
@@ -1223,6 +1257,8 @@ public final class ExplorationRuntimeManager {
         if (matched == 0) {
             plugin.getLogger().severe("Pyramid puzzle continuation matched zero pillar components: structure="
                     + record.structureId() + ", variant=" + record.variantId());
+            markPyramidRecoveryRequired(record.structureId(), source.runtime(),
+                    "pyramid-pillar-component-disabled-or-missing", () -> { });
         }
     }
 
@@ -1249,6 +1285,18 @@ public final class ExplorationRuntimeManager {
         int matched = 0;
         java.util.List<String> matchedTypes = new java.util.ArrayList<>();
         for (ExplorationComponentSpec spec : variant.components()) {
+            if (isPyramidOutpostLeak(record.structureType(), phase, spec)) {
+                plugin.getLogger().severe("Pyramid phase rejected Outpost component: structure="
+                        + record.structureId() + ", phase=" + phase + ", type=" + spec.type()
+                        + ", options=" + spec.options());
+                throw new IllegalStateException("Pyramid cannot execute Outpost component " + spec.type()
+                        + " in phase " + phase);
+            }
+            if (!spec.bool("enabled", true)) {
+                plugin.getLogger().info("Exploration component disabled: structure=" + record.structureType()
+                        + ", variant=" + record.variantId() + ", phase=" + phase + ", type=" + spec.type());
+                continue;
+            }
             ExplorationComponent component = components.get(spec.type())
                     .orElseThrow(() -> new IllegalStateException("unknown exploration component " + spec.type()));
             String configuredPhase = spec.string("phase", "").trim();
@@ -1275,10 +1323,44 @@ public final class ExplorationRuntimeManager {
         }
     }
 
+    /**
+     * A Pyramid runtime must never inherit an Outpost phase, choice contract, or
+     * raid component. This policy is intentionally pure so the boundary can be
+     * regression-tested without a Bukkit server.
+     */
+    static boolean isPyramidOutpostLeak(String structureType, String phase, ExplorationComponentSpec spec) {
+        if (!"desert_pyramid".equalsIgnoreCase(structureType) || spec == null) return false;
+        String normalizedPhase = phase == null ? "" : phase.trim().toLowerCase(java.util.Locale.ROOT);
+        String type = spec.type().trim().toLowerCase(java.util.Locale.ROOT);
+        if (Set.of("loot_exit", "choice_tier_1", "choice_tier_2", "choice_tier_3", "next_wave")
+                .contains(normalizedPhase)) return true;
+        if ("raid_wave_spawn".equals(type)) return true;
+        if ("choice_prompt".equals(type)) {
+            String promptId = spec.string("prompt-id", "").trim().toLowerCase(java.util.Locale.ROOT);
+            if ("outpost_raid_difficulty".equals(promptId)) return true;
+            return spec.stringList("choices").stream()
+                    .map(value -> value.toLowerCase(java.util.Locale.ROOT))
+                    .anyMatch(value -> Set.of("tier1", "tier2", "tier3", "flee").contains(value));
+        }
+        return false;
+    }
+
+    static boolean isPyramidOutpostLeak(String phase, ExplorationComponentSpec spec) {
+        return isPyramidOutpostLeak("desert_pyramid", phase, spec);
+    }
+
+    static boolean shouldRehydratePyramid(StructureRecord record, ExplorationRuntime runtime,
+                                          StructureRecord currentRecord) {
+        return record != null && currentRecord != null && runtime == null
+                && "desert_pyramid".equalsIgnoreCase(record.structureType())
+                && record.state() == StructureEventState.ACTIVE
+                && PyramidLootTriggerPolicy.isRetryable(currentRecord.activationMetadata());
+    }
+
     private boolean isRequiredPyramidPhase(StructureRecord record, String phase) {
         if (!"desert_pyramid".equals(record.structureType())) return false;
         return java.util.Set.of("pyramid_entry", "pyramid_quiz", "pyramid_guardian_spawn",
-                "pyramid_loot_trigger", "pyramid_room_reveal", "clear")
+                "pyramid_loot_trigger", "pyramid_room_reveal", "pyramid_pillar_restore", "clear")
                 .contains(phase.trim().toLowerCase(java.util.Locale.ROOT));
     }
 

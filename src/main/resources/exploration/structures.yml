@@ -117,6 +117,7 @@ structures:
         prototype: true
         components:
           - type: pyramid_room
+            enabled: true
             phase: pyramid_loot_trigger
             room-radius: 4
             room-height: 4
@@ -126,13 +127,16 @@ structures:
             reveal-delay-ticks: 140
             reveal-phase: pyramid_room_reveal
           - type: pyramid_room_reveal
+            enabled: true
             phase: pyramid_room_reveal
           - type: pyramid_repel
+            enabled: true
             phase: pyramid_entry
             horizontal-strength: 0.75
             vertical-strength: 0.32
           # CONTENT_TEXT_PENDING: placeholder quiz copy is intentionally config-owned.
           - type: choice_prompt
+            enabled: true
             phase: pyramid_quiz
             prompt-id: pyramid_entry_quiz
             prompt-text: "피라미드의 수수께끼가 길을 막습니다."
@@ -144,12 +148,14 @@ structures:
               answer_b: "[답 B]"
               answer_c: "[답 C]"
           - type: pyramid_guardian
+            enabled: true
             phase: pyramid_guardian_spawn
             mob-id: custom:stone_armored_zombie
             count: 1
             objective: true
             glowing: true
           - type: pyramid_push_pillars
+            enabled: true
             phase: pyramid_pillar_restore
             cooldown-ticks: 8
             contact-radius: 1.65
@@ -182,6 +188,7 @@ structures:
                 target: "1,1"
                 allowed: ["3,3", "2,3", "2,2", "1,2", "1,1"]
           - type: reward_drop
+            enabled: true
             phase: clear
             # BALANCE_POLICY_PENDING: do not use radius-history as a recipient set.
             recipient: entry_actor

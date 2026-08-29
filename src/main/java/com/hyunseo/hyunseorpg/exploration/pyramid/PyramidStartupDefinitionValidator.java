@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 
 /** Authoritative startup gate executed after registry loading and before module activation. */
 public final class PyramidStartupDefinitionValidator {
@@ -35,10 +36,22 @@ public final class PyramidStartupDefinitionValidator {
         Set<String> seenOfficialComponents = new HashSet<>();
         for (var spec : guardianTrial.components()) {
             String type = spec.type().trim().toLowerCase(Locale.ROOT);
+            String phase = spec.string("phase", "").trim().toLowerCase(Locale.ROOT);
+            if ("raid_wave_spawn".equals(type)
+                    || Set.of("loot_exit", "choice_tier_1", "choice_tier_2", "choice_tier_3", "next_wave")
+                    .contains(phase)) {
+                throw new IllegalArgumentException("structure=desert_pyramid, variant=guardian_trial: Outpost component/phase is forbidden: "
+                        + type + " / " + phase);
+            }
+            if ("choice_prompt".equals(type)) validatePyramidChoiceContract(spec);
             // Sequence-state entries are repeatable extension steps. Only the
             // canonical guardian-trial components have one-entry semantics.
             if (!REQUIRED_GUARDIAN_TRIAL_PHASES.containsKey(type)) {
                 continue;
+            }
+            if (!spec.bool("enabled", true)) {
+                throw new IllegalArgumentException("structure=desert_pyramid, variant=guardian_trial: required component is disabled: "
+                        + type);
             }
             if (!seenOfficialComponents.add(type)) {
                 throw new IllegalArgumentException("structure=desert_pyramid, variant=guardian_trial: duplicate component="
@@ -63,6 +76,27 @@ public final class PyramidStartupDefinitionValidator {
                 var pillars = PyramidPillarDefinitionParser.parse(spec.options().get("pillars"), context);
                 PyramidPillarConfigurationValidator.requireValid(pillars);
             }
+        }
+    }
+
+    private static void validatePyramidChoiceContract(com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec spec) {
+        String promptId = spec.string("prompt-id", "").trim().toLowerCase(Locale.ROOT);
+        if (promptId.isBlank() || "outpost_raid_difficulty".equals(promptId)) {
+            throw new IllegalArgumentException("structure=desert_pyramid, component=choice_prompt: Pyramid prompt-id is missing or Outpost-owned");
+        }
+        List<String> choices = spec.stringList("choices");
+        if (choices.isEmpty() || choices.stream().map(value -> value.toLowerCase(Locale.ROOT))
+                .anyMatch(value -> Set.of("tier1", "tier2", "tier3", "flee").contains(value)
+                        || !value.startsWith("answer_"))) {
+            throw new IllegalArgumentException("structure=desert_pyramid, component=choice_prompt: Pyramid answer choices are invalid");
+        }
+        String fallback = spec.string("default-choice", "").trim().toLowerCase(Locale.ROOT);
+        if (!choices.stream().map(value -> value.toLowerCase(Locale.ROOT)).toList().contains(fallback)) {
+            throw new IllegalArgumentException("structure=desert_pyramid, component=choice_prompt: default-choice is not an answer choice");
+        }
+        String promptText = spec.string("prompt-text", "").toLowerCase(Locale.ROOT);
+        if (promptText.contains("outpost") || promptText.contains("약탈자") || promptText.contains("습격")) {
+            throw new IllegalArgumentException("structure=desert_pyramid, component=choice_prompt: Outpost prompt text is forbidden");
         }
     }
 }

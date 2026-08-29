@@ -123,6 +123,24 @@ final class ExplorationRuntimeManagerTest {
     }
 
     @Test
+    void preparedActivePyramidWithoutRuntimeIsEligibleForTargetedRehydration() {
+        StructureRecord prepared = pyramidRecord()
+                .withMetadata("loot-taken", "true")
+                .withMetadata("pyramid-room-prepared", "true")
+                .withMetadata("pyramid-loot-trigger-status", "PREPARED")
+                .withMetadata("pyramid-room-origin", "0,35,0")
+                .withMetadata("pyramid-room-radius", "4")
+                .withMetadata("pyramid-room-height", "4");
+
+        assertTrue(ExplorationRuntimeManager.shouldRehydratePyramid(prepared, null, prepared));
+        assertFalse(ExplorationRuntimeManager.shouldRehydratePyramid(prepared,
+                new ExplorationRuntime(prepared.structureId(), prepared.variantId()), prepared));
+        assertFalse(ExplorationRuntimeManager.shouldRehydratePyramid(
+                prepared.withMetadata("pyramid-room-created", "true"), null,
+                prepared.withMetadata("pyramid-room-created", "true")));
+    }
+
+    @Test
     void currentPyramidContentVersionIsMonotonic() {
         assertTrue(ExplorationRuntimeManager.CURRENT_PYRAMID_CONTENT_VERSION >= 3);
     }
