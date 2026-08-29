@@ -87,7 +87,18 @@ Minimal repair target: protection should begin when underground room/reveal owne
 
 ### P0 — Vanilla Desert Pyramid treasure chest recognition likely rejects real chest positions
 
-Current predicate accepts `CHEST` only at diagonal offsets `abs(dx)==2` and `abs(dz)==2` from `floor(bounds center)`, and only `y` between `bounds.minY` and `bounds.minY+3`.
+**LIVE_COORDINATE_VALIDATION_REQUIRED (Paper 26.1.2 build 72):** Static inspection confirms this
+plugin stores `GeneratedStructure.getBoundingBox()` after flooring its minimum and uses Bukkit's
+inventory-holder block location, but the repository does not contain the target server generator
+implementation or a mapping proof that Bukkit `BoundingBox.minY` equals the Desert Pyramid piece
+origin used by the generator's `-11` chest coordinate. The runtime policy therefore remains narrow
+(four cardinal `CHEST` slots at ±2 and provisional `bounds.minY - 11`) and must not be described as
+live-correct until a newly generated target-build Pyramid records its bounds and all four chest block
+coordinates. If that trace disproves the minY relationship, replace the single Y constant rather than
+broadening the predicate.
+
+The pre-repair audited predicate accepted diagonal offsets. The repaired predicate accepts only the
+four cardinal offsets and the single provisional Y described above.
 
 Target-version-adjacent generator evidence indicates four vanilla treasure chests are cardinal offsets around the center, not diagonal, and the underground chest Y is below the upper structure base/bounds min used by the exact predicate.
 

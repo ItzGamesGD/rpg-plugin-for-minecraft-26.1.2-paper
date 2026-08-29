@@ -8,8 +8,10 @@ public final class PyramidTreasureCenterPolicy {
     public static final int CHEST_HORIZONTAL_OFFSET = 2;
 
     /**
-     * The treasure chamber is generated below the structure piece's bounding
-     * box: its chest layer is eleven blocks below the piece's minimum Y.
+     * Narrow provisional piece-relative coordinate from the Vanilla desert
+     * pyramid generator. Paper's GeneratedStructure/Bukkit BoundingBox minY
+     * equivalence to that piece origin still requires live target-build proof;
+     * see DESERT_PYRAMID_CURRENT_WORK.md.
      */
     public static final int CHEST_Y_OFFSET_FROM_BOUNDS_MIN = -11;
 

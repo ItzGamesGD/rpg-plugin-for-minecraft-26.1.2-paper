@@ -16,6 +16,8 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRewardTransaction;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidTreasureCenterPolicy;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionCoordinator;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidBlockPosition;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomGeometry;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -47,6 +49,7 @@ public final class ExplorationRuntimeManager {
     private final TeleportExemptionService teleportExemptions;
     private final Map<UUID, ExplorationRuntime> active = new LinkedHashMap<>();
     private final Map<UUID, ExplorationEndReason> lastEndReasons = new LinkedHashMap<>();
+    private final Set<UUID> pyramidRuntimeQuarantine = new java.util.LinkedHashSet<>();
 
     public ExplorationRuntimeManager(JavaPlugin plugin, ExplorationRegistry registry,
                                      StructureRepository repository, ExplorationComponentRegistry components,
@@ -73,55 +76,102 @@ public final class ExplorationRuntimeManager {
                                                     int originX, int originY, int originZ,
                                                     int radius, int height,
                                                     int treasureX, int treasureY, int treasureZ) {
-        boolean inRoom = Math.abs(x - originX) <= radius
-                && Math.abs(z - originZ) <= radius
-                && y >= originY - 1 && y <= originY + height;
-        if (inRoom) return true;
-        boolean inShaft = Math.abs(x - treasureX) <= 1
-                && Math.abs(z - treasureZ) <= 1;
-        if (!inShaft) return false;
-        int shaftA = originY + height;
-        int shaftMin = Math.min(shaftA, treasureY);
-        int shaftMax = Math.max(shaftA, treasureY);
-        return y >= shaftMin && y <= shaftMax;
+        PyramidRoomGeometry geometry = PyramidRoomGeometry.resolved(
+                new PyramidBlockPosition(originX, originY, originZ), radius, height,
+                treasureX, treasureZ, originY + height, treasureY);
+        return geometry.protectedBlock(x, y, z);
     }
 
-    /** Returns whether a block is owned by an active Pyramid puzzle and must not be modified. */
+    /** Small ownership gate kept separate from the coordinate predicate for lifecycle testing. */
+    public static boolean pyramidGeometryOwned(Map<String, String> metadata,
+                                               boolean prepared, boolean revealing,
+                                               boolean started, boolean active) {
+        Map<String, String> state = metadata == null ? Map.of() : metadata;
+        return Boolean.parseBoolean(state.getOrDefault("pyramid-room-prepared", "false"))
+                || Boolean.parseBoolean(state.getOrDefault("pyramid-room-created", "false"))
+                || Boolean.parseBoolean(state.getOrDefault("pyramid-reveal-in-progress", "false"))
+                || prepared || revealing || started || active;
+    }
+
+    /** Returns whether a block is owned by prepared/revealing/committed Pyramid geometry. */
     public synchronized boolean isPyramidPuzzleProtected(org.bukkit.block.Block block) {
         if (block == null || block.getWorld() == null) return false;
         for (ExplorationRuntime runtime : active.values()) {
-            if (!runtime.sequence().flag("pyramid.puzzle.active")) continue;
             StructureRecord record = repository.get(runtime.structureId()).orElse(null);
             if (record == null || record.state() != StructureEventState.ACTIVE
                     || !"desert_pyramid".equals(record.structureType())) continue;
             Map<String, String> metadata = record.activationMetadata();
-            if ("RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) continue;
+            boolean geometryOwned = pyramidGeometryOwned(metadata,
+                    runtime.sequence().flag("pyramid.room.prepared"),
+                    runtime.sequence().flag("pyramid.room.reveal.in_progress"),
+                    runtime.sequence().flag("pyramid.puzzle.started"),
+                    runtime.sequence().flag("pyramid.puzzle.active"));
+            if (!geometryOwned) continue;
             if (!record.worldId().equals(block.getWorld().getUID())) continue;
-            String originRaw = metadata.get("pyramid-room-origin");
-            if (originRaw == null) continue;
-            String[] parts = originRaw.split(",");
-            if (parts.length != 3) continue;
             try {
-                int ox = Integer.parseInt(parts[0].trim());
-                int oy = Integer.parseInt(parts[1].trim());
-                int oz = Integer.parseInt(parts[2].trim());
-                int radius = parseInt(metadata.get("pyramid-room-radius"), 4);
-                int height = parseInt(metadata.get("pyramid-room-height"), 4);
-                int treasureX = parseInt(metadata.get("pyramid-treasure-center-x"), ox);
-                int treasureY = parseInt(metadata.get("pyramid-treasure-y"), oy);
-                int treasureZ = parseInt(metadata.get("pyramid-treasure-center-z"), oz);
-                if (pyramidGeometryProtected(block.getX(), block.getY(), block.getZ(),
-                        ox, oy, oz, radius, height, treasureX, treasureY, treasureZ)) return true;
-            } catch (NumberFormatException ignored) {
+                PyramidRoomGeometry geometry = pyramidGeometryFromMetadata(record);
+                if (geometry.protectedBlock(block.getX(), block.getY(), block.getZ())) return true;
+            } catch (IllegalArgumentException malformed) {
+                failClosedPyramidGeometry(runtime, record, malformed);
                 return true;
             }
         }
         return false;
     }
 
-    private int parseInt(String raw, int fallback) {
-        try { return raw == null ? fallback : Integer.parseInt(raw); }
-        catch (NumberFormatException ignored) { return fallback; }
+    static PyramidRoomGeometry pyramidGeometryFromMetadata(StructureRecord record) {
+        if (record == null || !"desert_pyramid".equals(record.structureType())) {
+            throw new IllegalArgumentException("authoritative Desert Pyramid record required");
+        }
+        Map<String, String> metadata = record.activationMetadata();
+        String originRaw = requireGeometryMetadata(metadata, "pyramid-room-origin");
+        String[] parts = originRaw.split(",", -1);
+        if (parts.length != 3) throw new IllegalArgumentException("pyramid-room-origin must contain x,y,z");
+        try {
+            PyramidBlockPosition origin = new PyramidBlockPosition(Integer.parseInt(parts[0].trim()),
+                    Integer.parseInt(parts[1].trim()), Integer.parseInt(parts[2].trim()));
+            int radius = parseRequiredGeometryInt(metadata, "pyramid-room-radius");
+            int height = parseRequiredGeometryInt(metadata, "pyramid-room-height");
+            int treasureX = parseRequiredGeometryInt(metadata, "pyramid-treasure-center-x");
+            int treasureZ = parseRequiredGeometryInt(metadata, "pyramid-treasure-center-z");
+            return PyramidRoomGeometry.resolved(origin, radius, height, treasureX, treasureZ,
+                    origin.y() + height, record.bounds().minY() - 1);
+        } catch (NumberFormatException invalid) {
+            throw new IllegalArgumentException("invalid pyramid-room-origin", invalid);
+        }
+    }
+
+    private static String requireGeometryMetadata(Map<String, String> metadata, String key) {
+        String value = metadata.get(key);
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("missing " + key);
+        return value;
+    }
+
+    private static int parseRequiredGeometryInt(Map<String, String> metadata, String key) {
+        String value = requireGeometryMetadata(metadata, key);
+        try { return Integer.parseInt(value.trim()); }
+        catch (NumberFormatException invalid) { throw new IllegalArgumentException("invalid " + key, invalid); }
+    }
+
+    private void failClosedPyramidGeometry(ExplorationRuntime runtime, StructureRecord record,
+                                           IllegalArgumentException malformed) {
+        boolean firstFailure = pyramidRuntimeQuarantine.add(record.structureId());
+        runtime.sequence().setFlag("pyramid.recovery.required");
+        runtime.sequence().cancelPendingTasks();
+        if (!firstFailure) return;
+        try {
+            StructureRecord latest = repository.get(record.structureId()).orElse(null);
+            if (latest == null || !"desert_pyramid".equals(latest.structureType())) {
+                throw new IOException("authoritative Pyramid record missing while marking geometry corruption");
+            }
+            repository.save(latest.withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
+                    .withMetadata("pyramid-failure-reason", "invalid-owned-geometry-metadata"));
+        } catch (IOException | RuntimeException persistenceFailure) {
+            malformed.addSuppressed(persistenceFailure);
+        }
+        plugin.getLogger().log(Level.SEVERE,
+                "Pyramid geometry metadata is invalid; progression frozen for structure=" + record.structureId(),
+                malformed);
     }
 
     /** Builds a non-mutating diagnostic view for one persistent structure. */
@@ -149,6 +199,7 @@ public final class ExplorationRuntimeManager {
         }
         try {
             repository.save(reset);
+            pyramidRuntimeQuarantine.remove(structureId);
             lastEndReasons.remove(structureId);
             return true;
         } catch (IOException exception) {
@@ -314,13 +365,34 @@ public final class ExplorationRuntimeManager {
         return !"RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""));
     }
 
+    /** Authoritative pre-reward gate for the final Desert Pyramid transaction. */
+    public static boolean pyramidFinalCompletionAllowed(StructureRecord record) {
+        if (record == null || !"desert_pyramid".equals(record.structureType())
+                || record.state() != StructureEventState.ACTIVE
+                || !pyramidCompletionAllowed(record.structureType(), record.activationMetadata())) return false;
+        return Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
+                && Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-underground-complete", "false"));
+    }
+
+    static boolean pyramidGuardianRecoveryAllowed(StructureRecord record) {
+        return record != null && "desert_pyramid".equals(record.structureType())
+                && record.state() == StructureEventState.ACTIVE
+                && !"RECOVERY_REQUIRED".equals(record.activationMetadata()
+                        .getOrDefault("pyramid-failure-state", ""));
+    }
+
     public synchronized boolean complete(UUID structureId, long currentTick) {
         ExplorationRuntime runtime = active.get(structureId);
         StructureRecord record = repository.get(structureId).orElse(null);
-        if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE) return false;
+        if (runtime == null || record == null || record.state() != StructureEventState.ACTIVE
+                || pyramidRuntimeQuarantine.contains(structureId)) return false;
         if (!pyramidCompletionAllowed(record.structureType(), record.activationMetadata())) {
             plugin.getLogger().warning("Pyramid completion refused: recovery required for " + structureId);
             runtime.sequence().cancelPendingTasks();
+            return false;
+        }
+        if ("desert_pyramid".equals(record.structureType()) && !pyramidFinalCompletionAllowed(record)) {
+            plugin.getLogger().warning("Pyramid completion refused: both modules are not complete for " + structureId);
             return false;
         }
         try {
@@ -748,9 +820,20 @@ public final class ExplorationRuntimeManager {
 
     private void markPyramidModuleComplete(StructureRecord record, ExplorationRuntime runtime, String metadataKey)
             throws IOException {
+        if (pyramidRuntimeQuarantine.contains(record.structureId())
+                || runtime.sequence().flag("pyramid.recovery.required")) {
+            runtime.sequence().cancelPendingTasks();
+            return;
+        }
         String runtimeFlag = metadataKey.replace('-', '.');
         if (runtime.sequence().flag(runtimeFlag)) return;
-        StructureRecord current = repository.get(record.structureId()).orElse(record);
+        StructureRecord current = repository.get(record.structureId()).orElse(null);
+        if (current == null || !"desert_pyramid".equals(current.structureType())) {
+            plugin.getLogger().severe("Pyramid module completion refused: authoritative record missing or invalid for "
+                    + record.structureId());
+            runtime.sequence().cancelPendingTasks();
+            return;
+        }
         if (!pyramidCompletionAllowed(current.structureType(), current.activationMetadata())) {
             plugin.getLogger().warning("Pyramid module completion refused: recovery required for " + record.structureId());
             runtime.sequence().cancelPendingTasks();
@@ -1009,8 +1092,14 @@ public final class ExplorationRuntimeManager {
     /** Explicit happy-path continuation invoked after a committed staged reveal. */
     public synchronized void continuePyramidPuzzle(ExplorationEventContext source) {
         if (source == null || !"desert_pyramid".equals(source.record().structureType())
-                || source.runtime().tracker().isClosed()) return;
-        StructureRecord record = repository.get(source.runtime().structureId()).orElse(source.record());
+                || source.runtime().tracker().isClosed()
+                || source.runtime().sequence().flag("pyramid.recovery.required")) return;
+        StructureRecord record = repository.get(source.runtime().structureId()).orElse(null);
+        if (record == null || !"desert_pyramid".equals(record.structureType())) {
+            source.runtime().sequence().cancelPendingTasks();
+            plugin.getLogger().severe("Pyramid continuation refused: authoritative record missing or invalid");
+            return;
+        }
         Map<String, String> metadata = record.activationMetadata();
         if (Boolean.parseBoolean(metadata.getOrDefault("pyramid-underground-complete", "false"))
                 || "RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) return;
@@ -1119,7 +1208,17 @@ public final class ExplorationRuntimeManager {
 
     private void recoverPyramidGuardianEncounter(StructureRecord record, ExplorationRuntime runtime, long currentTick) {
         if (!"desert_pyramid".equals(record.structureType())
-                || Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))) return;
+                || Boolean.parseBoolean(record.activationMetadata().getOrDefault("pyramid-guardian-complete", "false"))
+                || pyramidRuntimeQuarantine.contains(record.structureId())
+                || runtime.sequence().flag("pyramid.recovery.required")) return;
+        StructureRecord authoritative = repository.get(record.structureId()).orElse(null);
+        if (!pyramidGuardianRecoveryAllowed(authoritative)) {
+            runtime.sequence().cancelPendingTasks();
+            plugin.getLogger().warning("Pyramid guardian recovery refused: authoritative record missing, invalid, or recovery required for "
+                    + record.structureId());
+            return;
+        }
+        record = authoritative;
         String state = record.activationMetadata().getOrDefault("pyramid-guardian-encounter-state", "not_started");
         if (!Set.of("spawn_pending", "active").contains(state)) return;
         UUID actor = runtime.entryActor();
@@ -1140,7 +1239,12 @@ public final class ExplorationRuntimeManager {
             executeNamedPhase(record, runtime, "pyramid_guardian_spawn", currentTick);
             if (!runtime.objectiveEntities().isEmpty()) {
                 runtime.markRaidStarted();
-                repository.save(repository.get(record.structureId()).orElse(record)
+                StructureRecord latest = repository.get(record.structureId()).orElse(null);
+                if (latest == null || !pyramidCompletionAllowed(latest.structureType(), latest.activationMetadata())) {
+                    runtime.sequence().cancelPendingTasks();
+                    return;
+                }
+                repository.save(latest
                         .withMetadata("pyramid-guardian-encounter-state", "active")
                         .withMetadata("pyramid-guardian-started", "true"));
             }
@@ -1158,8 +1262,12 @@ public final class ExplorationRuntimeManager {
         if (!complete && state != PyramidUndergroundCompletionState.COMPLETION_PENDING) {
             return record;
         }
-        var reconciled = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
-        if (reconciled != null && reconciled != record
+        var result = PyramidUndergroundCompletionCoordinator.complete(repository, record.structureId());
+        StructureRecord reconciled = result.record();
+        if (result.status() == PyramidUndergroundCompletionCoordinator.CompletionStatus.PERSISTENCE_FAILED) {
+            throw new IOException("Pyramid underground completion reconciliation save failed");
+        }
+        if (result.completed() && reconciled != null && reconciled != record
                 && Boolean.parseBoolean(reconciled.activationMetadata()
                 .getOrDefault("pyramid-underground-complete", "false"))) {
             plugin.getLogger().info("Recovered pending Pyramid underground completion: structure=" + record.structureId());
