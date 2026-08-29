@@ -53,7 +53,11 @@ public final class PyramidRoomService {
                                                       ExplorationComponentSpec spec) throws IOException {
         UUID structureId = context.runtime().structureId();
         RoomSession existing = sessions.get(structureId);
-        if (existing != null) return existing.candidate();
+        if (existing != null) {
+            updateLootTriggerStatus(structureId,
+                    existing.persisted ? PyramidLootTriggerStatus.REVEALED : PyramidLootTriggerStatus.PREPARED, null);
+            return existing.candidate();
+        }
 
         World world = context.world().orElseThrow(() -> new IllegalStateException("pyramid world is not loaded"));
         StructureRecord effectiveRecord = authoritativePyramidRecord(structureId);
@@ -118,6 +122,7 @@ public final class PyramidRoomService {
         // The preflight may be expensive enough for an independent guardian update
         // to commit first. Merge only underground-owned fields into the latest record.
         repository.save(mergeUndergroundMetadata(authoritativePyramidRecord(structureId), metadata));
+        updateLootTriggerStatus(structureId, PyramidLootTriggerStatus.PREPARED, null);
         RoomSession session = new RoomSession(context.runtime(), world, candidate, radius, height, shell,
                 List.of(), false, true);
         sessions.put(structureId, session);
@@ -125,6 +130,11 @@ public final class PyramidRoomService {
         plugin.getLogger().info("Desert Pyramid underground room prepared: structure=" + structureId
                 + ", origin=" + encode(candidate.origin()) + ", reveal=delayed");
         return candidate;
+    }
+
+    /** Persists that the runtime-owned delayed continuation exists. */
+    public synchronized void markRevealScheduled(ExplorationEventContext context) throws IOException {
+        updateLootTriggerStatus(context.runtime().structureId(), PyramidLootTriggerStatus.REVEAL_SCHEDULED, null);
     }
 
     /** Performs the previously preflighted block mutation as a bounded staged reveal. */
@@ -147,6 +157,7 @@ public final class PyramidRoomService {
             context.runtime().sequence().cancelPendingTasks();
             throw new IllegalStateException("authoritative Pyramid record missing before reveal");
         }
+        updateLootTriggerStatus(structureId, PyramidLootTriggerStatus.REVEALING, null);
         if (!shaftSafe(world, origin, existing.radius, existing.height, currentRecord.bounds())
                 || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
             plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
@@ -202,33 +213,54 @@ public final class PyramidRoomService {
                             "pyramid-room-radius", Integer.toString(pending.radius),
                             "pyramid-room-height", Integer.toString(pending.height),
                             "pyramid-room-created-at", Instant.now().toString()))
+                            .withMetadata("pyramid-loot-trigger-status", PyramidLootTriggerStatus.REVEALED.name())
+                            .withMetadata("pyramid-loot-trigger-failure", null)
                             .withMetadata("pyramid-reveal-in-progress", null);
                     repository.save(record);
                     sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
                             pending.candidate, pending.radius, pending.height, pending.shell,
-                            pending.snapshots, false, false));
+                            pending.snapshots, true, false));
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
                     pending.context.runtime().sequence().setFlag("pyramid.room.created");
                     pending.context.runtime().sequence().setFlag("pyramid.room.revealed");
                     pendingReveals.remove(structureId);
                     plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
-                    // Continue directly into the puzzle; reload restoration is handled only during
-                    // deterministic activation and is not a heartbeat recovery path.
-                    revealCompletion.accept(pending.context);
+                    // The room commit is durable. A continuation failure must not roll back
+                    // already-committed geometry; reload can restore the puzzle separately.
+                    try {
+                        revealCompletion.accept(pending.context);
+                    } catch (RuntimeException continuationFailure) {
+                        plugin.getLogger().log(java.util.logging.Level.WARNING,
+                                "Desert Pyramid room committed but puzzle continuation deferred: " + structureId,
+                                continuationFailure);
+                    }
                 } catch (Exception exception) {
-                    restore(pending.world, pending.snapshots);
+                    boolean restored = true;
+                    try {
+                        restore(pending.world, pending.snapshots);
+                    } catch (RuntimeException restoreFailure) {
+                        restored = false;
+                        exception.addSuppressed(restoreFailure);
+                    }
                     pendingReveals.remove(structureId);
                     pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
                     try {
                         StructureRecord latest = authoritativePyramidRecord(structureId);
-                        repository.save(latest.withMetadata("pyramid-reveal-in-progress", null)
-                                .withMetadata("pyramid-failure-state", "RECOVERY_REQUIRED")
-                                .withMetadata("pyramid-failure-reason", "staged-reveal-failed"));
+                        String status = restored ? PyramidLootTriggerStatus.RETRYABLE.name()
+                                : PyramidLootTriggerStatus.RECOVERY_REQUIRED.name();
+                        StructureRecord failed = latest.withMetadata("pyramid-reveal-in-progress", null)
+                                .withMetadata("pyramid-loot-trigger-status", status)
+                                .withMetadata("pyramid-loot-trigger-failure", exception.getClass().getSimpleName()
+                                        + ": " + String.valueOf(exception.getMessage()))
+                                .withMetadata("pyramid-failure-state", restored ? null : "RECOVERY_REQUIRED")
+                                .withMetadata("pyramid-failure-reason", restored ? null : "staged-reveal-restore-failed");
+                        repository.save(failed);
                     } catch (Exception persistenceFailure) {
                         plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                                "Failed to persist RECOVERY_REQUIRED after staged reveal failure; runtime remains frozen: "
+                                "Failed to persist Pyramid staged reveal failure state; runtime remains frozen: "
                                         + structureId, persistenceFailure);
                     }
+                    pending.context.runtime().sequence().releaseActionForRetry("pyramid_room_reveal");
                     pending.context.runtime().sequence().cancelPendingTasks();
                     plugin.getLogger().log(java.util.logging.Level.WARNING,
                             "Desert Pyramid staged reveal failed closed: " + structureId, exception);
@@ -464,6 +496,13 @@ public final class PyramidRoomService {
     private boolean shaftSafe(World world, PyramidBlockPosition origin, int radius, int height,
                               StructureBounds bounds) {
         return shaftSafetyFailure(world, origin, radius, height, bounds) == null;
+    }
+
+    private void updateLootTriggerStatus(UUID structureId, PyramidLootTriggerStatus status, String failure)
+            throws IOException {
+        StructureRecord latest = authoritativePyramidRecord(structureId);
+        repository.save(latest.withMetadata("pyramid-loot-trigger-status", status == null ? null : status.name())
+                .withMetadata("pyramid-loot-trigger-failure", failure));
     }
 
     private String shaftSafetyFailure(World world, PyramidBlockPosition origin, int radius, int height,

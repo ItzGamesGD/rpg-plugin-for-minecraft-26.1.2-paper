@@ -9,6 +9,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitTask;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidLootTriggerStatus;
 
 /** Preflights the bounded Pyramid underground room after canonical loot extraction. */
 public final class PyramidRoomComponent implements ExplorationComponent {
@@ -27,6 +28,8 @@ public final class PyramidRoomComponent implements ExplorationComponent {
             throw new IllegalArgumentException("pyramid_room requires desert_pyramid");
         }
         rooms.prepare(context, spec);
+        context.plugin().getLogger().info("Desert Pyramid loot preparation succeeded: structure="
+                + context.record().structureId());
         context.world().ifPresent(world -> {
             // Telegraph at the canonical chamber centre, never at the clicked
             // corner chest. The chest is only the progression trigger.
@@ -46,9 +49,12 @@ public final class PyramidRoomComponent implements ExplorationComponent {
         String actionId = spec.string("action-id", "pyramid_room_reveal");
         long delay = Math.max(0L, spec.integer("reveal-delay-ticks", 140));
         String nextPhase = spec.string("reveal-phase", "pyramid_room_reveal");
+        rooms.markRevealScheduled(context);
         if (!context.sequenceScheduler().schedule(context, actionId, delay, nextPhase)) {
             throw new IllegalStateException("pyramid room reveal already scheduled: " + actionId);
         }
+        context.plugin().getLogger().info("Desert Pyramid room reveal scheduled: structure="
+                + context.record().structureId() + ", action=" + actionId + ", delay=" + delay);
     }
     private int parseAnchor(String raw, int fallback) {
         try { return raw == null ? fallback : Integer.parseInt(raw); }

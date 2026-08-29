@@ -21,10 +21,11 @@ class PyramidLootTriggerPolicyTest {
                 "loot-taken", "true", "pyramid-room-created", "true")));
         assertFalse(PyramidLootTriggerPolicy.isRetryable(Map.of(
                 "loot-taken", "true", "pyramid-reveal-in-progress", "true")));
-        assertFalse(PyramidLootTriggerPolicy.isRetryable(Map.of(
-                "loot-taken", "true", "pyramid-loot-trigger-status", "STARTED")));
+        assertTrue(PyramidLootTriggerPolicy.isRetryable(Map.of(
+                "loot-taken", "true", "pyramid-room-prepared", "true",
+                "pyramid-loot-trigger-status", "STARTED")));
         assertTrue(PyramidLootTriggerPolicy.isCommittedOrInFlight(Map.of(
-                "loot-taken", "true", "pyramid-loot-trigger-status", "STARTED")));
+                "loot-taken", "true", "pyramid-loot-trigger-status", "REVEALED")));
     }
 
     @Test
@@ -32,5 +33,14 @@ class PyramidLootTriggerPolicyTest {
         assertFalse(PyramidLootTriggerPolicy.isRetryable(Map.of(
                 "loot-taken", "true", "pyramid-failure-state", "RECOVERY_REQUIRED")));
         assertFalse(PyramidLootTriggerPolicy.isRetryable(Map.of()));
+    }
+
+    @Test
+    void preparedLegacyStartedStateDoesNotBlockRevealRetry() {
+        assertTrue(PyramidLootTriggerPolicy.isRetryable(Map.of(
+                "loot-taken", "true", "pyramid-room-prepared", "true",
+                "pyramid-loot-trigger-status", "started")));
+        assertFalse(PyramidLootTriggerPolicy.isRetryable(Map.of(
+                "loot-taken", "true", "pyramid-loot-trigger-status", "revealed")));
     }
 }

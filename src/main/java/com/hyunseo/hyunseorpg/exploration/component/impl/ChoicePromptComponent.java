@@ -37,7 +37,7 @@ public final class ChoicePromptComponent implements ExplorationComponent {
         }
         Player player = Bukkit.getPlayer(owner);
         if (player == null || !player.isOnline()) return;
-        player.sendMessage(Component.text(spec.string("prompt-text", "약탈자들이 습격을 준비합니다!"), NamedTextColor.RED));
+        player.sendMessage(Component.text(defaultPromptText(context.record().structureType(), spec), NamedTextColor.RED));
         Component buttons = Component.empty();
         boolean first = true;
         for (String choice : context.runtime().allowedChoices()) {
@@ -46,6 +46,15 @@ public final class ChoicePromptComponent implements ExplorationComponent {
             buttons = buttons.append(choiceButton(context, choice, label(spec, choice), hover(spec, choice)));
         }
         player.sendMessage(buttons);
+    }
+
+    static String defaultPromptText(String structureType, ExplorationComponentSpec spec) {
+        String configured = spec.string("prompt-text", "").trim();
+        if (!configured.isBlank()) return configured;
+        if ("desert_pyramid".equalsIgnoreCase(structureType)) {
+            return "피라미드의 수수께끼가 길을 막습니다.";
+        }
+        return "약탈자들이 습격을 준비합니다!";
     }
 
     private Component choiceButton(ExplorationEventContext context, String choice, String label, String hover) {

@@ -24,6 +24,8 @@ public final class PyramidRoomRevealComponent implements ExplorationComponent {
         if (!"desert_pyramid".equals(context.record().structureType())) {
             throw new IllegalArgumentException("pyramid_room_reveal requires desert_pyramid");
         }
+        context.plugin().getLogger().info("Desert Pyramid room reveal phase entered: structure="
+                + context.record().structureId());
         rooms.reveal(context, spec);
         context.runtime().tracker().track(() -> rooms.cleanup(context.runtime().structureId()));
     }

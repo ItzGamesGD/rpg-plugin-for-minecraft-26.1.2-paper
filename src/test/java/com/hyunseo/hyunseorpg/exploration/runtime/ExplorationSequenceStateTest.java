@@ -35,6 +35,15 @@ class ExplorationSequenceStateTest {
     }
 
     @Test
+    void completedStagedActionCanBeReleasedForRetry() {
+        ExplorationSequenceState state = new ExplorationSequenceState();
+        assertTrue(state.beginAction("reveal"));
+        assertTrue(state.completeAction("reveal"));
+        assertTrue(state.releaseActionForRetry("reveal"));
+        assertTrue(state.beginAction("reveal"));
+    }
+
+    @Test
     void flagsAndCountersAreRuntimeLocalAndDeterministic() {
         ExplorationSequenceState state = new ExplorationSequenceState();
 

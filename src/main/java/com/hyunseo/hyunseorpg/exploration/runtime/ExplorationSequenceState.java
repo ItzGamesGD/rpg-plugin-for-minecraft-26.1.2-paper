@@ -65,6 +65,14 @@ public final class ExplorationSequenceState {
         return inFlightActions.remove(requiredKey(actionId));
     }
 
+    /** Allows a completed external/staged action to be scheduled again after a retryable failure. */
+    public synchronized boolean releaseActionForRetry(String actionId) {
+        String key = requiredKey(actionId);
+        boolean released = inFlightActions.remove(key);
+        released |= completedActions.remove(key);
+        return released;
+    }
+
     public synchronized boolean actionInFlight(String actionId) {
         return inFlightActions.contains(normalize(actionId));
     }

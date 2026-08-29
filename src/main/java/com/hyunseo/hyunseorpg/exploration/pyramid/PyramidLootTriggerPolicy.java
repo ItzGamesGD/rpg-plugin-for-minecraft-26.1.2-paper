@@ -16,8 +16,9 @@ public final class PyramidLootTriggerPolicy {
         if (flag(metadata, "pyramid-room-created")
                 || flag(metadata, "pyramid-reveal-in-progress")
                 || flag(metadata, "pyramid-underground-complete")) return false;
-        return !"RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))
-                && !"STARTED".equals(metadata.getOrDefault("pyramid-loot-trigger-status", ""));
+        if ("RECOVERY_REQUIRED".equals(metadata.getOrDefault("pyramid-failure-state", ""))) return false;
+        String status = metadata.getOrDefault("pyramid-loot-trigger-status", "").trim().toUpperCase(java.util.Locale.ROOT);
+        return !status.equals("REVEALED") && !status.equals("RECOVERY_REQUIRED");
     }
 
     public static boolean isCommittedOrInFlight(Map<String, String> metadata) {
@@ -25,7 +26,7 @@ public final class PyramidLootTriggerPolicy {
         return flag(metadata, "pyramid-room-created")
                 || flag(metadata, "pyramid-reveal-in-progress")
                 || flag(metadata, "pyramid-underground-complete")
-                || "STARTED".equals(metadata.getOrDefault("pyramid-loot-trigger-status", ""));
+                || "REVEALED".equalsIgnoreCase(metadata.getOrDefault("pyramid-loot-trigger-status", ""));
     }
 
     private static boolean flag(Map<String, String> metadata, String key) {

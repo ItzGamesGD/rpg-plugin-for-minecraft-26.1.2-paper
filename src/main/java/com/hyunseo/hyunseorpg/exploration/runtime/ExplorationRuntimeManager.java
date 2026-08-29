@@ -587,10 +587,9 @@ public final class ExplorationRuntimeManager {
                     try {
                         executeNamedPhase(repository.get(record.structureId()).orElse(updated), runtime,
                                 ExplorationComponentPhase.PYRAMID_LOOT_TRIGGER.name(), currentTick);
-                        StructureRecord started = repository.get(record.structureId()).orElse(updated)
-                                .withMetadata("pyramid-loot-trigger-status", "STARTED")
-                                .withMetadata("pyramid-loot-trigger-failure", null);
-                        repository.save(started);
+                        StructureRecord scheduled = repository.get(record.structureId()).orElse(updated);
+                        plugin.getLogger().info("Desert Pyramid loot trigger accepted: structure="
+                                + record.structureId() + ", metadata=" + scheduled.activationMetadata());
                     } catch (Exception exception) {
                         // Keep the durable loot reservation, but mark incomplete
                         // preparation retryable. This prevents duplicate rooms
@@ -1036,7 +1035,11 @@ public final class ExplorationRuntimeManager {
             synchronized (ExplorationRuntimeManager.this) {
                 ExplorationRuntime current = active.get(structureId);
                 StructureRecord record = progressionRecord(structureId, runtime);
-                if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) return;
+                if (current != runtime || record == null || record.state() != StructureEventState.ACTIVE) {
+                    plugin.getLogger().warning("Desert Pyramid delayed phase skipped: structure=" + structureId
+                            + ", action=" + actionId + ", runtime/record unavailable");
+                    return;
+                }
                 runtime.sequence().completeTask(actionId);
                 boolean transitioned = runtime.sequence().transitionTo(nextPhase, "delayed:" + actionId);
                 // A retry intentionally re-enters the same named phase; duplicate callbacks
@@ -1049,15 +1052,33 @@ public final class ExplorationRuntimeManager {
                     executeNamedPhase(record, runtime, nextPhase, context.currentTick() + Math.max(0L, delayTicks));
                     runtime.sequence().completeAction(actionId);
                 } catch (Exception exception) {
-                    runtime.sequence().releaseAction(actionId);
+                    runtime.sequence().releaseActionForRetry(actionId);
                     plugin.getLogger().log(Level.WARNING, "Exploration delayed sequence failed: " + structureId, exception);
-                    if (!"desert_pyramid".equals(record.structureType())) abandon(structureId);
-                    else plugin.getLogger().warning("Pyramid delayed phase failed; progression remains fail-closed: " + structureId);
+                    if (!"desert_pyramid".equals(record.structureType())) {
+                        abandon(structureId);
+                    } else {
+                        markPyramidLootRetryable(structureId, exception);
+                    }
                 }
             }
         }, Math.max(0L, delayTicks));
         runtime.sequence().trackTask(actionId, task);
         return true;
+    }
+
+    private void markPyramidLootRetryable(UUID structureId, Exception failure) {
+        try {
+            StructureRecord record = repository.get(structureId).orElse(null);
+            if (record == null || !"desert_pyramid".equals(record.structureType())) return;
+            repository.save(record.withMetadata("pyramid-loot-trigger-status", "RETRYABLE")
+                    .withMetadata("pyramid-loot-trigger-failure", failure.getClass().getSimpleName()
+                            + ": " + String.valueOf(failure.getMessage()))
+                    .withMetadata("pyramid-reveal-in-progress", null));
+            plugin.getLogger().warning("Desert Pyramid delayed phase is retryable: structure=" + structureId);
+        } catch (IOException persistenceFailure) {
+            plugin.getLogger().log(Level.SEVERE, "Unable to persist retryable Pyramid delayed phase: " + structureId,
+                    persistenceFailure);
+        }
     }
 
 
