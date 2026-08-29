@@ -81,13 +81,15 @@ public final class PyramidPushPillarComponent implements ExplorationComponent {
                     ? "pillar-activation-failed" : failure.getMessage());
             context.plugin().getLogger().log(java.util.logging.Level.SEVERE,
                     "Pyramid pillar activation failed closed: structure=" + context.record().structureId(), failure);
-            return;
+            throw new IllegalStateException("Pyramid puzzle generation incomplete", failure);
 
         }
 
         context.runtime().sequence().setFlag("pyramid.room.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.ready");
         context.runtime().sequence().setFlag("pyramid.puzzle.active");
+        context.plugin().getLogger().info("Desert Pyramid puzzle ready: structure="
+                + context.runtime().structureId() + ", elements=" + pillars.size());
         context.runtime().tracker().track(() -> service.stop(context.runtime().structureId()));
     }
 

@@ -14,7 +14,6 @@ import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -31,7 +30,6 @@ public final class PyramidRoomService {
     private final JavaPlugin plugin;
     private final StructureRepository repository;
     private final Map<UUID, RoomSession> sessions = new LinkedHashMap<>();
-    private final Map<UUID, PendingReveal> pendingReveals = new LinkedHashMap<>();
     private Consumer<ExplorationEventContext> revealCompletion = context -> { };
 
     public PyramidRoomService(JavaPlugin plugin, StructureRepository repository) {
@@ -52,6 +50,7 @@ public final class PyramidRoomService {
     public synchronized PyramidRoomCandidate prepare(ExplorationEventContext context,
                                                       ExplorationComponentSpec spec) throws IOException {
         UUID structureId = context.runtime().structureId();
+        plugin.getLogger().info("Desert Pyramid room prepare entered: structure=" + structureId);
         RoomSession existing = sessions.get(structureId);
         if (existing != null) {
             updateLootTriggerStatus(structureId,
@@ -111,6 +110,8 @@ public final class PyramidRoomService {
         if (shaftFailure != null) {
             throw new IllegalStateException("no safe Desert Pyramid access shaft: " + shaftFailure);
         }
+        plugin.getLogger().info("Desert Pyramid candidate selected and shaft preflight passed: structure="
+                + structureId + ", origin=" + encode(candidate.origin()));
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("pyramid-room-prepared", "true");
         // Trigger chest establishes identity; the direct shaft is always the treasure-chamber centre.
@@ -137,14 +138,12 @@ public final class PyramidRoomService {
         updateLootTriggerStatus(context.runtime().structureId(), PyramidLootTriggerStatus.REVEAL_SCHEDULED, null);
     }
 
-    /** Performs the previously preflighted block mutation as a bounded staged reveal. */
+    /** Performs the preflighted shaft and room mutation as one observable transaction. */
     public synchronized PyramidRoomCandidate reveal(ExplorationEventContext context,
                                                      ExplorationComponentSpec spec) throws IOException {
         UUID structureId = context.runtime().structureId();
         RoomSession existing = sessions.get(structureId);
         if (existing != null && existing.persisted) return existing.candidate();
-        PendingReveal already = pendingReveals.get(structureId);
-        if (already != null) return already.candidate;
         if (existing == null) {
             prepare(context, spec);
             existing = sessions.get(structureId);
@@ -154,120 +153,69 @@ public final class PyramidRoomService {
         PyramidBlockPosition origin = existing.candidate.origin();
         StructureRecord currentRecord = repository.get(structureId).orElse(null);
         if (currentRecord == null || !"desert_pyramid".equals(currentRecord.structureType())) {
-            context.runtime().sequence().cancelPendingTasks();
             throw new IllegalStateException("authoritative Pyramid record missing before reveal");
         }
         updateLootTriggerStatus(structureId, PyramidLootTriggerStatus.REVEALING, null);
         if (!shaftSafe(world, origin, existing.radius, existing.height, currentRecord.bounds())
                 || !buried(world, origin, existing.radius, existing.height, existing.shell)) {
-            plugin.getLogger().warning("Desert Pyramid reveal refused after final validation: structure="
-                    + structureId + ", origin=" + encode(origin));
             throw new IllegalStateException("Pyramid final reveal validation failed; retryable");
         }
         List<BlockSnapshot> snapshots = snapshot(world, origin, existing.radius, existing.height,
                 currentRecord.bounds());
-        // Mark presentation as in-flight before world mutation. A reload in this
-        // window is handled as failed-closed rather than guessing partial progress.
-        StructureRecord revealRecord = currentRecord.withMetadata("pyramid-reveal-in-progress", "true");
-        repository.save(revealRecord);
-        PendingReveal pending = new PendingReveal(context, revealRecord, spec, existing.candidate, existing.radius,
-                existing.height, existing.shell, snapshots,
-                PyramidRoomGeometry.of(origin, existing.radius, existing.height, currentRecord.bounds()).shaftTopY());
-        pendingReveals.put(structureId, pending);
+        repository.save(currentRecord.withMetadata("pyramid-reveal-in-progress", "true"));
         context.runtime().sequence().setFlag("pyramid.room.reveal.in_progress");
-        scheduleRevealLayer(pending, 0);
-        plugin.getLogger().info("Desert Pyramid staged reveal armed: structure=" + structureId
-                + ", layers=3x3, interval=" + Math.max(2, spec.integer("reveal-layer-interval-ticks", 3)) + " ticks");
-        return pending.candidate;
-    }
-
-    private void scheduleRevealLayer(PendingReveal pending, int index) {
-        long interval = Math.max(2L, pending.spec.integer("reveal-layer-interval-ticks", 3));
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            synchronized (PyramidRoomService.this) {
-                UUID structureId = pending.context.runtime().structureId();
-                if (!pendingReveals.containsKey(structureId) || pending.context.runtime().tracker().isClosed()) return;
-                try {
-                    int y = pending.startY - index;
-                    PyramidRoomGeometry geometry = PyramidRoomGeometry.of(pending.candidate.origin(),
-                            pending.radius, pending.height, pending.record.bounds());
-                    int endY = geometry.shaftBottomY();
-                    if (y >= endY) {
-                        if (index == 0) nudgePlayersFromOpening(pending.world, pending.candidate.origin(), y);
-                        carveShaftLayer(pending.world, geometry, y);
-                        pending.context.world().ifPresent(world -> world.playSound(
-                                new Location(world, pending.candidate.origin().x() + 0.5D, y,
-                                        pending.candidate.origin().z() + 0.5D),
-                                org.bukkit.Sound.BLOCK_SAND_BREAK, 0.65F, 0.7F));
-                        scheduleRevealLayer(pending, index + 1);
-                        return;
-                    }
-                    carveRoom(pending.world, geometry);
-                    // Merge underground-owned fields into the latest record so a
-                    // concurrent guardian update cannot be overwritten.
-                    StructureRecord latest = authoritativePyramidRecord(structureId);
-                    StructureRecord record = mergeUndergroundMetadata(latest, Map.of(
-                            "pyramid-room-created", "true",
-                            "pyramid-room-prepared", "true",
-                            "pyramid-room-origin", encode(pending.candidate.origin()),
-                            "pyramid-room-radius", Integer.toString(pending.radius),
-                            "pyramid-room-height", Integer.toString(pending.height),
-                            "pyramid-room-created-at", Instant.now().toString()))
-                            .withMetadata("pyramid-loot-trigger-status", PyramidLootTriggerStatus.REVEALED.name())
-                            .withMetadata("pyramid-loot-trigger-failure", null)
-                            .withMetadata("pyramid-reveal-in-progress", null);
-                    repository.save(record);
-                    sessions.put(structureId, new RoomSession(pending.context.runtime(), pending.world,
-                            pending.candidate, pending.radius, pending.height, pending.shell,
-                            pending.snapshots, true, false));
-                    pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
-                    pending.context.runtime().sequence().setFlag("pyramid.room.created");
-                    pending.context.runtime().sequence().setFlag("pyramid.room.revealed");
-                    pendingReveals.remove(structureId);
-                    plugin.getLogger().info("Desert Pyramid staged reveal complete: structure=" + structureId);
-                    // The room commit is durable. A continuation failure must not roll back
-                    // already-committed geometry; reload can restore the puzzle separately.
-                    try {
-                        revealCompletion.accept(pending.context);
-                    } catch (RuntimeException continuationFailure) {
-                        plugin.getLogger().log(java.util.logging.Level.WARNING,
-                                "Desert Pyramid room committed but puzzle continuation deferred: " + structureId,
-                                continuationFailure);
-                    }
-                } catch (Exception exception) {
-                    boolean restored = true;
-                    try {
-                        restore(pending.world, pending.snapshots);
-                    } catch (RuntimeException restoreFailure) {
-                        restored = false;
-                        exception.addSuppressed(restoreFailure);
-                    }
-                    pendingReveals.remove(structureId);
-                    pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
-                    try {
-                        StructureRecord latest = authoritativePyramidRecord(structureId);
-                        String status = restored ? PyramidLootTriggerStatus.RETRYABLE.name()
-                                : PyramidLootTriggerStatus.RECOVERY_REQUIRED.name();
-                        StructureRecord failed = latest.withMetadata("pyramid-reveal-in-progress", null)
-                                .withMetadata("pyramid-loot-trigger-status", status)
-                                .withMetadata("pyramid-loot-trigger-failure", exception.getClass().getSimpleName()
-                                        + ": " + String.valueOf(exception.getMessage()))
-                                .withMetadata("pyramid-failure-state", restored ? null : "RECOVERY_REQUIRED")
-                                .withMetadata("pyramid-failure-reason", restored ? null : "staged-reveal-restore-failed");
-                        repository.save(failed);
-                    } catch (Exception persistenceFailure) {
-                        plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                                "Failed to persist Pyramid staged reveal failure state; runtime remains frozen: "
-                                        + structureId, persistenceFailure);
-                    }
-                    pending.context.runtime().sequence().releaseActionForRetry("pyramid_room_reveal");
-                    pending.context.runtime().sequence().cancelPendingTasks();
-                    plugin.getLogger().log(java.util.logging.Level.WARNING,
-                            "Desert Pyramid staged reveal failed closed: " + structureId, exception);
-                }
+        PyramidRoomGeometry geometry = PyramidRoomGeometry.of(origin, existing.radius, existing.height,
+                currentRecord.bounds());
+        try {
+            plugin.getLogger().info("Desert Pyramid shaft mutation started: structure=" + structureId);
+            nudgePlayersFromOpening(world, origin, geometry.shaftTopY());
+            for (int y = geometry.shaftTopY(); y >= geometry.shaftBottomY(); y--) {
+                carveShaftLayer(world, geometry, y);
             }
-        }, index == 0 ? 0L : interval);
-        pending.context.runtime().tracker().track(task::cancel);
+            plugin.getLogger().info("Desert Pyramid shaft mutation completed: structure=" + structureId);
+            plugin.getLogger().info("Desert Pyramid room mutation started: structure=" + structureId);
+            carveRoom(world, geometry);
+            if (!physicalRoomValid(world, origin, existing.radius, existing.height)) {
+                throw new IllegalStateException("room mutation signature missing after carve");
+            }
+            plugin.getLogger().info("Desert Pyramid room mutation completed: structure=" + structureId);
+
+            StructureRecord latest = authoritativePyramidRecord(structureId);
+            StructureRecord record = mergeUndergroundMetadata(latest, Map.of(
+                    "pyramid-room-created", "true", "pyramid-room-prepared", "true",
+                    "pyramid-room-origin", encode(origin),
+                    "pyramid-room-radius", Integer.toString(existing.radius),
+                    "pyramid-room-height", Integer.toString(existing.height),
+                    "pyramid-room-created-at", Instant.now().toString()))
+                    .withMetadata("pyramid-loot-trigger-status", PyramidLootTriggerStatus.REVEALED.name())
+                    .withMetadata("pyramid-loot-trigger-failure", null)
+                    .withMetadata("pyramid-reveal-in-progress", null);
+            repository.save(record);
+            sessions.put(structureId, new RoomSession(context.runtime(), world, existing.candidate,
+                    existing.radius, existing.height, existing.shell, snapshots, true, false));
+            context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+            context.runtime().sequence().setFlag("pyramid.room.created");
+            context.runtime().sequence().setFlag("pyramid.room.revealed");
+            revealCompletion.accept(context);
+            return existing.candidate;
+        } catch (Exception exception) {
+            boolean restored = true;
+            try { restore(world, snapshots); }
+            catch (RuntimeException restoreFailure) { restored = false; exception.addSuppressed(restoreFailure); }
+            context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
+            StructureRecord latest = authoritativePyramidRecord(structureId);
+            repository.save(latest.withMetadata("pyramid-reveal-in-progress", null)
+                    .withMetadata("pyramid-loot-trigger-status", restored ? "RETRYABLE" : "RECOVERY_REQUIRED")
+                    .withMetadata("pyramid-loot-trigger-failure", exception.getClass().getSimpleName()
+                            + ": " + String.valueOf(exception.getMessage()))
+                    .withMetadata("pyramid-failure-state", restored ? null : "RECOVERY_REQUIRED")
+                    .withMetadata("pyramid-failure-reason", restored ? null : "reveal-restore-failed"));
+            context.runtime().sequence().releaseActionForRetry("pyramid_room_reveal");
+            plugin.getLogger().log(java.util.logging.Level.WARNING,
+                    "Desert Pyramid reveal failed at first incomplete mutation stage: " + structureId, exception);
+            if (exception instanceof IOException io) throw io;
+            throw new IllegalStateException("Pyramid reveal transaction failed", exception);
+        }
     }
 
     private void nudgePlayersFromOpening(World world, PyramidBlockPosition origin, int y) {
@@ -316,9 +264,18 @@ public final class PyramidRoomService {
                     world.getBlockAt(x, y, z).setType(edge ? wall : Material.AIR, false);
                 }
                 world.getBlockAt(x, origin.y() - 1, z).setType(wall, false);
-                world.getBlockAt(x, origin.y() + height, z).setType(trim, false);
+                // The shaft terminates in the room ceiling. Re-applying trim to
+                // these nine blocks after carving the shaft used to seal the
+                // room completely and made the successful reveal unobservable.
+                Material ceiling = roomCeilingMaterial(geometry, x, z);
+                world.getBlockAt(x, origin.y() + height, z).setType(ceiling, false);
             }
         }
+    }
+
+    static Material roomCeilingMaterial(PyramidRoomGeometry geometry, int x, int z) {
+        return geometry.containsShaft(x, geometry.origin().y() + geometry.roomHeight(), z)
+                ? Material.AIR : Material.CHISELED_SANDSTONE;
     }
 
     /** Backward-compatible immediate creation entry point for existing callers. */
@@ -350,11 +307,6 @@ public final class PyramidRoomService {
     }
 
     public synchronized void cleanup(UUID structureId) {
-        PendingReveal pending = pendingReveals.remove(structureId);
-        if (pending != null) {
-            restore(pending.world, pending.snapshots);
-            pending.context.runtime().sequence().clearFlag("pyramid.room.reveal.in_progress");
-        }
         RoomSession session = sessions.remove(structureId);
         if (session == null || session.runtime.sequence().flag("pyramid.puzzle.solved") || session.persisted) return;
         boolean revealed = repository.get(structureId)
@@ -577,34 +529,6 @@ public final class PyramidRoomService {
     }
 
     private record BlockSnapshot(int x, int y, int z, org.bukkit.block.data.BlockData data) { }
-
-    private static final class PendingReveal {
-        private final ExplorationEventContext context;
-        private final StructureRecord record;
-        private final ExplorationComponentSpec spec;
-        private final PyramidRoomCandidate candidate;
-        private final int radius;
-        private final int height;
-        private final int shell;
-        private final List<BlockSnapshot> snapshots;
-        private final int startY;
-        private final World world;
-
-        private PendingReveal(ExplorationEventContext context, StructureRecord record, ExplorationComponentSpec spec,
-                              PyramidRoomCandidate candidate, int radius, int height, int shell,
-                              List<BlockSnapshot> snapshots, int startY) {
-            this.context = context;
-            this.record = record;
-            this.spec = spec;
-            this.candidate = candidate;
-            this.radius = radius;
-            this.height = height;
-            this.shell = shell;
-            this.snapshots = snapshots;
-            this.startY = startY;
-            this.world = context.world().orElseThrow();
-        }
-    }
 
     private record PyramidRoomSearchResult(PyramidRoomCandidate candidate, String failureReason) { }
 

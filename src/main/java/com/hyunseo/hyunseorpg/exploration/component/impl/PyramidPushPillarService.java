@@ -59,6 +59,8 @@ public final class PyramidPushPillarService {
     public synchronized void start(ExplorationEventContext context, ExplorationComponentSpec spec,
                                    PyramidRoomCandidate room, PushPillarBoard board,
                                    List<PushPillarDefinition> definitions) {
+        plugin.getLogger().info("Desert Pyramid puzzle generation entered: structure="
+                + context.runtime().structureId() + ", expected-elements=" + definitions.size());
         if (recoveryAuthority == null) {
             context.runtime().sequence().setFlag("pyramid.recovery.required");
             context.runtime().sequence().cancelPendingTasks();
@@ -107,6 +109,8 @@ public final class PyramidPushPillarService {
                     + expected + ", spawned=" + spawned);
         }
         sessions.put(session.structureId, session);
+        plugin.getLogger().info("Desert Pyramid puzzle state registered: structure=" + session.structureId
+                + ", successful-elements=" + session.displays.size());
         plugin.getLogger().info("Desert Pyramid push-pillar puzzle activated: structure="
                 + session.structureId + ", pillars=" + definitions.size());
     }
