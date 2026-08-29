@@ -2,8 +2,11 @@ package com.hyunseo.hyunseorpg.exploration.pyramid;
 
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationStructureDefinition;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Authoritative startup gate executed after registry loading and before module activation. */
 public final class PyramidStartupDefinitionValidator {
@@ -29,11 +32,19 @@ public final class PyramidStartupDefinitionValidator {
                         "structure=desert_pyramid: missing variant=guardian_trial"));
 
         Map<String, String> phases = new LinkedHashMap<>();
+        Set<String> seenOfficialComponents = new HashSet<>();
         for (var spec : guardianTrial.components()) {
-            if (phases.put(spec.type(), spec.string("phase", "").trim().toLowerCase(java.util.Locale.ROOT)) != null) {
-                throw new IllegalArgumentException("structure=desert_pyramid, variant=guardian_trial: duplicate component="
-                        + spec.type());
+            String type = spec.type().trim().toLowerCase(Locale.ROOT);
+            // Sequence-state entries are repeatable extension steps. Only the
+            // canonical guardian-trial components have one-entry semantics.
+            if (!REQUIRED_GUARDIAN_TRIAL_PHASES.containsKey(type)) {
+                continue;
             }
+            if (!seenOfficialComponents.add(type)) {
+                throw new IllegalArgumentException("structure=desert_pyramid, variant=guardian_trial: duplicate component="
+                        + type);
+            }
+            phases.put(type, spec.string("phase", "").trim().toLowerCase(Locale.ROOT));
         }
         for (var required : REQUIRED_GUARDIAN_TRIAL_PHASES.entrySet()) {
             String actual = phases.get(required.getKey());

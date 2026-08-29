@@ -34,6 +34,18 @@ final class PyramidTreasureCenterPolicyTest {
     }
 
     @Test
+    void acceptsBoundedTreasureRoomHeightWithoutTrustingOneExactStructureY() {
+        StructureBounds bounds = new StructureBounds(-5, 50, -5, 5, 80, 5);
+        int x = PyramidTreasureCenterPolicy.from(bounds).x() + 2;
+        int z = PyramidTreasureCenterPolicy.from(bounds).z();
+
+        assertTrue(PyramidTreasureCenterPolicy.isVanillaTreasureSlot(bounds, x, 34, z));
+        assertTrue(PyramidTreasureCenterPolicy.isVanillaTreasureSlot(bounds, x, 46, z));
+        assertFalse(PyramidTreasureCenterPolicy.isVanillaTreasureSlot(bounds, x, 33, z));
+        assertFalse(PyramidTreasureCenterPolicy.isVanillaTreasureSlot(bounds, x, 47, z));
+    }
+
+    @Test
     void centerUsesFloorForOddAndNegativeBounds() {
         StructureBounds bounds = new StructureBounds(-6, 50, -5, 5, 80, 6);
         assertEquals(new PyramidTreasureCenterPolicy.Center(-1, 0),

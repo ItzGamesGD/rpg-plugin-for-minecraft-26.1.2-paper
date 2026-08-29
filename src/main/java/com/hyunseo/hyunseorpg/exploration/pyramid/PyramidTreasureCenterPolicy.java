@@ -8,11 +8,15 @@ public final class PyramidTreasureCenterPolicy {
     public static final int CHEST_HORIZONTAL_OFFSET = 2;
 
     /**
-     * Narrow provisional piece-relative coordinate from the Vanilla desert
-     * pyramid generator. Paper's GeneratedStructure/Bukkit BoundingBox minY
-     * equivalence to that piece origin still requires live target-build proof;
-     * see DESERT_PYRAMID_CURRENT_WORK.md.
+     * The vanilla treasure chamber is below the Paper structure bounds. Keep
+     * the vertical match bounded, but do not require one exact piece-relative
+     * Y value: Paper structure bounds and the generated temple piece can have
+     * a small vertical offset across target builds.
      */
+    public static final int CHEST_Y_MIN_OFFSET_FROM_BOUNDS_MIN = -16;
+    public static final int CHEST_Y_MAX_OFFSET_FROM_BOUNDS_MIN = -4;
+
+    /** Kept as the canonical baseline for diagnostics and compatibility. */
     public static final int CHEST_Y_OFFSET_FROM_BOUNDS_MIN = -11;
 
     private PyramidTreasureCenterPolicy() { }
@@ -34,7 +38,9 @@ public final class PyramidTreasureCenterPolicy {
         int dz = Math.abs(z - center.z());
         boolean cardinalOffset = (dx == CHEST_HORIZONTAL_OFFSET && dz == 0)
                 || (dx == 0 && dz == CHEST_HORIZONTAL_OFFSET);
-        return cardinalOffset && y == bounds.minY() + CHEST_Y_OFFSET_FROM_BOUNDS_MIN;
+        int minY = bounds.minY() + CHEST_Y_MIN_OFFSET_FROM_BOUNDS_MIN;
+        int maxY = bounds.minY() + CHEST_Y_MAX_OFFSET_FROM_BOUNDS_MIN;
+        return cardinalOffset && y >= minY && y <= maxY;
     }
 
     public record Center(int x, int z) { }

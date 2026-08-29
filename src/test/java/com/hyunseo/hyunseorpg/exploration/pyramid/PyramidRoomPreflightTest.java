@@ -1,6 +1,7 @@
 package com.hyunseo.hyunseorpg.exploration.pyramid;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,46 @@ class PyramidRoomPreflightTest {
         ).orElseThrow();
 
         assertEquals(PyramidRoomCandidate.Slot.NORTH, resolved.slot());
+    }
+
+    @Test
+    void keepsTheCanonicalCandidateOrderForProtectedCenterFallback() {
+        assertEquals(List.of(PyramidRoomCandidate.Slot.CENTER, PyramidRoomCandidate.Slot.NORTH,
+                        PyramidRoomCandidate.Slot.SOUTH, PyramidRoomCandidate.Slot.EAST,
+                        PyramidRoomCandidate.Slot.WEST),
+                List.of(PyramidRoomCandidate.Slot.values()));
+    }
+
+    @Test
+    void fallsBackFromUnsafeCenterToNorth() {
+        PyramidRoomCandidate center = candidate(PyramidRoomCandidate.Slot.CENTER);
+        PyramidRoomCandidate north = candidate(PyramidRoomCandidate.Slot.NORTH);
+
+        assertEquals(PyramidRoomCandidate.Slot.NORTH,
+                PyramidRoomPreflight.firstUsable(List.of(north, center),
+                        value -> value.slot() != PyramidRoomCandidate.Slot.CENTER).orElseThrow().slot());
+    }
+
+    @Test
+    void skipsMultipleUnsafeSlotsBeforeSelectingLaterSafeSlot() {
+        PyramidRoomCandidate center = candidate(PyramidRoomCandidate.Slot.CENTER);
+        PyramidRoomCandidate north = candidate(PyramidRoomCandidate.Slot.NORTH);
+        PyramidRoomCandidate south = candidate(PyramidRoomCandidate.Slot.SOUTH);
+
+        assertEquals(PyramidRoomCandidate.Slot.SOUTH,
+                PyramidRoomPreflight.firstUsable(List.of(south, north, center),
+                        value -> value.slot() == PyramidRoomCandidate.Slot.SOUTH).orElseThrow().slot());
+    }
+
+    @Test
+    void failsClosedWhenEveryCandidateIsUnsafe() {
+        assertTrue(PyramidRoomPreflight.firstUsable(List.of(
+                        candidate(PyramidRoomCandidate.Slot.CENTER),
+                        candidate(PyramidRoomCandidate.Slot.NORTH),
+                        candidate(PyramidRoomCandidate.Slot.SOUTH),
+                        candidate(PyramidRoomCandidate.Slot.EAST),
+                        candidate(PyramidRoomCandidate.Slot.WEST)),
+                value -> false).isEmpty());
     }
 
     @Test

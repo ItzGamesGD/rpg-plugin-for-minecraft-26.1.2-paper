@@ -18,6 +18,7 @@ import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionCo
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidUndergroundCompletionState;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidBlockPosition;
 import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidRoomGeometry;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidLootTriggerPolicy;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -220,6 +221,7 @@ public final class ExplorationRuntimeManager {
                 "pyramid-guardian-spawned", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-created-at", "pyramid-room-origin",
                 "pyramid-room-radius", "pyramid-room-height",
+                "pyramid-loot-trigger-status", "pyramid-loot-trigger-failure",
                 "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to",
                 "pyramid-reveal-in-progress", "pyramid-failure-state", "pyramid-failure-reason")) {
             reset = reset.withMetadata(key, null);
@@ -252,6 +254,7 @@ public final class ExplorationRuntimeManager {
                 "pyramid-guardian-complete", "pyramid-underground-complete", "pyramid-underground-completion-state", "pyramid-guardian-encounter-state",
                 "loot-taken", "pyramid-treasure-x", "pyramid-treasure-y", "pyramid-treasure-z",
                 "pyramid-room-prepared", "pyramid-room-created", "pyramid-room-origin", "pyramid-room-radius", "pyramid-room-height",
+                "pyramid-loot-trigger-status", "pyramid-loot-trigger-failure",
                 "pyramid-failure-state", "pyramid-failure-reason",
                 "pyramid-puzzle-ready", "pyramid-puzzle-solved", "pyramid-reward-recipient", "pyramid-reward-state", "pyramid-reward-delivered-to")) {
             result.put(key, record.activationMetadata().getOrDefault(key, "false"));
@@ -557,26 +560,54 @@ public final class ExplorationRuntimeManager {
                 activate(record, player, currentTick);
             }
             ExplorationRuntime runtime = active.get(record.structureId());
-            if (runtime == null || runtime.lootTaken()) continue;
-            runtime.markLootTaken(player.getUniqueId(), currentTick);
+            StructureRecord currentRecord = repository.get(record.structureId()).orElse(record);
+            boolean pyramid = "desert_pyramid".equals(record.structureType());
+            boolean retryingPyramid = pyramid && runtime != null && runtime.lootTaken()
+                    && PyramidLootTriggerPolicy.isRetryable(currentRecord.activationMetadata());
+            if (runtime == null || (runtime.lootTaken() && !retryingPyramid)) continue;
+            if (!runtime.lootTaken()) runtime.markLootTaken(player.getUniqueId(), currentTick);
+            UUID looterId = runtime.looter() == null ? player.getUniqueId() : runtime.looter();
+            long lootTakenAtTick = runtime.lootTakenAtTick() < 0L
+                    ? currentTick : runtime.lootTakenAtTick();
+            boolean reservationPersisted = false;
             try {
-                StructureRecord updated = repository.get(record.structureId()).orElse(record)
+                StructureRecord updated = currentRecord
                         .withMetadata("loot-taken", "true")
-                        .withMetadata("looter", player.getUniqueId().toString())
-                        .withMetadata("loot-taken-at-tick", Long.toString(currentTick));
-                if (record.structureType().equals("desert_pyramid")) {
+                        .withMetadata("looter", looterId.toString())
+                        .withMetadata("loot-taken-at-tick", Long.toString(lootTakenAtTick));
+                if (pyramid) {
                     updated = updated.withMetadata("pyramid-treasure-x", Integer.toString(container.getBlockX()))
                             .withMetadata("pyramid-treasure-y", Integer.toString(container.getBlockY()))
                             .withMetadata("pyramid-treasure-z", Integer.toString(container.getBlockZ()));
                 }
                 repository.save(updated);
+                reservationPersisted = true;
                 marked = true;
-                if (record.structureType().equals("desert_pyramid")) {
+                if (pyramid) {
                     try {
                         executeNamedPhase(repository.get(record.structureId()).orElse(updated), runtime,
                                 ExplorationComponentPhase.PYRAMID_LOOT_TRIGGER.name(), currentTick);
+                        StructureRecord started = repository.get(record.structureId()).orElse(updated)
+                                .withMetadata("pyramid-loot-trigger-status", "STARTED")
+                                .withMetadata("pyramid-loot-trigger-failure", null);
+                        repository.save(started);
                     } catch (Exception exception) {
-                        // World/phase/display failures are retryable Pyramid diagnostics, never gameplay abandonment.
+                        // Keep the durable loot reservation, but mark incomplete
+                        // preparation retryable. This prevents duplicate rooms
+                        // while allowing a later runtime attempt to resume.
+                        try {
+                            StructureRecord retryable = repository.get(record.structureId()).orElse(updated)
+                                    .withMetadata("pyramid-loot-trigger-status", "RETRYABLE")
+                                    .withMetadata("pyramid-loot-trigger-failure", exception.getClass().getSimpleName()
+                                            + ": " + String.valueOf(exception.getMessage()));
+                            repository.save(retryable);
+                        } catch (IOException persistenceFailure) {
+                            plugin.getLogger().log(Level.SEVERE,
+                                    "Unable to persist retryable Pyramid loot state: " + record.structureId(),
+                                    persistenceFailure);
+                        }
+                        // World/phase/display failures are retryable Pyramid
+                        // diagnostics, never gameplay abandonment.
                         plugin.getLogger().log(Level.WARNING,
                                 "Desert Pyramid loot sequence deferred (retryable): " + record.structureId(), exception);
                     }
@@ -586,7 +617,7 @@ public final class ExplorationRuntimeManager {
             } catch (IOException exception) {
                 // The in-memory trigger was only a reservation; roll it back when the
                 // durable checkpoint cannot be written so the chest remains retryable.
-                runtime.clearLootTaken();
+                if (!reservationPersisted) runtime.clearLootTaken();
                 plugin.getLogger().log(Level.WARNING, "Unable to persist outpost loot state; trigger rolled back: " + record.structureId(), exception);
             }
         }

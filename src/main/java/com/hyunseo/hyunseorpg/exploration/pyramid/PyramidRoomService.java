@@ -92,14 +92,20 @@ public final class PyramidRoomService {
         // Staged carving is presentation-only; no per-layer durable progress is
         // trusted or replayed after a reload. A prepared room must still be intact.
         PyramidRoomCandidate candidate = readPersistedCandidate(preparedRecord).filter(value ->
-                buried(world, value.origin(), radius, height, shell)).orElseGet(() ->
-                Optional.ofNullable(findBuriedCandidate(world, bounds, radius, height, shell,
-                        persistedInt(preparedRecord, "pyramid-treasure-center-x", treasureCenter.x()),
-                        persistedInt(preparedRecord, "pyramid-treasure-center-z", treasureCenter.z())))
-                        .orElseThrow(() -> new IllegalStateException("no safe buried Desert Pyramid room candidate")));
+                buried(world, value.origin(), radius, height, shell)
+                        && shaftSafe(world, value.origin(), radius, height, bounds)).orElseGet(() -> {
+                    PyramidRoomSearchResult search = findBuriedCandidate(world, bounds, radius, height, shell,
+                            persistedInt(preparedRecord, "pyramid-treasure-center-x", treasureCenter.x()),
+                            persistedInt(preparedRecord, "pyramid-treasure-center-z", treasureCenter.z()));
+                    if (search.candidate() == null) {
+                        throw new IllegalStateException(search.failureReason());
+                    }
+                    return search.candidate();
+                });
 
-        if (!shaftSafe(world, candidate.origin(), radius, height, bounds)) {
-            throw new IllegalStateException("no safe Desert Pyramid access shaft");
+        String shaftFailure = shaftSafetyFailure(world, candidate.origin(), radius, height, bounds);
+        if (shaftFailure != null) {
+            throw new IllegalStateException("no safe Desert Pyramid access shaft: " + shaftFailure);
         }
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("pyramid-room-prepared", "true");
@@ -332,24 +338,41 @@ public final class PyramidRoomService {
         for (UUID structureId : List.copyOf(sessions.keySet())) cleanup(structureId);
     }
 
-    private PyramidRoomCandidate findBuriedCandidate(World world, StructureBounds bounds,
-                                                      int radius, int height, int shell,
-                                                      int anchorX, int anchorZ) {
-        // The clicked chest identifies vanilla loot, but the shaft must remain at the
-        // shared treasure-chamber centre, never beneath one of its four corner chests.
-        int centerX = anchorX;
-        int centerZ = anchorZ;
+    private PyramidRoomSearchResult findBuriedCandidate(World world, StructureBounds bounds,
+                                                         int radius, int height, int shell,
+                                                         int anchorX, int anchorZ) {
+        // The four chests identify one canonical chamber centre. The room shaft
+        // may use a fixed nearby slot when the centre contains TNT or another
+        // protected block, while remaining inside the pyramid's horizontal area.
+        List<String> failures = new ArrayList<>();
         int highest = bounds.minY() - 4;
         int lowest = Math.max(world.getMinHeight() + shell + 2, highest - 32);
-        int x = centerX;
-        int z = centerZ;
-        for (int y = highest; y >= lowest; y--) {
-            PyramidBlockPosition origin = new PyramidBlockPosition(x, y, z);
-            if (buried(world, origin, radius, height, shell)) {
-                return new PyramidRoomCandidate(PyramidRoomCandidate.Slot.CENTER, origin, PyramidRoomOrientation.NORTH);
+        for (PyramidRoomCandidate.Slot slot : PyramidRoomCandidate.Slot.values()) {
+            int x = anchorX;
+            int z = anchorZ;
+            switch (slot) {
+                case NORTH -> z -= 4;
+                case SOUTH -> z += 4;
+                case EAST -> x += 4;
+                case WEST -> x -= 4;
+                case CENTER -> { }
+            }
+            for (int y = highest; y >= lowest; y--) {
+                PyramidBlockPosition origin = new PyramidBlockPosition(x, y, z);
+                if (!buried(world, origin, radius, height, shell)) continue;
+                String shaftFailure = shaftSafetyFailure(world, origin, radius, height, bounds);
+                if (shaftFailure == null) {
+                    return new PyramidRoomSearchResult(new PyramidRoomCandidate(slot, origin,
+                            PyramidRoomOrientation.NORTH), "");
+                }
+                if (failures.size() < 8) {
+                    failures.add(slot + "@" + encode(origin) + ": " + shaftFailure);
+                }
             }
         }
-        return null;
+        String detail = failures.isEmpty() ? "no buried candidate passed preflight"
+                : String.join("; ", failures);
+        return new PyramidRoomSearchResult(null, "no safe Desert Pyramid access shaft: " + detail);
     }
 
     private boolean buried(World world, PyramidBlockPosition origin, int radius, int height, int shell) {
@@ -440,21 +463,33 @@ public final class PyramidRoomService {
 
     private boolean shaftSafe(World world, PyramidBlockPosition origin, int radius, int height,
                               StructureBounds bounds) {
+        return shaftSafetyFailure(world, origin, radius, height, bounds) == null;
+    }
+
+    private String shaftSafetyFailure(World world, PyramidBlockPosition origin, int radius, int height,
+                                      StructureBounds bounds) {
         PyramidRoomGeometry geometry = PyramidRoomGeometry.of(origin, radius, height, bounds);
         for (int x = origin.x() - geometry.shaftRadius(); x <= origin.x() + geometry.shaftRadius(); x++) {
             for (int z = origin.z() - geometry.shaftRadius(); z <= origin.z() + geometry.shaftRadius(); z++) {
-                if (!world.isChunkLoaded(x >> 4, z >> 4)) return false;
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                    return "unloaded chunk at " + (x >> 4) + "," + (z >> 4);
+                }
             }
         }
         for (int y = geometry.shaftBottomY(); y <= geometry.shaftTopY(); y++) {
             for (int x = origin.x() - geometry.shaftRadius(); x <= origin.x() + geometry.shaftRadius(); x++) {
                 for (int z = origin.z() - geometry.shaftRadius(); z <= origin.z() + geometry.shaftRadius(); z++) {
                     Block block = world.getBlockAt(x, y, z);
-                    if (block.isLiquid() || protectedBlock(block.getState())) return false;
+                    if (block.isLiquid()) {
+                        return "liquid " + block.getType() + " at " + x + "," + y + "," + z;
+                    }
+                    if (protectedBlock(block.getState())) {
+                        return "protected " + block.getType() + " at " + x + "," + y + "," + z;
+                    }
                 }
             }
         }
-        return true;
+        return null;
     }
 
     static StructureRecord mergeUndergroundMetadata(StructureRecord base, Map<String, String> values) {
@@ -531,6 +566,8 @@ public final class PyramidRoomService {
             this.world = context.world().orElseThrow();
         }
     }
+
+    private record PyramidRoomSearchResult(PyramidRoomCandidate candidate, String failureReason) { }
 
     private static final class RoomSession {
         private final com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime runtime;

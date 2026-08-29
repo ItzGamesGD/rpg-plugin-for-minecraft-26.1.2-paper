@@ -23,6 +23,15 @@ final class PyramidStartupDefinitionValidatorTest {
     }
 
     @Test
+    void repeatedSequenceStateExtensionsDoNotFailOfficialComponentValidation() {
+        List<ExplorationComponentSpec> components = requiredComponents();
+        components.add(spec("sequence_state", "pyramid_joke_gate"));
+        components.add(spec("sequence_state", "pyramid_raid_warning"));
+        assertDoesNotThrow(() -> PyramidStartupDefinitionValidator.requireValid(
+                definitionWithComponents(components)));
+    }
+
+    @Test
     void invalidPillarsAbortBeforeAnyActivationMutation() {
         for (Object invalidPillars : List.of(
                 List.of(pillar("a", "-3,-3", "-2,-3", List.of("-3,-3", "-2,-3")),

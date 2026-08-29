@@ -1,6 +1,8 @@
 package com.hyunseo.hyunseorpg.core.config;
 
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRequirements;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarConfigurationValidator;
+import com.hyunseo.hyunseorpg.exploration.pyramid.PyramidPillarDefinitionParser;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -398,6 +400,15 @@ public final class ConfigMigrationService {
                         copy.put("phase", canonicalPhase);
                         changed = true;
                     }
+                    Map<?, ?> bundledPillars = bundled.stream()
+                            .filter(entry -> "pyramid_push_pillars".equalsIgnoreCase(
+                                    String.valueOf(entry.get("type"))))
+                            .findFirst().orElse(null);
+                    if (bundledPillars != null && !isValidPyramidPillars(copy.get("pillars"))) {
+                        copy.put("pillars", bundledPillars.get("pillars"));
+                        changed = true;
+                        lines.add(fileName + ": repaired invalid Desert Pyramid pillar graph from bundled defaults");
+                    }
                 }
                 default -> { }
             }
@@ -426,6 +437,16 @@ public final class ConfigMigrationService {
         }
         if (changed) target.set(path, canonical);
         return changed;
+    }
+
+    private boolean isValidPyramidPillars(Object raw) {
+        try {
+            return PyramidPillarConfigurationValidator.validate(
+                    PyramidPillarDefinitionParser.parse(raw, "migration desert_pyramid pillars"))
+                    .isValid();
+        } catch (RuntimeException invalid) {
+            return false;
+        }
     }
 
     private boolean migrateLegacyExplorationPrototype(FileConfiguration target,
