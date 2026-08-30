@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BukkitExplorationPortsTest {
     @Test
@@ -17,5 +19,12 @@ class BukkitExplorationPortsTest {
         assertNotSame(ExplorationPorts.InteractionPort.NOOP, ports.interactions());
         assertNotSame(ExplorationPorts.WorldMutationPort.NOOP, ports.worldMutations());
         assertNotSame(ExplorationPorts.TeleportPort.NOOP, ports.teleports());
+    }
+
+    @Test
+    void vanillaRewardResolverAcceptsMinecraftAndLegacyNamespaces() {
+        assertTrue(ExistingHyunseoRpgAdapters.isVanillaMaterialId("minecraft:nautilus_shell"));
+        assertTrue(ExistingHyunseoRpgAdapters.isVanillaMaterialId("vanilla:nautilus_shell"));
+        assertFalse(ExistingHyunseoRpgAdapters.isVanillaMaterialId("custom:nautilus_shell"));
     }
 }
