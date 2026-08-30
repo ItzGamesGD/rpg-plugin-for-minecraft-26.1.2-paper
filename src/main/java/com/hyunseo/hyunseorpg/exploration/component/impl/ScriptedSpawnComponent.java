@@ -5,6 +5,7 @@ import com.hyunseo.hyunseorpg.exploration.component.ExplorationComponentPhase;
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
 import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
+import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationRuntime;
 
 import java.util.Collection;
 import java.util.List;
@@ -33,15 +34,8 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
                 ComponentLocations.relative(context, spec),
                 requestedCount,
                 spec.options());
-        List<UUID> validIds = spawned == null
-                ? List.of()
-                : spawned.stream().filter(java.util.Objects::nonNull).toList();
-
-        validIds.forEach(context.runtime().tracker()::trackEntity);
-        if (spec.bool("objective", false) && validIds.size() != requestedCount) {
-            throw new IllegalStateException("scripted_spawn objective produced " + validIds.size()
-                    + " valid entities; expected " + requestedCount);
-        }
+        List<UUID> validIds = validateAndTrack(
+                context.runtime(), spawned, requestedCount, spec.bool("objective", false));
 
         for (UUID entityId : validIds) {
             ExplorationPorts.MobSpawnPort.SpawnDetails details = context.ports().mobs().describe(entityId);
@@ -56,6 +50,19 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
         }
 
         if (spec.bool("objective", false)) context.runtime().trackObjectives(validIds);
+    }
+
+    static List<UUID> validateAndTrack(ExplorationRuntime runtime, Collection<UUID> spawned,
+                                       int requestedCount, boolean objective) {
+        List<UUID> validIds = spawned == null
+                ? List.of()
+                : spawned.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        validIds.forEach(runtime.tracker()::trackEntity);
+        if (objective && validIds.size() != requestedCount) {
+            throw new IllegalStateException("scripted_spawn objective produced " + validIds.size()
+                    + " distinct valid entities; expected " + requestedCount);
+        }
+        return validIds;
     }
 
     private void cleanupUnmanagedEntities(ExplorationEventContext context, ExplorationComponentSpec spec) {

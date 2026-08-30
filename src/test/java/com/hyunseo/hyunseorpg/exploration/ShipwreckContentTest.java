@@ -55,6 +55,7 @@ final class ShipwreckContentTest {
             assertTrue(spawns.stream().allMatch(spawn -> spawn.get("count") instanceof Number));
             assertTrue(spawns.stream().allMatch(spawn -> Boolean.TRUE.equals(spawn.get("objective"))));
             assertTrue(spawns.stream().allMatch(spawn -> Boolean.TRUE.equals(spawn.get("safe-spawn"))));
+            assertTrue(spawns.stream().allMatch(spawn -> "aquatic".equals(spawn.get("spawn-environment"))));
             assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dx")).intValue() == 0));
             assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dy")).intValue() == 1));
             assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dz")).intValue() == 0));

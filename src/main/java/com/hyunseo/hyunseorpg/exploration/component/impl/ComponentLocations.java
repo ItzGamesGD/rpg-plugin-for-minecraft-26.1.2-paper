@@ -1,9 +1,11 @@
 package com.hyunseo.hyunseorpg.exploration.component.impl;
 
 import com.hyunseo.hyunseorpg.exploration.component.ExplorationEventContext;
+import com.hyunseo.hyunseorpg.exploration.model.StructureBounds;
 import com.hyunseo.hyunseorpg.exploration.registry.ExplorationComponentSpec;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.util.Vector;
 
@@ -23,7 +25,8 @@ final class ComponentLocations {
         Location desired = anchor.clone().add(spec.decimal("dx", 0.0D) + extraX,
                 spec.decimal("dy", 0.0D), spec.decimal("dz", 0.0D) + extraZ);
         if (!spec.bool("safe-spawn", false)) return desired;
-        return safeSpawnLocation(context, desired).orElseThrow(() ->
+        SpawnEnvironment environment = SpawnEnvironment.from(spec.string("spawn-environment", "terrestrial"));
+        return safeSpawnLocation(context, desired, environment).orElseThrow(() ->
                 new IllegalStateException("no safe spawn location exists within structure bounds"));
     }
 
@@ -49,24 +52,37 @@ final class ComponentLocations {
                 : desired;
     }
 
-    private static Optional<Location> safeSpawnLocation(ExplorationEventContext context, Location desired) {
+    private static Optional<Location> safeSpawnLocation(ExplorationEventContext context, Location desired,
+                                                        SpawnEnvironment environment) {
         var bounds = context.record().bounds();
         var world = Bukkit.getWorld(context.record().worldId());
         if (world == null) return Optional.empty();
+        return safeSpawnLocation(world, bounds, desired, environment == SpawnEnvironment.AQUATIC);
+    }
+
+    static Optional<Location> safeSpawnLocation(org.bukkit.World world, StructureBounds bounds,
+                                                Location desired, boolean aquatic) {
+        SpawnEnvironment environment = aquatic ? SpawnEnvironment.AQUATIC : SpawnEnvironment.TERRESTRIAL;
         double centerX = bounds.centerX() + 0.5D;
         double centerZ = bounds.centerZ() + 0.5D;
         Location preferred = new Location(world, desired.getX(), desired.getY(), desired.getZ());
-        int minX = Math.max(bounds.minX(), (int) Math.floor(centerX) - 6);
-        int maxX = Math.min(bounds.maxX(), (int) Math.floor(centerX) + 6);
-        int minZ = Math.max(bounds.minZ(), (int) Math.floor(centerZ) - 6);
-        int maxZ = Math.min(bounds.maxZ(), (int) Math.floor(centerZ) + 6);
+        int minX = environment == SpawnEnvironment.AQUATIC
+                ? bounds.minX() : Math.max(bounds.minX(), (int) Math.floor(centerX) - 6);
+        int maxX = environment == SpawnEnvironment.AQUATIC
+                ? bounds.maxX() : Math.min(bounds.maxX(), (int) Math.floor(centerX) + 6);
+        int minZ = environment == SpawnEnvironment.AQUATIC
+                ? bounds.minZ() : Math.max(bounds.minZ(), (int) Math.floor(centerZ) - 6);
+        int maxZ = environment == SpawnEnvironment.AQUATIC
+                ? bounds.maxZ() : Math.min(bounds.maxZ(), (int) Math.floor(centerZ) + 6);
         int minY = Math.max(world.getMinHeight() + 1, bounds.minY());
-        int maxY = Math.min(world.getMaxHeight() - 2, bounds.maxY() + 2);
+        int maxY = environment == SpawnEnvironment.AQUATIC
+                ? Math.min(world.getMaxHeight() - 2, bounds.maxY() - 1)
+                : Math.min(world.getMaxHeight() - 2, bounds.maxY() + 2);
 
         return IntStream.rangeClosed(minX, maxX).boxed()
                 .flatMap(x -> IntStream.rangeClosed(minZ, maxZ).boxed()
                         .flatMap(z -> IntStream.rangeClosed(minY, maxY).mapToObj(y -> new int[]{x, y, z})))
-                .filter(pos -> isEntitySafe(world.getBlockAt(pos[0], pos[1], pos[2])))
+                .filter(pos -> environment.isSafe(world.getBlockAt(pos[0], pos[1], pos[2])))
                 .map(pos -> new Location(world, pos[0] + 0.5D, pos[1], pos[2] + 0.5D,
                         desired.getYaw(), desired.getPitch()))
                 .min(Comparator.comparingDouble(location -> location.toVector().distanceSquared(preferred.toVector())));
@@ -92,7 +108,7 @@ final class ComponentLocations {
                 .min(Comparator.comparingDouble(location -> location.distanceSquared(desired)));
     }
 
-    private static boolean isEntitySafe(Block feet) {
+    static boolean isEntitySafe(Block feet) {
         Block head = feet.getRelative(0, 1, 0);
         Block floor = feet.getRelative(0, -1, 0);
         return isOpen(feet) && isOpen(head) && floor.getType().isSolid();
@@ -100,5 +116,32 @@ final class ComponentLocations {
 
     private static boolean isOpen(Block block) {
         return block.isPassable() && !block.isLiquid();
+    }
+
+    static boolean isAquaticEntitySafe(Block feet) {
+        Block head = feet.getRelative(0, 1, 0);
+        return isWaterOpen(feet) && isWaterOpen(head);
+    }
+
+    private static boolean isWaterOpen(Block block) {
+        return block.getType() == Material.WATER && block.isLiquid() && block.isPassable();
+    }
+
+    private enum SpawnEnvironment {
+        TERRESTRIAL {
+            @Override boolean isSafe(Block feet) { return isEntitySafe(feet); }
+        },
+        AQUATIC {
+            @Override boolean isSafe(Block feet) { return isAquaticEntitySafe(feet); }
+        };
+
+        abstract boolean isSafe(Block feet);
+
+        static SpawnEnvironment from(String configured) {
+            if (configured == null || configured.isBlank()
+                    || "terrestrial".equalsIgnoreCase(configured)) return TERRESTRIAL;
+            if ("aquatic".equalsIgnoreCase(configured)) return AQUATIC;
+            throw new IllegalArgumentException("unknown spawn environment: " + configured);
+        }
     }
 }
