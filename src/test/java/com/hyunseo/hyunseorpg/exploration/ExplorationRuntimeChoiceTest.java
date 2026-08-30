@@ -65,6 +65,25 @@ final class ExplorationRuntimeChoiceTest {
     }
 
     @Test
+    void shipwreckRequiresAllThreeObjectiveIdentitiesAndIgnoresOtherDeaths() {
+        ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "riptide_ambush_prototype");
+        UUID customDrowned = UUID.randomUUID();
+        UUID drownedOne = UUID.randomUUID();
+        UUID drownedTwo = UUID.randomUUID();
+        runtime.trackObjectives(List.of(customDrowned, drownedOne, drownedTwo));
+
+        assertFalse(runtime.confirmObjectiveDeath(UUID.randomUUID()), "non-objectives must be ignored");
+        assertTrue(runtime.confirmObjectiveDeath(customDrowned));
+        assertFalse(runtime.objectivesCleared());
+        assertTrue(runtime.confirmObjectiveDeath(drownedOne));
+        assertFalse(runtime.objectivesCleared());
+        assertTrue(runtime.confirmObjectiveDeath(drownedTwo));
+        assertTrue(runtime.objectivesCleared());
+        assertFalse(runtime.confirmObjectiveDeath(drownedTwo), "duplicate death events must be idempotent");
+        assertEquals(3, runtime.confirmedDeadObjectiveCount());
+    }
+
+    @Test
     void raidWaveSequenceAdvancesOnlyAfterTheCurrentWaveIsCleared() {
         ExplorationRuntime runtime = new ExplorationRuntime(UUID.randomUUID(), "outpost_raid_event", 10L);
         runtime.configureRaidWaveSequence(List.of("tier1", "tier1"));

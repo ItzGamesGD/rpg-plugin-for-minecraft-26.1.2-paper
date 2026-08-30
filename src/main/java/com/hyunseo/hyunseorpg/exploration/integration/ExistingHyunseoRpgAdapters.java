@@ -152,15 +152,15 @@ public final class ExistingHyunseoRpgAdapters {
                 if (item == null || player == null) return false;
                 UUID token = UUID.nameUUIDFromBytes((idempotencyToken == null ? "" : idempotencyToken)
                         .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                return deliveryService.queueItemOnce(player, token, item, "exploration-pyramid:" + idempotencyToken);
+                return deliveryService.queueItemOnce(player, token, item, "exploration:" + idempotencyToken);
             }
 
             private ItemStack createItem(RPGItemService service, String rewardId, int amount) {
                 int safeAmount = Math.max(1, amount);
                 String normalized = rewardId == null ? "" : rewardId.trim();
-                if (normalized.regionMatches(true, 0, "vanilla:", 0, "vanilla:".length())) {
+                if (isVanillaMaterialId(normalized)) {
                     try {
-                        Material material = Material.valueOf(normalized.substring("vanilla:".length())
+                        Material material = Material.valueOf(normalized.substring(normalized.indexOf(':') + 1)
                                 .trim().toUpperCase(java.util.Locale.ROOT));
                         return material.isItem() ? new ItemStack(material, safeAmount) : null;
                     } catch (IllegalArgumentException ignored) {
@@ -170,4 +170,12 @@ public final class ExistingHyunseoRpgAdapters {
                 return service.create(normalized, safeAmount).orElse(null);
             }
         };
-    }}
+    }
+
+    static boolean isVanillaMaterialId(String rewardId) {
+        if (rewardId == null) return false;
+        String normalized = rewardId.trim();
+        return normalized.regionMatches(true, 0, "vanilla:", 0, "vanilla:".length())
+                || normalized.regionMatches(true, 0, "minecraft:", 0, "minecraft:".length());
+    }
+}

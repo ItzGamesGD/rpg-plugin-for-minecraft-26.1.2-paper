@@ -41,6 +41,8 @@ final class ShipwreckContentTest {
             String variant = shipwreck + ".variants.riptide_ambush_prototype";
             assertTrue(yaml.isConfigurationSection(variant));
             assertTrue(yaml.getBoolean(variant + ".enabled"));
+            assertEquals(1.0D, yaml.getDouble(variant + ".weight"), 0.000001D);
+            assertTrue(yaml.getBoolean(variant + ".prototype"));
             List<Map<?, ?>> components = yaml.getMapList(variant + ".components");
 
             List<Map<?, ?>> spawns = components.stream()
@@ -53,6 +55,10 @@ final class ShipwreckContentTest {
             assertTrue(spawns.stream().allMatch(spawn -> spawn.get("count") instanceof Number));
             assertTrue(spawns.stream().allMatch(spawn -> Boolean.TRUE.equals(spawn.get("objective"))));
             assertTrue(spawns.stream().allMatch(spawn -> Boolean.TRUE.equals(spawn.get("safe-spawn"))));
+            assertTrue(spawns.stream().allMatch(spawn -> "aquatic".equals(spawn.get("spawn-environment"))));
+            assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dx")).intValue() == 0));
+            assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dy")).intValue() == 1));
+            assertTrue(spawns.stream().allMatch(spawn -> ((Number) spawn.get("dz")).intValue() == 0));
 
             List<Map<?, ?>> rewards = components.stream()
                     .filter(component -> "reward_drop".equals(component.get("type")))
