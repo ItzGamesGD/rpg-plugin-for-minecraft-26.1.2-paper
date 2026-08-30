@@ -22,9 +22,9 @@ final class ComponentLocations {
         Location anchor = context.anchorLocation().orElseThrow(() -> new IllegalStateException("world is not loaded"));
         Location desired = anchor.clone().add(spec.decimal("dx", 0.0D) + extraX,
                 spec.decimal("dy", 0.0D), spec.decimal("dz", 0.0D) + extraZ);
-        return spec.bool("safe-spawn", false)
-                ? safeSpawnLocation(context, desired).orElse(desired)
-                : desired;
+        if (!spec.bool("safe-spawn", false)) return desired;
+        return safeSpawnLocation(context, desired).orElseThrow(() ->
+                new IllegalStateException("no safe spawn location exists within structure bounds"));
     }
 
     static Location raidOrigin(ExplorationEventContext context, ExplorationComponentSpec spec,

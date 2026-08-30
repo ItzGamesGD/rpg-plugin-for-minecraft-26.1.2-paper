@@ -47,6 +47,7 @@ public final class RewardDropComponent implements ExplorationComponent {
             String rewardState = context.record().activationMetadata().getOrDefault("pyramid-reward-state", "pending");
             if ("finalized".equalsIgnoreCase(rewardState) || "delivered".equalsIgnoreCase(rewardState)) return;
         }
+        int expectedRecipients = recipients.size();
         int onlineParticipants = 0;
         int successfulDeliveries = 0;
         for (var playerId : recipients) {
@@ -61,17 +62,16 @@ public final class RewardDropComponent implements ExplorationComponent {
             if (player == null || !player.isOnline()) continue;
             onlineParticipants++;
             String token = context.record().structureId() + ":" + playerId + ":" + rewardId + ":" + amount;
-            boolean delivered = pyramid
-                    ? context.ports().rewards().enqueueDurable(player, rewardId, amount, fallback, spec.options(), token)
-                    : context.ports().rewards().grant(player, rewardId, amount, fallback, spec.options());
+            boolean delivered = context.ports().rewards().enqueueDurable(
+                    player, rewardId, amount, fallback, spec.options(), token);
             if (delivered) {
                 successfulDeliveries++;
                 if (pyramid) context.runtime().sequence().setFlag("pyramid.reward.delivered." + playerId);
             }
         }
 
-        if (onlineParticipants == 0) {
-            throw new IllegalStateException("reward_drop has no online participant; clear must be retried safely");
+        if (expectedRecipients == 0 || onlineParticipants != expectedRecipients) {
+            throw new IllegalStateException("reward_drop has an unavailable participant; clear must be retried safely");
         }
         if (successfulDeliveries != onlineParticipants) {
             throw new IllegalStateException("reward_drop delivery failed for one or more participants");

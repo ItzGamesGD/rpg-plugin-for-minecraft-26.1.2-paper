@@ -27,17 +27,20 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
 
         cleanupUnmanagedEntities(context, spec);
 
+        int requestedCount = Math.max(1, spec.integer("count", 1));
         Collection<UUID> spawned = context.ports().mobs().spawn(
                 mobId,
                 ComponentLocations.relative(context, spec),
-                Math.max(1, spec.integer("count", 1)),
+                requestedCount,
                 spec.options());
         List<UUID> validIds = spawned == null
                 ? List.of()
                 : spawned.stream().filter(java.util.Objects::nonNull).toList();
 
-        if (spec.bool("objective", false) && validIds.isEmpty()) {
-            throw new IllegalStateException("scripted_spawn objective produced no valid entity");
+        validIds.forEach(context.runtime().tracker()::trackEntity);
+        if (spec.bool("objective", false) && validIds.size() != requestedCount) {
+            throw new IllegalStateException("scripted_spawn objective produced " + validIds.size()
+                    + " valid entities; expected " + requestedCount);
         }
 
         for (UUID entityId : validIds) {
@@ -52,7 +55,6 @@ public final class ScriptedSpawnComponent implements ExplorationComponent {
             }
         }
 
-        validIds.forEach(context.runtime().tracker()::trackEntity);
         if (spec.bool("objective", false)) context.runtime().trackObjectives(validIds);
     }
 
