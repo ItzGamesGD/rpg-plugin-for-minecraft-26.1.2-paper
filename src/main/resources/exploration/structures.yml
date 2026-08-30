@@ -227,6 +227,7 @@ structures:
             count: 1
             objective: true
             safe-spawn: true
+            spawn-environment: aquatic
             dx: 0
             dy: 1
             dz: 0
@@ -235,6 +236,7 @@ structures:
             count: 2
             objective: true
             safe-spawn: true
+            spawn-environment: aquatic
             dx: 0
             dy: 1
             dz: 0
