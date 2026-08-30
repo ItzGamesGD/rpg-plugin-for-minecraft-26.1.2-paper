@@ -210,13 +210,39 @@ structures:
 
   shipwreck:
     minecraft-key: minecraft:shipwreck
-    enabled: false
+    enabled: true
     selection-chance: 0.0
     balance-pending: true
     trigger-radius: 36.0
     abandon-radius: 72.0
     abandon-grace-ticks: 100
-    variants: {}
+    variants:
+      riptide_ambush_prototype:
+        enabled: true
+        weight: 1.0
+        prototype: true
+        components:
+          - type: scripted_spawn
+            mob-id: custom:riptide_drowned
+            count: 1
+            objective: true
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: scripted_spawn
+            mob-id: vanilla:drowned
+            count: 2
+            objective: true
+            safe-spawn: true
+            dx: 0
+            dy: 1
+            dz: 0
+          - type: reward_drop
+            phase: clear
+            recipient: participants
+            reward-id: minecraft:nautilus_shell
+            amount: 1
 
   nether_fortress:
     minecraft-key: minecraft:fortress
