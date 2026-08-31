@@ -308,10 +308,9 @@ special-equipment:
       abilities:
         life-steal: { damage-ratio: 0.005 }
         # Provisional values: tune only after live-server combat testing.
-        water-trident:
-          pressure-thrust: { damage: 2.0, radius: 1.1, combo-timeout-ticks: 60, combo-damage: 4.0, combo-knockback: 0.45 }
-          current-throw: { cooldown-seconds: 2.5, speed: 1.8, outward-ticks: 30, return-speed: 1.7, trail-radius: 1.8, pull-strength: 0.18, trail-damage: 2.0, direct-damage: 6.0 }
-          large-skill: { cooldown-seconds: 18.0, vortex-radius: 7.0, pillar-radius: 5.0, damage: 7.0, knockback: 0.8, pillar-vertical: 0.9 }
-          eight-way: { cooldown-seconds: 16.0, target-radius: 20.0, maximum-hits-per-trident: 3, no-target-orbit-ticks: 100, damage: 3.0 }
-          defense: { cooldown-seconds: 14.0, duration-ticks: 80 }
-          riptide: { cooldown-seconds: 8.0, velocity: 1.7, duration-ticks: 24, lightning-interval-ticks: 7, lightning-radius: 2.5, lightning-damage: 4.0, post-vertical-boost: 0.28 }
+        pressure-thrust: { id: water-pressure-thrust, display-name: "수압 찌르기", trigger: LEFT_CLICK, description: "연속 타격으로 수압 파열을 일으킵니다.", damage: 2.0, radius: 1.1, combo-timeout-ticks: 60, combo-damage: 4.0, combo-knockback: 0.45 }
+        current-throw: { id: water-current-throw, display-name: "해류 투척", trigger: RIGHT_CLICK, description: "수중 궤적에 해류를 만들고 삼지창을 귀환시킵니다.", cooldown-seconds: 2.5, speed: 1.8, outward-ticks: 30, lifecycle-timeout-ticks: 160, return-speed: 1.7, trail-radius: 1.8, pull-strength: 0.18, trail-damage: 2.0, direct-damage: 6.0 }
+        large-skill: { id: water-vortex-pillar, display-name: "대해의 격류", trigger: SHIFT_LEFT_CLICK, description: "수중에는 소용돌이, 지상에는 물기둥을 일으킵니다.", cooldown-seconds: 18.0, vortex-radius: 7.0, pillar-radius: 5.0, damage: 7.0, knockback: 0.8, pillar-vertical: 0.9 }
+        eight-way: { id: eight-way-return, display-name: "팔방귀환", trigger: OFFHAND_QUICK, description: "여덟 개의 비획득 삼지창 공격체를 전개합니다.", cooldown-seconds: 16.0, target-radius: 20.0, maximum-hits-per-trident: 3, no-target-orbit-ticks: 100, damage: 3.0 }
+        defense: { id: water-rotating-defense, display-name: "회전 방어", trigger: DROP_KEY, description: "지상에서 약 4초간 적대 투사체를 요격합니다.", cooldown-seconds: 14.0, duration-ticks: 80 }
+        riptide: { id: rainy-riptide, display-name: "번개 급류", trigger: RIGHT_CLICK, description: "비에 노출된 지상에서 번개 궤적을 남기며 돌진합니다.", cooldown-seconds: 8.0, velocity: 1.7, duration-ticks: 24, lightning-interval-ticks: 7, lightning-radius: 2.5, lightning-damage: 4.0, post-vertical-boost: 0.28 }

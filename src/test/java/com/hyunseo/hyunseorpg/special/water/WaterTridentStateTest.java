@@ -7,14 +7,22 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WaterTridentStateTest {
-    @Test void waterStateIsEvaluatedAtTheCurrentProjectilePosition() {
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true));
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false));
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true));
+    @Test void landWaterLandWaterTransitionsControlOnlyCurrentEffects() {
+        assertTrue(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.OUTWARD),
+                "ordinary direct impact remains legal on land");
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
+                "land prohibits current damage and pull");
+        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
+                "entering water activates current damage and pull");
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
+                "leaving water immediately deactivates both effects");
+        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
+                "re-entering water activates them again");
     }
 
     @Test void loyaltyReturnNeverReactivatesCurrentDamage() {
         assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.RETURNING, true));
+        assertFalse(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.RETURNING));
         assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.REMOVED, true));
     }
 
@@ -27,14 +35,22 @@ class WaterTridentStateTest {
         assertEquals(1, state.registerCombo(player, target, 1_300, 500));
     }
 
-    @Test void comboExpiresAndTargetChangeResetsIt() {
+    @Test void changingTargetResetsCombo() {
         WaterTridentState state = new WaterTridentState(); UUID player = UUID.randomUUID();
-        assertEquals(1, state.registerCombo(player, UUID.randomUUID(), 1_000, 100));
-        assertEquals(1, state.registerCombo(player, UUID.randomUUID(), 1_050, 100));
-        UUID target = UUID.randomUUID();
+        UUID targetA = UUID.randomUUID(); UUID targetB = UUID.randomUUID();
+        assertEquals(1, state.registerCombo(player, targetA, 1_000, 100));
+        assertEquals(2, state.registerCombo(player, targetA, 1_010, 100));
+        assertEquals(1, state.registerCombo(player, targetB, 1_020, 100));
+    }
+
+    @Test void timeoutAndExplicitCleanupPreventStaleCombo() {
+        WaterTridentState state = new WaterTridentState(); UUID player = UUID.randomUUID(); UUID target = UUID.randomUUID();
         assertEquals(1, state.registerCombo(player, target, 2_000, 100));
         assertEquals(1, state.registerCombo(player, target, 2_101, 100));
-        state.clear(player); assertEquals(0, state.activeCombos());
+        assertEquals(2, state.registerCombo(player, target, 2_102, 100));
+        state.clear(player);
+        assertEquals(0, state.activeCombos());
+        assertEquals(1, state.registerCombo(player, target, 2_103, 100));
     }
 
     @Test void eightIndependentObjectsEachAllowAtMostThreeUniqueHits() {
@@ -61,5 +77,13 @@ class WaterTridentStateTest {
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.COLLISION));
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.CANCELLED));
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.INVALIDATED));
+    }
+
+    @Test void rainRequiresLandStormAndSkyExposure() {
+        assertTrue(WaterTridentState.rainExposed(true, true, true, 64, 64));
+        assertFalse(WaterTridentState.rainExposed(false, true, true, 64, 64));
+        assertFalse(WaterTridentState.rainExposed(true, false, true, 64, 64));
+        assertFalse(WaterTridentState.rainExposed(true, true, false, 64, 64));
+        assertFalse(WaterTridentState.rainExposed(true, true, true, 70, 64));
     }
 }

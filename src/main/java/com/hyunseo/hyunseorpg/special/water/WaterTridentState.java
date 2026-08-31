@@ -32,12 +32,22 @@ public final class WaterTridentState {
         return phase == FlightPhase.OUTWARD && projectileInWater;
     }
 
+    /** Direct impact is valid on land, but never during the synthetic return phase. */
+    public static boolean directHitMayAttack(FlightPhase phase) {
+        return phase == FlightPhase.OUTWARD;
+    }
+
     public static CastMode decideCast(boolean targetPresentAtCast) {
         return targetPresentAtCast ? CastMode.ATTACK : CastMode.ORBIT;
     }
 
     public static boolean applyNormalVerticalBoost(MovementEnd reason) {
         return reason == MovementEnd.NORMAL;
+    }
+
+    public static boolean rainExposed(boolean onLand, boolean storm, boolean biomeReceivesRain,
+                                      int highestBlockingY, int playerBlockY) {
+        return onLand && storm && biomeReceivesRain && highestBlockingY <= playerBlockY;
     }
 
     public static final class SyntheticAttack {
