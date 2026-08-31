@@ -305,4 +305,10 @@ special-equipment:
       unlock: { required-rpg-level: 50, required-custom-mob-kills: { riptide_drowned: 50 } }
       crafting: { enabled: true, amount: 1, inputs: { "water_crystal": 64, "vanilla:TRIDENT": 3 } }
       growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
-      abilities: { mode-1: { lightning: true }, mode-2: { riptide: true }, life-steal: { damage-ratio: 0.005 } }
+      abilities:
+        life-steal: { damage-ratio: 0.005 }
+        # Provisional values: tune only after live-server combat testing.
+        pressure-thrust: { id: water-pressure-thrust, display-name: "수압 찌르기", trigger: LEFT_CLICK, description: "연속 타격으로 수압 파열을 일으킵니다.", damage: 2.0, radius: 1.1, combo-timeout-ticks: 60, combo-damage: 4.0, combo-knockback: 0.45 }
+        current-throw: { id: water-current-throw, display-name: "해류 투척", trigger: VANILLA_THROW, description: "실제 삼지창의 수중 바깥 비행 궤적에 해류를 만듭니다.", outward-ticks: 30, lifecycle-timeout-ticks: 160, trail-radius: 1.8, pull-strength: 0.18, trail-damage: 2.0, direct-damage: 6.0 }
+        signature: { id: vortex-eight-way-return, display-name: "격류 팔방귀환", trigger: OFFHAND_QUICK, description: "소용돌이 충격 후 여덟 방향의 비획득 삼지창 공격체를 전개합니다.", cooldown-seconds: 16.0, vortex-telegraph-ticks: 12, vortex-radius: 7.0, vortex-damage: 7.0, vortex-knockback: 0.8, maximum-hits-per-trident: 3, trident-damage: 3.0, attack-duration-ticks: 55, return-start-ticks: 35 }
+        riptide: { id: rainy-riptide, display-name: "번개 급류", trigger: VANILLA_THROW_RAIN_PASSIVE, description: "비에 노출된 지상에서 투척 시 번개 궤적을 남기며 돌진합니다.", cooldown-seconds: 8.0, velocity: 1.7, duration-ticks: 24, lightning-interval-ticks: 7, lightning-radius: 2.5, lightning-damage: 4.0, post-vertical-boost: 0.28 }

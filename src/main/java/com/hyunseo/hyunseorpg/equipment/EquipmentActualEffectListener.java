@@ -183,13 +183,13 @@ public final class EquipmentActualEffectListener implements Listener {
                 && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
         ItemStack item = event.getItem();
         if (item == null || item.getType() != Material.TRIDENT) return;
-        if (isCustomRpgItem(item)) event.setCancelled(true);
+        if (isBlockedCustomTrident(item)) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCustomTridentLaunch(ProjectileLaunchEvent event) {
         if (!(event.getEntity() instanceof Trident trident)) return;
-        if (isCustomRpgItem(trident.getItemStack())) event.setCancelled(true);
+        if (isBlockedCustomTrident(trident.getItemStack())) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -351,6 +351,10 @@ public final class EquipmentActualEffectListener implements Listener {
 
     private boolean isCustomRpgItem(ItemStack item) {
         return item != null && item.getType() == Material.TRIDENT && itemService.getItemId(item).isPresent();
+    }
+
+    private boolean isBlockedCustomTrident(ItemStack item) {
+        return isCustomRpgItem(item) && !itemService.isItem(item, "poseidon_spear");
     }
 
     private boolean isAxe(ItemStack item) {

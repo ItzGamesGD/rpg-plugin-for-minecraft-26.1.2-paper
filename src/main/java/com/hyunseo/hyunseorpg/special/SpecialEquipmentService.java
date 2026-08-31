@@ -20,6 +20,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -110,6 +111,10 @@ public final class SpecialEquipmentService {
         if (data.unbreakable() && isDurabilityEquipment(data)) {
             // Special weapons and equipment are intentionally not part of the durability economy.
             meta.setUnbreakable(true);
+        }
+        if (data.id().equals("poseidons_spear")) {
+            // The advanced water trident uses the real vanilla throw/return lifecycle.
+            meta.addEnchant(Enchantment.LOYALTY, 1, true);
         }
         if (data.id().equals("flowing_water_sword")) {
             meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(

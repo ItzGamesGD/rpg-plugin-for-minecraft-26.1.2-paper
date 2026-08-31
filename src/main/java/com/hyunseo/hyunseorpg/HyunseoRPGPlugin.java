@@ -193,6 +193,7 @@ import com.hyunseo.hyunseorpg.special.SpecialEquipmentMenuService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentProgressListener;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
+import com.hyunseo.hyunseorpg.special.water.WaterTridentListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import com.hyunseo.hyunseorpg.shop.ShopRegistry;
@@ -333,6 +334,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EquipmentEffectTriggerEngine equipmentEffectTriggerEngine;
     private EquipmentEnchantContentService equipmentEnchantContentService;
     private SpecialEquipmentEffectListener specialEquipmentEffectListener;
+    private WaterTridentListener waterTridentListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -709,6 +711,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (specialEquipmentEffectListener != null) {
             specialEquipmentEffectListener.clearAllStates();
         }
+        if (waterTridentListener != null) waterTridentListener.shutdown();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -1588,6 +1591,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 configService, specialEquipmentService, itemService,
                 combatService, cooldownService, equipmentPromotionService);
         getServer().getPluginManager().registerEvents(specialEquipmentEffectListener, this);
+        this.waterTridentListener = new WaterTridentListener(
+                configService, specialEquipmentService, combatService, cooldownService);
+        getServer().getPluginManager().registerEvents(waterTridentListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);
