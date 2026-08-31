@@ -75,6 +75,17 @@ class WaterTridentStateTest {
         assertFalse(second.tryHit(target));
     }
 
+    @Test void lifecycleCleanupNeverDestroysARealVanillaTrident() {
+        assertFalse(WaterTridentState.removePhysicalProjectileOnCleanup(
+                WaterTridentState.ProjectileOwnership.VANILLA_REAL),
+                "slot, inventory, timeout, disconnect and disable cleanup only forget custom tracking");
+    }
+
+    @Test void syntheticSignatureProjectilesRemainPluginOwnedAndRemovable() {
+        assertTrue(WaterTridentState.removePhysicalProjectileOnCleanup(
+                WaterTridentState.ProjectileOwnership.PLUGIN_SYNTHETIC));
+    }
+
     @Test void onlyNormalRiptideTerminationReceivesBoost() {
         assertTrue(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.NORMAL));
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.COLLISION));

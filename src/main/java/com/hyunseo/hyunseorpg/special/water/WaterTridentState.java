@@ -12,6 +12,7 @@ public final class WaterTridentState {
 
     public enum FlightPhase { OUTWARD, RETURNING, REMOVED }
     public enum MovementEnd { NORMAL, COLLISION, CANCELLED, INVALIDATED }
+    public enum ProjectileOwnership { VANILLA_REAL, PLUGIN_SYNTHETIC }
 
     private final Map<UUID, Combo> combos = new HashMap<>();
 
@@ -34,6 +35,11 @@ public final class WaterTridentState {
     /** Direct impact is valid on land, but never during the synthetic return phase. */
     public static boolean directHitMayAttack(FlightPhase phase) {
         return phase == FlightPhase.OUTWARD;
+    }
+
+    /** Physical removal is reserved for bounded, plugin-created F projectiles. */
+    public static boolean removePhysicalProjectileOnCleanup(ProjectileOwnership ownership) {
+        return ownership == ProjectileOwnership.PLUGIN_SYNTHETIC;
     }
 
     public static boolean applyNormalVerticalBoost(MovementEnd reason) {

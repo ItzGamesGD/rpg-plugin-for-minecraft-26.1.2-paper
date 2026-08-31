@@ -134,12 +134,12 @@ public final class WaterTridentListener implements Listener {
 
     private void tickFlight(Flight flight) {
         Trident trident = flight.trident;
-        if (!trident.isValid()) { forgetFlight(flight, false); return; }
+        if (!trident.isValid()) { forgetRealFlightTracking(flight); return; }
         if (!flight.owner.isOnline() || flight.owner.isDead() || trident.getWorld() != flight.owner.getWorld()) {
-            forgetFlight(flight, true); return;
+            forgetRealFlightTracking(flight); return;
         }
         if (++flight.age >= ticks("current-throw.lifecycle-timeout-ticks", 160)) {
-            forgetFlight(flight, true); return;
+            forgetRealFlightTracking(flight); return;
         }
         if (flight.phase == WaterTridentState.FlightPhase.OUTWARD) {
             if (WaterTridentState.currentMayAttack(flight.phase, inWater(trident.getLocation()))) {
@@ -351,13 +351,16 @@ public final class WaterTridentListener implements Listener {
         clearCast(id);
         clearTimed(movements.remove(id));
         flights.values().stream().filter(flight -> flight.owner.getUniqueId().equals(id)).toList()
-                .forEach(flight -> forgetFlight(flight, true));
+                .forEach(this::forgetRealFlightTracking);
     }
 
-    private void forgetFlight(Flight flight, boolean removeProjectile) {
+    /**
+     * Stops HyunseoRPG effects for a player/vanilla-owned projectile without destroying the item entity.
+     * Vanilla and Loyalty remain solely responsible for physical projectile lifetime and retrieval.
+     */
+    private void forgetRealFlightTracking(Flight flight) {
         flights.remove(flight.trident.getUniqueId());
         if (flight.task != null) { flight.task.cancel(); tasks.remove(flight.task); }
-        if (removeProjectile && flight.trident.isValid()) flight.trident.remove();
         flight.phase = WaterTridentState.FlightPhase.REMOVED;
     }
 
@@ -366,9 +369,14 @@ public final class WaterTridentListener implements Listener {
         if (cast == null) return;
         if (cast.task != null) { cast.task.cancel(); tasks.remove(cast.task); }
         cast.objects.forEach(object -> {
-            syntheticProjectiles.remove(object.entity.getUniqueId());
-            object.entity.remove();
+            removeSyntheticProjectile(object.entity);
         });
+    }
+
+    private void removeSyntheticProjectile(Trident trident) {
+        syntheticProjectiles.remove(trident.getUniqueId());
+        if (WaterTridentState.removePhysicalProjectileOnCleanup(
+                WaterTridentState.ProjectileOwnership.PLUGIN_SYNTHETIC) && trident.isValid()) trident.remove();
     }
 
     private void clearTimed(TimedPlayerState timed) {
@@ -377,7 +385,7 @@ public final class WaterTridentListener implements Listener {
 
     public void shutdown() {
         new ArrayList<>(casts.keySet()).forEach(this::clearCast);
-        new ArrayList<>(flights.values()).forEach(flight -> forgetFlight(flight, true));
+        new ArrayList<>(flights.values()).forEach(this::forgetRealFlightTracking);
         movements.values().forEach(this::clearTimed);
         movements.clear();
         syntheticProjectiles.clear();
