@@ -11,7 +11,6 @@ public final class WaterTridentState {
     public static final int SYNTHETIC_COUNT = 8;
 
     public enum FlightPhase { OUTWARD, RETURNING, REMOVED }
-    public enum CastMode { ATTACK, ORBIT }
     public enum MovementEnd { NORMAL, COLLISION, CANCELLED, INVALIDATED }
 
     private final Map<UUID, Combo> combos = new HashMap<>();
@@ -35,10 +34,6 @@ public final class WaterTridentState {
     /** Direct impact is valid on land, but never during the synthetic return phase. */
     public static boolean directHitMayAttack(FlightPhase phase) {
         return phase == FlightPhase.OUTWARD;
-    }
-
-    public static CastMode decideCast(boolean targetPresentAtCast) {
-        return targetPresentAtCast ? CastMode.ATTACK : CastMode.ORBIT;
     }
 
     public static boolean applyNormalVerticalBoost(MovementEnd reason) {

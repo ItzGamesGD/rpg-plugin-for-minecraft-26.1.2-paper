@@ -12,28 +12,22 @@ import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerRiptideEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.scoreboard.Team;
-import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -57,7 +51,6 @@ public final class WaterTridentListener implements Listener {
     private final WaterTridentState state = new WaterTridentState();
     private final Map<UUID, Flight> flights = new HashMap<>();
     private final Map<UUID, Cast> casts = new HashMap<>();
-    private final Map<UUID, TimedPlayerState> defenses = new HashMap<>();
     private final Map<UUID, TimedPlayerState> movements = new HashMap<>();
     private final Set<UUID> syntheticProjectiles = new HashSet<>();
     private final Set<BukkitTask> tasks = new HashSet<>();
@@ -94,36 +87,32 @@ public final class WaterTridentListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND || !holding(event.getPlayer())) return;
-        Action action = event.getAction();
-        if (event.getPlayer().isSneaking() && (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK)) {
-            event.setCancelled(true);
-            largeSkill(event.getPlayer());
-            return;
-        }
-        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
-        event.setCancelled(true);
-        Player player = event.getPlayer();
-        if (rainyLand(player)) startRiptide(player); else launchCurrent(player);
+    /** Vanilla charge/release creates the authoritative projectile. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTridentLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof Trident trident)
+                || !(trident.getShooter() instanceof Player owner)
+                || !specials.getSpecialId(trident.getItemStack()).equals(ID)) return;
+        Flight flight = new Flight(owner, trident);
+        flights.put(trident.getUniqueId(), flight);
+        flight.task = repeat(() -> tickFlight(flight), 1, 1);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onF(PlayerSwapHandItemsEvent event) {
         if (!holding(event.getPlayer())) return;
         event.setCancelled(true);
-        startEightWayCast(event.getPlayer());
+        startSignature(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onQ(PlayerDropItemEvent event) {
-        if (!specials.getSpecialId(event.getItemDrop().getItemStack()).equals(ID)) return;
-        event.setCancelled(true);
-        if (!inWater(event.getPlayer().getLocation())) startDefense(event.getPlayer());
+    /** Rain movement decorates a real vanilla Riptide activation, not a separate input. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onRiptide(PlayerRiptideEvent event) {
+        if (specials.getSpecialId(event.getItem()).equals(ID) && rainyLand(event.getPlayer()))
+            startRiptideTrail(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTridentDamage(EntityDamageByEntityEvent event) {
         if (syntheticProjectiles.contains(event.getDamager().getUniqueId())) {
             event.setCancelled(true); // F damage is exclusively governed by its per-object hit ledger.
@@ -143,142 +132,110 @@ public final class WaterTridentListener implements Listener {
         if (flight != null && event.getHitEntity() == null) flight.phase = WaterTridentState.FlightPhase.RETURNING;
     }
 
-    private void launchCurrent(Player player) {
-        if (!cooldown(player, "throw", number("current-throw.cooldown-seconds", 2.5))) return;
-        Trident trident = safeTrident(player, player.getEyeLocation(), player.getEyeLocation().getDirection()
-                .normalize().multiply(number("current-throw.speed", 1.8)));
-        Flight flight = new Flight(player, trident);
-        flights.put(trident.getUniqueId(), flight);
-        BukkitTask task = repeat(() -> tickFlight(flight), 1, 1);
-        flight.task = task;
-    }
-
     private void tickFlight(Flight flight) {
         Trident trident = flight.trident;
-        if (!trident.isValid() || !flight.owner.isOnline() || flight.owner.isDead() || !holding(flight.owner)
-                || trident.getWorld() != flight.owner.getWorld()) { removeFlight(flight); return; }
-        flight.age++;
-        if (flight.age >= ticks("current-throw.lifecycle-timeout-ticks", 160)) { removeFlight(flight); return; }
+        if (!trident.isValid()) { forgetFlight(flight, false); return; }
+        if (!flight.owner.isOnline() || flight.owner.isDead() || trident.getWorld() != flight.owner.getWorld()) {
+            forgetFlight(flight, true); return;
+        }
+        if (++flight.age >= ticks("current-throw.lifecycle-timeout-ticks", 160)) {
+            forgetFlight(flight, true); return;
+        }
         if (flight.phase == WaterTridentState.FlightPhase.OUTWARD) {
             if (WaterTridentState.currentMayAttack(flight.phase, inWater(trident.getLocation()))) {
                 Location at = trident.getLocation();
                 at.getWorld().spawnParticle(Particle.BUBBLE, at, 5, .15, .15, .15, .03);
-                if (flight.age % 4 == 0) at.getWorld().spawnParticle(Particle.SONIC_BOOM, at, 1);
+                if (flight.age % 4 == 0) at.getWorld().spawnParticle(Particle.SPLASH, at, 5, .2, .2, .2, .05);
                 for (LivingEntity target : targets(flight.owner, at, number("current-throw.trail-radius", 1.8))) {
                     if (!flight.trailHits.add(target.getUniqueId())) continue;
                     Vector pull = at.toVector().subtract(target.getLocation().toVector());
                     if (pull.lengthSquared() > .01) target.setVelocity(target.getVelocity().add(pull.normalize()
                             .multiply(number("current-throw.pull-strength", .18))));
-                    combat.applySkillDamage(flight.owner, target, number("current-throw.trail-damage", 2.0));
+                    combat.applySkillDamage(flight.owner, target, number("current-throw.trail-damage", 2));
                 }
             }
-            if (flight.age >= ticks("current-throw.outward-ticks", 30) || trident.isOnGround())
-                flight.phase = WaterTridentState.FlightPhase.RETURNING;
+            if (trident.isOnGround()) flight.phase = WaterTridentState.FlightPhase.RETURNING;
         } else {
-            Vector home = flight.owner.getEyeLocation().toVector().subtract(trident.getLocation().toVector());
-            if (home.lengthSquared() < 1.5) { removeFlight(flight); return; }
-            trident.setVelocity(home.normalize().multiply(number("current-throw.return-speed", 1.7)));
+            // Loyalty owns return velocity and retrieval. This trail is visual-only.
             trident.getWorld().spawnParticle(Particle.BUBBLE, trident.getLocation(), 2, .1, .1, .1, .01);
         }
     }
 
-    private void largeSkill(Player player) {
-        if (!cooldown(player, "large", number("large-skill.cooldown-seconds", 18))) return;
-        boolean water = inWater(player.getLocation());
-        double radius = number(water ? "large-skill.vortex-radius" : "large-skill.pillar-radius", water ? 7 : 5);
-        Location center = player.getLocation();
-        for (int ring = 1; ring <= 4; ring++) {
-            double r = radius * ring / 4.0;
-            for (int degree = 0; degree < 360; degree += 20) {
-                double angle = Math.toRadians(degree);
-                Location point = center.clone().add(Math.cos(angle) * r, water ? .4 : ring * 1.3, Math.sin(angle) * r);
-                point.getWorld().spawnParticle(water ? Particle.BUBBLE : Particle.SPLASH, point, 2, .15, .2, .15, .02);
-            }
-        }
-        for (LivingEntity target : targets(player, center, radius)) {
-            combat.applySkillDamage(player, target, number("large-skill.damage", 7));
-            Vector push = target.getLocation().toVector().subtract(center.toVector());
-            if (push.lengthSquared() > .01) push.normalize().multiply(number("large-skill.knockback", .8));
-            if (!water) push.setY(number("large-skill.pillar-vertical", .9));
-            target.setVelocity(target.getVelocity().add(push));
-        }
-    }
-
-    private void startEightWayCast(Player player) {
-        if (!cooldown(player, "eight-way", number("eight-way.cooldown-seconds", 16))) return;
+    private void startSignature(Player player) {
+        if (!cooldown(player, "signature", number("signature.cooldown-seconds", 18))) return;
         clearCast(player.getUniqueId());
-        boolean targetAtCast = !targets(player, player.getLocation(), number("eight-way.target-radius", 20)).isEmpty();
-        WaterTridentState.CastMode mode = WaterTridentState.decideCast(targetAtCast);
-        Cast cast = new Cast(player, mode);
+        Cast cast = new Cast(player);
         casts.put(player.getUniqueId(), cast);
-        for (int index = 0; index < WaterTridentState.SYNTHETIC_COUNT; index++) {
-            double angle = Math.PI * 2 * index / WaterTridentState.SYNTHETIC_COUNT;
-            Vector direction = new Vector(Math.cos(angle), 0, Math.sin(angle));
-            Trident trident = safeTrident(player, player.getLocation().add(0, 1.1, 0), direction.multiply(1.1));
-            syntheticProjectiles.add(trident.getUniqueId());
-            cast.objects.add(new Synthetic(trident, new WaterTridentState.SyntheticAttack(
-                    ticks("eight-way.maximum-hits-per-trident", 3)), angle));
-        }
         cast.task = repeat(() -> tickCast(cast), 1, 1);
     }
 
     private void tickCast(Cast cast) {
         if (!validOwner(cast.player) || !holding(cast.player)) { clearCast(cast.player.getUniqueId()); return; }
+        int releaseTick = ticks("signature.vortex-duration-ticks", 24);
         cast.age++;
-        int orbitTicks = ticks("eight-way.no-target-orbit-ticks", 100);
+        if (!cast.released) {
+            renderVortex(cast.player, cast.age, releaseTick);
+            if (cast.age == Math.max(1, releaseTick - 4)) eruptVortex(cast.player);
+            if (cast.age >= releaseTick) releaseEightWay(cast);
+            return;
+        }
         for (Synthetic object : cast.objects) {
             if (!object.entity.isValid()) continue;
-            if (cast.mode == WaterTridentState.CastMode.ORBIT) {
-                double angle = object.angle + cast.age * .18;
-                Location location = cast.player.getLocation().add(Math.cos(angle) * 2.2, 1.2, Math.sin(angle) * 2.2);
-                object.entity.teleport(location);
-                object.entity.setVelocity(new Vector());
-            } else {
-                for (LivingEntity target : targets(cast.player, object.entity.getLocation(), 1.2)) {
-                    if (object.hits.tryHit(target.getUniqueId()))
-                        combat.applyMultiHitDamage(cast.player, target, number("eight-way.damage", 3));
+            for (LivingEntity target : targets(cast.player, object.entity.getLocation(), number("signature.hit-radius", 1.2)))
+                if (object.hits.tryHit(target.getUniqueId())) {
+                    combat.applyMultiHitDamage(cast.player, target, number("signature.trident-damage", 3));
+                    target.getWorld().spawnParticle(Particle.SPLASH, target.getEyeLocation(), 8, .2, .2, .2, .05);
                 }
-                if (object.hits.hitCount() >= object.hits.maximumHits() || cast.age > 35) {
-                    Vector home = cast.player.getEyeLocation().toVector().subtract(object.entity.getLocation().toVector());
-                    if (home.lengthSquared() > .1) object.entity.setVelocity(home.normalize().multiply(1.5));
-                }
-            }
-            object.entity.getWorld().spawnParticle(Particle.BUBBLE, object.entity.getLocation(), 1);
+            object.entity.getWorld().spawnParticle(Particle.BUBBLE, object.entity.getLocation(), 2, .08, .08, .08, .01);
         }
-        if ((cast.mode == WaterTridentState.CastMode.ORBIT && cast.age >= orbitTicks + 10)
-                || (cast.mode == WaterTridentState.CastMode.ATTACK && cast.age >= 55)) clearCast(cast.player.getUniqueId());
+        if (cast.age >= releaseTick + ticks("signature.attack-duration-ticks", 40)) clearCast(cast.player.getUniqueId());
     }
 
-    private void startDefense(Player player) {
-        if (!cooldown(player, "defense", number("defense.cooldown-seconds", 14))) return;
-        clearTimed(defenses.remove(player.getUniqueId()));
-        TimedPlayerState defense = new TimedPlayerState(player);
-        defenses.put(player.getUniqueId(), defense);
-        int duration = ticks("defense.duration-ticks", 80);
-        defense.task = repeat(() -> {
-            if (!validOwner(player) || !holding(player) || defense.age++ >= duration) {
-                clearTimed(defenses.remove(player.getUniqueId())); return;
-            }
-            Location center = player.getEyeLocation();
-            double angle = defense.age * .55;
-            center.getWorld().spawnParticle(Particle.SPLASH,
-                    center.clone().add(Math.cos(angle) * 1.5, 0, Math.sin(angle) * 1.5), 6, .1, .2, .1, .03);
-            for (Entity entity : center.getWorld().getNearbyEntities(center, 2.4, 2.4, 2.4)) {
-                if (!(entity instanceof Projectile projectile) || flights.containsKey(entity.getUniqueId())) continue;
-                ProjectileSource shooter = projectile.getShooter();
-                if (!shouldIntercept(player, shooter)) continue;
-                projectile.remove(); // interception only; no invulnerability or melee reduction
-            }
-        }, 1, 1);
+    private void renderVortex(Player player, int age, int duration) {
+        Location center = player.getLocation().add(0, .3, 0);
+        double progress = Math.min(1D, age / (double) duration);
+        double radius = number("signature.vortex-radius", 7) * progress;
+        for (int arm = 0; arm < 3; arm++) {
+            double angle = age * .32 + arm * Math.PI * 2 / 3;
+            Location point = center.clone().add(Math.cos(angle) * radius, .4 + progress * 1.4, Math.sin(angle) * radius);
+            center.getWorld().spawnParticle(Particle.BUBBLE, point, 7, .2, .25, .2, .04);
+            center.getWorld().spawnParticle(Particle.SPLASH, point, 3, .15, .15, .15, .03);
+        }
     }
 
-    private void startRiptide(Player player) {
+    private void eruptVortex(Player player) {
+        Location center = player.getLocation();
+        for (LivingEntity target : targets(player, center, number("signature.vortex-radius", 7))) {
+            combat.applySkillDamage(player, target, number("signature.vortex-damage", 7));
+            Vector outward = target.getLocation().toVector().subtract(center.toVector());
+            if (outward.lengthSquared() > .01) {
+                outward.normalize().multiply(number("signature.vortex-knockback", .8));
+                outward.setY(Math.max(.18, outward.getY()));
+                target.setVelocity(target.getVelocity().add(outward));
+            }
+        }
+        center.getWorld().spawnParticle(Particle.SONIC_BOOM, center.clone().add(0, 1, 0), 1);
+    }
+
+    private void releaseEightWay(Cast cast) {
+        cast.released = true;
+        Location origin = cast.player.getLocation().add(0, 1.1, 0);
+        for (int index = 0; index < WaterTridentState.SYNTHETIC_COUNT; index++) {
+            double angle = Math.PI * 2 * index / WaterTridentState.SYNTHETIC_COUNT;
+            Trident trident = safeTrident(cast.player, origin,
+                    new Vector(Math.cos(angle), 0, Math.sin(angle)).multiply(number("signature.trident-speed", 1.1)));
+            syntheticProjectiles.add(trident.getUniqueId());
+            cast.objects.add(new Synthetic(trident,
+                    new WaterTridentState.SyntheticAttack(ticks("signature.maximum-hits-per-trident", 3))));
+        }
+    }
+
+    private void startRiptideTrail(Player player) {
         if (!cooldown(player, "riptide", number("riptide.cooldown-seconds", 8))) return;
         clearTimed(movements.remove(player.getUniqueId()));
         TimedPlayerState movement = new TimedPlayerState(player);
         movements.put(player.getUniqueId(), movement);
         Deque<Location> trail = new ArrayDeque<>();
-        player.setVelocity(player.getEyeLocation().getDirection().normalize().multiply(number("riptide.velocity", 1.7)));
         int duration = ticks("riptide.duration-ticks", 24);
         int lightningInterval = ticks("riptide.lightning-interval-ticks", 7);
         movement.task = repeat(() -> {
@@ -330,14 +287,6 @@ public final class WaterTridentListener implements Listener {
 
     private boolean validTarget(Player owner, LivingEntity target) {
         return target != owner && !target.isDead() && target.isValid() && !target.isInvulnerable();
-    }
-
-    private boolean shouldIntercept(Player owner, ProjectileSource source) {
-        if (source == owner) return false;
-        if (!(source instanceof Player shooter)) return true;
-        Team ownerTeam = owner.getScoreboard().getEntryTeam(owner.getName());
-        Team shooterTeam = owner.getScoreboard().getEntryTeam(shooter.getName());
-        return ownerTeam == null || ownerTeam != shooterTeam;
     }
 
     private boolean movementCollisionAhead(Player player) {
@@ -400,15 +349,15 @@ public final class WaterTridentListener implements Listener {
         UUID id = player.getUniqueId();
         state.clear(id);
         clearCast(id);
-        clearTimed(defenses.remove(id));
         clearTimed(movements.remove(id));
-        flights.values().stream().filter(flight -> flight.owner.getUniqueId().equals(id)).toList().forEach(this::removeFlight);
+        flights.values().stream().filter(flight -> flight.owner.getUniqueId().equals(id)).toList()
+                .forEach(flight -> forgetFlight(flight, true));
     }
 
-    private void removeFlight(Flight flight) {
+    private void forgetFlight(Flight flight, boolean removeProjectile) {
         flights.remove(flight.trident.getUniqueId());
         if (flight.task != null) { flight.task.cancel(); tasks.remove(flight.task); }
-        flight.trident.remove();
+        if (removeProjectile && flight.trident.isValid()) flight.trident.remove();
         flight.phase = WaterTridentState.FlightPhase.REMOVED;
     }
 
@@ -428,10 +377,9 @@ public final class WaterTridentListener implements Listener {
 
     public void shutdown() {
         new ArrayList<>(casts.keySet()).forEach(this::clearCast);
-        new ArrayList<>(flights.values()).forEach(this::removeFlight);
-        defenses.values().forEach(this::clearTimed);
+        new ArrayList<>(flights.values()).forEach(flight -> forgetFlight(flight, true));
         movements.values().forEach(this::clearTimed);
-        defenses.clear(); movements.clear();
+        movements.clear();
         syntheticProjectiles.clear();
         tasks.forEach(BukkitTask::cancel); tasks.clear();
     }
@@ -442,11 +390,11 @@ public final class WaterTridentListener implements Listener {
         Flight(Player owner, Trident trident) { this.owner = owner; this.trident = trident; }
     }
     private static final class Cast {
-        final Player player; final WaterTridentState.CastMode mode; final List<Synthetic> objects = new ArrayList<>();
-        int age; BukkitTask task;
-        Cast(Player player, WaterTridentState.CastMode mode) { this.player = player; this.mode = mode; }
+        final Player player; final List<Synthetic> objects = new ArrayList<>();
+        int age; boolean released; BukkitTask task;
+        Cast(Player player) { this.player = player; }
     }
-    private record Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits, double angle) { }
+    private record Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits) { }
     private static final class TimedPlayerState {
         final Player player; int age; BukkitTask task;
         TimedPlayerState(Player player) { this.player = player; }

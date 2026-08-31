@@ -65,11 +65,14 @@ class WaterTridentStateTest {
         }
     }
 
-    @Test void noTargetDecisionRemainsOrbitForTheCast() {
-        WaterTridentState.CastMode mode = WaterTridentState.decideCast(false);
-        assertEquals(WaterTridentState.CastMode.ORBIT, mode);
-        assertEquals(WaterTridentState.CastMode.ORBIT, mode); // later target presence cannot mutate the decision
-        assertEquals(WaterTridentState.CastMode.ATTACK, WaterTridentState.decideCast(true));
+    @Test void differentSyntheticAttacksMayHitTheSameTarget() {
+        UUID target = UUID.randomUUID();
+        WaterTridentState.SyntheticAttack first = new WaterTridentState.SyntheticAttack(3);
+        WaterTridentState.SyntheticAttack second = new WaterTridentState.SyntheticAttack(3);
+        assertTrue(first.tryHit(target));
+        assertTrue(second.tryHit(target));
+        assertFalse(first.tryHit(target));
+        assertFalse(second.tryHit(target));
     }
 
     @Test void onlyNormalRiptideTerminationReceivesBoost() {
