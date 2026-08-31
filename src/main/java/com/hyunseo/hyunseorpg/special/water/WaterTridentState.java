@@ -11,8 +11,8 @@ public final class WaterTridentState {
     public static final int SYNTHETIC_COUNT = 8;
 
     public enum FlightPhase { OUTWARD, RETURNING, REMOVED }
-    public enum CastMode { ATTACK, ORBIT }
     public enum MovementEnd { NORMAL, COLLISION, CANCELLED, INVALIDATED }
+    public enum ProjectileOwnership { VANILLA_REAL, PLUGIN_SYNTHETIC }
 
     private final Map<UUID, Combo> combos = new HashMap<>();
 
@@ -37,8 +37,9 @@ public final class WaterTridentState {
         return phase == FlightPhase.OUTWARD;
     }
 
-    public static CastMode decideCast(boolean targetPresentAtCast) {
-        return targetPresentAtCast ? CastMode.ATTACK : CastMode.ORBIT;
+    /** Physical removal is reserved for bounded, plugin-created F projectiles. */
+    public static boolean removePhysicalProjectileOnCleanup(ProjectileOwnership ownership) {
+        return ownership == ProjectileOwnership.PLUGIN_SYNTHETIC;
     }
 
     public static boolean applyNormalVerticalBoost(MovementEnd reason) {

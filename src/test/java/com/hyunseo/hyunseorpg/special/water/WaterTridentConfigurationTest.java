@@ -12,10 +12,11 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class WaterTridentConfigurationTest {
     private static final Set<String> ABILITIES = Set.of(
-            "pressure-thrust", "current-throw", "large-skill", "eight-way", "defense", "riptide");
+            "pressure-thrust", "current-throw", "signature", "riptide");
 
     @Test void everyRuntimeAbilityUsesRegistryMetadataConvention() {
         YamlConfiguration yaml = load();
@@ -30,8 +31,15 @@ class WaterTridentConfigurationTest {
             assertTrue(ability.isString("trigger") && !ability.getString("trigger", "").isBlank(), key + " trigger");
             assertTrue(ability.isString("description") && !ability.getString("description", "").isBlank(), key + " description");
         }
+        assertFalse(abilities.contains("defense"));
+        assertFalse(abilities.contains("large-skill"));
+        assertFalse(abilities.contains("eight-way"));
+        String metadata = abilities.getValues(true).toString().toLowerCase();
+        assertFalse(metadata.contains("orbit"));
+        assertFalse(metadata.contains("shift_left"));
+        assertFalse(metadata.contains("drop_key"));
         assertEquals(3, yaml.getInt(
-                "special-equipment.items.poseidons_spear.abilities.eight-way.maximum-hits-per-trident"));
+                "special-equipment.items.poseidons_spear.abilities.signature.maximum-hits-per-trident"));
     }
 
     private YamlConfiguration load() {
