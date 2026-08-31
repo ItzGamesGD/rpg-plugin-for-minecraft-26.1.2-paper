@@ -67,7 +67,6 @@ public final class SpecialEquipmentEffectListener implements Listener {
     private final NamespacedKey projectileSpecialKey;
     private final NamespacedKey projectileAbilityKey;
     private final NamespacedKey empoweredProjectileKey;
-    private final NamespacedKey poseidonModeKey;
     private final Map<UUID, Map<UUID, StackState>> fireStacks = new ConcurrentHashMap<>();
     private final Map<UUID, Map<UUID, StackState>> iceStacks = new ConcurrentHashMap<>();
     private final Set<UUID> internalDamage = ConcurrentHashMap.newKeySet();
@@ -93,7 +92,6 @@ public final class SpecialEquipmentEffectListener implements Listener {
         this.projectileSpecialKey = new NamespacedKey(config.getPlugin(), "special_projectile_equipment");
         this.projectileAbilityKey = new NamespacedKey(config.getPlugin(), "special_projectile_ability");
         this.empoweredProjectileKey = new NamespacedKey(config.getPlugin(), "special_projectile_empowered");
-        this.poseidonModeKey = new NamespacedKey(config.getPlugin(), "poseidon_mode");
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -190,11 +188,6 @@ public final class SpecialEquipmentEffectListener implements Listener {
         String id = specials.getSpecialId(item);
         if (id.isBlank()) return;
 
-        if (id.equals("poseidons_spear") && event.getPlayer().isSneaking()) {
-            togglePoseidonMode(event.getPlayer(), item);
-            event.setCancelled(true);
-            return;
-        }
         if (id.equals("fireball_consumable")) {
             if (!startCooldown(event.getPlayer(), item, id, "active-1", "abilities.active-1.cooldown-seconds")) {
                 event.setCancelled(true);
@@ -736,17 +729,6 @@ public final class SpecialEquipmentEffectListener implements Listener {
     private double option(Player player, String id) {
         if (promotion == null || player == null) return 0.0D;
         return Math.max(0.0D, promotion.getLegacyOptionValue(player.getInventory().getItemInMainHand(), id));
-    }
-
-    private void togglePoseidonMode(Player player, ItemStack item) {
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
-        int current = meta.getPersistentDataContainer().getOrDefault(poseidonModeKey, PersistentDataType.INTEGER, 1);
-        int next = current == 1 ? 2 : 1;
-        meta.getPersistentDataContainer().set(poseidonModeKey, PersistentDataType.INTEGER, next);
-        item.setItemMeta(meta);
-        player.sendActionBar(Component.text("Poseidon mode: " + next, NamedTextColor.AQUA));
-        player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_1, 0.7F, next == 1 ? 0.8F : 1.2F);
     }
 
     private void applyConfiguredEffect(Player player, PotionEffectType type, String id, String path) {
