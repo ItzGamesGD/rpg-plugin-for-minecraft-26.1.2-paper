@@ -46,7 +46,7 @@ class FlameAxeMathTest {
         assertEquals(1, result.length(), 1e-9);
         assertTrue(Math.acos(result.dot(new Vector(1, 0, 0))) <= .100001);
         Vector opposite = FlameAxeMath.steer(new Vector(0, 1, 0), new Vector(0, -1, 0), .2);
-        assertTrue(opposite.isFinite());
+        assertTrue(Double.isFinite(opposite.getX()) && Double.isFinite(opposite.getY()) && Double.isFinite(opposite.getZ()));
         assertTrue(opposite.dot(new Vector(0, -1, 0)) < .99);
     }
 
@@ -54,6 +54,6 @@ class FlameAxeMathTest {
         assertEquals(new Vector(), FlameAxeMath.steer(new Vector(), new Vector(1, 0, 0), .1));
         assertEquals(new Vector(1, 0, 0), FlameAxeMath.steer(new Vector(1, 0, 0), null, .1));
         Vector nan = FlameAxeMath.steer(new Vector(1, 0, 0), new Vector(Double.NaN, 0, 0), .1);
-        assertTrue(nan.isFinite());
+        assertTrue(Double.isFinite(nan.getX()) && Double.isFinite(nan.getY()) && Double.isFinite(nan.getZ()));
     }
 }
