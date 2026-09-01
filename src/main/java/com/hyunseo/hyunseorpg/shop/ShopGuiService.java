@@ -1,7 +1,15 @@
 package com.hyunseo.hyunseorpg.shop;
 
 import com.hyunseo.hyunseorpg.economy.CoinService;
+import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.registry.data.dialog.ActionButton;
+import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import io.papermc.paper.registry.data.dialog.type.DialogType;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
@@ -12,6 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -41,9 +50,76 @@ public final class ShopGuiService {
 
     public boolean openShop(Player player, String shopId) {
         return shopRegistry.get(shopId).map(shop -> {
-            openShopPage(player, shop, 0);
+            openShopDialog(player, shop);
             return true;
         }).orElse(false);
+    }
+
+    private void openShopDialog(Player player, ShopData shop) {
+        List<ShopItemData> products = shop.items();
+        List<DialogBody> bodies = new ArrayList<>();
+        List<DialogInput> inputs = new ArrayList<>();
+        for (int index = 0; index < products.size(); index++) {
+            ShopItemData product = products.get(index);
+            int buyMaximum = shopService.availableBuyQuantity(player, product);
+            int sellMaximum = shopService.availableSellQuantity(player, product);
+            int maximum = Math.max(buyMaximum, sellMaximum);
+            ItemStack shown = product.template();
+            shown.setAmount(Math.min(product.amount(), Math.max(1, shown.getMaxStackSize())));
+            Component availability = Component.text("구매 최대 " + buyMaximum + " / 판매 최대 " + sellMaximum,
+                    NamedTextColor.GRAY);
+            bodies.add(DialogBody.item(shown).description(DialogBody.plainMessage(availability)).build());
+            inputs.add(DialogInput.numberRange(ShopDialogSelection.inputKey(index),
+                            Component.text(product.productId() + " 수량 (최대 " + maximum + ")"), 0.0F, maximum)
+                    .initial(0.0F).step(1.0F).build());
+        }
+
+        ClickCallback.Options oneUse = ClickCallback.Options.builder()
+                .uses(1).lifetime(Duration.ofMinutes(5)).build();
+        ActionButton buy = ActionButton.builder(Component.text("구매", NamedTextColor.GOLD))
+                .action(DialogAction.customClick((response, audience) -> {
+                    if (audience instanceof Player actor && actor.getUniqueId().equals(player.getUniqueId())) {
+                        transactDialog(actor, shop, products, response::getFloat, true);
+                    }
+                }, oneUse)).build();
+        ActionButton sell = ActionButton.builder(Component.text("판매", NamedTextColor.GREEN))
+                .action(DialogAction.customClick((response, audience) -> {
+                    if (audience instanceof Player actor && actor.getUniqueId().equals(player.getUniqueId())) {
+                        transactDialog(actor, shop, products, response::getFloat, false);
+                    }
+                }, oneUse)).build();
+
+        Dialog dialog = Dialog.create(builder -> builder.empty()
+                .base(DialogBase.builder(Component.text(shop.title()))
+                        .externalTitle(Component.text(shop.title()))
+                        .afterAction(DialogBase.DialogAfterAction.WAIT_FOR_RESPONSE)
+                        .body(bodies).inputs(inputs).build())
+                .type(DialogType.multiAction(List.of(buy, sell)).columns(2).build()));
+        player.showDialog(dialog);
+    }
+
+    private void transactDialog(Player player, ShopData displayedShop, List<ShopItemData> displayedProducts,
+                                java.util.function.Function<String, Float> input, boolean buy) {
+        ShopData currentShop = shopRegistry.get(displayedShop.shopId()).orElse(null);
+        if (currentShop == null || !currentShop.items().stream().map(ShopItemData::productId).toList()
+                .equals(displayedProducts.stream().map(ShopItemData::productId).toList())) {
+            player.sendMessage(Component.text("상점 정보가 변경되었습니다. 상점을 다시 열어 주세요.", NamedTextColor.RED));
+            return;
+        }
+        List<ShopItemData> currentProducts = currentShop.items();
+        Map<Integer, Integer> selected = ShopDialogSelection.read(
+                currentProducts.stream().map(ShopItemData::amount).toList(), input, index -> buy
+                        ? shopService.availableBuyQuantity(player, currentProducts.get(index))
+                        : shopService.availableSellQuantity(player, currentProducts.get(index)));
+        for (Map.Entry<Integer, Integer> entry : selected.entrySet()) {
+            ShopItemData product = currentProducts.get(entry.getKey());
+            ShopTransactionResult result = buy
+                    ? shopService.buyQuantity(player, product, entry.getValue())
+                    : shopService.sellQuantity(player, product, entry.getValue(),
+                    player.getInventory().getItemInMainHand());
+            sendTransactionMessage(player, result, buy);
+        }
+        openShopDialog(player, currentShop);
     }
 
     public List<ShopData> getShops() {

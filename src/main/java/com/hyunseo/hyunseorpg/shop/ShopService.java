@@ -42,12 +42,23 @@ public final class ShopService {
     }
 
     public ShopTransactionResult buy(Player player, ShopItemData product, boolean stack) {
+        int bundles = stack ? bulkBundleCount(product) : 1;
+        return buyBundles(player, product, bundles);
+    }
+
+    public ShopTransactionResult buyQuantity(Player player, ShopItemData product, int quantity) {
+        if (quantity < 1 || quantity > ShopDialogSelection.HARD_CAP || quantity % product.amount() != 0) {
+            return ShopTransactionResult.failed(ShopTransactionReason.TRANSACTION_FAILED);
+        }
+        return buyBundles(player, product, quantity / product.amount());
+    }
+
+    private ShopTransactionResult buyBundles(Player player, ShopItemData product, int bundleCount) {
         if (!product.purchasable()) return ShopTransactionResult.failed(ShopTransactionReason.PURCHASE_DISABLED);
         ShopTransactionReason farmingGate = farmingPurchaseGate(player, product);
         if (farmingGate != null) return ShopTransactionResult.failed(farmingGate);
         if (product.buyPrice() <= 0L) return ShopTransactionResult.failed(ShopTransactionReason.INVALID_PRICE);
 
-        int bundleCount = stack ? bulkBundleCount(product) : 1;
         int amount = deliveryAmount(product, bundleCount);
         long total = totalPrice(product.buyPrice(), bundleCount);
         if (amount < 1 || total < 0L) return ShopTransactionResult.failed(ShopTransactionReason.PRICE_OVERFLOW);
@@ -104,13 +115,23 @@ public final class ShopService {
     }
 
     public ShopTransactionResult sell(Player player, ShopItemData product, boolean stack, ItemStack saleHoe) {
+        int owned = countMatching(player.getInventory(), product);
+        int bundleCount = stack ? owned / product.amount() : (owned >= product.amount() ? 1 : 0);
+        return sellBundles(player, product, bundleCount, saleHoe);
+    }
+
+    public ShopTransactionResult sellQuantity(Player player, ShopItemData product, int quantity, ItemStack saleHoe) {
+        if (quantity < 1 || quantity > ShopDialogSelection.HARD_CAP || quantity % product.amount() != 0) {
+            return ShopTransactionResult.failed(ShopTransactionReason.TRANSACTION_FAILED);
+        }
+        return sellBundles(player, product, quantity / product.amount(), saleHoe);
+    }
+
+    private ShopTransactionResult sellBundles(Player player, ShopItemData product, int bundleCount, ItemStack saleHoe) {
         if (!product.sellable()) return ShopTransactionResult.failed(ShopTransactionReason.SALE_DISABLED);
         long unitPrice = effectiveSellPrice(product, saleHoe);
         if (unitPrice <= 0L) return ShopTransactionResult.failed(ShopTransactionReason.INVALID_PRICE);
 
-        int bundleAmount = product.amount();
-        int owned = countMatching(player.getInventory(), product);
-        int bundleCount = stack ? owned / bundleAmount : (owned >= bundleAmount ? 1 : 0);
         if (bundleCount <= 0) return ShopTransactionResult.failed(ShopTransactionReason.NO_MATCHING_ITEMS);
 
         int amount = deliveryAmount(product, bundleCount);
@@ -140,6 +161,28 @@ public final class ShopService {
 
     public int bulkDeliveryAmount(ShopItemData product) {
         return deliveryAmount(product, bulkBundleCount(product));
+    }
+
+    public int availableSellQuantity(Player player, ShopItemData product) {
+        if (!product.sellable()) return 0;
+        int owned = Math.min(ShopDialogSelection.HARD_CAP, countMatching(player.getInventory(), product));
+        return owned - owned % product.amount();
+    }
+
+    public int availableBuyQuantity(Player player, ShopItemData product) {
+        if (!product.purchasable() || product.buyPrice() <= 0L) return 0;
+        int maxBundles = ShopDialogSelection.HARD_CAP / product.amount();
+        long funds = product.currencyItemId().isBlank()
+                ? coinService.getCoins(player) : countCurrency(player, product.currencyItemId());
+        maxBundles = (int) Math.min(maxBundles, funds / product.buyPrice());
+        while (maxBundles > 0) {
+            ItemStack delivery = product.template();
+            if (vanillaStacking != null) vanillaStacking.normalize(delivery);
+            delivery.setAmount(product.amount() * maxBundles);
+            if (hasCapacity(player.getInventory(), delivery)) break;
+            maxBundles--;
+        }
+        return maxBundles * product.amount();
     }
 
     public long bulkPrice(ShopItemData product, boolean buy) {
