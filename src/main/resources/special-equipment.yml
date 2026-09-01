@@ -312,3 +312,15 @@ special-equipment:
         current-throw: { id: water-current-throw, display-name: "해류 투척", trigger: VANILLA_TRIDENT_THROW, description: "실제 삼지창의 수중 외향 궤적에만 공격적인 해류를 더하며 충돌 후 Loyalty 귀환은 비공격적입니다.", lifecycle-timeout-ticks: 160, trail-radius: 1.8, pull-strength: 0.18, trail-damage: 2.0, direct-damage: 6.0 }
         signature: { id: vortex-eight-way-return, display-name: "대해의 팔방귀환", trigger: OFFHAND_QUICK, description: "소용돌이가 적을 밀어낸 뒤 여덟 방향으로 비획득 삼지창 공격을 방출합니다.", cooldown-seconds: 18.0, vortex-duration-ticks: 24, vortex-radius: 7.0, vortex-damage: 7.0, vortex-knockback: 0.8, trident-speed: 1.1, trident-damage: 3.0, hit-radius: 1.2, attack-duration-ticks: 40, maximum-hits-per-trident: 3 }
         riptide: { id: rainy-riptide, display-name: "번개 급류", trigger: VANILLA_RIPTIDE, description: "비에 노출된 실제 Riptide 이동 뒤에 안전한 번개 궤적을 남깁니다.", cooldown-seconds: 8.0, duration-ticks: 24, lightning-interval-ticks: 7, lightning-radius: 2.5, lightning-damage: 4.0, post-vertical-boost: 0.28 }
+    flame_axe:
+      item-id: flame_axe
+      display: { name: "화염 도끼" }
+      attribute: { element: FIRE, equipment-type: AXE }
+      unlock: { required-rpg-level: 50, required-custom-mob-kills: { frost_blaze: 50 } }
+      crafting: { enabled: false, amount: 1, inputs: {} }
+      grade: 4
+      final-gear-material-allowed: true
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      abilities:
+        heavy-attack: { id: flame-axe-heavy, display-name: "화염 강타", trigger: RIGHT_CLICK, description: "완전 충전 후 전방의 적을 불태우고 밀쳐냅니다.", full-charge-ticks: 20, damage: 7.0, range: 4.0, angle-cosine: 0.55, fire-ticks: 80, knockback: 0.65 }
+        spinning-throw: { id: flame-axe-spin, display-name: "회전 도끼", trigger: OFFHAND_QUICK, description: "방문하지 않은 적을 추적한 뒤 소유자에게 돌아옵니다.", max-targets: 5, search-radius: 8.0, display-scale: 0.8, spin-degrees-per-tick: 30.0, travel-speed: 0.7, turn-radians-per-tick: 0.16, contact-radius: 1.1, hit-rotation-requirement: 360.0, damage: 4.0, max-lifetime-ticks: 200, return-distance: 1.2 }

@@ -25,6 +25,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 public final class SkillInputListener implements Listener {
     private static final long SUPPRESS_LEFT_AFTER_DROP_MILLIS = 180L;
@@ -33,6 +34,7 @@ public final class SkillInputListener implements Listener {
     private final SkillService skillService;
     private final EquipmentInstanceService equipmentInstances;
     private final PaperAlchemyCombatAdapter alchemyCombat;
+    private final Predicate<ItemStack> dedicatedInputOwner;
     private final Map<InputKey, Long> lastInputs = new HashMap<>();
     private final Map<UUID, Long> suppressLeftInputUntilByPlayer = new HashMap<>();
     private final Map<UUID, PendingDrop> pendingDrops = new HashMap<>();
@@ -40,11 +42,12 @@ public final class SkillInputListener implements Listener {
     private final Map<UUID, Boolean> groundedByPlayer = new HashMap<>();
 
     public SkillInputListener(JavaPlugin plugin, SkillService skillService, EquipmentInstanceService equipmentInstances,
-                              PaperAlchemyCombatAdapter alchemyCombat) {
+                              PaperAlchemyCombatAdapter alchemyCombat, Predicate<ItemStack> dedicatedInputOwner) {
         this.plugin = plugin;
         this.skillService = skillService;
         this.equipmentInstances = equipmentInstances;
         this.alchemyCombat = alchemyCombat;
+        this.dedicatedInputOwner = dedicatedInputOwner == null ? item -> false : dedicatedInputOwner;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -52,6 +55,7 @@ public final class SkillInputListener implements Listener {
         Player player = event.getPlayer();
         // Shift+F belongs to the integrated menu and must never be consumed by combat inputs.
         if (player.isSneaking()) return;
+        if (dedicatedInputOwner.test(player.getInventory().getItemInMainHand())) return;
 
         SkillInputResult result = processInputResult(player, SkillInputType.OFFHAND_QUICK, null);
         if (!result.accepted() && !skillService.shouldCancelVanillaActionForInput(player, SkillInputType.OFFHAND_QUICK)) {
@@ -68,6 +72,7 @@ public final class SkillInputListener implements Listener {
         if (event.getHand() != null && event.getHand() != EquipmentSlot.HAND) {
             return;
         }
+        if (dedicatedInputOwner.test(event.getPlayer().getInventory().getItemInMainHand())) return;
 
         SkillInputType inputType = switch (event.getAction()) {
             case RIGHT_CLICK_AIR, RIGHT_CLICK_BLOCK -> event.getPlayer().isSneaking()
