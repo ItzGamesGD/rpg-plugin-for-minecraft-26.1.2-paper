@@ -194,6 +194,7 @@ import com.hyunseo.hyunseorpg.special.SpecialEquipmentProgressListener;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 import com.hyunseo.hyunseorpg.special.water.WaterTridentListener;
+import com.hyunseo.hyunseorpg.special.flame.FlameAxeListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import com.hyunseo.hyunseorpg.shop.ShopRegistry;
@@ -335,6 +336,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EquipmentEnchantContentService equipmentEnchantContentService;
     private SpecialEquipmentEffectListener specialEquipmentEffectListener;
     private WaterTridentListener waterTridentListener;
+    private FlameAxeListener flameAxeListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -712,6 +714,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             specialEquipmentEffectListener.clearAllStates();
         }
         if (waterTridentListener != null) waterTridentListener.shutdown();
+        if (flameAxeListener != null) flameAxeListener.shutdown();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -1537,7 +1540,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CooldownCleanupListener(cooldownService), this);
         getServer().getPluginManager().registerEvents(new RPGMenuListener(rpgMenuService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
-                this, skillService, equipmentInstanceService, alchemyCombatAdapter), this);
+                this, skillService, equipmentInstanceService, alchemyCombatAdapter,
+                item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);
@@ -1594,6 +1598,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.waterTridentListener = new WaterTridentListener(
                 configService, specialEquipmentService, combatService, cooldownService);
         getServer().getPluginManager().registerEvents(waterTridentListener, this);
+        this.flameAxeListener = new FlameAxeListener(this, configService, specialEquipmentService,
+                equipmentInstanceService, combatService);
+        getServer().getPluginManager().registerEvents(flameAxeListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);
