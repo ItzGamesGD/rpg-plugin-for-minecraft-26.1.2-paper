@@ -61,16 +61,21 @@ public final class ShopGuiService {
         List<DialogInput> inputs = new ArrayList<>();
         for (int index = 0; index < products.size(); index++) {
             ShopItemData product = products.get(index);
-            int buyMaximum = shopService.availableBuyQuantity(player, product);
-            int sellMaximum = shopService.availableSellQuantity(player, product);
-            int maximum = Math.max(buyMaximum, sellMaximum);
+            int sellable = shopService.availableSellQuantity(player, product);
             ItemStack shown = product.template();
             shown.setAmount(Math.min(product.amount(), Math.max(1, shown.getMaxStackSize())));
-            Component availability = Component.text("구매 최대 " + buyMaximum + " / 판매 최대 " + sellMaximum,
-                    NamedTextColor.GRAY);
-            bodies.add(DialogBody.item(shown).description(DialogBody.plainMessage(availability)).build());
+            Component productName = shown.getItemMeta().hasDisplayName()
+                    ? shown.getItemMeta().displayName() : Component.translatable(shown.getType().translationKey());
+            long sellPrice = shopService.effectiveSellPrice(product, player.getInventory().getItemInMainHand());
+            Component details = Component.empty().append(productName).append(Component.newline())
+                    .append(Component.text("구매: " + unitPrice(product.purchasable(), product.buyPrice(),
+                            product.amount(), product.currencyItemId()), NamedTextColor.GOLD)).append(Component.newline())
+                    .append(Component.text("판매: " + unitPrice(product.sellable(), sellPrice,
+                            product.amount(), ""), NamedTextColor.GREEN)).append(Component.newline())
+                    .append(Component.text("현재 판매 가능: " + sellable + "개", NamedTextColor.GRAY));
+            bodies.add(DialogBody.item(shown).description(DialogBody.plainMessage(details)).build());
             inputs.add(DialogInput.numberRange(ShopDialogSelection.inputKey(index),
-                            Component.text(product.productId() + " 수량 (최대 " + maximum + ")"), 0.0F, maximum)
+                            Component.text(product.productId() + " 수량 (최대 64)"), 0.0F, 64.0F)
                     .initial(0.0F).step(1.0F).build());
         }
 
@@ -107,19 +112,40 @@ public final class ShopGuiService {
             return;
         }
         List<ShopItemData> currentProducts = currentShop.items();
-        Map<Integer, Integer> selected = ShopDialogSelection.read(
-                currentProducts.stream().map(ShopItemData::amount).toList(), input, index -> buy
-                        ? shopService.availableBuyQuantity(player, currentProducts.get(index))
-                        : shopService.availableSellQuantity(player, currentProducts.get(index)));
-        for (Map.Entry<Integer, Integer> entry : selected.entrySet()) {
-            ShopItemData product = currentProducts.get(entry.getKey());
-            ShopTransactionResult result = buy
-                    ? shopService.buyQuantity(player, product, entry.getValue())
-                    : shopService.sellQuantity(player, product, entry.getValue(),
-                    player.getInventory().getItemInMainHand());
-            sendTransactionMessage(player, result, buy);
+        ShopDialogSelection.Result selection = ShopDialogSelection.read(
+                currentProducts.stream().map(ShopItemData::amount).toList(), input);
+        if (!selection.valid()) {
+            player.sendMessage(Component.text("거래 실패: " + selection.error(), NamedTextColor.RED));
+            openShopDialog(player, currentShop);
+            return;
         }
+        Map<ShopItemData, Integer> requested = new java.util.LinkedHashMap<>();
+        selection.quantities().forEach((index, quantity) -> requested.put(currentProducts.get(index), quantity));
+        ShopBatchResult result = buy
+                ? shopService.buyBatch(player, requested)
+                : shopService.sellBatch(player, requested, player.getInventory().getItemInMainHand());
+        sendBatchTransactionMessage(player, result, buy);
         openShopDialog(player, currentShop);
+    }
+
+    static String unitPrice(boolean enabled, long bundlePrice, int bundleAmount, String currencyItemId) {
+        if (!enabled || bundlePrice <= 0L) return "불가능";
+        long divisor = Math.max(1, bundleAmount);
+        long gcd = gcd(bundlePrice, divisor);
+        long numerator = bundlePrice / gcd;
+        long denominator = divisor / gcd;
+        String exact = denominator == 1 ? Long.toString(numerator) : numerator + "/" + denominator;
+        String currency = currencyItemId == null || currencyItemId.isBlank() ? "코인" : currencyItemId;
+        return exact + " " + currency + " / 개";
+    }
+
+    private static long gcd(long left, long right) {
+        while (right != 0L) {
+            long next = left % right;
+            left = right;
+            right = next;
+        }
+        return Math.abs(left);
     }
 
     public List<ShopData> getShops() {
@@ -307,5 +333,15 @@ public final class ShopGuiService {
             default -> "거래 처리 중 오류가 발생했습니다.";
         };
         player.sendMessage(Component.text(message, NamedTextColor.RED));
+    }
+
+    private void sendBatchTransactionMessage(Player player, ShopBatchResult result, boolean buy) {
+        if (result.success()) {
+            int amount = result.amounts().values().stream().mapToInt(Integer::intValue).sum();
+            player.sendMessage(Component.text((buy ? "일괄 구매" : "일괄 판매") + " 완료: "
+                    + amount + "개, " + result.coins() + " 코인", NamedTextColor.GREEN));
+            return;
+        }
+        sendTransactionMessage(player, ShopTransactionResult.failed(result.reason()), buy);
     }
 }

@@ -7,26 +7,35 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ShopDialogSelectionTest {
     @Test
-    void zeroIsExcludedAndMultipleProductsAreCollectedInOneSubmission() {
-        Map<String, Float> response = Map.of("quantity_0", 12.0F, "quantity_1", 0.0F, "quantity_2", 47.0F);
+    void acceptsBuyQuantity64AndSkipsOnlyZero() {
+        ShopDialogSelection.Result result = ShopDialogSelection.read(List.of(1, 1),
+                Map.of("quantity_0", 64.0F, "quantity_1", 0.0F)::get);
 
-        Map<Integer, Integer> result = ShopDialogSelection.read(List.of(1, 1, 1), response::get, ignored -> 64);
-
-        assertEquals(List.of(12, 47), result.values().stream().toList());
-        assertFalse(result.containsKey(1));
+        assertTrue(result.valid());
+        assertEquals(Map.of(0, 64), result.quantities());
+        assertFalse(result.quantities().containsKey(1));
     }
 
     @Test
-    void rejectsHardCapCurrentMaximumFractionsAndIncompleteBundles() {
-        Map<String, Float> response = Map.of("quantity_0", 65.0F, "quantity_1", 6.0F,
-                "quantity_2", 1.5F, "quantity_3", 6.0F);
+    void fractionalOverCapMalformedAndInvalidBundleFailWholeSelection() {
+        assertFalse(readOne(1.5F, 1).valid());
+        assertFalse(readOne(65.0F, 1).valid());
+        assertFalse(ShopDialogSelection.read(List.of(1), ignored -> null).valid());
+        assertFalse(readOne(6.0F, 4).valid());
+    }
 
-        Map<Integer, Integer> result = ShopDialogSelection.read(List.of(1, 1, 1, 4), response::get,
-                index -> index == 1 ? 5 : 64);
+    @Test
+    void sellClampUsesOwnedQuantityAndLargestCompleteBundle() {
+        assertEquals(17, ShopDialogSelection.clampSellQuantity(48, 17, 1));
+        assertEquals(16, ShopDialogSelection.clampSellQuantity(48, 17, 4));
+        assertEquals(0, ShopDialogSelection.clampSellQuantity(48, 3, 4));
+    }
 
-        assertEquals(Map.of(), result);
+    private ShopDialogSelection.Result readOne(float value, int bundleSize) {
+        return ShopDialogSelection.read(List.of(bundleSize), ignored -> value);
     }
 }

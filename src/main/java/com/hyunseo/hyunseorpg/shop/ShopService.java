@@ -11,9 +11,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Map;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** Owns atomic coin and inventory changes for all shop transactions. */
 public final class ShopService {
@@ -127,6 +128,62 @@ public final class ShopService {
         return sellBundles(player, product, quantity / product.amount(), saleHoe);
     }
 
+    /** Executes an entire Dialog BUY submission atomically, restoring both inventory and coins on failure. */
+    public ShopBatchResult buyBatch(Player player, Map<ShopItemData, Integer> requested) {
+        return transactBatch(player, requested, true, null);
+    }
+
+    /** Clamps SELL quantities at action time, then executes the complete submission atomically. */
+    public ShopBatchResult sellBatch(Player player, Map<ShopItemData, Integer> requested, ItemStack saleHoe) {
+        Map<ShopItemData, Integer> effective = new LinkedHashMap<>();
+        for (Map.Entry<ShopItemData, Integer> entry : requested.entrySet()) {
+            ShopItemData product = entry.getKey();
+            int owned = countMatching(player.getInventory(), product);
+            int clamped = ShopDialogSelection.clampSellQuantity(entry.getValue(), owned, product.amount());
+            if (clamped > 0) effective.put(product, clamped);
+        }
+        return transactBatch(player, effective, false, saleHoe);
+    }
+
+    private ShopBatchResult transactBatch(Player player, Map<ShopItemData, Integer> quantities,
+                                          boolean buy, ItemStack saleHoe) {
+        ItemStack[] inventoryBefore = cloneContents(player.getInventory().getStorageContents());
+        long coinsBefore = coinService.getCoins(player);
+        ShopBatchResult preflight = executeBatchPass(player, quantities, buy, saleHoe);
+        restoreBatchState(player, inventoryBefore, coinsBefore);
+        if (!preflight.success()) return preflight;
+
+        ShopBatchResult committed = executeBatchPass(player, quantities, buy, saleHoe);
+        if (!committed.success()) restoreBatchState(player, inventoryBefore, coinsBefore);
+        return committed;
+    }
+
+    private ShopBatchResult executeBatchPass(Player player, Map<ShopItemData, Integer> quantities,
+                                             boolean buy, ItemStack saleHoe) {
+        Map<String, Integer> completed = new LinkedHashMap<>();
+        long totalCoins = 0L;
+        for (Map.Entry<ShopItemData, Integer> entry : quantities.entrySet()) {
+            ShopTransactionResult result = buy
+                    ? buyQuantity(player, entry.getKey(), entry.getValue())
+                    : sellQuantity(player, entry.getKey(), entry.getValue(), saleHoe);
+            if (!result.success()) {
+                return ShopBatchResult.failed(result.reason());
+            }
+            completed.put(entry.getKey().productId(), result.amount());
+            try {
+                totalCoins = Math.addExact(totalCoins, result.coins());
+            } catch (ArithmeticException ignored) {
+                return ShopBatchResult.failed(ShopTransactionReason.PRICE_OVERFLOW);
+            }
+        }
+        return new ShopBatchResult(ShopTransactionReason.SUCCESS, Map.copyOf(completed), totalCoins);
+    }
+
+    private void restoreBatchState(Player player, ItemStack[] inventory, long coins) {
+        player.getInventory().setStorageContents(cloneContents(inventory));
+        coinService.setCoins(player, coins);
+    }
+
     private ShopTransactionResult sellBundles(Player player, ShopItemData product, int bundleCount, ItemStack saleHoe) {
         if (!product.sellable()) return ShopTransactionResult.failed(ShopTransactionReason.SALE_DISABLED);
         long unitPrice = effectiveSellPrice(product, saleHoe);
@@ -167,22 +224,6 @@ public final class ShopService {
         if (!product.sellable()) return 0;
         int owned = Math.min(ShopDialogSelection.HARD_CAP, countMatching(player.getInventory(), product));
         return owned - owned % product.amount();
-    }
-
-    public int availableBuyQuantity(Player player, ShopItemData product) {
-        if (!product.purchasable() || product.buyPrice() <= 0L) return 0;
-        int maxBundles = ShopDialogSelection.HARD_CAP / product.amount();
-        long funds = product.currencyItemId().isBlank()
-                ? coinService.getCoins(player) : countCurrency(player, product.currencyItemId());
-        maxBundles = (int) Math.min(maxBundles, funds / product.buyPrice());
-        while (maxBundles > 0) {
-            ItemStack delivery = product.template();
-            if (vanillaStacking != null) vanillaStacking.normalize(delivery);
-            delivery.setAmount(product.amount() * maxBundles);
-            if (hasCapacity(player.getInventory(), delivery)) break;
-            maxBundles--;
-        }
-        return maxBundles * product.amount();
     }
 
     public long bulkPrice(ShopItemData product, boolean buy) {
