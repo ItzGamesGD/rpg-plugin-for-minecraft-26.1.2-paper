@@ -6,10 +6,12 @@ import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Consumable;
-import io.papermc.paper.datacomponent.item.ItemUseAnimation;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import org.bukkit.*;
+import org.bukkit.event.block.Action;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
+import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
@@ -175,6 +177,7 @@ public final class FlameAxeListener implements Listener {
 
     @EventHandler public void onQuit(PlayerQuitEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onKick(PlayerKickEvent e) { cleanup(e.getPlayer().getUniqueId()); }
+    @EventHandler public void onDrop(PlayerDropItemEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onDeath(PlayerDeathEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onTeleport(PlayerTeleportEvent e) { cleanup(e.getPlayer().getUniqueId()); }
