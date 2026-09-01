@@ -32,6 +32,15 @@ class FlameAxeMathTest {
         assertFalse(FlameAxeMath.maySelectTarget(UUID.randomUUID(), routes, 2));
     }
 
+    @Test void sweptContactDistanceMatchesSegmentGeometry() {
+        Vector start = new Vector(0, 0, 0);
+        Vector end = new Vector(2, 0, 0);
+
+        assertEquals(0.0, FlameAxeListener.distanceToSegment(new Vector(1, 0, 0), start, end), 1e-9);
+        assertEquals(1.0, FlameAxeListener.distanceToSegment(new Vector(1, 1, 0), start, end), 1e-9);
+        assertEquals(1.0, FlameAxeListener.distanceToSegment(new Vector(3, 0, 0), start, end), 1e-9);
+    }
+
     @Test void steeringIsBoundedAndNeverSnapsOpposite() {
         Vector result = FlameAxeMath.steer(new Vector(1, 0, 0), new Vector(0, 0, 1), .1);
         assertEquals(1, result.length(), 1e-9);
