@@ -324,3 +324,17 @@ special-equipment:
       abilities:
         heavy-attack: { id: flame-axe-heavy, display-name: "화염 강타", trigger: RIGHT_CLICK, description: "완전 충전 후 전방의 적을 불태우고 밀쳐냅니다.", full-charge-ticks: 20, damage: 7.0, range: 4.0, angle-cosine: 0.55, fire-ticks: 80, knockback: 0.65 }
         spinning-throw: { id: flame-axe-spin, display-name: "회전 도끼", trigger: OFFHAND_QUICK, description: "방문하지 않은 적을 추적한 뒤 소유자에게 돌아옵니다.", max-targets: 5, search-radius: 8.0, display-scale: 0.8, spin-degrees-per-tick: 30.0, travel-speed: 0.7, turn-radians-per-tick: 0.16, contact-radius: 1.1, hit-rotation-requirement: 360.0, damage: 4.0, max-lifetime-ticks: 200, return-distance: 1.2 }
+    thanatos_mace:
+      item-id: thanatos_mace
+      display: { name: "타나토스의 철퇴" }
+      attribute: { element: NONE, equipment-type: MACE }
+      unlock: { required-rpg-level: 50 }
+      crafting: { enabled: false, amount: 1, inputs: {} }
+      grade: 4
+      final-gear-material-allowed: true
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: true, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      abilities:
+        mortal: { id: thanatos-mortal, display-name: "필멸", trigger: MELEE_HIT, description: "첫 타격이 소유하는 5초 판결 뒤 검이 낙하합니다.", delay-ticks: 100, damage: 6.0, sword-custom-model-data: 23601 }
+        deaths-oppression: { id: thanatos-oppression, display-name: "죽음의 위압", trigger: VANILLA_MACE_SMASH, description: "자연 낙하 강타가 준비된 경우에만 주변을 짓누릅니다.", cooldown-ticks: 200, radius: 5.0, duration-ticks: 40, damage: 4.0 }
+        death-sentence: { id: thanatos-sentence, display-name: "사형선고", trigger: OFFHAND_QUICK, description: "전방 후보 하나의 선택 시점 위치에 처형장을 만듭니다.", cooldown-ticks: 300, target-range: 24.0, minimum-facing-cosine: 0.35, telegraph-ticks: 24, ground-radius: 5.0, ground-duration-ticks: 120, wither-duration-ticks: 100, wither-amplifier: 1 }
+        ultimatum: { id: thanatos-ultimatum, display-name: "최후통첩", trigger: RIGHT_CLICK, description: "15틱 압축 후 속도로 솟아올라 착지 시 대규모 판결을 내립니다.", cooldown-ticks: 600, charge-ticks: 15, launch-velocity: 1.55, impact-radius: 10.0, damage: 12.0 }
