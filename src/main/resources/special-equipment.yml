@@ -334,7 +334,7 @@ special-equipment:
       final-gear-material-allowed: true
       growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: true, allow-custom-enchants: true, custom-enchant-slots: 1 }
       abilities:
-        mortal: { id: thanatos-mortal, display-name: "필멸", trigger: MELEE_HIT, description: "첫 타격이 소유하는 5초 판결 뒤 검이 낙하합니다.", delay-ticks: 100, damage: 6.0, sword-custom-model-data: 23601 }
+        mortal: { id: thanatos-mortal, display-name: "필멸", trigger: MELEE_HIT, description: "첫 타격이 소유하는 5초 판결 뒤 검이 낙하합니다.", delay-ticks: 100, fall-ticks: 8, damage: 6.0, sword-custom-model-data: 23601 }
         deaths-oppression: { id: thanatos-oppression, display-name: "죽음의 위압", trigger: VANILLA_MACE_SMASH, description: "자연 낙하 강타가 준비된 경우에만 주변을 짓누릅니다.", cooldown-ticks: 200, radius: 5.0, duration-ticks: 40, damage: 4.0 }
         death-sentence: { id: thanatos-sentence, display-name: "사형선고", trigger: OFFHAND_QUICK, description: "전방 후보 하나의 선택 시점 위치에 처형장을 만듭니다.", cooldown-ticks: 300, target-range: 24.0, minimum-facing-cosine: 0.35, telegraph-ticks: 24, ground-radius: 5.0, ground-duration-ticks: 120, wither-duration-ticks: 100, wither-amplifier: 1 }
         ultimatum: { id: thanatos-ultimatum, display-name: "최후통첩", trigger: RIGHT_CLICK, description: "15틱 압축 후 속도로 솟아올라 착지 시 대규모 판결을 내립니다.", cooldown-ticks: 600, charge-ticks: 15, launch-velocity: 1.55, impact-radius: 10.0, damage: 12.0 }

@@ -1606,7 +1606,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 equipmentInstanceService, combatService);
         getServer().getPluginManager().registerEvents(flameAxeListener, this);
         this.thanatosMaceListener = new ThanatosMaceListener(this, configService, specialEquipmentService,
-                equipmentInstanceService, combatService, cooldownService);
+                equipmentInstanceService, combatService, cooldownService, effectMovementLockService);
         getServer().getPluginManager().registerEvents(thanatosMaceListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);

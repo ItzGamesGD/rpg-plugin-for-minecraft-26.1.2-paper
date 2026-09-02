@@ -6,16 +6,31 @@ import java.util.UUID;
 
 /** Pure authoritative lifecycles; Bukkit entities and displays are presentation adapters. */
 public final class ThanatosState {
+    public enum MortalPhase { WAITING, FALLING }
     public enum UltimatumPhase { CHARGING, LAUNCHED, FALLING }
-    private final Map<UUID, Long> mortals = new HashMap<>();
+    private final Map<UUID, Mortal> mortals = new HashMap<>();
     private final Map<UUID, Ultimatum> ultimatums = new HashMap<>();
 
     public boolean beginMortal(UUID target, long now, long delayTicks) {
         if (mortals.containsKey(target)) return false;
-        mortals.put(target, now + Math.max(1, delayTicks));
+        mortals.put(target, new Mortal(now + Math.max(1, delayTicks), MortalPhase.WAITING));
         return true;
     }
-    public boolean mortalDue(UUID target, long now) { return mortals.getOrDefault(target, Long.MAX_VALUE) <= now; }
+    public MortalPhase mortalPhase(UUID target) { Mortal mortal = mortals.get(target); return mortal == null ? null : mortal.phase; }
+    public boolean mortalDue(UUID target, long now) { Mortal mortal = mortals.get(target); return mortal != null && mortal.phase == MortalPhase.WAITING && mortal.deadline <= now; }
+    public boolean beginMortalFall(UUID target, long now, long fallTicks) {
+        Mortal mortal = mortals.get(target);
+        if (mortal == null || mortal.phase != MortalPhase.WAITING || now < mortal.deadline) return false;
+        mortal.phase = MortalPhase.FALLING;
+        mortal.deadline = now + Math.max(1, fallTicks);
+        return true;
+    }
+    public boolean mortalImpactDue(UUID target, long now) { Mortal mortal = mortals.get(target); return mortal != null && mortal.phase == MortalPhase.FALLING && mortal.deadline <= now; }
+    public boolean consumeMortalImpact(UUID target, long now) {
+        if (!mortalImpactDue(target, now)) return false;
+        mortals.remove(target);
+        return true;
+    }
     public boolean hasMortal(UUID target) { return mortals.containsKey(target); }
     public void endMortal(UUID target) { mortals.remove(target); }
     public int mortalCount() { return mortals.size(); }
@@ -38,5 +53,6 @@ public final class ThanatosState {
     private boolean transition(UUID id, UltimatumPhase from, UltimatumPhase to) {
         Ultimatum u = ultimatums.get(id); if (u == null || u.phase != from) return false; u.phase = to; return true;
     }
+    private static final class Mortal { long deadline; MortalPhase phase; Mortal(long d, MortalPhase p) { deadline=d; phase=p; } }
     private static final class Ultimatum { final UUID world; final long deadline; UltimatumPhase phase; Ultimatum(UUID w,long d,UltimatumPhase p){world=w;deadline=d;phase=p;} }
 }

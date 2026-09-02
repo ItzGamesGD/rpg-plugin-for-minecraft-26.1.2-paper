@@ -1,6 +1,7 @@
 package com.hyunseo.hyunseorpg.special.thanatos;
 
 import com.hyunseo.hyunseorpg.combat.CombatService;
+import com.hyunseo.hyunseorpg.alchemy.EffectMovementLockService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
@@ -37,14 +38,22 @@ public final class ThanatosMaceListener implements Listener {
     public static final String ID = "thanatos_mace";
     private static final String OPPRESSION_CD="thanatos:oppression", SENTENCE_CD="thanatos:sentence", ULTIMATUM_CD="thanatos:ultimatum";
     private final JavaPlugin plugin; private final SpecialEquipmentService specials; private final EquipmentInstanceService instances;
-    private final CombatService combat; private final CooldownService cooldowns; private final ThanatosConfig config;
+    private final CombatService combat; private final CooldownService cooldowns; private final EffectMovementLockService movementLocks; private final ThanatosConfig config;
     private final ThanatosState state = new ThanatosState(); private final Map<UUID,MortalRuntime> mortals=new HashMap<>();
     private final Map<UUID,UltimatumRuntime> ultimatums=new HashMap<>(); private final Map<UUID,Ground> grounds=new HashMap<>();
     private final Map<BlockKey,Mutation> mutations=new HashMap<>(); private long tick; private final BukkitTask ticker;
+    private final Map<UUID,Long> pressureEnds=new HashMap<>();
+    private static final Set<Material> REPLACEABLE_FLOORS=EnumSet.of(Material.GRASS_BLOCK,Material.DIRT,Material.COARSE_DIRT,
+            Material.PODZOL,Material.MYCELIUM,Material.ROOTED_DIRT,Material.MUD,Material.CLAY,Material.SAND,
+            Material.RED_SAND,Material.GRAVEL,Material.STONE,Material.COBBLESTONE,Material.DEEPSLATE,
+            Material.COBBLED_DEEPSLATE,Material.ANDESITE,Material.DIORITE,Material.GRANITE,Material.TUFF,
+            Material.NETHERRACK,Material.BLACKSTONE,Material.END_STONE,Material.SOUL_SOIL,Material.SOUL_SAND);
 
     public ThanatosMaceListener(JavaPlugin plugin, ConfigService configService, SpecialEquipmentService specials,
-                                EquipmentInstanceService instances, CombatService combat, CooldownService cooldowns) {
+                                EquipmentInstanceService instances, CombatService combat, CooldownService cooldowns,
+                                EffectMovementLockService movementLocks) {
         this.plugin=plugin; this.specials=specials; this.instances=instances; this.combat=combat; this.cooldowns=cooldowns;
+        this.movementLocks=movementLocks;
         this.config=ThanatosConfig.from(configService); this.ticker=Bukkit.getScheduler().runTaskTimer(plugin,this::tick,1,1);
     }
 
@@ -90,14 +99,26 @@ public final class ThanatosMaceListener implements Listener {
         for(MortalRuntime m:new ArrayList<>(mortals.values())) tickMortal(m);
         for(UltimatumRuntime u:new ArrayList<>(ultimatums.values())) tickUltimatum(u);
         for(Ground g:new ArrayList<>(grounds.values())) tickGround(g);
+        tickPressure();
         for(var entry:new ArrayList<>(sentenceTasks.entrySet())) if(entry.getKey().isCancelled()) { if(entry.getValue().isValid())entry.getValue().remove(); sentenceTasks.remove(entry.getKey()); }
     }
-    private void tickMortal(MortalRuntime m){ LivingEntity target=entity(m.target); if(target==null||target.isDead()||target.getWorld().getUID()!=m.world){cleanupMortal(m.target);return;}
-        if(m.display!=null&&m.display.isValid()) m.display.teleport(target.getLocation().add(0,target.getHeight()+1.8,0));
-        if(!state.mortalDue(m.target,tick)) return;
-        Location impact=target.getLocation().add(0,target.getHeight()*.65,0); Player owner=Bukkit.getPlayer(m.owner);
-        if(owner!=null&&owner.isOnline()) combat.applySkillDamage(owner,target,config.mortalDamage()); else target.damage(config.mortalDamage());
-        impact.getWorld().spawnParticle(Particle.SQUID_INK,impact,18,.3,.4,.3,.04); impact.getWorld().playSound(impact,Sound.BLOCK_ANVIL_LAND,.9f,.55f); cleanupMortal(m.target);
+    private void tickMortal(MortalRuntime m){ LivingEntity target=entity(m.target); if(target==null||target.isDead()||!target.getWorld().getUID().equals(m.world)){cleanupMortal(m.target);return;}
+        if(state.mortalPhase(m.target)==ThanatosState.MortalPhase.WAITING){
+            if(m.display!=null&&m.display.isValid()) m.display.teleport(target.getLocation().add(0,target.getHeight()+1.8,0));
+            if(state.mortalDue(m.target,tick)&&state.beginMortalFall(m.target,tick,config.mortalFallTicks())){m.fallStarted=tick;m.fallStart=m.display!=null&&m.display.isValid()?m.display.getLocation():target.getLocation().add(0,target.getHeight()+1.8,0);}
+            return;
+        }
+        if(!state.mortalImpactDue(m.target,tick)){
+            double progress=Math.min(1.0D,(tick-m.fallStarted)/(double)Math.max(1,config.mortalFallTicks()));
+            Location destination=target.getLocation().add(0,target.getHeight()*.55,0);
+            if(m.display!=null&&m.display.isValid())m.display.teleport(m.fallStart.clone().add(destination.toVector().subtract(m.fallStart.toVector()).multiply(progress)));
+            return;
+        }
+        if(!state.consumeMortalImpact(m.target,tick))return;
+        try{Location impact=target.getLocation().add(0,target.getHeight()*.65,0); Player owner=Bukkit.getPlayer(m.owner);
+            if(owner!=null&&owner.isOnline()) combat.applySkillDamage(owner,target,config.mortalDamage()); else target.damage(config.mortalDamage());
+            impact.getWorld().spawnParticle(Particle.SQUID_INK,impact,18,.3,.4,.3,.04); impact.getWorld().playSound(impact,Sound.BLOCK_ANVIL_LAND,.9f,.55f);
+        }finally{cleanupMortal(m.target);}
     }
     private void applyMortal(Player owner,LivingEntity target){ if(!state.beginMortal(target.getUniqueId(),tick,config.mortalDelayTicks()))return;
         ItemStack sword=new ItemStack(Material.NETHERITE_SWORD); ItemMeta meta=sword.getItemMeta(); meta.setCustomModelData(config.mortalModel()); sword.setItemMeta(meta);
@@ -111,8 +132,11 @@ public final class ThanatosMaceListener implements Listener {
         for(LivingEntity target:hostiles(center,radius)){ if(damage>0)combat.applySkillDamage(owner,target,damage); applyPressure(target,config.oppressionDurationTicks(),center,null); }
     }
     private void applyPressure(LivingEntity target,int duration,Location center,Ground ground){ target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS,duration,5,false,false,true));
-        target.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST,duration,128,false,false,true)); if(target.getVelocity().getY()>-.65)target.setVelocity(target.getVelocity().setY(-.65));
+        movementLocks.lock(target,duration); pressureEnds.merge(target.getUniqueId(),tick+duration,Math::max); applyDownwardForce(target);
         if(ground!=null) ground.targets.add(target.getUniqueId()); }
+
+    private void tickPressure(){for(var entry:new HashMap<>(pressureEnds).entrySet()){LivingEntity target=entity(entry.getKey());if(target==null||tick>=entry.getValue()){pressureEnds.remove(entry.getKey());continue;}applyDownwardForce(target);if(tick%3==0){Location above=target.getLocation().add(0,target.getHeight()+2,0);target.getWorld().spawnParticle(Particle.SQUID_INK,above,2,.18,.25,.18,.01);target.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME,above,1,0,-.8,0,.12);}}}
+    private void applyDownwardForce(LivingEntity target){Vector velocity=target.getVelocity();target.setVelocity(velocity.setY(Math.min(velocity.getY(),-.42)));}
 
     private LivingEntity selectTarget(Player owner){ Location eye=owner.getEyeLocation(); List<ThanatosTargeting.Candidate<LivingEntity>> candidates=new ArrayList<>();
         for(Entity e:owner.getWorld().getNearbyEntities(owner.getLocation(),config.sentenceRange(),config.sentenceRange(),config.sentenceRange())) if(e instanceof LivingEntity l&&hostile(owner,l)){
@@ -125,9 +149,11 @@ public final class ThanatosMaceListener implements Listener {
 
     private Ground createGround(Location center){ Ground g=new Ground(UUID.randomUUID(),center.clone(),tick+config.groundDurationTicks()); grounds.put(g.id,g); int r=(int)Math.ceil(config.groundRadius());
         for(int x=-r;x<=r;x++)for(int z=-r;z<=r;z++)if(x*x+z*z<=config.groundRadius()*config.groundRadius()){
-            Block b=center.getWorld().getHighestBlockAt(center.getBlockX()+x,center.getBlockZ()+z); if(Math.abs(b.getY()-center.getBlockY())>3)continue;
+            Block b=localFloor(center.getWorld(),center.getBlockX()+x,center.getBlockY(),center.getBlockZ()+z); if(b==null)continue;
             BlockKey key=new BlockKey(b.getWorld().getUID(),b.getX(),b.getY(),b.getZ()); Mutation m=mutations.get(key); if(m==null){m=new Mutation(b.getBlockData().clone(),1);mutations.put(key,m);b.setType(Material.SOUL_SAND,false);}else m.owners++; g.blocks.add(key); }
         return g; }
+    private Block localFloor(World world,int x,int centerY,int z){List<Block> band=new ArrayList<>();for(int y=Math.min(world.getMaxHeight()-1,centerY+2);y>=Math.max(world.getMinHeight(),centerY-4);y--)band.add(world.getBlockAt(x,y,z));return ThanatosFloorSelector.nearestLocalFloor(band,this::replaceableFloor,block->block.isPassable()&&!block.isLiquid());}
+    private boolean replaceableFloor(Block block){return REPLACEABLE_FLOORS.contains(block.getType())&&block.getType().isSolid()&&!block.isLiquid();}
     private void tickGround(Ground g){ if(tick>=g.ends){cleanupGround(g.id);return;} for(UUID id:new HashSet<>(g.targets)){LivingEntity target=entity(id);if(target==null||target.getWorld()!=g.center.getWorld()){g.targets.remove(id);continue;}
         Vector horizontal=target.getLocation().toVector().subtract(g.center.toVector()).setY(0); if(horizontal.length()>config.groundRadius()*.82&&!target.isInsideVehicle()){
             Vector inward=horizontal.normalize().multiply(-.22); target.setVelocity(target.getVelocity().setX(inward.getX()).setZ(inward.getZ()).setY(Math.min(target.getVelocity().getY(),-.25))); }} }
@@ -137,7 +163,7 @@ public final class ThanatosMaceListener implements Listener {
         if(phase==ThanatosState.UltimatumPhase.CHARGING){ inwardParticles(p);if(state.chargeDue(id,tick)){state.launch(id);p.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL,p.getLocation(),2);p.setVelocity(p.getVelocity().setY(config.launchVelocity()));}}
         else if(phase==ThanatosState.UltimatumPhase.LAUNCHED&&p.getVelocity().getY()<=0){state.beginFall(id);}
         else if(phase==ThanatosState.UltimatumPhase.FALLING&&state.land(id,p.getWorld().getUID(),p.isOnGround()||p.isInWater())){ultimatums.remove(id);ultimatumImpact(p);}}
-    private void inwardParticles(Player p){for(int i=0;i<5;i++){double a=ThreadLocalRandom.current().nextDouble(Math.PI*2),r=2.2;Location l=p.getLocation().add(Math.cos(a)*r,ThreadLocalRandom.current().nextDouble(.2,2),Math.sin(a)*r);p.getWorld().spawnParticle(Particle.TRIAL_SPAWNER_DETECTION_OMINOUS,l,1,(p.getLocation().getX()-l.getX())*.12,(p.getLocation().getY()+1-l.getY())*.12,(p.getLocation().getZ()-l.getZ())*.12,1);}}
+    private void inwardParticles(Player p){for(int i=0;i<4;i++){double a=ThreadLocalRandom.current().nextDouble(Math.PI*2),r=2.2;Location body=p.getLocation().add(0,1,0);Location l=body.clone().add(Math.cos(a)*r,ThreadLocalRandom.current().nextDouble(-.8,1),Math.sin(a)*r);Vector inward=body.toVector().subtract(l.toVector()).normalize();p.getWorld().spawnParticle(Particle.TRIAL_SPAWNER_DETECTION_OMINOUS,l,1,inward.getX(),inward.getY(),inward.getZ(),.18);if(i==0)p.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME,l,1,inward.getX(),inward.getY(),inward.getZ(),.12);}}
     private void ultimatumImpact(Player owner){Location c=owner.getLocation();c.getWorld().playSound(c,Sound.ITEM_MACE_SMASH_GROUND_HEAVY,2,.45f);c.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER,c,3);
         for(int i=0;i<120;i++){double a=ThreadLocalRandom.current().nextDouble(Math.PI*2),r=ThreadLocalRandom.current().nextDouble(config.impactRadius());c.getWorld().spawnParticle(i%3==0?Particle.SOUL:Particle.SQUID_INK,c.clone().add(Math.cos(a)*r,.15,Math.sin(a)*r),1,0,0,0,0);}
         for(LivingEntity target:hostiles(c,config.impactRadius())){combat.applyUltimateDamage(owner,target,config.impactDamage());applyMortal(owner,target);applyPressure(target,config.oppressionDurationTicks(),c,null);}}
@@ -152,9 +178,9 @@ public final class ThanatosMaceListener implements Listener {
     @EventHandler public void quit(PlayerQuitEvent e){cancel(e.getPlayer().getUniqueId());} @EventHandler public void death(PlayerDeathEvent e){cancel(e.getPlayer().getUniqueId());}
     @EventHandler public void world(PlayerChangedWorldEvent e){cancel(e.getPlayer().getUniqueId());} @EventHandler public void held(PlayerItemHeldEvent e){Bukkit.getScheduler().runTask(plugin,()->{if(!holding(e.getPlayer()))cancel(e.getPlayer().getUniqueId());});}
     @EventHandler public void inventory(InventoryClickEvent e){if(e.getWhoClicked() instanceof Player p)Bukkit.getScheduler().runTask(plugin,()->{if(!holding(p))cancel(p.getUniqueId());});}
-    public void shutdown(){ticker.cancel();new ArrayList<>(mortals.keySet()).forEach(this::cleanupMortal);new ArrayList<>(grounds.keySet()).forEach(this::cleanupGround);for(var e:sentenceTasks.entrySet()){e.getKey().cancel();if(e.getValue().isValid())e.getValue().remove();}sentenceTasks.clear();ultimatums.clear();state.clear();}
+    public void shutdown(){ticker.cancel();new ArrayList<>(mortals.keySet()).forEach(this::cleanupMortal);new ArrayList<>(grounds.keySet()).forEach(this::cleanupGround);for(var e:sentenceTasks.entrySet()){e.getKey().cancel();if(e.getValue().isValid())e.getValue().remove();}sentenceTasks.clear();ultimatums.clear();pressureEnds.clear();state.clear();}
 
-    private record MortalRuntime(UUID target,UUID owner,UUID world,ItemDisplay display){} private record UltimatumRuntime(Player player,UUID instance,UUID world,long start){}
+    private static final class MortalRuntime{final UUID target,owner,world;final ItemDisplay display;long fallStarted;Location fallStart;MortalRuntime(UUID t,UUID o,UUID w,ItemDisplay d){target=t;owner=o;world=w;display=d;}} private record UltimatumRuntime(Player player,UUID instance,UUID world,long start){}
     private static final class Ground{final UUID id;final Location center;final long ends;final Set<UUID>targets=new HashSet<>();final Set<BlockKey>blocks=new HashSet<>();Ground(UUID i,Location c,long e){id=i;center=c;ends=e;}}
     private record BlockKey(UUID world,int x,int y,int z){} private static final class Mutation{final BlockData original;int owners;Mutation(BlockData d,int o){original=d;owners=o;}}
 }
