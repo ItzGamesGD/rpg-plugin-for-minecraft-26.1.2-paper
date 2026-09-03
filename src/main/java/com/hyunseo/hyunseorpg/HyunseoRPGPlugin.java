@@ -337,6 +337,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private SpecialEquipmentEffectListener specialEquipmentEffectListener;
     private WaterTridentListener waterTridentListener;
     private FlameAxeListener flameAxeListener;
+    private com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener moonlitAfterglowListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -715,6 +716,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (waterTridentListener != null) waterTridentListener.shutdown();
         if (flameAxeListener != null) flameAxeListener.shutdown();
+        if (moonlitAfterglowListener != null) moonlitAfterglowListener.shutdown();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -1601,6 +1603,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.flameAxeListener = new FlameAxeListener(this, configService, specialEquipmentService,
                 equipmentInstanceService, combatService);
         getServer().getPluginManager().registerEvents(flameAxeListener, this);
+        this.moonlitAfterglowListener = new com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener(
+                configService, specialEquipmentService, combatService, cooldownService);
+        getServer().getPluginManager().registerEvents(moonlitAfterglowListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);

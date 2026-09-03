@@ -1,0 +1,292 @@
+package com.hyunseo.hyunseorpg.special.moonlit;
+
+import com.hyunseo.hyunseorpg.combat.CombatService;
+import com.hyunseo.hyunseorpg.core.config.ConfigService;
+import com.hyunseo.hyunseorpg.skill.CooldownService;
+import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
+import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.*;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
+
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+
+/** Runtime for Moonlit Afterglow. All Bukkit entity access remains on the server thread. */
+public final class MoonlitAfterglowListener implements Listener {
+    public static final String ID = "moonlit_afterglow";
+    private static final String YUGWANG = ID + ":yugwang";
+    private static final String MOON_FLASH = ID + ":moon_flash";
+    private static final String MOON_SHADOW = ID + ":moon_shadow";
+    private final ConfigService configService;
+    private final SpecialEquipmentService specials;
+    private final CombatService combat;
+    private final CooldownService cooldowns;
+    private final Map<UUID, Long> mitigationUntilTick = new HashMap<>();
+    private final Map<UUID, RuntimeState> states = new HashMap<>();
+    private long tick;
+    private final BukkitTask clockTask;
+
+    public MoonlitAfterglowListener(ConfigService configService, SpecialEquipmentService specials,
+                                    CombatService combat, CooldownService cooldowns) {
+        this.configService = configService;
+        this.specials = specials;
+        this.combat = combat;
+        this.cooldowns = cooldowns;
+        this.clockTask = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> tick++, 1L, 1L);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMelee(EntityDamageByEntityEvent event) {
+        if (combat.isInternalDamage() || !(event.getDamager() instanceof Player player)
+                || !(event.getEntity() instanceof LivingEntity target) || !holding(player)) return;
+        MoonlitAfterglowConfig config = config();
+        sweep(player.getLocation().add(0, 1, 0));
+        combat.applyDirectDamage(player, target, config.passiveDamage());
+        mitigationUntilTick.put(player.getUniqueId(), tick + config.mitigationTicks());
+        if (!cooldowns.isOnCooldown(player.getUniqueId(), YUGWANG)) {
+            cooldowns.startCooldown(player.getUniqueId(), YUGWANG, millis(config.yugwangCooldownSeconds()));
+            // Collision-clamped teleport was selected over velocity: it is deterministic and cannot leave momentum.
+            moveLinear(player, horizontalDirection(player), config.yugwangDistance());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onIncomingDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        long until = mitigationUntilTick.getOrDefault(player.getUniqueId(), -1L);
+        if (tick >= until) { mitigationUntilTick.remove(player.getUniqueId()); return; }
+        event.setDamage(event.getDamage() * (1.0 - config().damageReduction()));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInteract(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || !holding(event.getPlayer())) return;
+        Action action = event.getAction();
+        if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) {
+            if (triggerFinal(event.getPlayer())) event.setCancelled(true);
+            return;
+        }
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
+        Player player = event.getPlayer();
+        if (states.containsKey(player.getUniqueId()) || cooldowns.isOnCooldown(player.getUniqueId(), MOON_FLASH)) return;
+        MoonlitAfterglowConfig config = config();
+        cooldowns.startCooldown(player.getUniqueId(), MOON_FLASH, millis(config.moonFlashCooldownSeconds()));
+        Location origin = player.getLocation().clone();
+        Location destination = moveLinear(player, player.getEyeLocation().getDirection(), config.moonFlashDistance());
+        if (destination.distanceSquared(origin) > .01) trailSlash(player, origin, destination, config.moonFlashDamage(), config.slashSpeed());
+        event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onSwap(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        if (!holding(player) || states.containsKey(player.getUniqueId())
+                || cooldowns.isOnCooldown(player.getUniqueId(), MOON_SHADOW)) return;
+        LivingEntity target = acquireTarget(player);
+        if (target == null) return;
+        event.setCancelled(true);
+        startMoonShadow(player, target);
+    }
+
+    private void startMoonShadow(Player player, LivingEntity target) {
+        MoonlitAfterglowConfig config = config();
+        cooldowns.startCooldown(player.getUniqueId(), MOON_SHADOW, millis(config.moonShadowCooldownSeconds()));
+        MoonShadowState machine = new MoonShadowState(config.teleportCount());
+        RuntimeState runtime = new RuntimeState(player.getWorld().getUID(), target.getUniqueId(), machine);
+        states.put(player.getUniqueId(), runtime);
+        runtime.task = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
+            try { moonShadowIteration(player, runtime, config); }
+            catch (RuntimeException ignored) { // A bad candidate/teleport must not terminate later iterations.
+                recordFallback(player, target, runtime);
+            }
+            if (machine.phase() == MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) {
+                runtime.task.cancel();
+                runtime.task = Bukkit.getScheduler().runTaskLater(configService.getPlugin(),
+                        () -> cleanup(player.getUniqueId()), config.finalTimeoutTicks());
+            }
+        }, 0L, config.cadenceTicks());
+    }
+
+    private void moonShadowIteration(Player player, RuntimeState runtime, MoonlitAfterglowConfig config) {
+        LivingEntity target = validTarget(player, runtime);
+        if (target == null || !holding(player)) { cleanup(player.getUniqueId()); return; }
+        Location targetNow = target.getLocation().clone();
+        Location chosen = null;
+        for (int candidate = 0; candidate < config.candidateRetries(); candidate++) {
+            MoonlitAfterglowMath.Point offset = MoonlitAfterglowMath.sphericalOffset(
+                    ThreadLocalRandom.current(), config.minimumRadius(), config.maximumRadius());
+            Location test = targetNow.clone().add(offset.x(), offset.y(), offset.z());
+            if (safeDestination(player.getWorld(), test)) { chosen = test; break; }
+        }
+        if (chosen != null) {
+            face(chosen, targetNow);
+            if (!player.teleport(chosen, PlayerTeleportEvent.TeleportCause.PLUGIN)) chosen = null;
+        }
+        Location slashOrigin = chosen == null ? player.getLocation().clone() : chosen.clone();
+        face(slashOrigin, targetNow);
+        if (chosen != null) player.teleport(slashOrigin, PlayerTeleportEvent.TeleportCause.PLUGIN);
+        runtime.machine.attempt(snapshot(slashOrigin, targetNow));
+        sweep(slashOrigin.clone().add(0, 1, 0));
+    }
+
+    private void recordFallback(Player player, LivingEntity target, RuntimeState runtime) {
+        if (runtime.machine.phase() != MoonShadowState.Phase.RAPID_TELEPORT_SEQUENCE) return;
+        Location targetNow = target != null && target.isValid() ? target.getLocation() : player.getLocation();
+        runtime.machine.attempt(snapshot(player.getLocation(), targetNow));
+    }
+
+    private boolean triggerFinal(Player player) {
+        RuntimeState runtime = states.get(player.getUniqueId());
+        if (runtime == null || runtime.machine.phase() != MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) return false;
+        List<MoonShadowState.SlashSnapshot> slashes = runtime.machine.trigger();
+        if (runtime.task != null) runtime.task.cancel();
+        sweep(player.getLocation().add(0, 1, 0));
+        for (MoonShadowState.SlashSnapshot slash : slashes) releaseSlash(player, slash);
+        runtime.machine.finish();
+        states.remove(player.getUniqueId());
+        return true;
+    }
+
+    private void releaseSlash(Player owner, MoonShadowState.SlashSnapshot snapshot) {
+        Location from = location(owner.getWorld(), snapshot.origin());
+        Location to = location(owner.getWorld(), snapshot.target());
+        trailSlash(owner, from, to, config().shadowSlashDamage(), config().slashSpeed());
+    }
+
+    private void trailSlash(Player owner, Location from, Location to, double damage, double speed) {
+        Vector delta = to.toVector().subtract(from.toVector());
+        double length = delta.length();
+        if (length < .001) return;
+        Vector step = delta.normalize().multiply(Math.max(.1, speed));
+        Set<UUID> hit = new HashSet<>();
+        final Location[] cursor = {from.clone()};
+        final double[] travelled = {0};
+        final BukkitTask[] task = new BukkitTask[1];
+        task[0] = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
+            cursor[0].getWorld().spawnParticle(Particle.SWEEP_ATTACK, cursor[0], 1);
+            for (Entity entity : cursor[0].getWorld().getNearbyEntities(cursor[0], 1, 1, 1)) {
+                if (entity instanceof LivingEntity living && entity != owner && hit.add(entity.getUniqueId()))
+                    combat.applyMultiHitDamage(owner, living, damage);
+            }
+            cursor[0].add(step); travelled[0] += step.length();
+            if (travelled[0] >= length) task[0].cancel();
+        }, 1L, 1L);
+    }
+
+    private Location moveLinear(Player player, Vector rawDirection, double distance) {
+        Location start = player.getLocation().clone();
+        Vector direction = rawDirection.clone();
+        if (direction.lengthSquared() < 1.0e-8) return start;
+        direction.normalize();
+        Location safe = start.clone();
+        for (double travelled = .2; travelled <= Math.max(0, distance) + 1.0e-8; travelled += .2) {
+            Location candidate = start.clone().add(direction.clone().multiply(Math.min(travelled, distance)));
+            if (!safeDestination(player.getWorld(), candidate)) break;
+            safe = candidate;
+        }
+        Vector previousVelocity = player.getVelocity().clone();
+        if (safe.distanceSquared(start) > .001 && player.teleport(safe, PlayerTeleportEvent.TeleportCause.PLUGIN)) {
+            player.setVelocity(previousVelocity); // preserve jump/fall/knockback; introduce no dash momentum.
+            return safe;
+        }
+        return start;
+    }
+
+    static boolean safeDestination(World world, Location feet) {
+        if (!world.isChunkLoaded(feet.getBlockX() >> 4, feet.getBlockZ() >> 4)) return false;
+        BoundingBox playerBox = new BoundingBox(feet.getX() - .3, feet.getY(), feet.getZ() - .3,
+                feet.getX() + .3, feet.getY() + 1.8, feet.getZ() + .3);
+        int minX = (int) Math.floor(playerBox.getMinX()), maxX = (int) Math.floor(playerBox.getMaxX());
+        int minY = (int) Math.floor(playerBox.getMinY()), maxY = (int) Math.floor(playerBox.getMaxY());
+        int minZ = (int) Math.floor(playerBox.getMinZ()), maxZ = (int) Math.floor(playerBox.getMaxZ());
+        for (int x = minX; x <= maxX; x++) for (int y = minY; y <= maxY; y++) for (int z = minZ; z <= maxZ; z++) {
+            Block block = world.getBlockAt(x, y, z);
+            if (!block.isPassable() && block.getBoundingBox().overlaps(playerBox)) return false;
+        }
+        return true;
+    }
+
+    private LivingEntity acquireTarget(Player player) {
+        RayTraceResult result = player.getWorld().rayTraceEntities(player.getEyeLocation(),
+                player.getEyeLocation().getDirection(), 32, .5,
+                entity -> entity instanceof LivingEntity && entity != player);
+        return result != null && result.getHitEntity() instanceof LivingEntity living ? living : null;
+    }
+    private LivingEntity validTarget(Player player, RuntimeState runtime) {
+        if (!player.isOnline() || player.isDead() || !player.getWorld().getUID().equals(runtime.worldId)) return null;
+        Entity entity = Bukkit.getEntity(runtime.targetId);
+        return entity instanceof LivingEntity living && living.isValid() && !living.isDead()
+                && living.getWorld().equals(player.getWorld()) ? living : null;
+    }
+    private boolean holding(Player player) { return ID.equals(specials.getSpecialId(player.getInventory().getItemInMainHand())); }
+    private Vector horizontalDirection(Player player) {
+        Vector direction = player.getLocation().getDirection().setY(0);
+        return direction.lengthSquared() < 1.0e-8 ? new Vector() : direction.normalize();
+    }
+    private void sweep(Location location) { location.getWorld().spawnParticle(Particle.SWEEP_ATTACK, location, 1); }
+    private void face(Location from, Location target) { from.setDirection(target.toVector().subtract(from.toVector())); }
+    private MoonShadowState.SlashSnapshot snapshot(Location origin, Location target) {
+        MoonlitAfterglowMath.Point o = point(origin), t = point(target);
+        MoonlitAfterglowMath.Point d = new MoonlitAfterglowMath.Point(t.x()-o.x(), t.y()-o.y(), t.z()-o.z());
+        return new MoonShadowState.SlashSnapshot(o, t, d);
+    }
+    private MoonlitAfterglowMath.Point point(Location l) { return new MoonlitAfterglowMath.Point(l.getX(), l.getY(), l.getZ()); }
+    private Location location(World world, MoonlitAfterglowMath.Point p) { return new Location(world, p.x(), p.y(), p.z()); }
+    private long millis(double seconds) { return Math.max(0, Math.round(seconds * 1000)); }
+    private MoonlitAfterglowConfig config() { return MoonlitAfterglowConfig.from(configService); }
+
+    private void cleanup(UUID playerId) {
+        RuntimeState removed = states.remove(playerId);
+        if (removed != null && removed.task != null) removed.task.cancel();
+        mitigationUntilTick.remove(playerId);
+    }
+    @EventHandler public void onQuit(PlayerQuitEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onDeath(PlayerDeathEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onHeld(PlayerItemHeldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onDrop(PlayerDropItemEvent event) {
+        if (ID.equals(specials.getSpecialId(event.getItemDrop().getItemStack()))) cleanup(event.getPlayer().getUniqueId());
+    }
+    @EventHandler public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player && states.containsKey(player.getUniqueId())) {
+            Bukkit.getScheduler().runTask(configService.getPlugin(), () -> {
+                if (!holding(player)) cleanup(player.getUniqueId());
+            });
+        }
+    }
+    @EventHandler public void onTargetDeath(EntityDeathEvent event) {
+        UUID targetId = event.getEntity().getUniqueId();
+        states.entrySet().stream().filter(entry -> entry.getValue().targetId.equals(targetId))
+                .map(Map.Entry::getKey).toList().forEach(this::cleanup);
+    }
+    public void shutdown() {
+        clockTask.cancel();
+        for (RuntimeState state : states.values()) if (state.task != null) state.task.cancel();
+        states.clear(); mitigationUntilTick.clear();
+    }
+    private static final class RuntimeState {
+        private final UUID worldId, targetId;
+        private final MoonShadowState machine;
+        private BukkitTask task;
+        private RuntimeState(UUID worldId, UUID targetId, MoonShadowState machine) {
+            this.worldId = worldId; this.targetId = targetId; this.machine = machine;
+        }
+    }
+}
