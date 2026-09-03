@@ -97,8 +97,12 @@ public final class MoonlitAfterglowListener implements Listener {
         Action action = event.getAction();
         if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) {
             UUID playerId = event.getPlayer().getUniqueId();
-            if (triggerFinal(event.getPlayer()) || finalInputSuppressionTicks.getOrDefault(playerId, -1L) >= tick
-                    || states.containsKey(playerId)) event.setCancelled(true);
+            RuntimeState runtime = states.get(playerId);
+            if (runtime != null && runtime.machine.phase() == MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) {
+                triggerFinal(event.getPlayer()); // Final release is additive; preserve the vanilla left-click action.
+            } else if (runtime != null) {
+                event.setCancelled(true); // The rapid sequence owns conflicting input until it reaches WAITING.
+            }
             return;
         }
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
@@ -108,10 +112,12 @@ public final class MoonlitAfterglowListener implements Listener {
             return;
         }
         MoonlitAfterglowConfig config = config();
+        ItemStack sourceItem = player.getInventory().getItemInMainHand().clone();
         cooldowns.startCooldown(player.getUniqueId(), MOON_FLASH, millis(config.moonFlashCooldownSeconds()));
         Location origin = player.getLocation().clone();
         Location destination = moveLinear(player, player.getEyeLocation().getDirection(), config.moonFlashDistance());
-        if (destination.distanceSquared(origin) > .01) trailSlash(player, origin, destination, config.moonFlashDamage(), config.slashSpeed());
+        if (destination.distanceSquared(origin) > .01)
+            trailSlash(player, sourceItem, origin, destination, config.moonFlashDamage(), config.slashSpeed());
         event.setCancelled(true);
     }
 
@@ -346,7 +352,8 @@ public final class MoonlitAfterglowListener implements Listener {
     }
     @EventHandler public void onTargetDeath(EntityDeathEvent event) {
         UUID targetId = event.getEntity().getUniqueId();
-        states.entrySet().stream().filter(entry -> entry.getValue().targetId.equals(targetId))
+        states.entrySet().stream().filter(entry -> entry.getValue().targetId.equals(targetId)
+                        && entry.getValue().machine.requiresLiveTarget())
                 .map(Map.Entry::getKey).toList().forEach(this::cleanupMoonShadow);
     }
     public void shutdown() {

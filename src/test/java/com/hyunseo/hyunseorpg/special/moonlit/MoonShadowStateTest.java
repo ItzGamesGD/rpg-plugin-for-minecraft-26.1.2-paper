@@ -37,6 +37,15 @@ class MoonShadowStateTest {
         assertEquals(originalTarget, state.trigger().getFirst().target());
     }
 
+    @Test void completedCastNoLongerRequiresTheLiveTarget() {
+        MoonShadowState state = new MoonShadowState(1);
+        assertTrue(state.requiresLiveTarget());
+        state.attempt(slash(1));
+        assertEquals(MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER, state.phase());
+        assertFalse(state.requiresLiveTarget());
+        assertEquals(1, state.trigger().size());
+    }
+
     private void assertAttemptOutcome(java.util.function.IntPredicate succeeds, int expectedSnapshots) {
         MoonShadowState state = new MoonShadowState(10);
         for (int i = 0; i < 10; i++) assertTrue(state.attempt(succeeds.test(i) ? slash(i) : null));

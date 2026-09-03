@@ -22,6 +22,7 @@ public final class MoonShadowState {
     public Phase phase() { return phase; }
     public int attempts() { return attempts; }
     public List<SlashSnapshot> slashes() { return List.copyOf(slashes); }
+    public boolean requiresLiveTarget() { return phase == Phase.RAPID_TELEPORT_SEQUENCE; }
     public boolean attempt(SlashSnapshot successfulMove) {
         if (phase != Phase.RAPID_TELEPORT_SEQUENCE || attempts >= expectedAttempts) return false;
         attempts++;

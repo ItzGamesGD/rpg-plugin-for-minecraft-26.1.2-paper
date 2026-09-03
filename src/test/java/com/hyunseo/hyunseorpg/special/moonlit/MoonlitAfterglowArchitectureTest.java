@@ -13,7 +13,7 @@ class MoonlitAfterglowArchitectureTest {
     private static final Path LISTENER = Path.of(
             "src/main/java/com/hyunseo/hyunseorpg/special/moonlit/MoonlitAfterglowListener.java");
 
-    @Test void moonShadowCleanupDoesNotOwnPassiveMitigation() throws IOException {
+    @Test void moonShadowCleanupSourceDoesNotDirectlyOwnPassiveMitigation() throws IOException {
         String source = Files.readString(LISTENER);
         String cleanup = between(source, "private void cleanupMoonShadow", "private void cancelSlashTask");
         assertTrue(cleanup.contains("states.remove(playerId)"));
@@ -23,21 +23,35 @@ class MoonlitAfterglowArchitectureTest {
         assertTrue(ownerCleanup.contains("mitigationUntilTick.remove(playerId)"));
     }
 
-    @Test void finalInputUsesSpecificClickAndMeleeEventsNotBroadAnimation() throws IOException {
+    @Test void finalInputSourceUsesSpecificClickAndMeleeEventsNotBroadAnimation() throws IOException {
         String source = Files.readString(LISTENER);
         assertFalse(source.contains("PlayerAnimationEvent"));
         assertTrue(source.contains("Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK"));
         assertTrue(source.contains("MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) triggerFinal(player)"));
+        assertTrue(source.contains("Final release is additive; preserve the vanilla left-click action"));
     }
 
-    @Test void castSourceIsCapturedAtActivationAndUsedAtRelease() throws IOException {
+    @Test void castSourceArchitectureCapturesAtActivationAndUsesAtRelease() throws IOException {
         String source = Files.readString(LISTENER);
         assertTrue(source.contains("this.sourceItem = sourceItem.clone()"));
         assertTrue(source.contains("releaseSlash(player, runtime.sourceItem, slash)"));
         assertFalse(source.contains("releaseSlash(player, sourceItem, slash)"));
     }
 
-    @Test void moonlitAttackSpeedIsMainHandRestricted() throws IOException {
+    @Test void completedWaitingStateSourceSurvivesTargetDeathAndMoonFlashCapturesBeforeMove() throws IOException {
+        String source = Files.readString(LISTENER);
+        String targetDeath = between(source, "public void onTargetDeath", "public void shutdown");
+        assertTrue(targetDeath.contains("machine.requiresLiveTarget()"));
+
+        String interact = between(source, "public void onInteract", "public void onSwap");
+        int rightClickPath = interact.lastIndexOf("MoonlitAfterglowConfig config = config();");
+        assertTrue(rightClickPath >= 0);
+        String moonFlash = interact.substring(rightClickPath);
+        assertTrue(moonFlash.indexOf("ItemStack sourceItem") < moonFlash.indexOf("moveLinear(player"));
+        assertTrue(moonFlash.contains("trailSlash(player, sourceItem"));
+    }
+
+    @Test void moonlitAttackSpeedSourceIsMainHandRestricted() throws IOException {
         String service = Files.readString(Path.of(
                 "src/main/java/com/hyunseo/hyunseorpg/special/SpecialEquipmentService.java"));
         String moonlit = between(service, "data.id().equals(\"moonlit_afterglow\")", "EquipmentLoreBuilder lore");
