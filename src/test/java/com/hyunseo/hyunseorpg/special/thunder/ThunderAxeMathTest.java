@@ -58,6 +58,20 @@ class ThunderAxeMathTest {
         assertTrue(large.stream().allMatch(v -> Double.isFinite(v.getX()) && Double.isFinite(v.getY()) && Double.isFinite(v.getZ())));
     }
 
+    @Test void strikeGeometryRemainsAnchoredWhenPlayerMovesAfterRelease() {
+        Vector capturedOrigin = new Vector(12, 64, -8);
+        Vector facing = new Vector(0, 0, 1);
+        List<Vector> waveAtRelease = ThunderAxeMath.anchoredFan(capturedOrigin, 4, facing, 3, 2, 50);
+
+        // A later player position is deliberately irrelevant to cast-space geometry.
+        Vector laterPlayerPosition = new Vector(120, 80, 300);
+        List<Vector> waveAfterMovement = ThunderAxeMath.anchoredFan(capturedOrigin, 4, facing, 3, 2, 50);
+
+        assertEquals(waveAtRelease, waveAfterMovement);
+        assertFalse(waveAfterMovement.equals(ThunderAxeMath.anchoredFan(
+                laterPlayerPosition, 4, facing, 3, 2, 50)));
+    }
+
     @Test void burstIsDistanceOrderedChunkedVisitedAndLimited() {
         Map<String, Double> targets = new LinkedHashMap<>();
         for (int i = 9; i >= 0; i--) targets.put("target-" + i, (double) i);

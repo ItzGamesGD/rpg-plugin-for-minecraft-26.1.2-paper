@@ -32,6 +32,13 @@ public final class ThunderAxeMath {
         return result;
     }
 
+    /** Translates fan offsets into the immutable cast space captured at release. */
+    public static List<Vector> anchoredFan(Vector castOrigin, int wave, Vector forward,
+            double firstDistance, double step, double angleDegrees) {
+        return fan(wave, forward, firstDistance, step, angleDegrees).stream()
+                .map(offset -> castOrigin.clone().add(offset)).toList();
+    }
+
     public static List<Vector> ring(double radius, int requested) {
         int count = Math.max(8, Math.min(MAX_RING_PARTICLES, requested));
         List<Vector> result = new ArrayList<>(count);

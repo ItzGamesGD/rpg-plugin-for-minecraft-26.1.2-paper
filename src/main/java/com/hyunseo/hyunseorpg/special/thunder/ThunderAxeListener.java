@@ -123,7 +123,9 @@ public final class ThunderAxeListener implements Listener {
 
     private void startStrike(Player owner, UUID instance) {
         cooldowns.startCooldownTicks(owner.getUniqueId(), STRIKE_COOLDOWN, config.strikeCooldownTicks());
-        Vector facing = flatFacing(owner); Location origin = owner.getLocation().add(facing.clone().multiply(config.firstDistance()));
+        Location castBase = owner.getLocation().clone();
+        Vector facing = flatFacing(owner);
+        Location origin = castBase.clone().add(facing.clone().multiply(config.firstDistance()));
         origin.getWorld().spawnParticle(Particle.EXPLOSION, origin.clone().add(0, .2, 0), 3, .3, .15, .3, 0);
         origin.getWorld().playSound(origin, Sound.ITEM_TOTEM_USE, 1.1f, .75f);
         final int[] tick = {0}; final Set<UUID> castHits = new HashSet<>();
@@ -131,7 +133,7 @@ public final class ThunderAxeListener implements Listener {
             if (!validOwner(owner, instance)) return false;
             int wave = tick[0] / Math.max(1, config.waveIntervalTicks()) + 1;
             if (tick[0] % Math.max(1, config.waveIntervalTicks()) == 0 && wave <= ThunderAxeMath.WAVE_COUNT)
-                executeStrikeWave(owner, wave, facing, castHits);
+                executeStrikeWave(owner, castBase, wave, facing, castHits);
             double maxRadius = config.firstDistance() + 4 * config.distanceStep();
             double radius = Math.min(maxRadius, maxRadius * tick[0] / Math.max(1.0, 4.0 * config.waveIntervalTicks()));
             for (Vector point : ThunderAxeMath.ring(radius, 40))
@@ -140,10 +142,11 @@ public final class ThunderAxeListener implements Listener {
         }, 0, 1);
     }
 
-    private void executeStrikeWave(Player owner, int wave, Vector facing, Set<UUID> castHits) {
+    private void executeStrikeWave(Player owner, Location castBase, int wave, Vector facing, Set<UUID> castHits) {
         Set<UUID> waveHits = new HashSet<>();
-        for (Vector offset : ThunderAxeMath.fan(wave, facing, config.firstDistance(), config.distanceStep(), config.fanAngleDegrees())) {
-            Location strike = owner.getLocation().add(offset); visualBolt(strike);
+        for (Vector point : ThunderAxeMath.anchoredFan(castBase.toVector(), wave, facing,
+                config.firstDistance(), config.distanceStep(), config.fanAngleDegrees())) {
+            Location strike = point.toLocation(castBase.getWorld()); visualBolt(strike);
             for (Entity entity : owner.getWorld().getNearbyEntities(strike, config.hitRadius(), 2.25, config.hitRadius())) {
                 if (!(entity instanceof LivingEntity target) || !validTarget(owner, target)
                         || !waveHits.add(target.getUniqueId()) || (!config.repeatAcrossWaves() && !castHits.add(target.getUniqueId()))) continue;
