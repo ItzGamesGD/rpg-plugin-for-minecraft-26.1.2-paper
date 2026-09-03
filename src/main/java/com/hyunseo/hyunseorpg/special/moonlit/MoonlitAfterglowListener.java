@@ -57,6 +57,7 @@ public final class MoonlitAfterglowListener implements Listener {
         this.clockTask = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
             tick++;
             finalInputSuppressionTicks.entrySet().removeIf(entry -> entry.getValue() < tick);
+            mitigationUntilTick.entrySet().removeIf(entry -> entry.getValue() <= tick);
         }, 1L, 1L);
     }
 
@@ -130,7 +131,8 @@ public final class MoonlitAfterglowListener implements Listener {
         MoonlitAfterglowConfig config = config();
         cooldowns.startCooldown(player.getUniqueId(), MOON_SHADOW, millis(config.moonShadowCooldownSeconds()));
         MoonShadowState machine = new MoonShadowState(config.teleportCount());
-        RuntimeState runtime = new RuntimeState(player.getWorld().getUID(), target.getUniqueId(), machine);
+        RuntimeState runtime = new RuntimeState(player.getWorld().getUID(), target.getUniqueId(), machine,
+                player.getInventory().getItemInMainHand());
         states.put(player.getUniqueId(), runtime);
         runtime.task = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
             try {
@@ -139,20 +141,20 @@ public final class MoonlitAfterglowListener implements Listener {
                 configService.getPlugin().getLogger().log(Level.SEVERE,
                         "Unexpected Moon Shadow iteration failure; cleaning state for player "
                                 + player.getUniqueId() + " at attempt " + machine.attempts(), exception);
-                cleanup(player.getUniqueId());
+                cleanupMoonShadow(player.getUniqueId());
                 return;
             }
             if (machine.phase() == MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) {
                 runtime.task.cancel();
                 runtime.task = Bukkit.getScheduler().runTaskLater(configService.getPlugin(),
-                        () -> cleanup(player.getUniqueId()), config.finalTimeoutTicks());
+                        () -> cleanupMoonShadow(player.getUniqueId()), config.finalTimeoutTicks());
             }
         }, 0L, config.cadenceTicks());
     }
 
     private void moonShadowIteration(Player player, RuntimeState runtime, MoonlitAfterglowConfig config) {
         LivingEntity target = validTarget(player, runtime);
-        if (target == null || !holding(player)) { cleanup(player.getUniqueId()); return; }
+        if (target == null || !holding(player)) { cleanupMoonShadow(player.getUniqueId()); return; }
         Location targetNow = target.getLocation().clone();
         Location chosen = null;
         for (int candidate = 0; candidate < config.candidateRetries(); candidate++) {
@@ -180,9 +182,8 @@ public final class MoonlitAfterglowListener implements Listener {
         List<MoonShadowState.SlashSnapshot> slashes = runtime.machine.trigger();
         if (runtime.task != null) runtime.task.cancel();
         sweep(player.getLocation().add(0, 1, 0));
-        ItemStack sourceItem = player.getInventory().getItemInMainHand().clone();
         finalInputSuppressionTicks.put(player.getUniqueId(), tick);
-        for (MoonShadowState.SlashSnapshot slash : slashes) releaseSlash(player, sourceItem, slash);
+        for (MoonShadowState.SlashSnapshot slash : slashes) releaseSlash(player, runtime.sourceItem, slash);
         runtime.machine.finish();
         states.remove(player.getUniqueId());
         return true;
@@ -286,10 +287,6 @@ public final class MoonlitAfterglowListener implements Listener {
         movementInputs.put(event.getPlayer().getUniqueId(),
                 new MovementInput(input.isForward(), input.isBackward(), input.isLeft(), input.isRight()));
     }
-    @EventHandler(priority = EventPriority.HIGHEST) public void onAnimation(PlayerAnimationEvent event) {
-        Player player = event.getPlayer();
-        if (holding(player)) triggerFinal(player);
-    }
     private Vector yugwangDirection(Player player) {
         Vector facing = player.getLocation().getDirection().setY(0);
         if (facing.lengthSquared() < 1.0e-8) return new Vector();
@@ -313,10 +310,9 @@ public final class MoonlitAfterglowListener implements Listener {
     private long millis(double seconds) { return Math.max(0, Math.round(seconds * 1000)); }
     private MoonlitAfterglowConfig config() { return MoonlitAfterglowConfig.from(configService); }
 
-    private void cleanup(UUID playerId) {
+    private void cleanupMoonShadow(UUID playerId) {
         RuntimeState removed = states.remove(playerId);
         if (removed != null && removed.task != null) removed.task.cancel();
-        mitigationUntilTick.remove(playerId);
     }
     private void cancelSlashTask(UUID playerId, BukkitTask task) {
         task.cancel();
@@ -325,42 +321,52 @@ public final class MoonlitAfterglowListener implements Listener {
     }
     private void cancelSlashTasks(UUID playerId) {
         Set<BukkitTask> tasks = slashTasks.remove(playerId);
-        if (tasks != null) tasks.forEach(BukkitTask::cancel);
+        if (tasks != null) List.copyOf(tasks).forEach(BukkitTask::cancel);
     }
     private void cleanupOwner(UUID playerId) {
-        cleanup(playerId); cancelSlashTasks(playerId); movementInputs.remove(playerId); finalInputSuppressionTicks.remove(playerId);
+        cleanupMoonShadow(playerId);
+        mitigationUntilTick.remove(playerId);
+        cancelSlashTasks(playerId);
+        movementInputs.remove(playerId);
+        finalInputSuppressionTicks.remove(playerId);
     }
     @EventHandler public void onQuit(PlayerQuitEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
     @EventHandler public void onDeath(PlayerDeathEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
     @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
-    @EventHandler public void onHeld(PlayerItemHeldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onHeld(PlayerItemHeldEvent event) { cleanupMoonShadow(event.getPlayer().getUniqueId()); }
     @EventHandler public void onDrop(PlayerDropItemEvent event) {
-        if (ID.equals(specials.getSpecialId(event.getItemDrop().getItemStack()))) cleanup(event.getPlayer().getUniqueId());
+        if (ID.equals(specials.getSpecialId(event.getItemDrop().getItemStack()))) cleanupMoonShadow(event.getPlayer().getUniqueId());
     }
     @EventHandler public void onInventoryClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player && states.containsKey(player.getUniqueId())) {
             Bukkit.getScheduler().runTask(configService.getPlugin(), () -> {
-                if (!holding(player)) cleanup(player.getUniqueId());
+                if (!holding(player)) cleanupMoonShadow(player.getUniqueId());
             });
         }
     }
     @EventHandler public void onTargetDeath(EntityDeathEvent event) {
         UUID targetId = event.getEntity().getUniqueId();
         states.entrySet().stream().filter(entry -> entry.getValue().targetId.equals(targetId))
-                .map(Map.Entry::getKey).toList().forEach(this::cleanup);
+                .map(Map.Entry::getKey).toList().forEach(this::cleanupMoonShadow);
     }
     public void shutdown() {
         clockTask.cancel();
         for (RuntimeState state : states.values()) if (state.task != null) state.task.cancel();
-        slashTasks.values().forEach(tasks -> tasks.forEach(BukkitTask::cancel));
+        List<BukkitTask> releasedTasks = slashTasks.values().stream().flatMap(Set::stream).toList();
         states.clear(); slashTasks.clear(); movementInputs.clear(); finalInputSuppressionTicks.clear(); mitigationUntilTick.clear();
+        releasedTasks.forEach(BukkitTask::cancel);
     }
     private static final class RuntimeState {
         private final UUID worldId, targetId;
         private final MoonShadowState machine;
+        private final ItemStack sourceItem;
         private BukkitTask task;
-        private RuntimeState(UUID worldId, UUID targetId, MoonShadowState machine) {
-            this.worldId = worldId; this.targetId = targetId; this.machine = machine;
+        private RuntimeState(UUID worldId, UUID targetId, MoonShadowState machine, ItemStack sourceItem) {
+            this.worldId = worldId;
+            this.targetId = targetId;
+            this.machine = machine;
+            // In-memory damage metadata only; never inserted into an inventory or assigned a new instance UUID.
+            this.sourceItem = sourceItem.clone();
         }
     }
     private record MovementInput(boolean forward, boolean backward, boolean left, boolean right) {
