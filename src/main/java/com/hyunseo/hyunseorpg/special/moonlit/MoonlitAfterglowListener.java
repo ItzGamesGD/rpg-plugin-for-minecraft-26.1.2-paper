@@ -27,6 +27,7 @@ import org.bukkit.util.Vector;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.logging.Level;
 
 /** Runtime for Moonlit Afterglow. All Bukkit entity access remains on the server thread. */
 public final class MoonlitAfterglowListener implements Listener {
@@ -112,9 +113,14 @@ public final class MoonlitAfterglowListener implements Listener {
         RuntimeState runtime = new RuntimeState(player.getWorld().getUID(), target.getUniqueId(), machine);
         states.put(player.getUniqueId(), runtime);
         runtime.task = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
-            try { moonShadowIteration(player, runtime, config); }
-            catch (RuntimeException ignored) { // A bad candidate/teleport must not terminate later iterations.
-                recordFallback(player, target, runtime);
+            try {
+                moonShadowIteration(player, runtime, config);
+            } catch (RuntimeException exception) {
+                configService.getPlugin().getLogger().log(Level.SEVERE,
+                        "Unexpected Moon Shadow iteration failure; cleaning state for player "
+                                + player.getUniqueId() + " at attempt " + machine.attempts(), exception);
+                cleanup(player.getUniqueId());
+                return;
             }
             if (machine.phase() == MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) {
                 runtime.task.cancel();
@@ -139,17 +145,13 @@ public final class MoonlitAfterglowListener implements Listener {
             face(chosen, targetNow);
             if (!player.teleport(chosen, PlayerTeleportEvent.TeleportCause.PLUGIN)) chosen = null;
         }
-        Location slashOrigin = chosen == null ? player.getLocation().clone() : chosen.clone();
-        face(slashOrigin, targetNow);
-        if (chosen != null) player.teleport(slashOrigin, PlayerTeleportEvent.TeleportCause.PLUGIN);
-        runtime.machine.attempt(snapshot(slashOrigin, targetNow));
-        sweep(slashOrigin.clone().add(0, 1, 0));
-    }
-
-    private void recordFallback(Player player, LivingEntity target, RuntimeState runtime) {
-        if (runtime.machine.phase() != MoonShadowState.Phase.RAPID_TELEPORT_SEQUENCE) return;
-        Location targetNow = target != null && target.isValid() ? target.getLocation() : player.getLocation();
-        runtime.machine.attempt(snapshot(player.getLocation(), targetNow));
+        if (chosen == null) {
+            // Expected movement failure: consume this bounded attempt without placing a fake slash.
+            runtime.machine.attempt(null);
+            return;
+        }
+        runtime.machine.attempt(snapshot(chosen, targetNow));
+        sweep(chosen.clone().add(0, 1, 0));
     }
 
     private boolean triggerFinal(Player player) {
@@ -210,6 +212,7 @@ public final class MoonlitAfterglowListener implements Listener {
     }
 
     static boolean safeDestination(World world, Location feet) {
+        if (feet.getY() < world.getMinHeight() || feet.getY() + 1.8 > world.getMaxHeight()) return false;
         if (!world.isChunkLoaded(feet.getBlockX() >> 4, feet.getBlockZ() >> 4)) return false;
         BoundingBox playerBox = new BoundingBox(feet.getX() - .3, feet.getY(), feet.getZ() - .3,
                 feet.getX() + .3, feet.getY() + 1.8, feet.getZ() + .3);
