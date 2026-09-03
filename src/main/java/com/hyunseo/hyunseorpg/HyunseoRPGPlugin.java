@@ -1543,7 +1543,11 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RPGMenuListener(rpgMenuService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, skillService, equipmentInstanceService, alchemyCombatAdapter,
-                item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)), this);
+                item -> {
+                    String id = specialEquipmentService.getSpecialId(item);
+                    return id.equals(FlameAxeListener.ID)
+                            || id.equals(com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener.ID);
+                }), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);

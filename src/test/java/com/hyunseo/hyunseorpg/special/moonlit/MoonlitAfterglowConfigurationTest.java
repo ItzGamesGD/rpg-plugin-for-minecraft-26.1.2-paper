@@ -15,6 +15,9 @@ class MoonlitAfterglowConfigurationTest {
             assertTrue(yaml.contains("item-id: moonlit_afterglow"));
             for (String key : java.util.List.of("base-attack-speed:", "passive:", "yugwang:",
                     "moon-flash:", "moon-shadow:")) assertTrue(yaml.contains(key), key);
+            String moonlit = yaml.substring(yaml.indexOf("    moonlit_afterglow:"));
+            assertFalse(moonlit.contains("velocity:"), "teleport-based Yugwang must not advertise dead velocity config");
+            assertFalse(moonlit.contains("sequence-duration-ticks:"), "count and cadence are authoritative");
         } catch (Exception exception) { fail(exception); }
     }
 }

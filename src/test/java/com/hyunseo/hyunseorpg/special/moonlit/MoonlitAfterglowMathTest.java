@@ -23,4 +23,23 @@ class MoonlitAfterglowMathTest {
             assertTrue(a.length() <= 12); // independent [-12,12] axes could reach sqrt(3)*12.
         }
     }
+
+    @Test void movementDirectionSupportsWasdAndNormalizesDiagonals() {
+        var facing = new MoonlitAfterglowMath.Point(0, 0, 1);
+        var right = new MoonlitAfterglowMath.Point(-1, 0, 0);
+        assertEquals(facing, MoonlitAfterglowMath.movementDirection(true, false, false, false, facing, right));
+        assertEquals(new MoonlitAfterglowMath.Point(0, 0, -1),
+                MoonlitAfterglowMath.movementDirection(false, true, false, false, facing, right));
+        assertEquals(right, MoonlitAfterglowMath.movementDirection(false, false, false, true, facing, right));
+        var diagonal = MoonlitAfterglowMath.movementDirection(true, false, false, true, facing, right);
+        assertNotNull(diagonal);
+        assertEquals(1.0, diagonal.length(), 1.0e-12);
+    }
+
+    @Test void stationaryOrOpposingInputUsesExplicitFallbackSignal() {
+        var facing = new MoonlitAfterglowMath.Point(0, 0, 1);
+        var right = new MoonlitAfterglowMath.Point(-1, 0, 0);
+        assertNull(MoonlitAfterglowMath.movementDirection(false, false, false, false, facing, right));
+        assertNull(MoonlitAfterglowMath.movementDirection(true, true, false, false, facing, right));
+    }
 }

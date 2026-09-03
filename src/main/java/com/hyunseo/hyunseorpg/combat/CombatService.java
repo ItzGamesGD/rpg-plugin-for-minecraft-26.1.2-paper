@@ -37,8 +37,19 @@ public final class CombatService {
                 damage, false, true, false), target, true, false);
     }
 
+    /** Additional strike paired with a confirmed melee hit; bypasses the same hit's invulnerability frame. */
+    public void applyAdditionalMeleeDamage(Player attacker, ItemStack sourceItem, LivingEntity target, double damage) {
+        applyContextDamage(new DamageContext(attacker, sourceItem, "", DamageType.DIRECT,
+                damage, true, true, false), target, true, false);
+    }
+
     public void applyMultiHitDamage(Player attacker, LivingEntity target, double damage) {
-        applyContextDamage(new DamageContext(attacker, held(attacker), "", DamageType.CUSTOM_SKILL,
+        applyMultiHitDamage(attacker, held(attacker), target, damage);
+    }
+
+    /** Applies delayed multi-hit damage using the item that created the attack, not the later held item. */
+    public void applyMultiHitDamage(Player attacker, ItemStack sourceItem, LivingEntity target, double damage) {
+        applyContextDamage(new DamageContext(attacker, sourceItem, "", DamageType.CUSTOM_SKILL,
                 damage, true, true, true), target, false, true);
     }
 

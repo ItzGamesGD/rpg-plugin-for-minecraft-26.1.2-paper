@@ -20,6 +20,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
@@ -41,6 +42,9 @@ public final class MoonlitAfterglowListener implements Listener {
     private final CooldownService cooldowns;
     private final Map<UUID, Long> mitigationUntilTick = new HashMap<>();
     private final Map<UUID, RuntimeState> states = new HashMap<>();
+    private final Map<UUID, MovementInput> movementInputs = new HashMap<>();
+    private final Map<UUID, Long> finalInputSuppressionTicks = new HashMap<>();
+    private final Map<UUID, Set<BukkitTask>> slashTasks = new HashMap<>();
     private long tick;
     private final BukkitTask clockTask;
 
@@ -50,21 +54,31 @@ public final class MoonlitAfterglowListener implements Listener {
         this.specials = specials;
         this.combat = combat;
         this.cooldowns = cooldowns;
-        this.clockTask = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> tick++, 1L, 1L);
+        this.clockTask = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
+            tick++;
+            finalInputSuppressionTicks.entrySet().removeIf(entry -> entry.getValue() < tick);
+        }, 1L, 1L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMelee(EntityDamageByEntityEvent event) {
         if (combat.isInternalDamage() || !(event.getDamager() instanceof Player player)
                 || !(event.getEntity() instanceof LivingEntity target) || !holding(player)) return;
+        if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) return;
+        if (finalInputSuppressionTicks.getOrDefault(player.getUniqueId(), -1L) >= tick) return;
+        RuntimeState runtime = states.get(player.getUniqueId());
+        if (runtime != null) {
+            if (runtime.machine.phase() == MoonShadowState.Phase.WAITING_FOR_FINAL_TRIGGER) triggerFinal(player);
+            return;
+        }
         MoonlitAfterglowConfig config = config();
         sweep(player.getLocation().add(0, 1, 0));
-        combat.applyDirectDamage(player, target, config.passiveDamage());
+        combat.applyAdditionalMeleeDamage(player, player.getInventory().getItemInMainHand(), target, config.passiveDamage());
         mitigationUntilTick.put(player.getUniqueId(), tick + config.mitigationTicks());
         if (!cooldowns.isOnCooldown(player.getUniqueId(), YUGWANG)) {
             cooldowns.startCooldown(player.getUniqueId(), YUGWANG, millis(config.yugwangCooldownSeconds()));
             // Collision-clamped teleport was selected over velocity: it is deterministic and cannot leave momentum.
-            moveLinear(player, horizontalDirection(player), config.yugwangDistance());
+            moveLinear(player, yugwangDirection(player), config.yugwangDistance());
         }
     }
 
@@ -81,12 +95,17 @@ public final class MoonlitAfterglowListener implements Listener {
         if (event.getHand() != EquipmentSlot.HAND || !holding(event.getPlayer())) return;
         Action action = event.getAction();
         if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) {
-            if (triggerFinal(event.getPlayer())) event.setCancelled(true);
+            UUID playerId = event.getPlayer().getUniqueId();
+            if (triggerFinal(event.getPlayer()) || finalInputSuppressionTicks.getOrDefault(playerId, -1L) >= tick
+                    || states.containsKey(playerId)) event.setCancelled(true);
             return;
         }
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
         Player player = event.getPlayer();
-        if (states.containsKey(player.getUniqueId()) || cooldowns.isOnCooldown(player.getUniqueId(), MOON_FLASH)) return;
+        if (states.containsKey(player.getUniqueId()) || cooldowns.isOnCooldown(player.getUniqueId(), MOON_FLASH)) {
+            event.setCancelled(true);
+            return;
+        }
         MoonlitAfterglowConfig config = config();
         cooldowns.startCooldown(player.getUniqueId(), MOON_FLASH, millis(config.moonFlashCooldownSeconds()));
         Location origin = player.getLocation().clone();
@@ -98,11 +117,12 @@ public final class MoonlitAfterglowListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onSwap(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
-        if (!holding(player) || states.containsKey(player.getUniqueId())
+        if (!holding(player)) return;
+        event.setCancelled(true); // F is owned by this weapon even when activation is rejected.
+        if (states.containsKey(player.getUniqueId())
                 || cooldowns.isOnCooldown(player.getUniqueId(), MOON_SHADOW)) return;
         LivingEntity target = acquireTarget(player);
         if (target == null) return;
-        event.setCancelled(true);
         startMoonShadow(player, target);
     }
 
@@ -160,19 +180,25 @@ public final class MoonlitAfterglowListener implements Listener {
         List<MoonShadowState.SlashSnapshot> slashes = runtime.machine.trigger();
         if (runtime.task != null) runtime.task.cancel();
         sweep(player.getLocation().add(0, 1, 0));
-        for (MoonShadowState.SlashSnapshot slash : slashes) releaseSlash(player, slash);
+        ItemStack sourceItem = player.getInventory().getItemInMainHand().clone();
+        finalInputSuppressionTicks.put(player.getUniqueId(), tick);
+        for (MoonShadowState.SlashSnapshot slash : slashes) releaseSlash(player, sourceItem, slash);
         runtime.machine.finish();
         states.remove(player.getUniqueId());
         return true;
     }
 
-    private void releaseSlash(Player owner, MoonShadowState.SlashSnapshot snapshot) {
+    private void releaseSlash(Player owner, ItemStack sourceItem, MoonShadowState.SlashSnapshot snapshot) {
         Location from = location(owner.getWorld(), snapshot.origin());
         Location to = location(owner.getWorld(), snapshot.target());
-        trailSlash(owner, from, to, config().shadowSlashDamage(), config().slashSpeed());
+        trailSlash(owner, sourceItem, from, to, config().shadowSlashDamage(), config().slashSpeed());
     }
 
     private void trailSlash(Player owner, Location from, Location to, double damage, double speed) {
+        trailSlash(owner, owner.getInventory().getItemInMainHand().clone(), from, to, damage, speed);
+    }
+
+    private void trailSlash(Player owner, ItemStack sourceItem, Location from, Location to, double damage, double speed) {
         Vector delta = to.toVector().subtract(from.toVector());
         double length = delta.length();
         if (length < .001) return;
@@ -182,14 +208,26 @@ public final class MoonlitAfterglowListener implements Listener {
         final double[] travelled = {0};
         final BukkitTask[] task = new BukkitTask[1];
         task[0] = Bukkit.getScheduler().runTaskTimer(configService.getPlugin(), () -> {
-            cursor[0].getWorld().spawnParticle(Particle.SWEEP_ATTACK, cursor[0], 1);
-            for (Entity entity : cursor[0].getWorld().getNearbyEntities(cursor[0], 1, 1, 1)) {
-                if (entity instanceof LivingEntity living && entity != owner && hit.add(entity.getUniqueId()))
-                    combat.applyMultiHitDamage(owner, living, damage);
+            try {
+                if (!owner.isOnline() || owner.isDead() || owner.getWorld() != cursor[0].getWorld()) {
+                    cancelSlashTask(owner.getUniqueId(), task[0]);
+                    return;
+                }
+                cursor[0].getWorld().spawnParticle(Particle.SWEEP_ATTACK, cursor[0], 1);
+                for (Entity entity : cursor[0].getWorld().getNearbyEntities(cursor[0], 1, 1, 1)) {
+                    if (entity instanceof LivingEntity living && entity != owner && hit.add(entity.getUniqueId()))
+                        combat.applyMultiHitDamage(owner, sourceItem, living, damage);
+                }
+                cursor[0].add(step); travelled[0] += step.length();
+                if (travelled[0] >= length) cancelSlashTask(owner.getUniqueId(), task[0]);
+            } catch (RuntimeException exception) {
+                configService.getPlugin().getLogger().log(Level.SEVERE,
+                        "Unexpected delayed Moonlit slash failure; cancelling task for player "
+                                + owner.getUniqueId(), exception);
+                cancelSlashTask(owner.getUniqueId(), task[0]);
             }
-            cursor[0].add(step); travelled[0] += step.length();
-            if (travelled[0] >= length) task[0].cancel();
         }, 1L, 1L);
+        slashTasks.computeIfAbsent(owner.getUniqueId(), ignored -> new HashSet<>()).add(task[0]);
     }
 
     private Location moveLinear(Player player, Vector rawDirection, double distance) {
@@ -227,10 +265,14 @@ public final class MoonlitAfterglowListener implements Listener {
     }
 
     private LivingEntity acquireTarget(Player player) {
-        RayTraceResult result = player.getWorld().rayTraceEntities(player.getEyeLocation(),
-                player.getEyeLocation().getDirection(), 32, .5,
+        Location eye = player.getEyeLocation();
+        Vector direction = eye.getDirection();
+        RayTraceResult result = player.getWorld().rayTraceEntities(eye, direction, 32, .5,
                 entity -> entity instanceof LivingEntity && entity != player);
-        return result != null && result.getHitEntity() instanceof LivingEntity living ? living : null;
+        if (result == null || !(result.getHitEntity() instanceof LivingEntity living)) return null;
+        RayTraceResult block = player.getWorld().rayTraceBlocks(eye, direction, 32, FluidCollisionMode.NEVER, true);
+        return block == null || block.getHitPosition().distanceSquared(eye.toVector())
+                > result.getHitPosition().distanceSquared(eye.toVector()) ? living : null;
     }
     private LivingEntity validTarget(Player player, RuntimeState runtime) {
         if (!player.isOnline() || player.isDead() || !player.getWorld().getUID().equals(runtime.worldId)) return null;
@@ -239,9 +281,25 @@ public final class MoonlitAfterglowListener implements Listener {
                 && living.getWorld().equals(player.getWorld()) ? living : null;
     }
     private boolean holding(Player player) { return ID.equals(specials.getSpecialId(player.getInventory().getItemInMainHand())); }
-    private Vector horizontalDirection(Player player) {
-        Vector direction = player.getLocation().getDirection().setY(0);
-        return direction.lengthSquared() < 1.0e-8 ? new Vector() : direction.normalize();
+    @EventHandler public void onInput(PlayerInputEvent event) {
+        Input input = event.getInput();
+        movementInputs.put(event.getPlayer().getUniqueId(),
+                new MovementInput(input.isForward(), input.isBackward(), input.isLeft(), input.isRight()));
+    }
+    @EventHandler(priority = EventPriority.HIGHEST) public void onAnimation(PlayerAnimationEvent event) {
+        Player player = event.getPlayer();
+        if (holding(player)) triggerFinal(player);
+    }
+    private Vector yugwangDirection(Player player) {
+        Vector facing = player.getLocation().getDirection().setY(0);
+        if (facing.lengthSquared() < 1.0e-8) return new Vector();
+        facing.normalize();
+        MovementInput input = movementInputs.getOrDefault(player.getUniqueId(), MovementInput.STATIONARY);
+        MoonlitAfterglowMath.Point selected = MoonlitAfterglowMath.movementDirection(
+                input.forward, input.backward, input.left, input.right,
+                new MoonlitAfterglowMath.Point(facing.getX(), 0, facing.getZ()),
+                new MoonlitAfterglowMath.Point(-facing.getZ(), 0, facing.getX()));
+        return selected == null ? facing : new Vector(selected.x(), 0, selected.z());
     }
     private void sweep(Location location) { location.getWorld().spawnParticle(Particle.SWEEP_ATTACK, location, 1); }
     private void face(Location from, Location target) { from.setDirection(target.toVector().subtract(from.toVector())); }
@@ -260,9 +318,21 @@ public final class MoonlitAfterglowListener implements Listener {
         if (removed != null && removed.task != null) removed.task.cancel();
         mitigationUntilTick.remove(playerId);
     }
-    @EventHandler public void onQuit(PlayerQuitEvent event) { cleanup(event.getPlayer().getUniqueId()); }
-    @EventHandler public void onDeath(PlayerDeathEvent event) { cleanup(event.getPlayer().getUniqueId()); }
-    @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    private void cancelSlashTask(UUID playerId, BukkitTask task) {
+        task.cancel();
+        Set<BukkitTask> tasks = slashTasks.get(playerId);
+        if (tasks != null) { tasks.remove(task); if (tasks.isEmpty()) slashTasks.remove(playerId); }
+    }
+    private void cancelSlashTasks(UUID playerId) {
+        Set<BukkitTask> tasks = slashTasks.remove(playerId);
+        if (tasks != null) tasks.forEach(BukkitTask::cancel);
+    }
+    private void cleanupOwner(UUID playerId) {
+        cleanup(playerId); cancelSlashTasks(playerId); movementInputs.remove(playerId); finalInputSuppressionTicks.remove(playerId);
+    }
+    @EventHandler public void onQuit(PlayerQuitEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onDeath(PlayerDeathEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cleanupOwner(event.getPlayer().getUniqueId()); }
     @EventHandler public void onHeld(PlayerItemHeldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
     @EventHandler public void onDrop(PlayerDropItemEvent event) {
         if (ID.equals(specials.getSpecialId(event.getItemDrop().getItemStack()))) cleanup(event.getPlayer().getUniqueId());
@@ -282,7 +352,8 @@ public final class MoonlitAfterglowListener implements Listener {
     public void shutdown() {
         clockTask.cancel();
         for (RuntimeState state : states.values()) if (state.task != null) state.task.cancel();
-        states.clear(); mitigationUntilTick.clear();
+        slashTasks.values().forEach(tasks -> tasks.forEach(BukkitTask::cancel));
+        states.clear(); slashTasks.clear(); movementInputs.clear(); finalInputSuppressionTicks.clear(); mitigationUntilTick.clear();
     }
     private static final class RuntimeState {
         private final UUID worldId, targetId;
@@ -291,5 +362,8 @@ public final class MoonlitAfterglowListener implements Listener {
         private RuntimeState(UUID worldId, UUID targetId, MoonShadowState machine) {
             this.worldId = worldId; this.targetId = targetId; this.machine = machine;
         }
+    }
+    private record MovementInput(boolean forward, boolean backward, boolean left, boolean right) {
+        private static final MovementInput STATIONARY = new MovementInput(false, false, false, false);
     }
 }
