@@ -16,10 +16,37 @@ public final class SolarisLogic {
     }
 
     public static boolean claimDawn(Map<UUID, Long> lastOrigins, UUID target, long nowMillis, long resetMillis) {
+        pruneExpired(lastOrigins, nowMillis, resetMillis);
         Long previous = lastOrigins.get(target);
         if (previous != null && nowMillis - previous < resetMillis) return false;
         lastOrigins.put(target, nowMillis);
         return true;
+    }
+
+    public static <T> void pruneExpired(Map<T, Long> timestamps, long nowMillis, long validityMillis) {
+        timestamps.entrySet().removeIf(entry -> expired(entry.getValue(), nowMillis, validityMillis));
+    }
+
+    public static boolean expired(long timestamp, long nowMillis, long validityMillis) {
+        return nowMillis - timestamp >= validityMillis;
+    }
+
+    public static <T> boolean registerDawnDamage(Set<T> damaged, T target) {
+        return damaged.add(target);
+    }
+
+    public record Point(double x, double y, double z) {}
+
+    public static Point judgmentRisePosition(double playerX, double playerY, double playerZ,
+                                             double facingX, double facingZ, double riseHeight) {
+        double lengthSquared = facingX * facingX + facingZ * facingZ;
+        double backX = 0, backZ = 0;
+        if (lengthSquared > 1.0E-12) {
+            double scale = -2 / Math.sqrt(lengthSquared);
+            backX = facingX * scale;
+            backZ = facingZ * scale;
+        }
+        return new Point(playerX + backX, playerY + 1 + riseHeight, playerZ + backZ);
     }
 
     public record Candidate<T>(T value, double distanceSquared, boolean valid) {}
