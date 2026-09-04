@@ -11,6 +11,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.*;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.*;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,6 +26,7 @@ import java.util.*;
 /** Paper runtime adapter for Holy Sword: Solaris. All generated damage uses CombatService. */
 public final class SolarisListener implements Listener {
     public static final String ID="solaris";
+    private static final long DAMAGE_MARK_VALIDITY_MILLIS=5000;
     private static final String POINT_CD="solaris:one_point", WHEEL_CD="solaris:heavenly_wheel", JUDGMENT_CD="solaris:judgment";
     private final JavaPlugin plugin; private final SpecialEquipmentService specials; private final EquipmentInstanceService instances;
     private final CombatService combat; private final CooldownService cooldown; private final SolarisConfig config;
@@ -52,13 +54,15 @@ public final class SolarisListener implements Listener {
     private void dawn(Player owner, LivingEntity origin){
         long now=System.currentTimeMillis(); long reset=config.dawnResetTicks()*50L;
         ArrayDeque<LivingEntity> queue=new ArrayDeque<>(); if(SolarisLogic.claimDawn(dawnOrigins,origin.getUniqueId(),now,reset)) queue.add(origin);
-        Set<UUID> propagation=new HashSet<>();
+        Set<UUID> propagation=new HashSet<>(), damaged=new HashSet<>();
         while(!queue.isEmpty()) { LivingEntity center=queue.remove(); if(!propagation.add(center.getUniqueId())) continue;
             Location at=center.getLocation().add(0,.8,0); center.getWorld().spawnParticle(Particle.END_ROD,at,28,config.dawnRadius()/2,.5,config.dawnRadius()/2,.04);
             center.getWorld().playSound(at,Sound.BLOCK_AMETHYST_BLOCK_CHIME,.7f,1.7f);
             for(Entity entity:center.getWorld().getNearbyEntities(center.getLocation(),config.dawnRadius(),config.dawnRadius(),config.dawnRadius())) {
                 if(!(entity instanceof LivingEntity target)||!validTarget(owner,target)||target==center) continue;
-                mark(owner,target); combat.applyMultiHitDamage(owner,target,config.dawnDamage()); target.setFireTicks(Math.max(target.getFireTicks(),config.dawnFireTicks()));
+                if(SolarisLogic.registerDawnDamage(damaged,target.getUniqueId())) {
+                    mark(owner,target); combat.applyMultiHitDamage(owner,target,config.dawnDamage()); target.setFireTicks(Math.max(target.getFireTicks(),config.dawnFireTicks()));
+                }
                 if(SolarisLogic.claimDawn(dawnOrigins,target.getUniqueId(),now,reset)) queue.add(target);
             }
         }
@@ -69,6 +73,7 @@ public final class SolarisListener implements Listener {
         cooldown.startCooldownTicks(id,POINT_CD,config.pointCooldownTicks()); Session s=session(owner);
         Location above=target.getLocation().add(0,5,0); target.getWorld().spawnParticle(Particle.WAX_ON,above,25,.7,.2,.7,.02);
         later(s,config.pointTelegraphTicks(),()->dropSword(s,target,1.8,config.pointFallTicks(),config.pointDamage()));
+        later(s,config.pointTelegraphTicks()+config.pointFallTicks()+1,()->cleanup(s));
     }
 
     @EventHandler public void onSneak(PlayerToggleSneakEvent e){ UUID id=e.getPlayer().getUniqueId(); cancelHold(id);
@@ -97,15 +102,18 @@ public final class SolarisListener implements Listener {
     }
 
     private void judgment(Player owner){ UUID id=owner.getUniqueId(); if(cooldown.isOnCooldown(id,JUDGMENT_CD))return;
-        cooldown.startCooldownTicks(id,JUDGMENT_CD,config.judgmentCooldownTicks()); Session s=session(owner); Vector back=owner.getEyeLocation().getDirection().setY(0).normalize().multiply(-2);
-        Location start=owner.getLocation().add(back).add(0,1,0); BlockDisplay sun=blockDisplay(start,Material.MAGMA_BLOCK,.4f); s.entities.add(sun);
+        cooldown.startCooldownTicks(id,JUDGMENT_CD,config.judgmentCooldownTicks()); Session s=session(owner);
+        Location start=judgmentRiseLocation(owner,0); BlockDisplay sun=blockDisplay(start,Material.MAGMA_BLOCK,.4f); s.entities.add(sun);
         final int[] age={0}; BukkitTask rise=Bukkit.getScheduler().runTaskTimer(plugin,()->{if(!active(s)){cleanup(s);return;} double f=++age[0]/(double)config.sunRiseTicks();
-            sun.teleport(start.clone().add(0,f*10,0)); scale(sun,(float)(.4+f*3)); owner.getWorld().spawnParticle(Particle.FLAME,sun.getLocation(),5,1,1,1,.01);},1,1); s.tasks.add(rise);
-        later(s,config.sunRiseTicks(),()->{rise.cancel(); for(LivingEntity t:nearby(owner,config.judgmentRadius()))t.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,config.showerTicks(),0)); startMeteors(s);});
+            sun.teleport(judgmentRiseLocation(owner,f*10)); scale(sun,(float)(.4+f*3)); owner.getWorld().spawnParticle(Particle.FLAME,sun.getLocation(),5,1,1,1,.01);},1,1); s.tasks.add(rise);
+        later(s,config.sunRiseTicks(),()->{rise.cancel(); Location frozenCenter=judgmentRiseLocation(owner,10);sun.teleport(frozenCenter);for(LivingEntity t:nearby(owner,config.judgmentRadius()))t.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,config.showerTicks(),0)); startMeteors(s,frozenCenter);});
     }
 
-    private void startMeteors(Session s){ List<SolarisLogic.MeteorOffset> offsets=SolarisLogic.meteorOffsets(s.owner.getUniqueId().getLeastSignificantBits()^System.nanoTime(),config.meteorCount(),config.judgmentRadius());
-        List<Integer> schedule=SolarisLogic.scheduleTicks(offsets.size(),config.showerTicks()); Location center=s.owner.getLocation();
+    private Location judgmentRiseLocation(Player owner,double riseHeight){ Location player=owner.getLocation(); Vector facing=owner.getEyeLocation().getDirection();
+        SolarisLogic.Position position=SolarisLogic.judgmentRisePosition(player.getX(),player.getY(),player.getZ(),facing.getX(),facing.getZ(),2,riseHeight);
+        return new Location(player.getWorld(),position.x(),position.y(),position.z()); }
+    private void startMeteors(Session s,Location frozenCenter){ List<SolarisLogic.MeteorOffset> offsets=SolarisLogic.meteorOffsets(s.owner.getUniqueId().getLeastSignificantBits()^System.nanoTime(),config.meteorCount(),config.judgmentRadius());
+        List<Integer> schedule=SolarisLogic.scheduleTicks(offsets.size(),config.showerTicks()); Location center=frozenCenter.clone();
         for(int n=0;n<offsets.size();n++){ SolarisLogic.MeteorOffset o=offsets.get(n); later(s,schedule.get(n),()->meteor(s,center.clone().add(o.x(),18,o.z()))); }
         later(s,config.showerTicks()+config.meteorFallTicks()+5,()->cleanup(s));
     }
@@ -115,6 +123,7 @@ public final class SolarisListener implements Listener {
         later(s,config.meteorFallTicks(),()->{if(meteor.isValid())meteor.remove(); impact(s,ground);}); }
     private void impact(Session s,Location at){ World w=at.getWorld(); w.spawnParticle(Particle.EXPLOSION,at,3,.4,.2,.4,0);w.playSound(at,Sound.ENTITY_GENERIC_EXPLODE,1,.8f);
         for(Entity e:w.getNearbyEntities(at,config.impactRadius(),config.impactRadius(),config.impactRadius()))if(e instanceof LivingEntity t&&validTarget(s.owner,t)){
+            Location target=t.getLocation(); if(!SolarisLogic.withinImpact(target.getX()-at.getX(),target.getY()-at.getY(),target.getZ()-at.getZ(),config.impactRadius()))continue;
             double damage=t.getLocation().distanceSquared(at)<.8?config.meteorDirectDamage():config.explosionDamage();mark(s.owner,t);combat.applyMultiHitDamage(s.owner,t,damage);}
         for(int[] d:new int[][]{{0,0},{1,0},{-1,0},{0,1},{0,-1}}){Block b=at.clone().add(d[0],0,d[1]).getBlock();if(b.getType().isAir()&&!b.getRelative(0,-1,0).isPassable()){b.setType(Material.FIRE,false);s.fire.add(b);later(s,config.judgmentFireTicks(),()->{if(b.getType()==Material.FIRE)b.setType(Material.AIR,false);s.fire.remove(b);});}}
     }
@@ -124,14 +133,15 @@ public final class SolarisListener implements Listener {
         for(int i=1;i<=fallTicks;i++){int step=i;later(s,i,()->{if(sword.isValid())sword.teleport(top.clone().subtract(0,4.5*step/fallTicks,0));});}
         later(s,fallTicks,()->{if(sword.isValid())sword.remove();if(validTarget(s.owner,target)){mark(s.owner,target);combat.applySkillDamage(s.owner,target,damage);Location p=target.getLocation().add(0,.8,0);p.getWorld().spawnParticle(Particle.FLASH,p,1);p.getWorld().playSound(p,Sound.BLOCK_ANVIL_LAND,1,1.5f);}}); }
 
-    @EventHandler(priority=EventPriority.MONITOR) public void onDeath(EntityDeathEvent e){ DamageMark m=damageMarks.remove(e.getEntity().getUniqueId()); Player killer=e.getEntity().getKiller();
-        if(m!=null&&killer!=null&&killer.getUniqueId().equals(m.owner)&&System.currentTimeMillis()-m.at<5000&&instances.is(killer.getInventory().getItemInMainHand(),m.instance)) kills.computeIfAbsent(m.owner,k->new ArrayDeque<>()).addLast(System.currentTimeMillis()); }
-    private void mark(Player p,LivingEntity t){damageMarks.put(t.getUniqueId(),new DamageMark(p.getUniqueId(),instances.ensure(p.getInventory().getItemInMainHand()),System.currentTimeMillis()));}
+    @EventHandler(priority=EventPriority.MONITOR) public void onDeath(EntityDeathEvent e){ long now=System.currentTimeMillis();pruneDamageMarks(now);DamageMark m=damageMarks.remove(e.getEntity().getUniqueId()); Player killer=e.getEntity().getKiller();
+        if(m!=null&&killer!=null&&killer.getUniqueId().equals(m.owner)&&instances.is(killer.getInventory().getItemInMainHand(),m.instance)) kills.computeIfAbsent(m.owner,k->new ArrayDeque<>()).addLast(now); }
+    private void mark(Player p,LivingEntity t){long now=System.currentTimeMillis();pruneDamageMarks(now);damageMarks.put(t.getUniqueId(),new DamageMark(p.getUniqueId(),instances.ensure(p.getInventory().getItemInMainHand()),now));}
+    private void pruneDamageMarks(long now){damageMarks.values().removeIf(mark->SolarisLogic.isExpired(mark.at,now,DAMAGE_MARK_VALIDITY_MILLIS));}
     private List<LivingEntity> nearby(Player p,double r){return p.getWorld().getNearbyEntities(p.getLocation(),r,r,r).stream().filter(LivingEntity.class::isInstance).map(LivingEntity.class::cast).filter(t->validTarget(p,t)).sorted(Comparator.comparingDouble(t->t.getLocation().distanceSquared(p.getLocation()))).toList();}
     private boolean validTarget(Player p,LivingEntity t){return t!=p&&t.isValid()&&!t.isDead()&&t.getWorld()==p.getWorld();} private boolean holding(Player p){return specials.getSpecialId(p.getInventory().getItemInMainHand()).equals(ID);}
     private boolean validOwner(Player p,UUID item){return p.isOnline()&&!p.isDead()&&holding(p)&&instances.is(p.getInventory().getItemInMainHand(),item);} private boolean active(Session s){return !s.closed&&validOwner(s.owner,s.instance);}
     private Session session(Player p){Session s=new Session(p,instances.ensure(p.getInventory().getItemInMainHand()));sessions.computeIfAbsent(p.getUniqueId(),x->new HashSet<>()).add(s);return s;}
-    private void later(Session s,long ticks,Runnable run){BukkitTask t=Bukkit.getScheduler().runTaskLater(plugin,()->{if(active(s))run.run();},Math.max(0,ticks));s.tasks.add(t);}
+    private void later(Session s,long ticks,Runnable run){BukkitTask t=Bukkit.getScheduler().runTaskLater(plugin,()->{if(!active(s)){cleanup(s);return;}run.run();},Math.max(0,ticks));s.tasks.add(t);}
     private BlockDisplay blockDisplay(Location l,Material m,float scale){BlockDisplay d=l.getWorld().spawn(l,BlockDisplay.class,x->x.setBlock(m.createBlockData()));scale(d,scale);return d;}
     private void scale(Display d,float v){Transformation t=d.getTransformation();t.getScale().set(new Vector3f(v));d.setTransformation(t);}
     private void cancelHold(UUID id){BukkitTask t=holds.remove(id);if(t!=null)t.cancel();}
@@ -139,6 +149,11 @@ public final class SolarisListener implements Listener {
     public void cleanup(UUID id){cancelHold(id);Set<Session> set=sessions.get(id);if(set!=null)new HashSet<>(set).forEach(this::cleanup);}
     @EventHandler public void quit(PlayerQuitEvent e){cleanup(e.getPlayer().getUniqueId());} @EventHandler public void death(PlayerDeathEvent e){cleanup(e.getPlayer().getUniqueId());}
     @EventHandler public void world(PlayerChangedWorldEvent e){cleanup(e.getPlayer().getUniqueId());} @EventHandler public void held(PlayerItemHeldEvent e){cleanup(e.getPlayer().getUniqueId());}
+    @EventHandler public void kick(PlayerKickEvent e){cleanup(e.getPlayer().getUniqueId());} @EventHandler public void teleport(PlayerTeleportEvent e){cleanup(e.getPlayer().getUniqueId());}
+    @EventHandler public void drop(PlayerDropItemEvent e){Bukkit.getScheduler().runTask(plugin,()->validateHeld(e.getPlayer()));}
+    @EventHandler public void inventory(InventoryClickEvent e){if(e.getWhoClicked() instanceof Player p)Bukkit.getScheduler().runTask(plugin,()->validateHeld(p));}
+    @EventHandler public void drag(InventoryDragEvent e){if(e.getWhoClicked() instanceof Player p)Bukkit.getScheduler().runTask(plugin,()->validateHeld(p));}
+    private void validateHeld(Player p){Set<Session> set=sessions.get(p.getUniqueId());if(set!=null)new HashSet<>(set).stream().filter(s->!active(s)).forEach(this::cleanup);}
     public void shutdown(){new HashSet<>(sessions.keySet()).forEach(this::cleanup);holds.values().forEach(BukkitTask::cancel);holds.clear();dawnOrigins.clear();damageMarks.clear();kills.clear();}
     private record DamageMark(UUID owner,UUID instance,long at){} private static final class Session{final Player owner;final UUID instance;final Set<Entity> entities=new HashSet<>();final Set<BukkitTask> tasks=new HashSet<>();final Set<Block> fire=new HashSet<>();boolean closed;Session(Player p,UUID i){owner=p;instance=i;}}
 }
