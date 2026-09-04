@@ -58,6 +58,18 @@ class MoonlitAfterglowArchitectureTest {
         assertTrue(moonlit.contains("EquipmentSlot.HAND"));
     }
 
+    @Test void activeCastSourceGuardsCoverHeldDropClickAndDragEquipmentChanges() throws IOException {
+        String source = Files.readString(LISTENER);
+        assertTrue(source.contains("onHeld(PlayerItemHeldEvent"));
+        assertTrue(source.contains("onDrop(PlayerDropItemEvent"));
+        assertTrue(source.contains("onInventoryClick(InventoryClickEvent"));
+        assertTrue(source.contains("onInventoryDrag(InventoryDragEvent"));
+        assertTrue(source.contains("for (UUID playerId : List.copyOf(states.keySet()))"));
+        String validator = between(source, "private void validateCastEquipment", "@EventHandler public void onTargetDeath");
+        assertTrue(validator.contains("!holding(player)"));
+        assertTrue(validator.contains("cleanupMoonShadow(player.getUniqueId())"));
+    }
+
     private static String between(String source, String start, String end) {
         int from = source.indexOf(start);
         int to = source.indexOf(end, from);

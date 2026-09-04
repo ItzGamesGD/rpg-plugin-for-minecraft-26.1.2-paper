@@ -18,6 +18,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -58,6 +59,10 @@ public final class MoonlitAfterglowListener implements Listener {
             tick++;
             finalInputSuppressionTicks.entrySet().removeIf(entry -> entry.getValue() < tick);
             mitigationUntilTick.entrySet().removeIf(entry -> entry.getValue() <= tick);
+            for (UUID playerId : List.copyOf(states.keySet())) {
+                Player player = Bukkit.getPlayer(playerId);
+                if (player != null && !holding(player)) cleanupMoonShadow(playerId);
+            }
         }, 1L, 1L);
     }
 
@@ -345,10 +350,16 @@ public final class MoonlitAfterglowListener implements Listener {
     }
     @EventHandler public void onInventoryClick(InventoryClickEvent event) {
         if (event.getWhoClicked() instanceof Player player && states.containsKey(player.getUniqueId())) {
-            Bukkit.getScheduler().runTask(configService.getPlugin(), () -> {
-                if (!holding(player)) cleanupMoonShadow(player.getUniqueId());
-            });
+            Bukkit.getScheduler().runTask(configService.getPlugin(), () -> validateCastEquipment(player));
         }
+    }
+    @EventHandler public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getWhoClicked() instanceof Player player && states.containsKey(player.getUniqueId())) {
+            Bukkit.getScheduler().runTask(configService.getPlugin(), () -> validateCastEquipment(player));
+        }
+    }
+    private void validateCastEquipment(Player player) {
+        if (states.containsKey(player.getUniqueId()) && !holding(player)) cleanupMoonShadow(player.getUniqueId());
     }
     @EventHandler public void onTargetDeath(EntityDeathEvent event) {
         UUID targetId = event.getEntity().getUniqueId();
