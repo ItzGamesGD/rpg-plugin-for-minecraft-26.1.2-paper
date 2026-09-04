@@ -43,7 +43,7 @@ import java.util.UUID;
 
 /** Runtime for the Poseidon spear's water-trident abilities. No spawned trident is collectible. */
 public final class WaterTridentListener implements Listener {
-    private static final String ID = "poseidons_spear";
+    public static final String ID = "poseidons_spear";
     private final ConfigService config;
     private final SpecialEquipmentService specials;
     private final CombatService combat;
@@ -181,11 +181,26 @@ public final class WaterTridentListener implements Listener {
         }
         for (Synthetic object : cast.objects) {
             if (!object.entity.isValid()) continue;
+            object.age++;
             for (LivingEntity target : targets(cast.player, object.entity.getLocation(), number("signature.hit-radius", 1.2)))
                 if (object.hits.tryHit(target.getUniqueId())) {
                     combat.applyMultiHitDamage(cast.player, target, number("signature.trident-damage", 3));
                     target.getWorld().spawnParticle(Particle.SPLASH, target.getEyeLocation(), 8, .2, .2, .2, .05);
+                    object.returning = true;
                 }
+            if (!object.returning && object.age >= Math.max(8, ticks("signature.attack-duration-ticks", 40) / 2)) {
+                object.returning = true;
+            }
+            Vector destination = cast.player.getEyeLocation().toVector().subtract(object.entity.getLocation().toVector());
+            if (object.returning && destination.lengthSquared() > .01D) {
+                Vector desired = destination.normalize().multiply(number("signature.trident-speed", 1.1));
+                object.velocity = steer(object.velocity, desired, .20D);
+                if (object.entity.getLocation().distanceSquared(cast.player.getEyeLocation()) <= 1.44D) {
+                    removeSyntheticProjectile(object.entity);
+                    continue;
+                }
+            }
+            object.entity.setVelocity(object.velocity);
             object.entity.getWorld().spawnParticle(Particle.BUBBLE, object.entity.getLocation(), 2, .08, .08, .08, .01);
         }
         if (cast.age >= releaseTick + ticks("signature.attack-duration-ticks", 40)) clearCast(cast.player.getUniqueId());
@@ -226,8 +241,31 @@ public final class WaterTridentListener implements Listener {
                     new Vector(Math.cos(angle), 0, Math.sin(angle)).multiply(number("signature.trident-speed", 1.1)));
             syntheticProjectiles.add(trident.getUniqueId());
             cast.objects.add(new Synthetic(trident,
-                    new WaterTridentState.SyntheticAttack(ticks("signature.maximum-hits-per-trident", 3))));
+                    new WaterTridentState.SyntheticAttack(ticks("signature.maximum-hits-per-trident", 3)),
+                    trident.getVelocity()));
         }
+    }
+
+    static Vector steer(Vector current, Vector desired, double maxRadians) {
+        if (current == null || current.lengthSquared() < .0001D) {
+            return desired == null ? new Vector() : desired.clone();
+        }
+        if (desired == null || desired.lengthSquared() < .0001D) return current.clone();
+        double speed = current.length();
+        Vector from = current.clone().normalize();
+        Vector to = desired.clone().normalize();
+        double dot = Math.max(-1D, Math.min(1D, from.dot(to)));
+        double angle = Math.acos(dot);
+        if (angle <= maxRadians) return to.multiply(speed);
+        Vector axis = from.clone().crossProduct(to);
+        if (axis.lengthSquared() < .0001D) {
+            axis = from.clone().crossProduct(Math.abs(from.getY()) < .9D
+                    ? new Vector(0, 1, 0) : new Vector(1, 0, 0));
+        }
+        if (axis.lengthSquared() < .0001D) return current.clone();
+        Vector result = from.rotateAroundAxis(axis.normalize(), maxRadians).multiply(speed);
+        return Double.isFinite(result.getX()) && Double.isFinite(result.getY()) && Double.isFinite(result.getZ())
+                ? result : current.clone();
     }
 
     private void startRiptideTrail(Player player) {
@@ -402,7 +440,18 @@ public final class WaterTridentListener implements Listener {
         int age; boolean released; BukkitTask task;
         Cast(Player player) { this.player = player; }
     }
-    private record Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits) { }
+    private static final class Synthetic {
+        final Trident entity;
+        final WaterTridentState.SyntheticAttack hits;
+        Vector velocity;
+        boolean returning;
+        int age;
+        Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits, Vector velocity) {
+            this.entity = entity;
+            this.hits = hits;
+            this.velocity = velocity;
+        }
+    }
     private static final class TimedPlayerState {
         final Player player; int age; BukkitTask task;
         TimedPlayerState(Player player) { this.player = player; }

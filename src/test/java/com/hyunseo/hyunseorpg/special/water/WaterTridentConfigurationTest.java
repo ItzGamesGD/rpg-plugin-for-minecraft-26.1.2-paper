@@ -42,9 +42,23 @@ class WaterTridentConfigurationTest {
                 "special-equipment.items.poseidons_spear.abilities.signature.maximum-hits-per-trident"));
     }
 
+    @Test void poseidonUsesCanonicalTridentAndKeepsVanillaEnchantPolicyClosed() {
+        YamlConfiguration items = load("items.yml");
+        YamlConfiguration equipment = load("special-equipment.yml");
+
+        assertEquals("TRIDENT", items.getString("items.poseidon_spear.material"));
+        assertEquals("poseidon_spear", equipment.getString("special-equipment.items.poseidons_spear.item-id"));
+        assertFalse(equipment.getBoolean(
+                "special-equipment.items.poseidons_spear.growth.allow-vanilla-enchants"));
+    }
+
     private YamlConfiguration load() {
-        try (InputStream stream = getClass().getClassLoader().getResourceAsStream("special-equipment.yml")) {
-            if (stream == null) throw new IllegalStateException("Missing special-equipment.yml");
+        return load("special-equipment.yml");
+    }
+
+    private YamlConfiguration load(String resource) {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream(resource)) {
+            if (stream == null) throw new IllegalStateException("Missing " + resource);
             return YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
         } catch (Exception exception) {
             throw new AssertionError(exception);

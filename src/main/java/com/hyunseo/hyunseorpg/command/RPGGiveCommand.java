@@ -39,6 +39,8 @@ import com.hyunseo.hyunseorpg.alchemy.potion.PotionRegistry;
 import com.hyunseo.hyunseorpg.exploration.ExplorationModule;
 import com.hyunseo.hyunseorpg.exploration.runtime.ExplorationStatusSnapshot;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
+import com.hyunseo.hyunseorpg.special.SpecialEquipmentData;
+import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 import com.hyunseo.hyunseorpg.ui.KoreanDisplay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -93,6 +95,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private PotionRegistry potionRegistry;
     private PaperPotionPdcContract potionPdc;
     private PotionFactory potionFactory;
+    private SpecialEquipmentService specialEquipmentService;
     private BoundedSpecialCatalystExecutionService specialCatalystExecutions;
     private AlchemyGuiControllerService alchemyGuiController;
     private AlchemyAuditLog alchemyAuditLog;
@@ -193,6 +196,10 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
 
     public void setPotionFactory(PotionFactory potionFactory) {
         this.potionFactory = potionFactory;
+    }
+
+    public void setSpecialEquipmentService(SpecialEquipmentService specialEquipmentService) {
+        this.specialEquipmentService = specialEquipmentService;
     }
 
     public void setInventoryNormalizer(Consumer<Inventory> inventoryNormalizer) {
@@ -330,6 +337,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         }
         String requestedId = args[1].trim().toLowerCase(Locale.ROOT);
         PotionDefinition potion = potionRegistry == null ? null : potionRegistry.find(requestedId).orElse(null);
+        SpecialEquipmentData specialEquipment = findSpecialEquipment(requestedId);
         ItemStack prototype;
         if (potion != null || requiresCanonicalPotion(requestedId)) {
             // Potion IDs must never fall back to the generic item factory: it cannot write potion PDC.
@@ -338,6 +346,13 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             prototype = potionFactory.create(potion, 1).orElse(null);
+        } else if (specialEquipment != null) {
+            if (!specialEquipment.enabled() || specialEquipmentService == null) {
+                player.sendMessage(Component.text("사용할 수 없는 특수 장비 ID입니다: " + args[1], NamedTextColor.RED));
+                return true;
+            }
+            // Special equipment must use its service so PDC, Loyalty, and lore stay canonical.
+            prototype = specialEquipmentService.create(specialEquipment.id(), 1);
         } else {
             prototype = itemService.create(args[1], 1).orElse(null);
         }
@@ -368,6 +383,14 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         }
         player.sendMessage(Component.text("커스텀 아이템을 지급했습니다: " + args[1], NamedTextColor.GREEN));
         return true;
+    }
+
+    private SpecialEquipmentData findSpecialEquipment(String requestedId) {
+        if (specialEquipmentService == null) return null;
+        return specialEquipmentService.registry().get(requestedId)
+                .orElseGet(() -> specialEquipmentService.registry().getAll().stream()
+                        .filter(data -> data.itemId().equalsIgnoreCase(requestedId))
+                        .findFirst().orElse(null));
     }
 
     private void handleExploration(CommandSender sender, String[] args) {

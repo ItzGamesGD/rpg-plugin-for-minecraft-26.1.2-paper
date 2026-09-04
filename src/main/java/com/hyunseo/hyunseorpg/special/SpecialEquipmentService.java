@@ -17,6 +17,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
@@ -111,6 +112,10 @@ public final class SpecialEquipmentService {
             // Special weapons and equipment are intentionally not part of the durability economy.
             meta.setUnbreakable(true);
         }
+        if (data.id().equals("poseidons_spear")) {
+            // Poseidon's physical throw/retrieval contract is vanilla Trident + Loyalty.
+            meta.addEnchant(Enchantment.LOYALTY, 1, true);
+        }
         if (data.id().equals("flowing_water_sword")) {
             meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
                     UUID.fromString("9d4b44ca-51b4-4b6a-b7f0-0e9c3e6c2a10"),
@@ -144,7 +149,10 @@ public final class SpecialEquipmentService {
         String marker = item.getItemMeta().getPersistentDataContainer().get(specialIdKey, PersistentDataType.STRING);
         if (marker != null && registry.get(marker).isPresent()) return marker.toLowerCase(Locale.ROOT);
         String itemId = itemService.getItemId(item).orElse("");
-        return registry.get(itemId).map(SpecialEquipmentData::id).orElse("");
+        return registry.get(itemId).map(SpecialEquipmentData::id).orElseGet(() -> registry.getAll().stream()
+                .filter(data -> data.itemId().equalsIgnoreCase(itemId))
+                .map(SpecialEquipmentData::id)
+                .findFirst().orElse(""));
     }
 
     public SpecialEquipmentData getData(ItemStack item) {

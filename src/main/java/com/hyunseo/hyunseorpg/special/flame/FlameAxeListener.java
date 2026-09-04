@@ -12,6 +12,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
@@ -32,7 +33,7 @@ public final class FlameAxeListener implements Listener {
     private final EquipmentInstanceService instances;
     private final CombatService combat;
     private final FlameAxeConfig config;
-    private final Map<UUID, UUID> charging = new HashMap<>();
+    private final Map<UUID, Charge> charging = new HashMap<>();
     private final Map<UUID, Session> sessions = new HashMap<>();
 
     public FlameAxeListener(JavaPlugin plugin, ConfigService config, SpecialEquipmentService specials,
@@ -49,19 +50,30 @@ public final class FlameAxeListener implements Listener {
         if (event.getHand() != EquipmentSlot.HAND || (event.getAction() != Action.RIGHT_CLICK_AIR
                 && event.getAction() != Action.RIGHT_CLICK_BLOCK)) return;
         Player player = event.getPlayer();
-        if (!holding(player) || sessions.containsKey(player.getUniqueId())) return;
+        if (!holding(player) || sessions.containsKey(player.getUniqueId())
+                || charging.containsKey(player.getUniqueId())) return;
         ItemStack axe = player.getInventory().getItemInMainHand();
         axe.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
                 .consumeSeconds(Math.max(.05F, config.fullChargeTicks() / 20F))
                 .animation(ItemUseAnimation.BOW).hasConsumeParticles(false).build());
-        charging.put(player.getUniqueId(), instances.ensure(axe));
+        charging.put(player.getUniqueId(), new Charge(instances.ensure(axe), System.nanoTime()));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRelease(PlayerStopUsingItemEvent event) {
-        UUID expected = charging.remove(event.getPlayer().getUniqueId());
-        if (expected == null || !instances.is(event.getItem(), expected) || !holding(event.getPlayer())) return;
+        Charge charge = charging.remove(event.getPlayer().getUniqueId());
+        if (!validCharge(event.getPlayer(), event.getItem(), charge)) return;
         if (FlameAxeMath.isFullCharge(event.getTicksHeldFor(), config.fullChargeTicks())) heavyAttack(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onConsume(PlayerItemConsumeEvent event) {
+        Charge charge = charging.remove(event.getPlayer().getUniqueId());
+        if (!validCharge(event.getPlayer(), event.getItem(), charge)) return;
+        // The consumable component is only a Paper-backed charge animation; the axe is never consumed.
+        event.setCancelled(true);
+        int heldTicks = (int) Math.max(0L, (System.nanoTime() - charge.startedAtNanos()) / 50_000_000L);
+        if (FlameAxeMath.isFullCharge(heldTicks, config.fullChargeTicks())) heavyAttack(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -128,9 +140,9 @@ public final class FlameAxeListener implements Listener {
         s.velocity = FlameAxeMath.steer(s.velocity, desired, config.turnRadians());
         if (s.velocity.lengthSquared() > 0) s.velocity.normalize().multiply(config.speed());
         Location to = from.clone().add(s.velocity);
-        to.setYaw(from.getYaw() + (float) config.spinDegrees());
         s.rotation += config.spinDegrees();
-        s.display.teleport(to);
+        s.display.setVelocity(s.velocity);
+        s.display.setRotation(from.getYaw() + (float) config.spinDegrees(), from.getPitch());
         contact(s, from, to);
         if (s.returning) {
             if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance()) cleanup(s.owner.getUniqueId());
@@ -172,6 +184,9 @@ public final class FlameAxeListener implements Listener {
     }
 
     private boolean holding(Player player) { return specials.getSpecialId(player.getInventory().getItemInMainHand()).equals(ID); }
+    private boolean validCharge(Player player, ItemStack item, Charge charge) {
+        return charge != null && holding(player) && instances.is(item, charge.instanceId());
+    }
     private boolean validOwner(Session s) { return s.owner.isOnline() && !s.owner.isDead() && s.owner.getWorld() == s.display.getWorld() && holding(s.owner) && instances.is(s.owner.getInventory().getItemInMainHand(), s.instanceId); }
     private boolean validTarget(Session s, LivingEntity target) { return target != s.owner && target.isValid() && !target.isDead() && target.getWorld() == s.owner.getWorld(); }
 
@@ -192,6 +207,8 @@ public final class FlameAxeListener implements Listener {
         s.visited.clear(); s.lastHitRotation.clear(); s.target = null;
     }
     public void shutdown() { new HashSet<>(sessions.keySet()).forEach(this::cleanup); charging.clear(); }
+
+    private record Charge(UUID instanceId, long startedAtNanos) { }
 
     private static final class Session {
         final Player owner; final UUID instanceId; final ItemDisplay display; final Set<UUID> visited = new HashSet<>();

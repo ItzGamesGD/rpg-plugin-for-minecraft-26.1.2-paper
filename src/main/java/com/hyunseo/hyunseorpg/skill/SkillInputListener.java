@@ -227,6 +227,11 @@ public final class SkillInputListener implements Listener {
     }
 
     private SkillInputResult processInputResult(Player player, SkillInputType inputType, ItemStack triggeringItem) {
+        ItemStack ownedInput = triggeringItem == null
+                ? player.getInventory().getItemInMainHand() : triggeringItem;
+        if (dedicatedInputOwner.test(ownedInput)) {
+            return SkillInputResult.ignored();
+        }
         if (alchemyCombat != null && inputType != SkillInputType.DROP_KEY
                 && alchemyCombat.blocksAnyActiveSkill(player.getUniqueId())) {
             return SkillInputResult.accepted(true);

@@ -911,6 +911,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                     potionPdc,
                     specialCatalystExecutionService, alchemyGuiController, alchemyAuditLog);
             giveCommand.setPotionFactory(potionFactory);
+            giveCommand.setSpecialEquipmentService(specialEquipmentService);
             giveCommand.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
             giveCommand.setExplorationModule(explorationModule);
             rpgCommand.setExecutor(giveCommand);
@@ -1541,7 +1542,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RPGMenuListener(rpgMenuService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, skillService, equipmentInstanceService, alchemyCombatAdapter,
-                item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)), this);
+                item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)
+                        || specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);
@@ -1589,7 +1591,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new EquipmentActualEffectListener(
                 configService, equipmentTierService, equipmentEnhancementService,
                 equipmentPromotionService, combatService, itemService, activityBlockRewardValidator,
-                toolDurabilityService), this);
+                toolDurabilityService,
+                item -> specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)), this);
         getServer().getPluginManager().registerEvents(new SpecialEquipmentProgressListener(playerDataService), this);
         this.specialEquipmentEffectListener = new SpecialEquipmentEffectListener(
                 configService, specialEquipmentService, itemService,

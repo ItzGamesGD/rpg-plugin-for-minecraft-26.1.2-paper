@@ -38,6 +38,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
 
 /** Applies stored equipment growth to vanilla gameplay events. */
 public final class EquipmentActualEffectListener implements Listener {
@@ -59,12 +60,14 @@ public final class EquipmentActualEffectListener implements Listener {
     private final RPGItemService itemService;
     private final ActivityBlockRewardValidator blockRewards;
     private final ToolDurabilityService toolDurability;
+    private final Predicate<ItemStack> nativeTridentOwner;
 
     public EquipmentActualEffectListener(ConfigService config, EquipmentTierService tiers, EquipmentEnhancementService enhancement,
                                           EquipmentPromotionService promotion, CombatService combat,
                                           RPGItemService itemService,
                                           ActivityBlockRewardValidator blockRewards,
-                                          ToolDurabilityService toolDurability) {
+                                          ToolDurabilityService toolDurability,
+                                          Predicate<ItemStack> nativeTridentOwner) {
         this.config = config;
         this.tiers = tiers;
         this.enhancement = enhancement;
@@ -73,6 +76,7 @@ public final class EquipmentActualEffectListener implements Listener {
         this.itemService = itemService;
         this.blockRewards = blockRewards;
         this.toolDurability = toolDurability;
+        this.nativeTridentOwner = nativeTridentOwner == null ? item -> false : nativeTridentOwner;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -183,13 +187,15 @@ public final class EquipmentActualEffectListener implements Listener {
                 && event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
         ItemStack item = event.getItem();
         if (item == null || item.getType() != Material.TRIDENT) return;
-        if (isCustomRpgItem(item)) event.setCancelled(true);
+        if (isCustomRpgItem(item) && !nativeTridentOwner.test(item)) event.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onCustomTridentLaunch(ProjectileLaunchEvent event) {
         if (!(event.getEntity() instanceof Trident trident)) return;
-        if (isCustomRpgItem(trident.getItemStack())) event.setCancelled(true);
+        if (isCustomRpgItem(trident.getItemStack()) && !nativeTridentOwner.test(trident.getItemStack())) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)

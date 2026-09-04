@@ -1,5 +1,6 @@
 package com.hyunseo.hyunseorpg.special.water;
 
+import org.bukkit.util.Vector;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -84,6 +85,15 @@ class WaterTridentStateTest {
     @Test void syntheticSignatureProjectilesRemainPluginOwnedAndRemovable() {
         assertTrue(WaterTridentState.removePhysicalProjectileOnCleanup(
                 WaterTridentState.ProjectileOwnership.PLUGIN_SYNTHETIC));
+    }
+
+    @Test void syntheticReturnSteeringTurnsAwayFromExactOppositeWithoutTeleporting() {
+        Vector current = new Vector(-1, 0, 0);
+        Vector result = WaterTridentListener.steer(current, new Vector(1, 0, 0), .2);
+
+        assertEquals(1.0, result.length(), 1e-9);
+        assertTrue(result.dot(current) < current.lengthSquared());
+        assertTrue(Math.acos(result.clone().normalize().dot(current.clone().normalize())) <= .200001);
     }
 
     @Test void onlyNormalRiptideTerminationReceivesBoost() {
