@@ -324,3 +324,18 @@ special-equipment:
       abilities:
         heavy-attack: { id: flame-axe-heavy, display-name: "화염 강타", trigger: RIGHT_CLICK, description: "완전 충전 후 전방의 적을 불태우고 밀쳐냅니다.", full-charge-ticks: 20, damage: 7.0, range: 4.0, angle-cosine: 0.55, fire-ticks: 80, knockback: 0.65 }
         spinning-throw: { id: flame-axe-spin, display-name: "회전 도끼", trigger: OFFHAND_QUICK, description: "방문하지 않은 적을 추적한 뒤 소유자에게 돌아옵니다.", max-targets: 5, search-radius: 8.0, display-scale: 0.8, spin-degrees-per-tick: 30.0, travel-speed: 0.7, turn-radians-per-tick: 0.16, contact-radius: 1.1, hit-rotation-requirement: 360.0, damage: 4.0, max-lifetime-ticks: 200, return-distance: 1.2 }
+    solaris:
+      item-id: solaris
+      display: { name: "성검 · 솔라리스" }
+      attribute: { element: LIGHT, equipment-type: SWORD }
+      unlock: { required-rpg-level: 50 }
+      crafting: { enabled: false, amount: 1, inputs: {} }
+      grade: 4
+      final-gear-material-allowed: true
+      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      # INITIAL / BALANCE_UNVERIFIED: live-server tuning is required.
+      abilities:
+        dawn: { id: solaris-dawn, display-name: "여명", trigger: MELEE_HIT, description: "처음 맞은 적에게서 연쇄하는 빛을 방출합니다.", reset-seconds: 20.0, radius: 4.0, damage: 4.0, fire-seconds: 3.0 }
+        one-point: { id: solaris-one-point, display-name: "일점", trigger: OFFHAND_QUICK, description: "가장 가까운 적에게 거대한 빛의 검을 떨어뜨립니다.", target-range: 20.0, telegraph-ticks: 12, fall-ticks: 5, damage: 16.0, cooldown-seconds: 8.0 }
+        heavenly-wheel: { id: solaris-heavenly-wheel, display-name: "천륜", trigger: SHIFT_HOLD, description: "최근 Solaris 처치로 광체와 작은 검들을 소환합니다.", hold-ticks: 40, kill-window-seconds: 30.0, orb-multiplier: 1.5, maximum-orbs: 20, target-radius: 20.0, maximum-hits-per-target: 2, damage: 5.0, sword-interval-ticks: 2, orbit-ticks: 30, fall-ticks: 3, cooldown-seconds: 20.0 }
+        judgment: { id: solaris-judgment, display-name: "솔라리스의 심판", trigger: RIGHT_CLICK, description: "태양을 띄우고 지역에 비추적 유성우를 내립니다.", effect-radius: 30.0, sun-rise-ticks: 50, shower-ticks: 160, meteor-count: 30, direct-damage: 8.0, impact-radius: 2.5, explosion-damage: 5.0, fire-seconds: 5.0, meteor-fall-ticks: 10, cooldown-seconds: 60.0 }

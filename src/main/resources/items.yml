@@ -229,6 +229,7 @@ items:
   blessing_of_earth: { material: EMERALD, display-name: "대지의 축복", category: SPECIAL_BUFF, rarity: RARE, custom-model-data: 23504, lore: ["사용 시 채집 활동 보조 효과를 얻습니다."] }
   burning_sword: { material: GOLDEN_SWORD, display-name: "불꽃검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23511, lore: ["불 속성 후반 장비", "연속 공격으로 화염 스택을 쌓습니다."] }
   flame_axe: { material: GOLDEN_AXE, display-name: "화염 도끼", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23517, lore: ["우클릭을 완전히 충전해 강공격합니다.", "F로 회전 도끼를 투척합니다."] }
+  solaris: { material: GOLDEN_SWORD, display-name: "성검 · 솔라리스", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["Holy Sword: Solaris", "빛과 태양의 신성한 힘을 다룹니다."] }
   flowing_water_sword: { material: DIAMOND_SWORD, display-name: "흐르는 물의 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23512, lore: ["물 속성 후반 장비", "처치 시 회복과 속도 효과를 얻습니다."] }
   wind_cutting_sword: { material: IRON_SWORD, display-name: "바람을 가르는 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23513, lore: ["바람 속성 후반 장비", "공격 시 전방 검격을 발사합니다."] }
   earth_special_sword: { material: WOODEN_SWORD, display-name: "대지의 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23514, lore: ["땅 속성 후반 장비", "적을 둔화시키는 묵직한 검입니다."] }
