@@ -22,6 +22,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.Vector3f;
+import org.joml.Quaternionf;
 
 import java.util.*;
 
@@ -118,8 +119,12 @@ public final class FlameAxeListener implements Listener {
         Transformation transform = display.getTransformation();
         transform.getScale().set(new Vector3f((float) config.displayScale()));
         display.setTransformation(transform);
+        display.setTeleportDuration(2);
+        display.setInterpolationDelay(0);
+        display.setInterpolationDuration(2);
+        Location logicalPosition = display.getLocation().clone();
         Session session = new Session(owner, instances.ensure(owner.getInventory().getItemInMainHand()), display,
-                owner.getEyeLocation().getDirection().normalize().multiply(config.speed()));
+                logicalPosition, owner.getEyeLocation().getDirection().normalize().multiply(config.speed()));
         sessions.put(owner.getUniqueId(), session);
         session.task = Bukkit.getScheduler().runTaskTimer(plugin, () -> safeTick(session), 1, 1);
     }
@@ -133,17 +138,21 @@ public final class FlameAxeListener implements Listener {
 
     private void tick(Session s) {
         if (!validOwner(s) || !s.display.isValid() || ++s.age >= config.lifetimeTicks()) { cleanup(s.owner.getUniqueId()); return; }
-        Location from = s.display.getLocation();
+        Location from = s.logicalPosition.clone();
         if (!s.returning && (s.target == null || !validTarget(s, s.target))) selectTarget(s);
-        Location destination = s.returning ? s.owner.getEyeLocation() : s.target.getBoundingBox().getCenter().toLocation(s.display.getWorld());
+        Location destination = s.returning ? s.owner.getEyeLocation()
+                : s.target.getBoundingBox().getCenter().toLocation(s.display.getWorld());
         Vector desired = destination.toVector().subtract(from.toVector());
         s.velocity = FlameAxeMath.steer(s.velocity, desired, config.turnRadians());
         if (s.velocity.lengthSquared() > 0) s.velocity.normalize().multiply(config.speed());
         Location to = from.clone().add(s.velocity);
+        s.logicalPosition = to.clone();
         s.rotation += config.spinDegrees();
-        s.display.setVelocity(s.velocity);
-        s.display.setRotation(from.getYaw() + (float) config.spinDegrees(), from.getPitch());
         contact(s, from, to);
+        // Display entities do not participate in normal velocity physics.  The logical path is
+        // authoritative for both collision and presentation; teleport duration smooths each 1-tick step.
+        s.display.teleport(to);
+        updateRotation(s);
         if (s.returning) {
             if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance()) cleanup(s.owner.getUniqueId());
         } else if (to.distanceSquared(destination) <= config.contactRadius() * config.contactRadius()) {
@@ -153,10 +162,10 @@ public final class FlameAxeListener implements Listener {
 
     private void selectTarget(Session s) {
         if (s.visited.size() >= config.maxTargets()) { s.returning = true; s.target = null; return; }
-        s.target = s.display.getWorld().getNearbyEntities(s.display.getLocation(), config.searchRadius(), config.searchRadius(), config.searchRadius()).stream()
+        s.target = s.display.getWorld().getNearbyEntities(s.logicalPosition, config.searchRadius(), config.searchRadius(), config.searchRadius()).stream()
                 .filter(LivingEntity.class::isInstance).map(LivingEntity.class::cast)
                 .filter(t -> validTarget(s, t) && FlameAxeMath.maySelectTarget(t.getUniqueId(), s.visited, config.maxTargets()))
-                .min(Comparator.comparingDouble(t -> t.getLocation().distanceSquared(s.display.getLocation()))).orElse(null);
+                .min(Comparator.comparingDouble(t -> t.getLocation().distanceSquared(s.logicalPosition))).orElse(null);
         if (s.target == null) s.returning = true;
     }
 
@@ -181,6 +190,18 @@ public final class FlameAxeListener implements Listener {
         Vector line = end.clone().subtract(start); if (line.lengthSquared() == 0) return point.distance(start);
         double t = Math.max(0, Math.min(1, point.clone().subtract(start).dot(line) / line.lengthSquared()));
         return point.distance(start.clone().add(line.multiply(t)));
+    }
+
+    private void updateRotation(Session s) {
+        if (s.velocity.lengthSquared() < 1.0E-8) return;
+        Vector direction = s.velocity.clone().normalize();
+        Transformation transform = s.display.getTransformation();
+        Quaternionf facing = new Quaternionf().rotationTo(0F, 0F, 1F,
+                (float) direction.getX(), (float) direction.getY(), (float) direction.getZ());
+        // Roll the model around its local travel axis, independently from entity yaw/pitch.
+        facing.rotateZ((float) Math.toRadians(s.rotation));
+        transform.getLeftRotation().set(facing);
+        s.display.setTransformation(transform); // preserves translation, right rotation and configured scale
     }
 
     private boolean holding(Player player) { return specials.getSpecialId(player.getInventory().getItemInMainHand()).equals(ID); }
@@ -212,8 +233,8 @@ public final class FlameAxeListener implements Listener {
 
     private static final class Session {
         final Player owner; final UUID instanceId; final ItemDisplay display; final Set<UUID> visited = new HashSet<>();
-        final Map<UUID, Double> lastHitRotation = new HashMap<>(); Vector velocity; LivingEntity target;
+        final Map<UUID, Double> lastHitRotation = new HashMap<>(); Location logicalPosition; Vector velocity; LivingEntity target;
         boolean returning; int age; double rotation; BukkitTask task;
-        Session(Player owner, UUID instanceId, ItemDisplay display, Vector velocity) { this.owner=owner; this.instanceId=instanceId; this.display=display; this.velocity=velocity; }
+        Session(Player owner, UUID instanceId, ItemDisplay display, Location logicalPosition, Vector velocity) { this.owner=owner; this.instanceId=instanceId; this.display=display; this.logicalPosition=logicalPosition; this.velocity=velocity; }
     }
 }

@@ -64,6 +64,7 @@ public final class WaterTridentState {
 
         public int hitCount() { return hitTargets.size(); }
         public int maximumHits() { return maximumHits; }
+        public boolean exhausted() { return hitTargets.size() >= maximumHits; }
     }
 
     private record Combo(UUID target, int hits, long expiresAt) { }

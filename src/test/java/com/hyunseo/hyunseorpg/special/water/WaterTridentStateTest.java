@@ -61,7 +61,9 @@ class WaterTridentStateTest {
             attacks[i] = new WaterTridentState.SyntheticAttack(3);
             UUID first = UUID.randomUUID();
             assertTrue(attacks[i].tryHit(first)); assertFalse(attacks[i].tryHit(first));
+            assertFalse(attacks[i].exhausted());
             assertTrue(attacks[i].tryHit(UUID.randomUUID())); assertTrue(attacks[i].tryHit(UUID.randomUUID()));
+            assertTrue(attacks[i].exhausted());
             assertFalse(attacks[i].tryHit(UUID.randomUUID())); assertEquals(3, attacks[i].hitCount());
         }
     }
