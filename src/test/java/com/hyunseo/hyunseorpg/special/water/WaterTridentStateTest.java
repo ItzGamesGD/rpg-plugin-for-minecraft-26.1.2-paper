@@ -99,6 +99,12 @@ class WaterTridentStateTest {
         assertTrue(Math.acos(result.clone().normalize().dot(current.clone().normalize())) <= .200001);
     }
 
+    @Test void syntheticSweptContactUsesTheWholePathAndTargetCenter() {
+        Vector from = new Vector(0, 1, 0), to = new Vector(4, 1, 0);
+        assertEquals(0, WaterTridentListener.distanceToSegment(new Vector(2, 1, 0), from, to), 1e-9);
+        assertEquals(1, WaterTridentListener.distanceToSegment(new Vector(2, 2, 0), from, to), 1e-9);
+    }
+
     @Test void onlyNormalRiptideTerminationReceivesBoost() {
         assertTrue(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.NORMAL));
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.COLLISION));

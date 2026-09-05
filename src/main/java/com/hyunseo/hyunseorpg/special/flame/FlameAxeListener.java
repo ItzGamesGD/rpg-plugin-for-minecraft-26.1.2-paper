@@ -9,6 +9,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
@@ -34,6 +35,7 @@ public final class FlameAxeListener implements Listener {
     private final BukkitTask chargeTask;
     private long chargeClock;
     private final Map<UUID, Session> sessions = new HashMap<>();
+    private final Map<UUID, ItemStack> chargeRecovery = new HashMap<>();
 
     public FlameAxeListener(JavaPlugin plugin, ConfigService config, SpecialEquipmentService specials,
                             EquipmentInstanceService instances, CombatService combat) {
@@ -56,6 +58,7 @@ public final class FlameAxeListener implements Listener {
         ItemStack axe = player.getInventory().getItemInMainHand();
         specials.ensureRuntimeComponents(axe);
         charging.start(player.getUniqueId(), instances.ensure(axe), chargeClock);
+        chargeRecovery.put(player.getUniqueId(), axe.clone());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -63,7 +66,24 @@ public final class FlameAxeListener implements Listener {
         UUID instance = instances.get(event.getItem()).orElse(null);
         charging.advance(event.getPlayer().getUniqueId(), event.getTicksHeldFor(), config.fullChargeTicks());
         FlameAxeChargeState.Release release = charging.release(event.getPlayer().getUniqueId(), instance);
+        chargeRecovery.remove(event.getPlayer().getUniqueId());
         if (release.existed() && release.heavyAttack() && holding(event.getPlayer())) heavyAttack(event.getPlayer());
+    }
+
+    /** Defensive only: normal holds end through PlayerStopUsingItemEvent centuries of ticks earlier. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onConsume(PlayerItemConsumeEvent event) {
+        if (!specials.getSpecialId(event.getItem()).equals(ID)) return;
+        event.setCancelled(true);
+        plugin.getLogger().warning("Prevented unexpected Flame Axe presentation-shell consumption for "
+                + event.getPlayer().getName());
+        ItemStack original = chargeRecovery.get(event.getPlayer().getUniqueId());
+        if (original != null) Bukkit.getScheduler().runTask(plugin, () -> {
+            ItemStack held = event.getPlayer().getInventory().getItemInMainHand();
+            if (!instances.is(held, instances.get(original).orElse(null)))
+                event.getPlayer().getInventory().setItemInMainHand(original.clone());
+        });
+        cleanup(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -221,7 +241,7 @@ public final class FlameAxeListener implements Listener {
     }
 
     public void cleanup(UUID owner) {
-        charging.clear(owner); Session s = sessions.remove(owner); if (s == null) return;
+        charging.clear(owner); chargeRecovery.remove(owner); Session s = sessions.remove(owner); if (s == null) return;
         if (s.task != null) s.task.cancel(); if (s.display.isValid()) s.display.remove();
         s.visited.clear(); s.lastHitRotation.clear(); s.target = null;
     }

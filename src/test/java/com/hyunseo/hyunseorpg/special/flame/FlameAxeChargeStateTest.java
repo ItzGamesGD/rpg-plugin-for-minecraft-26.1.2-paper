@@ -3,8 +3,13 @@ package com.hyunseo.hyunseorpg.special.flame;
 import org.junit.jupiter.api.Test;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
+import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 
 class FlameAxeChargeStateTest {
+    @Test void presentationDurationIsIndependentAndFarLongerThanChargeThreshold() {
+        assertTrue(SpecialEquipmentService.FLAME_AXE_PRESENTATION_SECONDS >= 600F);
+        assertTrue(SpecialEquipmentService.FLAME_AXE_PRESENTATION_SECONDS * 20 > 20);
+    }
     @Test void duplicateStartCannotResetAChargeThatStaysFullUntilRelease() {
         FlameAxeChargeState state = new FlameAxeChargeState();
         UUID player = UUID.randomUUID(), item = UUID.randomUUID();

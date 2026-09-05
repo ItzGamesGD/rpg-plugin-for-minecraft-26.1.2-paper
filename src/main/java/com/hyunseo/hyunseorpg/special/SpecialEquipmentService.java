@@ -14,6 +14,7 @@ import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
 import com.hyunseo.hyunseorpg.player.PlayerRPGData;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -27,7 +28,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.BlocksAttacks;
+import io.papermc.paper.datacomponent.item.Consumable;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Owns late-game equipment identity, unlock checks, recipes, and per-item soul progress. */
 public final class SpecialEquipmentService {
+    public static final float FLAME_AXE_PRESENTATION_SECONDS = 1_200F;
     private final JavaPlugin plugin;
     private final ConfigService config;
     private final SpecialEquipmentRegistry registry;
@@ -145,10 +148,13 @@ public final class SpecialEquipmentService {
     /** Applies runtime-use components to both newly created and pre-existing special items. */
     public void ensureRuntimeComponents(ItemStack item) {
         if (!getSpecialId(item).equals("flame_axe")) return;
-        // An empty blocking profile gives the axe a native, indefinite use/release lifecycle
-        // without entering the consumable lifecycle or granting defensive damage reduction.
-        item.setData(DataComponentTypes.BLOCKS_ATTACKS, BlocksAttacks.blocksAttacks().build());
-        item.unsetData(DataComponentTypes.CONSUMABLE);
+        // Presentation only: the server-owned charge reaches FULL independently after a few ticks.
+        // 20 minutes is finite/serializable but cannot be mistaken for the normal charge timer.
+        item.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
+                .consumeSeconds(FLAME_AXE_PRESENTATION_SECONDS).animation(ItemUseAnimation.BOW)
+                .sound(Key.key("minecraft:intentionally_empty"))
+                .hasConsumeParticles(false).build());
+        item.unsetData(DataComponentTypes.BLOCKS_ATTACKS);
     }
 
     private boolean isDurabilityEquipment(SpecialEquipmentData data) {
