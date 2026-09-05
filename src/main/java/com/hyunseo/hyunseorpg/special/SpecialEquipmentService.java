@@ -26,6 +26,8 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.BlocksAttacks;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -136,7 +138,17 @@ public final class SpecialEquipmentService {
                 .add(Component.text("Growth is controlled by special-equipment.yml", NamedTextColor.DARK_GRAY))
                 .build());
         item.setItemMeta(meta);
+        ensureRuntimeComponents(item);
         return item;
+    }
+
+    /** Applies runtime-use components to both newly created and pre-existing special items. */
+    public void ensureRuntimeComponents(ItemStack item) {
+        if (!getSpecialId(item).equals("flame_axe")) return;
+        // An empty blocking profile gives the axe a native, indefinite use/release lifecycle
+        // without entering the consumable lifecycle or granting defensive damage reduction.
+        item.setData(DataComponentTypes.BLOCKS_ATTACKS, BlocksAttacks.blocksAttacks().build());
+        item.unsetData(DataComponentTypes.CONSUMABLE);
     }
 
     private boolean isDurabilityEquipment(SpecialEquipmentData data) {

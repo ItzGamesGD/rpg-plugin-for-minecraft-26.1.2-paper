@@ -4,15 +4,11 @@ import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
-import io.papermc.paper.datacomponent.DataComponentTypes;
-import io.papermc.paper.datacomponent.item.Consumable;
-import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import org.bukkit.*;
 import org.bukkit.event.block.Action;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
 import io.papermc.paper.event.player.PlayerStopUsingItemEvent;
-import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
@@ -34,7 +30,9 @@ public final class FlameAxeListener implements Listener {
     private final EquipmentInstanceService instances;
     private final CombatService combat;
     private final FlameAxeConfig config;
-    private final Map<UUID, Charge> charging = new HashMap<>();
+    private final FlameAxeChargeState charging = new FlameAxeChargeState();
+    private final BukkitTask chargeTask;
+    private long chargeClock;
     private final Map<UUID, Session> sessions = new HashMap<>();
 
     public FlameAxeListener(JavaPlugin plugin, ConfigService config, SpecialEquipmentService specials,
@@ -44,6 +42,8 @@ public final class FlameAxeListener implements Listener {
         this.instances = instances;
         this.combat = combat;
         this.config = FlameAxeConfig.from(config);
+        this.chargeTask = Bukkit.getScheduler().runTaskTimer(plugin,
+                () -> charging.advanceAll(++chargeClock, this.config.fullChargeTicks()), 1, 1);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -52,29 +52,18 @@ public final class FlameAxeListener implements Listener {
                 && event.getAction() != Action.RIGHT_CLICK_BLOCK)) return;
         Player player = event.getPlayer();
         if (!holding(player) || sessions.containsKey(player.getUniqueId())
-                || charging.containsKey(player.getUniqueId())) return;
+                || charging.contains(player.getUniqueId())) return;
         ItemStack axe = player.getInventory().getItemInMainHand();
-        axe.setData(DataComponentTypes.CONSUMABLE, Consumable.consumable()
-                .consumeSeconds(Math.max(.05F, config.fullChargeTicks() / 20F))
-                .animation(ItemUseAnimation.BOW).hasConsumeParticles(false).build());
-        charging.put(player.getUniqueId(), new Charge(instances.ensure(axe), System.nanoTime()));
+        specials.ensureRuntimeComponents(axe);
+        charging.start(player.getUniqueId(), instances.ensure(axe), chargeClock);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRelease(PlayerStopUsingItemEvent event) {
-        Charge charge = charging.remove(event.getPlayer().getUniqueId());
-        if (!validCharge(event.getPlayer(), event.getItem(), charge)) return;
-        if (FlameAxeMath.isFullCharge(event.getTicksHeldFor(), config.fullChargeTicks())) heavyAttack(event.getPlayer());
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onConsume(PlayerItemConsumeEvent event) {
-        Charge charge = charging.remove(event.getPlayer().getUniqueId());
-        if (!validCharge(event.getPlayer(), event.getItem(), charge)) return;
-        // The consumable component is only a Paper-backed charge animation; the axe is never consumed.
-        event.setCancelled(true);
-        int heldTicks = (int) Math.max(0L, (System.nanoTime() - charge.startedAtNanos()) / 50_000_000L);
-        if (FlameAxeMath.isFullCharge(heldTicks, config.fullChargeTicks())) heavyAttack(event.getPlayer());
+        UUID instance = instances.get(event.getItem()).orElse(null);
+        charging.advance(event.getPlayer().getUniqueId(), event.getTicksHeldFor(), config.fullChargeTicks());
+        FlameAxeChargeState.Release release = charging.release(event.getPlayer().getUniqueId(), instance);
+        if (release.existed() && release.heavyAttack() && holding(event.getPlayer())) heavyAttack(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -83,7 +72,7 @@ public final class FlameAxeListener implements Listener {
         if (player.isSneaking() || !holding(player)) return;
         event.setCancelled(true);
         UUID id = player.getUniqueId();
-        if (charging.containsKey(id) || sessions.containsKey(id)) return;
+        if (charging.contains(id) || sessions.containsKey(id)) return;
         start(player);
     }
 
@@ -119,7 +108,7 @@ public final class FlameAxeListener implements Listener {
         Transformation transform = display.getTransformation();
         transform.getScale().set(new Vector3f((float) config.displayScale()));
         display.setTransformation(transform);
-        display.setTeleportDuration(2);
+        display.setTeleportDuration(1);
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(2);
         Location logicalPosition = display.getLocation().clone();
@@ -155,7 +144,7 @@ public final class FlameAxeListener implements Listener {
         updateRotation(s);
         if (s.returning) {
             if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance()) cleanup(s.owner.getUniqueId());
-        } else if (to.distanceSquared(destination) <= config.contactRadius() * config.contactRadius()) {
+        } else if (reaches(from, to, destination, config.contactRadius())) {
             s.visited.add(s.target.getUniqueId()); s.target = null; selectTarget(s);
         }
     }
@@ -192,6 +181,10 @@ public final class FlameAxeListener implements Listener {
         return point.distance(start.clone().add(line.multiply(t)));
     }
 
+    static boolean reaches(Location from, Location to, Location target, double radius) {
+        return from.getWorld() == target.getWorld() && distanceToSegment(target.toVector(), from.toVector(), to.toVector()) <= radius;
+    }
+
     private void updateRotation(Session s) {
         if (s.velocity.lengthSquared() < 1.0E-8) return;
         Vector direction = s.velocity.clone().normalize();
@@ -205,9 +198,6 @@ public final class FlameAxeListener implements Listener {
     }
 
     private boolean holding(Player player) { return specials.getSpecialId(player.getInventory().getItemInMainHand()).equals(ID); }
-    private boolean validCharge(Player player, ItemStack item, Charge charge) {
-        return charge != null && holding(player) && instances.is(item, charge.instanceId());
-    }
     private boolean validOwner(Session s) { return s.owner.isOnline() && !s.owner.isDead() && s.owner.getWorld() == s.display.getWorld() && holding(s.owner) && instances.is(s.owner.getInventory().getItemInMainHand(), s.instanceId); }
     private boolean validTarget(Session s, LivingEntity target) { return target != s.owner && target.isValid() && !target.isDead() && target.getWorld() == s.owner.getWorld(); }
 
@@ -217,19 +207,29 @@ public final class FlameAxeListener implements Listener {
     @EventHandler public void onDeath(PlayerDeathEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onTeleport(PlayerTeleportEvent e) { cleanup(e.getPlayer().getUniqueId()); }
-    @EventHandler public void onHeld(PlayerItemHeldEvent e) { cleanup(e.getPlayer().getUniqueId()); }
+    @EventHandler public void onHeld(PlayerItemHeldEvent e) {
+        cleanup(e.getPlayer().getUniqueId());
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (holding(e.getPlayer())) specials.ensureRuntimeComponents(e.getPlayer().getInventory().getItemInMainHand());
+        });
+    }
     @EventHandler public void onInventory(InventoryClickEvent e) { if (e.getWhoClicked() instanceof Player p) Bukkit.getScheduler().runTask(plugin, () -> validateHeld(p)); }
     @EventHandler public void onDrag(InventoryDragEvent e) { if (e.getWhoClicked() instanceof Player p) Bukkit.getScheduler().runTask(plugin, () -> validateHeld(p)); }
-    private void validateHeld(Player p) { if (!holding(p)) cleanup(p.getUniqueId()); }
+    private void validateHeld(Player p) {
+        if (!holding(p)) cleanup(p.getUniqueId());
+        else specials.ensureRuntimeComponents(p.getInventory().getItemInMainHand());
+    }
 
     public void cleanup(UUID owner) {
-        charging.remove(owner); Session s = sessions.remove(owner); if (s == null) return;
+        charging.clear(owner); Session s = sessions.remove(owner); if (s == null) return;
         if (s.task != null) s.task.cancel(); if (s.display.isValid()) s.display.remove();
         s.visited.clear(); s.lastHitRotation.clear(); s.target = null;
     }
-    public void shutdown() { new HashSet<>(sessions.keySet()).forEach(this::cleanup); charging.clear(); }
-
-    private record Charge(UUID instanceId, long startedAtNanos) { }
+    public void shutdown() {
+        chargeTask.cancel();
+        new HashSet<>(sessions.keySet()).forEach(this::cleanup);
+        charging.clear();
+    }
 
     private static final class Session {
         final Player owner; final UUID instanceId; final ItemDisplay display; final Set<UUID> visited = new HashSet<>();

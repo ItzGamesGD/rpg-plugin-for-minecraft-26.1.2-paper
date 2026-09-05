@@ -92,10 +92,14 @@ public final class WaterTridentListener implements Listener {
     }
 
     /** Captures identity before vanilla removes the charged item from the player's hand. */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPoseidonUse(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || (event.getAction() != Action.RIGHT_CLICK_AIR
-                && event.getAction() != Action.RIGHT_CLICK_BLOCK) || !holding(event.getPlayer())) return;
+                && event.getAction() != Action.RIGHT_CLICK_BLOCK)) return;
+        if (event.isCancelled() || !holding(event.getPlayer())) {
+            pendingVanillaThrows.remove(event.getPlayer().getUniqueId());
+            return;
+        }
         pendingVanillaThrows.put(event.getPlayer().getUniqueId(), System.nanoTime());
     }
 
@@ -201,28 +205,49 @@ public final class WaterTridentListener implements Listener {
         for (Synthetic object : cast.objects) {
             if (!object.entity.isValid()) continue;
             object.age++;
-            for (LivingEntity target : targets(cast.player, object.entity.getLocation(), number("signature.hit-radius", 1.2)))
-                if (object.hits.tryHit(target.getUniqueId())) {
-                    combat.applyMultiHitDamage(cast.player, target, number("signature.trident-damage", 3));
-                    target.getWorld().spawnParticle(Particle.SPLASH, target.getEyeLocation(), 8, .2, .2, .2, .05);
-                    if (object.hits.exhausted()) object.returning = true;
-                }
-            if (!object.returning && object.age >= Math.max(8, ticks("signature.attack-duration-ticks", 40) / 2)) {
-                object.returning = true;
-            }
+            if (object.phase == WaterTridentState.SyntheticPhase.OUTWARD && object.age >= 3)
+                object.phase = WaterTridentState.SyntheticPhase.SEEKING;
+            if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) tickSeeking(cast, object);
             Vector destination = cast.player.getEyeLocation().toVector().subtract(object.entity.getLocation().toVector());
-            if (object.returning && destination.lengthSquared() > .01D) {
+            if (object.phase == WaterTridentState.SyntheticPhase.RETURNING && destination.lengthSquared() > .01D) {
                 Vector desired = destination.normalize().multiply(number("signature.trident-speed", 1.1));
                 object.velocity = steer(object.velocity, desired, .20D);
                 if (object.entity.getLocation().distanceSquared(cast.player.getEyeLocation()) <= 1.44D) {
                     removeSyntheticProjectile(object.entity);
+                    object.phase = WaterTridentState.SyntheticPhase.DONE;
                     continue;
                 }
             }
+            if (object.phase != WaterTridentState.SyntheticPhase.RETURNING
+                    && object.age >= ticks("signature.attack-duration-ticks", 40))
+                object.phase = WaterTridentState.SyntheticPhase.RETURNING;
             object.entity.setVelocity(object.velocity);
             object.entity.getWorld().spawnParticle(Particle.BUBBLE, object.entity.getLocation(), 2, .08, .08, .08, .01);
         }
         if (cast.age >= releaseTick + ticks("signature.attack-duration-ticks", 40)) clearCast(cast.player.getUniqueId());
+    }
+
+    private void tickSeeking(Cast cast, Synthetic object) {
+        if (object.currentTarget == null || !validTarget(cast.player, object.currentTarget)
+                || object.hits.hasHit(object.currentTarget.getUniqueId())) {
+            object.currentTarget = targets(cast.player, object.entity.getLocation(),
+                    number("signature.seek-radius", 10)).stream()
+                    .filter(target -> !object.hits.hasHit(target.getUniqueId()))
+                    .min(java.util.Comparator.comparingDouble(target -> target.getLocation()
+                            .distanceSquared(object.entity.getLocation()))).orElse(null);
+            if (object.currentTarget == null) { object.phase = WaterTridentState.SyntheticPhase.RETURNING; return; }
+        }
+        Vector delta = object.currentTarget.getBoundingBox().getCenter().subtract(object.entity.getLocation().toVector());
+        if (delta.lengthSquared() > .0001D) object.velocity = steer(object.velocity,
+                delta.normalize().multiply(number("signature.trident-speed", 1.1)), .20D);
+        if (object.entity.getLocation().distanceSquared(object.currentTarget.getLocation())
+                <= Math.pow(number("signature.hit-radius", 1.2), 2) && object.hits.tryHit(object.currentTarget.getUniqueId())) {
+            LivingEntity hit = object.currentTarget;
+            combat.applyMultiHitDamage(cast.player, hit, number("signature.trident-damage", 3));
+            hit.getWorld().spawnParticle(Particle.SPLASH, hit.getEyeLocation(), 8, .2, .2, .2, .05);
+            object.currentTarget = null;
+            if (object.hits.exhausted()) object.phase = WaterTridentState.SyntheticPhase.RETURNING;
+        }
     }
 
     private void renderVortex(Player player, int age, int duration) {
@@ -383,7 +408,12 @@ public final class WaterTridentListener implements Listener {
         ref[0] = Bukkit.getScheduler().runTaskTimer(config.getPlugin(), () -> {
             try { action.run(); } catch (RuntimeException exception) {
                 config.getPlugin().getLogger().warning("Water trident task cleaned after failure: " + exception.getMessage());
-                onFailure.run();
+                BukkitTask failed = ref[0];
+                if (failed != null) { failed.cancel(); tasks.remove(failed); }
+                try { onFailure.run(); } catch (RuntimeException cleanupFailure) {
+                    config.getPlugin().getLogger().warning("Water trident failure cleanup also failed: "
+                            + cleanupFailure.getMessage());
+                }
             }
         }, delay, period);
         tasks.add(ref[0]);
@@ -394,20 +424,31 @@ public final class WaterTridentListener implements Listener {
     @EventHandler public void onKick(PlayerKickEvent event) { clearPlayer(event.getPlayer()); }
     @EventHandler public void onDeath(PlayerDeathEvent event) { clearPlayer(event.getEntity()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent event) { clearPlayer(event.getPlayer()); }
-    @EventHandler public void onHeld(PlayerItemHeldEvent event) { clearPlayer(event.getPlayer()); }
+    @EventHandler public void onHeld(PlayerItemHeldEvent event) {
+        Bukkit.getScheduler().runTask(config.getPlugin(), () -> validateHeld(event.getPlayer()));
+    }
     @EventHandler public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getWhoClicked() instanceof Player player && holding(player)) clearPlayer(player);
+        if (event.getWhoClicked() instanceof Player player)
+            Bukkit.getScheduler().runTask(config.getPlugin(), () -> validateHeld(player));
     }
     @EventHandler public void onInventoryDrag(InventoryDragEvent event) {
-        if (event.getWhoClicked() instanceof Player player && holding(player)) clearPlayer(player);
+        if (event.getWhoClicked() instanceof Player player)
+            Bukkit.getScheduler().runTask(config.getPlugin(), () -> validateHeld(player));
     }
 
-    private void clearPlayer(Player player) {
+    private void validateHeld(Player player) { if (!holding(player)) clearActivePlayerState(player); }
+
+    private void clearActivePlayerState(Player player) {
         UUID id = player.getUniqueId();
         pendingVanillaThrows.remove(id);
         state.clear(id);
         clearCast(id);
         clearTimed(movements.remove(id));
+    }
+
+    private void clearPlayer(Player player) {
+        UUID id = player.getUniqueId();
+        clearActivePlayerState(player);
         flights.values().stream().filter(flight -> flight.owner.getUniqueId().equals(id)).toList()
                 .forEach(this::forgetRealFlightTracking);
     }
@@ -465,7 +506,8 @@ public final class WaterTridentListener implements Listener {
         final Trident entity;
         final WaterTridentState.SyntheticAttack hits;
         Vector velocity;
-        boolean returning;
+        WaterTridentState.SyntheticPhase phase = WaterTridentState.SyntheticPhase.OUTWARD;
+        LivingEntity currentTarget;
         int age;
         Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits, Vector velocity) {
             this.entity = entity;

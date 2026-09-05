@@ -13,6 +13,7 @@ public final class WaterTridentState {
     public enum FlightPhase { OUTWARD, RETURNING, REMOVED }
     public enum MovementEnd { NORMAL, COLLISION, CANCELLED, INVALIDATED }
     public enum ProjectileOwnership { VANILLA_REAL, PLUGIN_SYNTHETIC }
+    public enum SyntheticPhase { OUTWARD, SEEKING, RETURNING, DONE }
 
     private final Map<UUID, Combo> combos = new HashMap<>();
 
@@ -65,6 +66,7 @@ public final class WaterTridentState {
         public int hitCount() { return hitTargets.size(); }
         public int maximumHits() { return maximumHits; }
         public boolean exhausted() { return hitTargets.size() >= maximumHits; }
+        public boolean hasHit(UUID target) { return hitTargets.contains(target); }
     }
 
     private record Combo(UUID target, int hits, long expiresAt) { }

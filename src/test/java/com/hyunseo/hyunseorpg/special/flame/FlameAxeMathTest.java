@@ -41,6 +41,14 @@ class FlameAxeMathTest {
         assertEquals(1.0, FlameAxeListener.distanceToSegment(new Vector(3, 0, 0), start, end), 1e-9);
     }
 
+    @Test void sweptCompletionRecognizesTargetOvershoot() {
+        org.bukkit.Location from = new org.bukkit.Location(null, 0, 0, 0);
+        org.bukkit.Location to = new org.bukkit.Location(null, 4, 0, 0);
+        org.bukkit.Location target = new org.bukkit.Location(null, 2, 0, 0);
+        assertTrue(FlameAxeListener.reaches(from, to, target, .5));
+        assertEquals(0, FlameAxeListener.distanceToSegment(target.toVector(), from.toVector(), to.toVector()), 1e-9);
+    }
+
     @Test void steeringIsBoundedAndNeverSnapsOpposite() {
         Vector result = FlameAxeMath.steer(new Vector(1, 0, 0), new Vector(0, 0, 1), .1);
         assertEquals(1, result.length(), 1e-9);
