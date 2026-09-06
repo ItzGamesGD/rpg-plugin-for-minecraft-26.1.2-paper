@@ -103,8 +103,7 @@ public final class FlameAxeListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMelee(EntityDamageByEntityEvent event) {
         if (event.getDamager() instanceof Player player && holding(player) && !combat.isInternalDamage()) {
-            event.getEntity().getWorld().spawnParticle(Particle.FLAME, event.getEntity().getLocation().add(0, .8, 0), 8, .2, .3, .2, .02);
-            event.getEntity().getWorld().spawnParticle(Particle.SMOKE, event.getEntity().getLocation().add(0, .8, 0), 4, .2, .3, .2, .01);
+            flameBurst(event.getEntity().getLocation().add(0, .8, 0), 18, .32);
         }
     }
 
@@ -120,8 +119,8 @@ public final class FlameAxeListener implements Listener {
             Vector push = target.getLocation().toVector().subtract(owner.getLocation().toVector()).setY(.15);
             if (push.lengthSquared() > 0) target.setVelocity(target.getVelocity().add(push.normalize().multiply(config.heavyKnockback())));
         }
+        flameBurst(owner.getEyeLocation().add(facing.multiply(2)), 35, 1.0);
         owner.getWorld().playSound(owner.getLocation(), Sound.BLOCK_ANVIL_LAND, 1, .8f);
-        owner.getWorld().spawnParticle(Particle.FLAME, owner.getEyeLocation().add(facing.multiply(2)), 35, 1, .7, 1, .05);
     }
 
     private void start(Player owner) {
@@ -150,39 +149,83 @@ public final class FlameAxeListener implements Listener {
     }
 
     private void tick(Session s) {
-        if (!validOwner(s) || !s.display.isValid() || ++s.age >= config.lifetimeTicks()) { cleanup(s.owner.getUniqueId()); return; }
+        if (!validOwner(s) || !s.display.isValid()) { cleanup(s.owner.getUniqueId()); return; }
+        s.age++;
+        if (!s.returning && s.age >= config.lifetimeTicks()) beginReturn(s);
+        if (s.returning && s.age >= config.lifetimeTicks() + config.returnGraceTicks()) {
+            cleanup(s.owner.getUniqueId());
+            return;
+        }
+
         Location from = s.logicalPosition.clone();
-        if (!s.returning && (s.target == null || !validTarget(s, s.target))) selectTarget(s);
+        if (!s.returning && (s.target == null || !validTarget(s, s.target)))
+            selectTarget(s, s.visited.isEmpty());
+        if (!s.returning && s.target == null) beginReturn(s);
+
         Location destination = s.returning ? s.owner.getEyeLocation()
                 : s.target.getBoundingBox().getCenter().toLocation(s.display.getWorld());
         Vector desired = destination.toVector().subtract(from.toVector());
+        double speed = s.returning ? config.returnSpeed() : config.speed();
         s.velocity = FlameAxeMath.steer(s.velocity, desired, config.turnRadians());
-        if (s.velocity.lengthSquared() > 0) s.velocity.normalize().multiply(config.speed());
-        Location to = from.clone().add(s.velocity);
+        if (s.velocity.lengthSquared() > 0) s.velocity.normalize().multiply(speed);
+
+        Location to;
+        if (!s.returning && s.velocity.lengthSquared() > .0001D
+                && from.getWorld().rayTraceBlocks(from, s.velocity.clone().normalize(), s.velocity.length()) != null) {
+            beginReturn(s);
+            to = from.clone();
+        } else {
+            to = from.clone().add(s.velocity);
+        }
+
+        Set<UUID> hitTargets = contact(s, from, to);
         s.logicalPosition = to.clone();
         s.rotation += config.spinDegrees();
-        contact(s, from, to);
-        // Display entities do not participate in normal velocity physics.  The logical path is
-        // authoritative for both collision and presentation; teleport duration smooths each 1-tick step.
+        // Display entities do not participate in normal velocity physics. The logical path is
+        // authoritative for both collision and presentation; teleport duration smooths each step.
         s.display.teleport(to);
         updateRotation(s);
+        flameTrail(from, to);
+
         if (s.returning) {
-            if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance()) cleanup(s.owner.getUniqueId());
-        } else if (reaches(from, to, destination, config.contactRadius())) {
-            s.visited.add(s.target.getUniqueId()); s.target = null; selectTarget(s);
+            if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance())
+                cleanup(s.owner.getUniqueId());
+        } else if (s.target != null && (hitTargets.contains(s.target.getUniqueId())
+                || reaches(from, to, destination, config.contactRadius()))) {
+            s.visited.add(s.target.getUniqueId());
+            s.target = null;
+            selectTarget(s, false);
+            if (s.target == null) beginReturn(s);
         }
     }
 
-    private void selectTarget(Session s) {
-        if (s.visited.size() >= config.maxTargets()) { s.returning = true; s.target = null; return; }
-        s.target = s.display.getWorld().getNearbyEntities(s.logicalPosition, config.searchRadius(), config.searchRadius(), config.searchRadius()).stream()
-                .filter(LivingEntity.class::isInstance).map(LivingEntity.class::cast)
-                .filter(t -> validTarget(s, t) && FlameAxeMath.maySelectTarget(t.getUniqueId(), s.visited, config.maxTargets()))
-                .min(Comparator.comparingDouble(t -> t.getLocation().distanceSquared(s.logicalPosition))).orElse(null);
-        if (s.target == null) s.returning = true;
+    private void beginReturn(Session s) {
+        s.returning = true;
+        s.target = null;
     }
 
-    private void contact(Session s, Location from, Location to) {
+    private void selectTarget(Session s, boolean initial) {
+        if (s.visited.size() >= config.maxTargets()) { beginReturn(s); return; }
+        double radius = initial ? config.initialSearchRadius() : config.searchRadius();
+        Vector heading = s.velocity.lengthSquared() > .0001D
+                ? s.velocity.clone().normalize()
+                : s.owner.getEyeLocation().getDirection().normalize();
+        double angleCosine = initial ? config.initialAngleCosine() : -.35D;
+        s.target = s.display.getWorld().getNearbyEntities(s.logicalPosition, radius, radius, radius).stream()
+                .filter(LivingEntity.class::isInstance).map(LivingEntity.class::cast)
+                .filter(t -> validTarget(s, t)
+                        && FlameAxeMath.maySelectTarget(t.getUniqueId(), s.visited, config.maxTargets()))
+                .filter(t -> {
+                    Vector delta = t.getBoundingBox().getCenter().subtract(s.logicalPosition.toVector());
+                    return delta.lengthSquared() > .0001D && heading.dot(delta.normalize()) >= angleCosine;
+                })
+                .min(Comparator.comparingDouble(t -> t.getBoundingBox().getCenter()
+                        .distanceSquared(s.logicalPosition.toVector()))).orElse(null);
+        if (s.target == null) beginReturn(s);
+    }
+
+    private Set<UUID> contact(Session s, Location from, Location to) {
+        Set<UUID> hitTargets = new HashSet<>();
         Vector segment = to.toVector().subtract(from.toVector());
         double length = segment.length();
         Location middle = from.clone().add(segment.clone().multiply(.5));
@@ -196,7 +239,30 @@ public final class FlameAxeListener implements Listener {
             combat.applyMultiHitDamage(s.owner, target, config.spinDamage());
             target.setFireTicks(Math.max(target.getFireTicks(), config.heavyFireTicks()));
             s.lastHitRotation.put(target.getUniqueId(), s.rotation);
+            hitTargets.add(target.getUniqueId());
+            flameBurst(target.getLocation().add(0, .8, 0), 16, .35);
+            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1, .8f);
         }
+        return hitTargets;
+    }
+
+    private void flameTrail(Location from, Location to) {
+        Vector path = to.toVector().subtract(from.toVector());
+        double length = path.length();
+        int samples = Math.max(1, Math.min(4, (int) Math.ceil(length / .35)));
+        for (int i = 0; i <= samples; i++) {
+            Location point = from.clone().add(path.clone().multiply(i / (double) samples));
+            point.getWorld().spawnParticle(Particle.FLAME, point, 1, .04, .04, .04, .005);
+            if (i % 2 == 0) point.getWorld().spawnParticle(Particle.SMOKE, point, 1, .04, .04, .04, .002);
+        }
+    }
+
+    private void flameBurst(Location center, int count, double spread) {
+        center.getWorld().spawnParticle(Particle.FLAME, center, count, spread, spread, spread, .04);
+        center.getWorld().spawnParticle(Particle.SMOKE, center, Math.max(4, count / 3),
+                spread, spread, spread, .01);
+        center.getWorld().spawnParticle(Particle.LAVA, center, Math.max(2, count / 8),
+                spread * .7, spread * .7, spread * .7, .02);
     }
 
     static double distanceToSegment(Vector point, Vector start, Vector end) {

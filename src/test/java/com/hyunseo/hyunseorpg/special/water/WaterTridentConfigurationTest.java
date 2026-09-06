@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class WaterTridentConfigurationTest {
     private static final Set<String> ABILITIES = Set.of(
-            "pressure-thrust", "current-throw", "signature", "riptide");
+            "pressure-thrust", "current-throw", "signature", "water-pillar", "riptide");
 
     @Test void everyRuntimeAbilityUsesRegistryMetadataConvention() {
         YamlConfiguration yaml = load();
@@ -37,7 +37,8 @@ class WaterTridentConfigurationTest {
         String metadata = abilities.getValues(true).toString().toLowerCase();
         assertFalse(metadata.contains("orbit"));
         assertFalse(metadata.contains("shift_left"));
-        assertFalse(metadata.contains("drop_key"));
+        assertTrue(metadata.contains("drop_key"));
+        assertEquals("DROP_KEY", abilities.getConfigurationSection("water-pillar").getString("trigger"));
         assertEquals(3, yaml.getInt(
                 "special-equipment.items.poseidons_spear.abilities.signature.maximum-hits-per-trident"));
     }

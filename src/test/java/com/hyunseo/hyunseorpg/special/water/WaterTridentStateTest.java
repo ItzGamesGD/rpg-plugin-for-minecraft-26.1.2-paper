@@ -105,6 +105,13 @@ class WaterTridentStateTest {
         assertEquals(1, WaterTridentListener.distanceToSegment(new Vector(2, 2, 0), from, to), 1e-9);
     }
 
+    @Test void syntheticLifecycleHasDistinctForwardSeekingReturnAndDonePhases() {
+        assertEquals(WaterTridentState.SyntheticPhase.OUTWARD, WaterTridentState.SyntheticPhase.valueOf("OUTWARD"));
+        assertEquals(WaterTridentState.SyntheticPhase.SEEKING, WaterTridentState.SyntheticPhase.valueOf("SEEKING"));
+        assertEquals(WaterTridentState.SyntheticPhase.RETURNING, WaterTridentState.SyntheticPhase.valueOf("RETURNING"));
+        assertEquals(WaterTridentState.SyntheticPhase.DONE, WaterTridentState.SyntheticPhase.valueOf("DONE"));
+    }
+
     @Test void onlyNormalRiptideTerminationReceivesBoost() {
         assertTrue(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.NORMAL));
         assertFalse(WaterTridentState.applyNormalVerticalBoost(WaterTridentState.MovementEnd.COLLISION));
