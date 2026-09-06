@@ -33,4 +33,19 @@ class FlameAxeChargeStateTest {
         state.start(player, item, 0); state.clear(player);
         assertFalse(state.contains(player));
     }
+
+    @Test void largeGlobalClockUsesTheSameDomainAtRelease() {
+        FlameAxeChargeState state = new FlameAxeChargeState();
+        UUID player = UUID.randomUUID(), item = UUID.randomUUID();
+        state.start(player, item, 5_000_000);
+        state.advance(player, 5_000_020, 20);
+        assertTrue(state.release(player, item).heavyAttack());
+    }
+
+    @Test void recoveryNeverCopiesAnInstanceThatAlreadyExistsElsewhere() {
+        UUID item = UUID.randomUUID();
+        assertFalse(FlameAxeChargeState.shouldRestore(item, java.util.Set.of(item)));
+        assertTrue(FlameAxeChargeState.shouldRestore(item, java.util.Set.of(UUID.randomUUID())));
+        assertFalse(FlameAxeChargeState.shouldRestore(null, java.util.Set.of()));
+    }
 }

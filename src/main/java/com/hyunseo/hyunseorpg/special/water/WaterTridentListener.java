@@ -109,7 +109,7 @@ public final class WaterTridentListener implements Listener {
                 || !(trident.getShooter() instanceof Player owner)) return;
         boolean projectileIdentity = specials.getSpecialId(trident.getItemStack()).equals(ID);
         Long started = pendingVanillaThrows.remove(owner.getUniqueId());
-        boolean chargedPoseidon = started != null && System.nanoTime() - started <= 30_000_000_000L;
+        boolean chargedPoseidon = started != null && System.nanoTime() - started <= 5_000_000_000L;
         if (!projectileIdentity && !chargedPoseidon) return;
         attachFlight(owner, trident);
     }
@@ -207,12 +207,13 @@ public final class WaterTridentListener implements Listener {
             object.age++;
             if (object.phase == WaterTridentState.SyntheticPhase.OUTWARD && object.age >= 3)
                 object.phase = WaterTridentState.SyntheticPhase.SEEKING;
-            if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) tickSeeking(cast, object);
-            Vector destination = cast.player.getEyeLocation().toVector().subtract(object.entity.getLocation().toVector());
+            if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) prepareSeeking(cast, object);
+            Location from = object.logicalPosition.clone();
+            Vector destination = cast.player.getEyeLocation().toVector().subtract(from.toVector());
             if (object.phase == WaterTridentState.SyntheticPhase.RETURNING && destination.lengthSquared() > .01D) {
                 Vector desired = destination.normalize().multiply(number("signature.trident-speed", 1.1));
                 object.velocity = steer(object.velocity, desired, .20D);
-                if (object.entity.getLocation().distanceSquared(cast.player.getEyeLocation()) <= 1.44D) {
+                if (from.distanceSquared(cast.player.getEyeLocation()) <= 1.44D) {
                     removeSyntheticProjectile(object.entity);
                     object.phase = WaterTridentState.SyntheticPhase.DONE;
                     continue;
@@ -221,9 +222,18 @@ public final class WaterTridentListener implements Listener {
             if (object.phase != WaterTridentState.SyntheticPhase.RETURNING
                     && object.age >= ticks("signature.attack-duration-ticks", 40))
                 object.phase = WaterTridentState.SyntheticPhase.RETURNING;
-            object.entity.setVelocity(object.velocity);
-            object.entity.getWorld().spawnParticle(Particle.BUBBLE, object.entity.getLocation(), 2, .08, .08, .08, .01);
-            object.previousPosition = object.entity.getLocation().clone();
+            Location to = from.clone().add(object.velocity);
+            if (object.phase != WaterTridentState.SyntheticPhase.RETURNING && object.velocity.lengthSquared() > .0001D
+                    && from.getWorld().rayTraceBlocks(from, object.velocity.clone().normalize(), object.velocity.length()) != null) {
+                object.phase = WaterTridentState.SyntheticPhase.RETURNING;
+                object.currentTarget = null;
+                to = from;
+            }
+            if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) contactSeeking(cast, object, from, to);
+            object.logicalPosition = to;
+            object.entity.teleport(to);
+            object.entity.setVelocity(new Vector());
+            object.entity.getWorld().spawnParticle(Particle.BUBBLE, to, 2, .08, .08, .08, .01);
         }
         int attackDuration = ticks("signature.attack-duration-ticks", 40);
         int returnGrace = ticks("signature.return-grace-duration-ticks", attackDuration);
@@ -233,23 +243,27 @@ public final class WaterTridentListener implements Listener {
             clearCast(cast.player.getUniqueId());
     }
 
-    private void tickSeeking(Cast cast, Synthetic object) {
+    private void prepareSeeking(Cast cast, Synthetic object) {
         double seekRadius = number("signature.seek-radius", 10);
         if (object.currentTarget == null || !validTarget(cast.player, object.currentTarget)
                 || object.hits.hasHit(object.currentTarget.getUniqueId())
-                || object.currentTarget.getLocation().distanceSquared(object.entity.getLocation()) > seekRadius * seekRadius) {
-            object.currentTarget = targets(cast.player, object.entity.getLocation(),
+                || object.currentTarget.getLocation().distanceSquared(object.logicalPosition) > seekRadius * seekRadius) {
+            object.currentTarget = targets(cast.player, object.logicalPosition,
                     seekRadius).stream()
                     .filter(target -> !object.hits.hasHit(target.getUniqueId()))
                     .min(java.util.Comparator.comparingDouble(target -> target.getLocation()
-                            .distanceSquared(object.entity.getLocation()))).orElse(null);
+                            .distanceSquared(object.logicalPosition))).orElse(null);
             if (object.currentTarget == null) { object.phase = WaterTridentState.SyntheticPhase.RETURNING; return; }
         }
-        Vector delta = object.currentTarget.getBoundingBox().getCenter().subtract(object.entity.getLocation().toVector());
+        Vector delta = object.currentTarget.getBoundingBox().getCenter().subtract(object.logicalPosition.toVector());
         if (delta.lengthSquared() > .0001D) object.velocity = steer(object.velocity,
                 delta.normalize().multiply(number("signature.trident-speed", 1.1)), .20D);
+    }
+
+    private void contactSeeking(Cast cast, Synthetic object, Location from, Location to) {
+        if (object.currentTarget == null) return;
         Vector center = object.currentTarget.getBoundingBox().getCenter();
-        if (distanceToSegment(center, object.previousPosition.toVector(), object.entity.getLocation().toVector())
+        if (distanceToSegment(center, from.toVector(), to.toVector())
                 <= number("signature.hit-radius", 1.2) && object.hits.tryHit(object.currentTarget.getUniqueId())) {
             LivingEntity hit = object.currentTarget;
             combat.applyMultiHitDamage(cast.player, hit, number("signature.trident-damage", 3));
@@ -298,11 +312,14 @@ public final class WaterTridentListener implements Listener {
         for (int index = 0; index < WaterTridentState.SYNTHETIC_COUNT; index++) {
             double angle = Math.PI * 2 * index / WaterTridentState.SYNTHETIC_COUNT;
             Trident trident = safeTrident(cast.player, origin,
-                    new Vector(Math.cos(angle), 0, Math.sin(angle)).multiply(number("signature.trident-speed", 1.1)));
+                    new Vector());
+            Vector initialVelocity = new Vector(Math.cos(angle), 0, Math.sin(angle))
+                    .multiply(number("signature.trident-speed", 1.1));
+            trident.setGravity(false);
             syntheticProjectiles.add(trident.getUniqueId());
             cast.objects.add(new Synthetic(trident,
                     new WaterTridentState.SyntheticAttack(ticks("signature.maximum-hits-per-trident", 3)),
-                    trident.getVelocity(), trident.getLocation().clone()));
+                    initialVelocity, trident.getLocation().clone()));
         }
     }
 
@@ -524,13 +541,13 @@ public final class WaterTridentListener implements Listener {
         Vector velocity;
         WaterTridentState.SyntheticPhase phase = WaterTridentState.SyntheticPhase.OUTWARD;
         LivingEntity currentTarget;
-        Location previousPosition;
+        Location logicalPosition;
         int age;
-        Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits, Vector velocity, Location previousPosition) {
+        Synthetic(Trident entity, WaterTridentState.SyntheticAttack hits, Vector velocity, Location logicalPosition) {
             this.entity = entity;
             this.hits = hits;
             this.velocity = velocity;
-            this.previousPosition = previousPosition;
+            this.logicalPosition = logicalPosition;
         }
     }
     private static final class TimedPlayerState {

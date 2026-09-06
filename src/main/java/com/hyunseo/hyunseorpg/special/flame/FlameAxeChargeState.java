@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.special.flame;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Collection;
 
 /** Pure charge-session state; presentation/use-item lifecycle is deliberately external. */
 public final class FlameAxeChargeState {
@@ -37,6 +38,10 @@ public final class FlameAxeChargeState {
     public Phase phase(UUID player) { return sessions.get(player) == null ? null : sessions.get(player).phase; }
     public void clear(UUID player) { sessions.remove(player); }
     public void clear() { sessions.clear(); }
+
+    public static boolean shouldRestore(UUID expected, Collection<UUID> presentInstances) {
+        return expected != null && presentInstances != null && !presentInstances.contains(expected);
+    }
 
     private static final class Session {
         final UUID instance; final long startedAt; Phase phase = Phase.CHARGING;

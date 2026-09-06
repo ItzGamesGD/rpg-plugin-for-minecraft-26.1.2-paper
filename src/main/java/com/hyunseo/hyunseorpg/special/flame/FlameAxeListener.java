@@ -64,7 +64,8 @@ public final class FlameAxeListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRelease(PlayerStopUsingItemEvent event) {
         UUID instance = instances.get(event.getItem()).orElse(null);
-        charging.advance(event.getPlayer().getUniqueId(), event.getTicksHeldFor(), config.fullChargeTicks());
+        // Stay in the global server-tick domain used by start() and advanceAll().
+        charging.advance(event.getPlayer().getUniqueId(), chargeClock, config.fullChargeTicks());
         FlameAxeChargeState.Release release = charging.release(event.getPlayer().getUniqueId(), instance);
         chargeRecovery.remove(event.getPlayer().getUniqueId());
         if (release.existed() && release.heavyAttack() && holding(event.getPlayer())) heavyAttack(event.getPlayer());
@@ -79,8 +80,11 @@ public final class FlameAxeListener implements Listener {
                 + event.getPlayer().getName());
         ItemStack original = chargeRecovery.get(event.getPlayer().getUniqueId());
         if (original != null) Bukkit.getScheduler().runTask(plugin, () -> {
-            ItemStack held = event.getPlayer().getInventory().getItemInMainHand();
-            if (!instances.is(held, instances.get(original).orElse(null)))
+            UUID expected = instances.get(original).orElse(null);
+            Set<UUID> present = new HashSet<>();
+            for (ItemStack item : event.getPlayer().getInventory().getContents()) instances.get(item).ifPresent(present::add);
+            instances.get(event.getPlayer().getOpenInventory().getCursor()).ifPresent(present::add);
+            if (FlameAxeChargeState.shouldRestore(expected, present))
                 event.getPlayer().getInventory().setItemInMainHand(original.clone());
         });
         cleanup(event.getPlayer().getUniqueId());
