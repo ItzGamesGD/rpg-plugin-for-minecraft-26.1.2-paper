@@ -4,7 +4,7 @@ import com.hyunseo.hyunseorpg.core.config.ConfigService;
 
 public record FlameAxeConfig(int fullChargeTicks, double heavyDamage, double heavyRange,
                              double heavyAngleCosine, int heavyFireTicks, double heavyKnockback,
-                             int maxTargets, double searchRadius, double initialSearchRadius,
+                             int maxTargets, double searchRadius, double extendedSearchRadius, double initialSearchRadius,
                              double initialAngleCosine, double displayScale,
                              double spinDegrees, double speed, double returnSpeed, double turnRadians,
                              double contactRadius, double hitRotation, double spinDamage,
@@ -19,6 +19,7 @@ public record FlameAxeConfig(int fullChargeTicks, double heavyDamage, double hea
                 config.getSpecialEquipmentDouble(p + "heavy-attack.knockback", .65),
                 config.getSpecialEquipmentInt(p + "spinning-throw.max-targets", 5),
                 config.getSpecialEquipmentDouble(p + "spinning-throw.search-radius", 8),
+                config.getSpecialEquipmentDouble(p + "spinning-throw.extended-search-radius", 14),
                 config.getSpecialEquipmentDouble(p + "spinning-throw.initial-search-radius", 10),
                 config.getSpecialEquipmentDouble(p + "spinning-throw.initial-angle-cosine", .25),
                 config.getSpecialEquipmentDouble(p + "spinning-throw.display-scale", 1.6),

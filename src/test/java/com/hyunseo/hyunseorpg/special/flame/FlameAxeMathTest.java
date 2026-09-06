@@ -47,6 +47,9 @@ class FlameAxeMathTest {
         org.bukkit.Location target = new org.bukkit.Location(null, 2, 0, 0);
         assertTrue(FlameAxeListener.reaches(from, to, target, .5));
         assertEquals(0, FlameAxeListener.distanceToSegment(target.toVector(), from.toVector(), to.toVector()), 1e-9);
+        assertTrue(FlameAxeListener.passedDestination(from, to, target));
+        assertFalse(FlameAxeListener.passedDestination(from,
+                new org.bukkit.Location(null, 1, 0, 0), target));
     }
 
     @Test void steeringIsBoundedAndNeverSnapsOpposite() {

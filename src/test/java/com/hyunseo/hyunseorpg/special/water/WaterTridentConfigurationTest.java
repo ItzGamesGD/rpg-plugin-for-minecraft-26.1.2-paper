@@ -51,6 +51,7 @@ class WaterTridentConfigurationTest {
         assertEquals("poseidon_spear", equipment.getString("special-equipment.items.poseidons_spear.item-id"));
         assertFalse(equipment.getBoolean(
                 "special-equipment.items.poseidons_spear.growth.allow-vanilla-enchants"));
+        assertEquals("poseidon_spear", com.hyunseo.hyunseorpg.special.SpecialEquipmentService.POSEIDON_ID);
     }
 
     private YamlConfiguration load() {
