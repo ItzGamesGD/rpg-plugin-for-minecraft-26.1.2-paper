@@ -1,6 +1,7 @@
 # HyunseoRPG custom items. PDC hyunseorpg:item_id is the authoritative identity.
 schema-version: 1
 items:
+  thanatos_mace: { material: MACE, display-name: "타나토스의 철퇴", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["공격은 필멸을 새깁니다.", "F: 사형선고 / 우클릭: 최후통첩"] }
   corrosion_essence: { material: AMETHYST_SHARD, display-name: "부식의 정수", category: ALCHEMY_ESSENCE, rarity: EPIC, tags: [alchemy-essence, alchemy-material, non-sellable], lore: ["양조용 부식 기반 재료입니다.", "수량과 교환 비율은 밸런스 보류 상태입니다."] }
   potion_vampire: { material: POTION, display-name: "흡혈 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_berserk: { material: POTION, display-name: "광폭화 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
