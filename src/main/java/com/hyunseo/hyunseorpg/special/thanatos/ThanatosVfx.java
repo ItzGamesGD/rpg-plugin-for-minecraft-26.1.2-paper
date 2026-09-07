@@ -16,27 +16,32 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Presentation-only Thanatos display choreography. No display position is combat state. */
 final class ThanatosVfx {
     private static final Particle CYAN = Particle.TRIAL_SPAWNER_DETECTION_OMINOUS;
+    private static final double[] TRIANGLE_PHASES = {0.0D, Math.PI};
+    static final int TRIANGLE_EDGES = 3;
     private final Set<Effect> effects = new HashSet<>();
+    private final Map<Display, Vector3f> baseScales = new IdentityHashMap<>();
+    private int mortalCount;
 
     MortalVisual spawnMortal(Location center, ItemStack sword) {
         MortalVisual visual = new MortalVisual(center, item(center, sword, 1.15F, true));
         for (int i = 0; i < 4; i++) visual.upper.add(block(center, Material.POLISHED_DEEPSLATE_SLAB,
                 new Vector3f(0.78F, 0.18F, 0.42F)));
-        for (int i = 0; i < 4; i++) {
-            visual.upper.add(block(center, Material.COBBLED_DEEPSLATE_WALL, new Vector3f(0.42F, 0.72F, 0.42F)));
-            visual.upper.add(block(center, Material.SOUL_LANTERN, new Vector3f(0.42F)));
-        }
-        for (int i = 0; i < 5; i++) visual.lower.add(block(center, Material.NETHERITE_BLOCK,
-                new Vector3f(0.82F, 0.10F, 0.34F)));
-        for (int i = 0; i < 3; i++) visual.lanterns.add(item(center,
+        for (int i = 0; i < 2; i++) visual.upper.add(block(center, Material.SOUL_LANTERN, new Vector3f(0.48F)));
+        for (int i = 0; i < 3; i++) visual.lower.add(block(center, Material.NETHERITE_BLOCK,
+                new Vector3f(1.08F, 0.09F, 0.30F)));
+        for (int i = 0; i < 2; i++) visual.lanterns.add(item(center,
                 new ItemStack(Material.SOUL_LANTERN), 0.72F, false));
+        visual.cacheDisplays();
         effects.add(visual);
+        mortalCount++;
         return visual;
     }
 
@@ -74,18 +79,20 @@ final class ThanatosVfx {
         OppressionVisual visual = new OppressionVisual(center.clone(), Math.max(2.5D, radius), durationTicks);
         Material line = Material.POLISHED_DEEPSLATE;
         // Six edges for each of the two triangles, split into two segments per edge.
-        for (int triangle = 0; triangle < 2; triangle++) {
-            double offset = triangle * Math.PI;
-            for (int edge = 0; edge < 3; edge++) {
-                double a = offset + edge * Math.PI * 2.0D / 3.0D;
-                double b = offset + (edge + 1) * Math.PI * 2.0D / 3.0D;
-                addLine(visual.star, center, line, radius * 0.58D, a, b, 2);
+        for (int triangle = 0; triangle < TRIANGLE_PHASES.length; triangle++) {
+            for (int edge = 0; edge < TRIANGLE_EDGES; edge++) {
+                for (int part = 0; part < 2; part++) {
+                    BlockDisplay display = block(center, line,
+                            new Vector3f((float) (Math.sqrt(3.0D) * radius * 0.58D / 2.0D), 0.08F, 0.16F));
+                    visual.star.add(new StarSegment(display, triangle, edge, (part + 0.5D) / 2.0D));
+                }
             }
         }
         for (int i = 0; i < 16; i++) visual.ring.add(block(center, Material.POLISHED_DEEPSLATE_SLAB,
                 new Vector3f((float) (radius * 0.36D), 0.08F, 0.18F)));
         for (int i = 0; i < 8; i++) visual.stones.add(block(center, Material.NETHERITE_BLOCK,
                 new Vector3f(0.34F, 1.65F, 0.22F)));
+        visual.cacheDisplays();
         effects.add(visual);
         center.getWorld().playSound(center, Sound.ITEM_MACE_SMASH_GROUND_HEAVY, 1.25F, 0.58F);
     }
@@ -112,6 +119,7 @@ final class ThanatosVfx {
                 ? Material.DEEPSLATE_TILES : Material.POLISHED_DEEPSLATE, new Vector3f(0.55F, 0.18F, 0.42F)));
         for (int i = 0; i < 12; i++) visual.shock.add(block(center, Material.POLISHED_DEEPSLATE_SLAB,
                 new Vector3f(0.65F, 0.06F, 0.12F)));
+        visual.cacheDisplays();
         center.getWorld().playSound(center, Sound.BLOCK_HEAVY_CORE_PLACE, 2.0F, 0.45F);
         center.getWorld().playSound(center, Sound.ITEM_MACE_SMASH_GROUND_HEAVY, 1.3F, 0.55F);
         center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
@@ -136,24 +144,20 @@ final class ThanatosVfx {
     }
 
     private void remove(Effect effect) {
-        effects.remove(effect);
-        for (Display display : effect.displays()) if (display.isValid()) display.remove();
-    }
-
-    private void addLine(List<BlockDisplay> displays, Location center, Material material, double radius,
-                         double angleA, double angleB, int segments) {
-        double ax = Math.cos(angleA) * radius, az = Math.sin(angleA) * radius;
-        double bx = Math.cos(angleB) * radius, bz = Math.sin(angleB) * radius;
-        double length = Math.hypot(bx - ax, bz - az) / segments;
-        for (int i = 0; i < segments; i++) displays.add(block(center, material,
-                new Vector3f((float) length, 0.08F, 0.16F)));
+        if (!effects.remove(effect)) return;
+        if (effect instanceof MortalVisual) mortalCount--;
+        for (Display display : effect.displays()) {
+            baseScales.remove(display);
+            if (display.isValid()) display.remove();
+        }
     }
 
     private BlockDisplay block(Location location, Material material, Vector3f scale) {
         BlockData data = material.createBlockData();
         return location.getWorld().spawn(location, BlockDisplay.class, display -> {
             display.setBlock(data); configure(display);
-            display.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), scale, new Quaternionf()));
+            baseScales.put(display, new Vector3f(scale));
+            display.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(scale), new Quaternionf()));
         });
     }
 
@@ -163,6 +167,7 @@ final class ThanatosVfx {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
             Quaternionf rotation = new Quaternionf();
             if (sword) rotation.rotateZ((float) Math.PI);
+            baseScales.put(display, new Vector3f(scale));
             display.setTransformation(new Transformation(new Vector3f(), rotation,
                     new Vector3f(scale), new Quaternionf()));
         });
@@ -187,7 +192,7 @@ final class ThanatosVfx {
         abstract List<? extends Display> displays();
     }
 
-    static final class MortalVisual extends Effect {
+    final class MortalVisual extends Effect {
         private Location center;
         private final ItemDisplay sword;
         private final List<Display> upper = new ArrayList<>();
@@ -196,6 +201,7 @@ final class ThanatosVfx {
         private int age, exitAge;
         private double intensity;
         private boolean exiting;
+        private List<Display> displays;
 
         private MortalVisual(Location center, ItemDisplay sword) { this.center = center.clone(); this.sword = sword; }
         private void position(boolean falling) {
@@ -203,18 +209,19 @@ final class ThanatosVfx {
             double speed = 0.035D + intensity * 0.085D;
             double upperY = falling ? 2.5D : 4.0D;
             for (int i = 0; i < upper.size(); i++) {
-                boolean lantern = i >= 4 && (i - 4) % 2 == 1;
-                int spoke = i < 4 ? i : (i - 4) / 2;
-                double angle = age * speed + spoke * Math.PI / 2.0D + (i < 4 ? 0.0D : Math.PI / 4.0D);
-                place(upper.get(i), center, i < 4 ? 1.65D : 2.15D, angle, upperY + (lantern ? 0.72D : 0.0D));
+                boolean lantern = i >= 4;
+                double phase = lantern ? (i - 4) * Math.PI + Math.PI / 4.0D : i * Math.PI / 2.0D;
+                place(upper.get(i), center, lantern ? 2.05D : 1.65D, age * speed + phase,
+                        upperY + (lantern ? 0.36D : 0.0D));
             }
             for (int i = 0; i < lower.size(); i++) place(lower.get(i), center, 1.18D,
                     -age * speed * 0.82D + i * Math.PI * 2.0D / lower.size(), 2.25D);
+            int particleInterval = mortalParticleInterval(mortalCount);
             for (int i = 0; i < lanterns.size(); i++) {
                 double angle = age * speed * 1.12D + i * Math.PI * 2.0D / lanterns.size();
                 place(lanterns.get(i), center, 2.05D, angle, 2.0D);
-                if (age % 2 == 0) center.getWorld().spawnParticle(i == 1 ? Particle.SCULK_CHARGE_POP
-                                : i == 2 ? CYAN : Particle.SOUL_FIRE_FLAME,
+                if ((age + i) % particleInterval == 0) center.getWorld().spawnParticle(i == 1 ? Particle.SCULK_CHARGE_POP
+                                : age % 3 == 0 ? CYAN : Particle.SOUL_FIRE_FLAME,
                         center.clone().add(Math.cos(angle) * 2.05D, 2.0D, Math.sin(angle) * 2.05D), 1,
                         0.02D, 0.03D, 0.02D, 0.0D);
             }
@@ -223,38 +230,43 @@ final class ThanatosVfx {
             if (!exiting) return sword.isValid();
             exitAge++;
             double release = exitAge * 0.42D;
-            List<? extends Display> all = displays();
-            for (int i = 1; i < all.size(); i++) {
+            for (int i = 1; i < displays.size(); i++) {
                 double angle = i * 2.39996D + exitAge * 0.22D;
-                place(all.get(i), center, 1.5D + release, angle, 2.0D + Math.sin(angle) - exitAge * 0.06D);
-                scale(all.get(i), Math.max(0.05F, 1.0F - exitAge / 13.0F), angle);
+                place(displays.get(i), center, 1.5D + release, angle, 2.0D + Math.sin(angle) - exitAge * 0.06D);
+                transform(displays.get(i), Math.max(0.05F, 1.0F - exitAge / 13.0F), angle, 0.0F);
             }
             if (sword.isValid()) sword.teleport(center.clone().add(0.0D, Math.max(-0.5D, 0.5D - exitAge * 0.12D), 0.0D));
             return exitAge < 12;
         }
-        @Override List<? extends Display> displays() {
-            List<Display> all = new ArrayList<>(); all.add(sword); all.addAll(upper); all.addAll(lower); all.addAll(lanterns); return all;
-        }
+        private void cacheDisplays() { displays = new ArrayList<>(12); displays.add(sword); displays.addAll(upper); displays.addAll(lower); displays.addAll(lanterns); }
+        @Override List<? extends Display> displays() { return displays; }
     }
 
-    private static final class OppressionVisual extends Effect {
+    private final class OppressionVisual extends Effect {
         private final Location center; private final double radius; private final int duration;
-        private final List<BlockDisplay> star = new ArrayList<>(), ring = new ArrayList<>(), stones = new ArrayList<>();
+        private final List<StarSegment> star = new ArrayList<>();
+        private final List<BlockDisplay> ring = new ArrayList<>(), stones = new ArrayList<>();
+        private List<Display> displays;
         private int age;
         private OppressionVisual(Location center, double radius, int duration) { this.center = center; this.radius = radius; this.duration = duration; }
         @Override boolean tick() {
             age++; boolean exiting = age > duration; double shrink = exiting ? Math.max(0.05D, 1.0D - (age - duration) / 12.0D) : 1.0D;
-            for (int i = 0; i < star.size(); i++) {
-                int edge = i / 2; int part = i % 2; double a = edge * Math.PI * 2.0D / 3.0D + (edge >= 3 ? Math.PI : 0.0D) + age * 0.012D;
-                double b = a + Math.PI * 2.0D / 3.0D; double t = (part + 0.5D) / 2.0D;
-                Location at = center.clone().add((Math.cos(a) * (1-t) + Math.cos(b) * t) * radius * .58D,
-                        0.08D - (exiting ? (age-duration)*.035D : 0), (Math.sin(a)*(1-t)+Math.sin(b)*t)*radius*.58D);
-                star.get(i).teleport(at); star.get(i).setRotation((float)Math.toDegrees(-Math.atan2(Math.sin(b)-Math.sin(a), Math.cos(b)-Math.cos(a))),0);
+            double rotation = age * 0.012D;
+            for (StarSegment segment : star) {
+                SegmentPose pose = starSegmentPose(segment.triangleIndex, segment.edgeIndex, segment.localT,
+                        radius * 0.58D, rotation);
+                segment.display.teleport(center.clone().add(pose.x, 0.08D - (exiting ? (age-duration)*.035D : 0), pose.z));
+                segment.display.setRotation((float) Math.toDegrees(-pose.angle), 0.0F);
             }
             for (int i = 0; i < ring.size(); i++) place(ring.get(i), center, radius,
                     i * Math.PI * 2.0D / ring.size() - age * 0.016D, 0.09D - (exiting ? (age-duration)*.035D : 0));
-            for (int i = 0; i < stones.size(); i++) place(stones.get(i), center, radius * 1.24D,
-                    i * Math.PI * 2.0D / stones.size(), Math.max(-0.7D, 0.85D - Math.min(age, 7)*.10D - (exiting ? (age-duration)*.12D : 0)));
+            for (int i = 0; i < stones.size(); i++) {
+                double angle = i * Math.PI * 2.0D / stones.size();
+                place(stones.get(i), center, radius * 1.24D, angle,
+                        Math.max(-0.7D, 0.85D - Math.min(age, 7)*.10D - (exiting ? (age-duration)*.12D : 0)));
+                float inwardTilt = (float) Math.toRadians(6.0D + (i % 4) * 1.5D);
+                transform(stones.get(i), (float) shrink, angle, inwardTilt);
+            }
             if (!exiting && age % 2 == 0) {
                 double angle = -age * .09D; center.getWorld().spawnParticle(CYAN,
                         center.clone().add(Math.cos(angle)*radius,.18D,Math.sin(angle)*radius),2,.04D,.02D,.04D,0);
@@ -262,16 +274,18 @@ final class ThanatosVfx {
                         center.clone().add(Math.cos(i*Math.PI/4)*radius,1.2D,Math.sin(i*Math.PI/4)*radius),1,
                         -Math.cos(i*Math.PI/4),-.18D,-Math.sin(i*Math.PI/4),.16D);
             }
-            for (Display d : displays()) scale(d, (float) shrink, age * .05D);
+            for (StarSegment segment : star) transform(segment.display, (float) shrink, 0.0D, 0.0F);
+            for (Display display : ring) transform(display, (float) shrink, 0.0D, 0.0F);
             return age <= duration + 12;
         }
-        @Override List<? extends Display> displays() { List<Display> all=new ArrayList<>();all.addAll(star);all.addAll(ring);all.addAll(stones);return all; }
+        private void cacheDisplays() { displays = new ArrayList<>(star.size()+ring.size()+stones.size()); for (StarSegment s:star) displays.add(s.display); displays.addAll(ring); displays.addAll(stones); }
+        @Override List<? extends Display> displays() { return displays; }
     }
 
-    static final class SentenceVisual extends Effect {
+    final class SentenceVisual extends Effect {
         private final Location center; private ItemDisplay core;
         private final List<ItemDisplay> lanterns=new ArrayList<>(); private final List<BlockDisplay> debris=new ArrayList<>(),shock=new ArrayList<>();
-        private double progress; private boolean impacted, exiting; private int age;
+        private double progress; private boolean impacted, exiting; private int age; private List<Display> displays;
         private SentenceVisual(Location center){this.center=center;}
         private void position(){
             double eased = exponentialIn(progress);
@@ -287,11 +301,12 @@ final class ThanatosVfx {
         @Override boolean tick(){
             if(!impacted) return core.isValid(); age++;
             if(core.isValid()) core.teleport(center.clone().add(0,.35D-Math.max(0,age-7)*.08D,0));
-            for(int i=0;i<debris.size();i++){double a=i*Math.PI*2/debris.size();double r=.8D+age*.22D;place(debris.get(i),center,r,a,Math.max(-.2D,age*.16D-age*age*.012D));scale(debris.get(i),Math.max(.05F,1-age/20F),a+age*.22D);}
-            for(int i=0;i<shock.size();i++){double a=i*Math.PI*2/shock.size();place(shock.get(i),center,.5D+age*.34D,a,.08D);scale(shock.get(i),Math.max(.05F,1-age/14F),a);}
+            for(int i=0;i<debris.size();i++){double a=i*Math.PI*2/debris.size();double r=.8D+age*.22D;place(debris.get(i),center,r,a,Math.max(-.2D,age*.16D-age*age*.012D));transform(debris.get(i),Math.max(.05F,1-age/20F),a+age*.22D,0.0F);}
+            for(int i=0;i<shock.size();i++){double a=i*Math.PI*2/shock.size();place(shock.get(i),center,.5D+age*.34D,a,.08D);transform(shock.get(i),Math.max(.05F,1-age/14F),a,0.0F);}
             return age<18;
         }
-        @Override List<? extends Display> displays(){List<Display> all=new ArrayList<>();all.add(core);all.addAll(lanterns);all.addAll(debris);all.addAll(shock);return all;}
+        private void cacheDisplays(){displays=new ArrayList<>(1+lanterns.size()+debris.size()+shock.size());displays.add(core);displays.addAll(lanterns);displays.addAll(debris);displays.addAll(shock);}
+        @Override List<? extends Display> displays(){if(displays==null)cacheDisplays();return displays;}
     }
 
     static double exponentialIn(double progress) {
@@ -300,12 +315,31 @@ final class ThanatosVfx {
         return Math.pow(2.0D, 10.0D * progress - 10.0D);
     }
 
-    private static void scale(Display display, float multiplier, double tumble) {
-        Transformation old = display.getTransformation();
-        Vector3f base = old.getScale();
-        display.setTransformation(new Transformation(old.getTranslation(),
-                new Quaternionf().rotateXYZ((float)(tumble*.35D),(float)tumble,(float)(tumble*.18D)),
-                new Vector3f(base).mul(multiplier), old.getRightRotation()));
+    static SegmentPose starSegmentPose(int triangleIndex, int edgeIndex, double localT, double radius, double rotation) {
+        double phase = trianglePhase(triangleIndex);
+        double start = phase + edgeIndex * Math.PI * 2.0D / TRIANGLE_EDGES + rotation;
+        double end = phase + (edgeIndex + 1) * Math.PI * 2.0D / TRIANGLE_EDGES + rotation;
+        double x = (Math.cos(start) * (1.0D-localT) + Math.cos(end) * localT) * radius;
+        double z = (Math.sin(start) * (1.0D-localT) + Math.sin(end) * localT) * radius;
+        return new SegmentPose(x, z, Math.atan2(Math.sin(end)-Math.sin(start), Math.cos(end)-Math.cos(start)));
+    }
+
+    record SegmentPose(double x, double z, double angle) { }
+    private record StarSegment(BlockDisplay display, int triangleIndex, int edgeIndex, double localT) { }
+
+    static double trianglePhase(int triangleIndex) { return TRIANGLE_PHASES[triangleIndex]; }
+
+    static int mortalParticleInterval(int activeMortals) {
+        if (activeMortals <= 4) return 2;
+        return activeMortals <= 8 ? 3 : 4;
+    }
+
+    private void transform(Display display, float multiplier, double tumble, float inwardTilt) {
+        Vector3f base = baseScales.get(display);
+        if (base == null) return;
+        display.setTransformation(new Transformation(new Vector3f(),
+                new Quaternionf().rotateXYZ(inwardTilt + (float)(tumble*.35D),(float)tumble,(float)(tumble*.18D)),
+                new Vector3f(base).mul(multiplier), new Quaternionf()));
         display.setInterpolationDelay(0); display.setInterpolationDuration(2);
     }
 }

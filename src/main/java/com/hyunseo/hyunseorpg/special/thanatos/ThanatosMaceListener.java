@@ -191,7 +191,7 @@ public final class ThanatosMaceListener implements Listener {
         if (state.mortalPhase(mortal.target) == ThanatosState.MortalPhase.WAITING) {
             Location sword = target.getLocation().add(0.0D, target.getHeight() + 1.8D, 0.0D);
             double intensity = Math.min(1.0D, (tick - mortal.started) / (double) Math.max(1, config.mortalDelayTicks()));
-            vfx.updateMortal(mortal.visual, target.getLocation(), intensity, false, sword);
+            if (mortal.visual != null) vfx.updateMortal(mortal.visual, target.getLocation(), intensity, false, sword);
             if (state.mortalDue(mortal.target, tick)
                     && state.beginMortalFall(mortal.target, tick, config.mortalFallTicks())) {
                 mortal.fallStarted = tick;
@@ -205,7 +205,7 @@ public final class ThanatosMaceListener implements Listener {
             Location destination = target.getLocation().add(0.0D, target.getHeight() * 0.55D, 0.0D);
             Location sword = mortal.fallStart.clone().add(
                     destination.toVector().subtract(mortal.fallStart.toVector()).multiply(progress));
-            vfx.updateMortal(mortal.visual, target.getLocation(), 1.0D, true, sword);
+            if (mortal.visual != null) vfx.updateMortal(mortal.visual, target.getLocation(), 1.0D, true, sword);
             return;
         }
         if (!state.consumeMortalImpact(mortal.target, tick)) return;
@@ -214,7 +214,7 @@ public final class ThanatosMaceListener implements Listener {
             Player owner = Bukkit.getPlayer(mortal.owner);
             if (owner != null && owner.isOnline()) combat.applySkillDamage(owner, target, config.mortalDamage());
             else target.damage(config.mortalDamage());
-            vfx.executeMortal(mortal.visual, impact);
+            if (mortal.visual != null) vfx.executeMortal(mortal.visual, impact);
             impact.getWorld().spawnParticle(Particle.SQUID_INK, impact, 18, 0.3D, 0.4D, 0.3D, 0.04D);
             impact.getWorld().playSound(impact, Sound.BLOCK_ANVIL_LAND, 0.9F, 0.55F);
         } finally {
@@ -236,7 +236,7 @@ public final class ThanatosMaceListener implements Listener {
     private void cleanupMortal(UUID targetId, boolean released) {
         MortalRuntime mortal = mortals.remove(targetId);
         state.endMortal(targetId);
-        if (mortal != null && !released) vfx.discard(mortal.visual);
+        if (mortal != null && !released && mortal.visual != null) vfx.discard(mortal.visual);
     }
 
     private void oppression(Player owner, Location center, double radius, double damage) {
@@ -470,6 +470,12 @@ public final class ThanatosMaceListener implements Listener {
 
     private void cancelPlayerEffects(UUID playerId) {
         cancel(playerId);
+        // Mortal's authoritative timer remains active, but its owner's presentation must not linger cross-lifecycle.
+        for (MortalRuntime mortal : mortals.values()) {
+            if (!mortal.owner.equals(playerId) || mortal.visual == null) continue;
+            vfx.discard(mortal.visual);
+            mortal.visual = null;
+        }
         for (Map.Entry<BukkitTask, SentenceRuntime> entry : new ArrayList<>(sentenceTasks.entrySet())) {
             if (!entry.getValue().owner.equals(playerId)) continue;
             entry.getKey().cancel();
@@ -513,7 +519,7 @@ public final class ThanatosMaceListener implements Listener {
         private final UUID target;
         private final UUID owner;
         private final UUID world;
-        private final ThanatosVfx.MortalVisual visual;
+        private ThanatosVfx.MortalVisual visual;
         private final long started;
         private long fallStarted;
         private Location fallStart;
