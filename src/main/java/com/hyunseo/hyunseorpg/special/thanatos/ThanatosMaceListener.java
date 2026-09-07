@@ -9,7 +9,6 @@ import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -17,9 +16,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,10 +40,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -80,11 +74,12 @@ public final class ThanatosMaceListener implements Listener {
     private final EffectMovementLockService movementLocks;
     private final ThanatosConfig config;
     private final ThanatosState state = new ThanatosState();
+    private final ThanatosVfx vfx = new ThanatosVfx();
     private final Map<UUID, MortalRuntime> mortals = new HashMap<>();
     private final Map<UUID, UltimatumRuntime> ultimatums = new HashMap<>();
     private final Map<UUID, Ground> grounds = new HashMap<>();
     private final Map<BlockKey, Mutation> mutations = new HashMap<>();
-    private final Map<BukkitTask, ItemDisplay> sentenceTasks = new HashMap<>();
+    private final Map<BukkitTask, SentenceRuntime> sentenceTasks = new HashMap<>();
     private final Map<UUID, Long> pressureEnds = new HashMap<>();
     private final BukkitTask ticker;
     private long tick;
@@ -133,25 +128,26 @@ public final class ThanatosMaceListener implements Listener {
 
         // The impact center is locked at selection time; later movement cannot retarget it.
         Location center = target.getLocation().clone();
-        ItemDisplay display = spawnDisplay(center.clone().add(0.0D, 12.0D, 0.0D),
-                new ItemStack(Material.HEAVY_CORE), 2.5F, false);
-        BukkitTask task = new BukkitRunnable() {
+        ThanatosVfx.SentenceVisual visual = vfx.spawnSentence(center);
+        BukkitTask[] holder = new BukkitTask[1];
+        BukkitTask task = holder[0] = new BukkitRunnable() {
             private int age;
 
             @Override
             public void run() {
                 age++;
                 double progress = Math.min(1.0D, age / (double) config.sentenceFallTicks());
-                if (display.isValid()) display.teleport(center.clone().add(0.0D, 12.0D * (1.0D - progress) + 0.5D, 0.0D));
-                center.getWorld().spawnParticle(Particle.SOUL,
-                        center.clone().add(0.0D, 12.0D * (1.0D - progress), 0.0D), 3, 0.35D, 0.2D, 0.35D, 0.0D);
+                vfx.updateSentence(visual, progress);
                 if (age >= config.sentenceFallTicks()) {
+                    SentenceRuntime runtime = sentenceTasks.get(holder[0]);
+                    if (runtime != null) runtime.impacted = true;
+                    vfx.impactSentence(visual);
                     cancel();
                     impactSentence(owner, center);
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
-        sentenceTasks.put(task, display);
+        sentenceTasks.put(task, new SentenceRuntime(owner.getUniqueId(), visual));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -176,10 +172,11 @@ public final class ThanatosMaceListener implements Listener {
         for (MortalRuntime mortal : new ArrayList<>(mortals.values())) tickMortal(mortal);
         for (UltimatumRuntime ultimatum : new ArrayList<>(ultimatums.values())) tickUltimatum(ultimatum);
         for (Ground ground : new ArrayList<>(grounds.values())) tickGround(ground);
+        vfx.tick();
         tickPressure();
-        for (Map.Entry<BukkitTask, ItemDisplay> entry : new ArrayList<>(sentenceTasks.entrySet())) {
+        for (Map.Entry<BukkitTask, SentenceRuntime> entry : new ArrayList<>(sentenceTasks.entrySet())) {
             if (entry.getKey().isCancelled()) {
-                if (entry.getValue().isValid()) entry.getValue().remove();
+                if (!entry.getValue().impacted) vfx.discard(entry.getValue().visual);
                 sentenceTasks.remove(entry.getKey());
             }
         }
@@ -188,16 +185,17 @@ public final class ThanatosMaceListener implements Listener {
     private void tickMortal(MortalRuntime mortal) {
         LivingEntity target = entity(mortal.target);
         if (target == null || target.isDead() || !target.getWorld().getUID().equals(mortal.world)) {
-            cleanupMortal(mortal.target);
+            cleanupMortal(mortal.target, false);
             return;
         }
         if (state.mortalPhase(mortal.target) == ThanatosState.MortalPhase.WAITING) {
-            if (mortal.display.isValid()) mortal.display.teleport(target.getLocation().add(0.0D, target.getHeight() + 1.8D, 0.0D));
+            Location sword = target.getLocation().add(0.0D, target.getHeight() + 1.8D, 0.0D);
+            double intensity = Math.min(1.0D, (tick - mortal.started) / (double) Math.max(1, config.mortalDelayTicks()));
+            vfx.updateMortal(mortal.visual, target.getLocation(), intensity, false, sword);
             if (state.mortalDue(mortal.target, tick)
                     && state.beginMortalFall(mortal.target, tick, config.mortalFallTicks())) {
                 mortal.fallStarted = tick;
-                mortal.fallStart = mortal.display.isValid()
-                        ? mortal.display.getLocation() : target.getLocation().add(0.0D, target.getHeight() + 1.8D, 0.0D);
+                mortal.fallStart = sword;
             }
             return;
         }
@@ -205,10 +203,9 @@ public final class ThanatosMaceListener implements Listener {
             double progress = Math.min(1.0D, (tick - mortal.fallStarted)
                     / (double) Math.max(1, config.mortalFallTicks()));
             Location destination = target.getLocation().add(0.0D, target.getHeight() * 0.55D, 0.0D);
-            if (mortal.display.isValid()) {
-                mortal.display.teleport(mortal.fallStart.clone().add(
-                        destination.toVector().subtract(mortal.fallStart.toVector()).multiply(progress)));
-            }
+            Location sword = mortal.fallStart.clone().add(
+                    destination.toVector().subtract(mortal.fallStart.toVector()).multiply(progress));
+            vfx.updateMortal(mortal.visual, target.getLocation(), 1.0D, true, sword);
             return;
         }
         if (!state.consumeMortalImpact(mortal.target, tick)) return;
@@ -217,10 +214,11 @@ public final class ThanatosMaceListener implements Listener {
             Player owner = Bukkit.getPlayer(mortal.owner);
             if (owner != null && owner.isOnline()) combat.applySkillDamage(owner, target, config.mortalDamage());
             else target.damage(config.mortalDamage());
+            vfx.executeMortal(mortal.visual, impact);
             impact.getWorld().spawnParticle(Particle.SQUID_INK, impact, 18, 0.3D, 0.4D, 0.3D, 0.04D);
             impact.getWorld().playSound(impact, Sound.BLOCK_ANVIL_LAND, 0.9F, 0.55F);
         } finally {
-            cleanupMortal(mortal.target);
+            cleanupMortal(mortal.target, true);
         }
     }
 
@@ -230,18 +228,19 @@ public final class ThanatosMaceListener implements Listener {
         ItemMeta meta = sword.getItemMeta();
         meta.setCustomModelData(config.mortalModel());
         sword.setItemMeta(meta);
-        ItemDisplay display = spawnDisplay(target.getLocation().add(0.0D, target.getHeight() + 1.8D, 0.0D), sword, 1.0F, true);
+        ThanatosVfx.MortalVisual visual = vfx.spawnMortal(target.getLocation(), sword);
         mortals.put(target.getUniqueId(), new MortalRuntime(
-                target.getUniqueId(), owner.getUniqueId(), target.getWorld().getUID(), display));
+                target.getUniqueId(), owner.getUniqueId(), target.getWorld().getUID(), visual, tick));
     }
 
-    private void cleanupMortal(UUID targetId) {
+    private void cleanupMortal(UUID targetId, boolean released) {
         MortalRuntime mortal = mortals.remove(targetId);
         state.endMortal(targetId);
-        if (mortal != null && mortal.display.isValid()) mortal.display.remove();
+        if (mortal != null && !released) vfx.discard(mortal.visual);
     }
 
     private void oppression(Player owner, Location center, double radius, double damage) {
+        vfx.spawnOppression(center, radius, config.oppressionDurationTicks());
         center.getWorld().playSound(center, Sound.ITEM_MACE_SMASH_GROUND_HEAVY, 1.2F, 0.6F);
         center.getWorld().spawnParticle(Particle.TRIAL_SPAWNER_DETECTION_OMINOUS,
                 center.clone().add(0.0D, 3.0D, 0.0D), 35, radius * 0.5D, 1.0D, radius * 0.5D, 0.04D);
@@ -434,20 +433,6 @@ public final class ThanatosMaceListener implements Listener {
         }
     }
 
-    private ItemDisplay spawnDisplay(Location location, ItemStack item, float scale, boolean sword) {
-        return location.getWorld().spawn(location, ItemDisplay.class, display -> {
-            display.setItemStack(item);
-            display.setPersistent(false);
-            display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
-            display.setBillboard(Display.Billboard.FIXED);
-            display.setViewRange(48.0F);
-            Quaternionf rotation = new Quaternionf();
-            if (sword) rotation.rotateZ((float) Math.PI);
-            display.setTransformation(new Transformation(new Vector3f(), rotation,
-                    new Vector3f(scale), new Quaternionf()));
-        });
-    }
-
     private List<LivingEntity> hostiles(Location center, double radius) {
         List<LivingEntity> result = new ArrayList<>();
         for (Entity entity : center.getWorld().getNearbyEntities(center, radius, Math.max(4.0D, radius), radius)) {
@@ -483,9 +468,19 @@ public final class ThanatosMaceListener implements Listener {
         ultimatums.remove(playerId);
     }
 
-    @EventHandler public void onQuit(PlayerQuitEvent event) { cancel(event.getPlayer().getUniqueId()); }
-    @EventHandler public void onDeath(PlayerDeathEvent event) { cancel(event.getPlayer().getUniqueId()); }
-    @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cancel(event.getPlayer().getUniqueId()); }
+    private void cancelPlayerEffects(UUID playerId) {
+        cancel(playerId);
+        for (Map.Entry<BukkitTask, SentenceRuntime> entry : new ArrayList<>(sentenceTasks.entrySet())) {
+            if (!entry.getValue().owner.equals(playerId)) continue;
+            entry.getKey().cancel();
+            vfx.discard(entry.getValue().visual);
+            sentenceTasks.remove(entry.getKey());
+        }
+    }
+
+    @EventHandler public void onQuit(PlayerQuitEvent event) { cancelPlayerEffects(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onDeath(PlayerDeathEvent event) { cancelPlayerEffects(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cancelPlayerEffects(event.getPlayer().getUniqueId()); }
 
     @EventHandler public void onHeld(PlayerItemHeldEvent event) {
         Bukkit.getScheduler().runTask(plugin, () -> {
@@ -502,13 +497,13 @@ public final class ThanatosMaceListener implements Listener {
 
     public void shutdown() {
         ticker.cancel();
-        for (UUID targetId : new ArrayList<>(mortals.keySet())) cleanupMortal(targetId);
+        for (UUID targetId : new ArrayList<>(mortals.keySet())) cleanupMortal(targetId, false);
         for (UUID groundId : new ArrayList<>(grounds.keySet())) cleanupGround(groundId);
-        for (Map.Entry<BukkitTask, ItemDisplay> entry : sentenceTasks.entrySet()) {
+        for (Map.Entry<BukkitTask, SentenceRuntime> entry : sentenceTasks.entrySet()) {
             entry.getKey().cancel();
-            if (entry.getValue().isValid()) entry.getValue().remove();
         }
         sentenceTasks.clear();
+        vfx.shutdown();
         ultimatums.clear();
         pressureEnds.clear();
         state.clear();
@@ -518,13 +513,21 @@ public final class ThanatosMaceListener implements Listener {
         private final UUID target;
         private final UUID owner;
         private final UUID world;
-        private final ItemDisplay display;
+        private final ThanatosVfx.MortalVisual visual;
+        private final long started;
         private long fallStarted;
         private Location fallStart;
 
-        private MortalRuntime(UUID target, UUID owner, UUID world, ItemDisplay display) {
-            this.target = target; this.owner = owner; this.world = world; this.display = display;
+        private MortalRuntime(UUID target, UUID owner, UUID world, ThanatosVfx.MortalVisual visual, long started) {
+            this.target = target; this.owner = owner; this.world = world; this.visual = visual; this.started = started;
         }
+    }
+
+    private static final class SentenceRuntime {
+        private final UUID owner;
+        private final ThanatosVfx.SentenceVisual visual;
+        private boolean impacted;
+        private SentenceRuntime(UUID owner, ThanatosVfx.SentenceVisual visual) { this.owner = owner; this.visual = visual; }
     }
 
     private record UltimatumRuntime(Player player, UUID instance, UUID world) { }
