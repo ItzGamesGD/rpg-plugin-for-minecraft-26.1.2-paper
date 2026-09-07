@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "codex/exploration-*"
+      - "codex/fix-runtime-regressions-for-poseidon-s-spear-and-flame-axe"
       - "fix/desert-pyramid-full-flow-reconciliation"
   pull_request:
     branches:
@@ -29,4 +30,11 @@ jobs:
       - name: Run clean build and JUnit
         run: |
           chmod +x ./gradlew
-          ./gradlew clean test --no-daemon
+          ./gradlew clean build --no-daemon
+      - name: Upload plugin JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: HyunseoRPG-plugin-${{ github.sha }}
+          path: build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7

@@ -120,7 +120,7 @@ public final class FlameAxeListener implements Listener {
             if (push.lengthSquared() > 0) target.setVelocity(target.getVelocity().add(push.normalize().multiply(config.heavyKnockback())));
         }
         flameBurst(owner.getEyeLocation().add(facing.multiply(2)), 35, 1.0);
-        owner.getWorld().playSound(owner.getLocation(), Sound.BLOCK_ANVIL_LAND, 1, .8f);
+        owner.getWorld().playSound(owner.getLocation(), Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1, .8f);
     }
 
     private void start(Player owner) {
@@ -188,10 +188,13 @@ public final class FlameAxeListener implements Listener {
         flameTrail(from, to);
 
         if (s.returning) {
-            if (to.distanceSquared(s.owner.getEyeLocation()) <= config.returnDistance() * config.returnDistance())
+            if (reaches(from, to, s.owner.getEyeLocation(), config.returnDistance())
+                    || passedDestination(from, to, s.owner.getEyeLocation()))
                 cleanup(s.owner.getUniqueId());
         } else if (s.target != null && (hitTargets.contains(s.target.getUniqueId())
-                || reaches(from, to, destination, config.contactRadius()))) {
+                || reaches(from, to, destination, config.contactRadius())
+                || passedDestination(from, to, destination))) {
+            if (!hitTargets.contains(s.target.getUniqueId())) confirmTargetHit(s, s.target);
             s.visited.add(s.target.getUniqueId());
             s.target = null;
             selectTarget(s, false);
@@ -206,7 +209,8 @@ public final class FlameAxeListener implements Listener {
 
     private void selectTarget(Session s, boolean initial) {
         if (s.visited.size() >= config.maxTargets()) { beginReturn(s); return; }
-        double radius = initial ? config.initialSearchRadius() : config.searchRadius();
+        double radius = initial ? config.initialSearchRadius()
+                : s.visited.size() >= 2 ? config.extendedSearchRadius() : config.searchRadius();
         Vector heading = s.velocity.lengthSquared() > .0001D
                 ? s.velocity.clone().normalize()
                 : s.owner.getEyeLocation().getDirection().normalize();
@@ -217,7 +221,9 @@ public final class FlameAxeListener implements Listener {
                         && FlameAxeMath.maySelectTarget(t.getUniqueId(), s.visited, config.maxTargets()))
                 .filter(t -> {
                     Vector delta = t.getBoundingBox().getCenter().subtract(s.logicalPosition.toVector());
-                    return delta.lengthSquared() > .0001D && heading.dot(delta.normalize()) >= angleCosine;
+                    if (delta.lengthSquared() <= .0001D || heading.dot(delta.normalize()) < angleCosine) return false;
+                    return s.display.getWorld().rayTraceBlocks(s.logicalPosition, delta.clone().normalize(),
+                            Math.sqrt(delta.lengthSquared())) == null;
                 })
                 .min(Comparator.comparingDouble(t -> t.getBoundingBox().getCenter()
                         .distanceSquared(s.logicalPosition.toVector()))).orElse(null);
@@ -273,6 +279,21 @@ public final class FlameAxeListener implements Listener {
 
     static boolean reaches(Location from, Location to, Location target, double radius) {
         return from.getWorld() == target.getWorld() && distanceToSegment(target.toVector(), from.toVector(), to.toVector()) <= radius;
+    }
+
+    static boolean passedDestination(Location from, Location to, Location target) {
+        if (from.getWorld() != target.getWorld()) return false;
+        Vector travel = to.toVector().subtract(from.toVector());
+        return travel.lengthSquared() > 0
+                && target.toVector().subtract(from.toVector()).dot(travel) >= 0
+                && target.toVector().subtract(to.toVector()).dot(travel) <= 0;
+    }
+
+    private void confirmTargetHit(Session s, LivingEntity target) {
+        combat.applyMultiHitDamage(s.owner, target, config.spinDamage());
+        target.setFireTicks(Math.max(target.getFireTicks(), config.heavyFireTicks()));
+        s.lastHitRotation.put(target.getUniqueId(), s.rotation);
+        flameBurst(target.getLocation().add(0, .8, 0), 16, .35);
     }
 
     private void updateRotation(Session s) {

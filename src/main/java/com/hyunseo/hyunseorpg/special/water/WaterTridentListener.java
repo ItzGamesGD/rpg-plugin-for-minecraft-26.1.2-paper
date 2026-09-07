@@ -47,7 +47,8 @@ import java.util.UUID;
 
 /** Runtime for the Poseidon spear's water-trident abilities. No spawned trident is collectible. */
 public final class WaterTridentListener implements Listener {
-    public static final String ID = "poseidons_spear";
+    public static final String ID = SpecialEquipmentService.POSEIDON_ID;
+    private static final String CONFIG_ID = "poseidons_spear";
     private final ConfigService config;
     private final SpecialEquipmentService specials;
     private final CombatService combat;
@@ -98,6 +99,7 @@ public final class WaterTridentListener implements Listener {
     public void onPoseidonUse(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || (event.getAction() != Action.RIGHT_CLICK_AIR
                 && event.getAction() != Action.RIGHT_CLICK_BLOCK)) return;
+        specials.ensureRuntimeComponents(event.getPlayer().getInventory().getItemInMainHand());
         if (event.isCancelled() || !holding(event.getPlayer())) {
             pendingVanillaThrows.remove(event.getPlayer().getUniqueId());
             return;
@@ -111,7 +113,9 @@ public final class WaterTridentListener implements Listener {
                 || !(trident.getShooter() instanceof Player owner)) return;
         boolean projectileIdentity = specials.getSpecialId(trident.getItemStack()).equals(ID);
         Long started = pendingVanillaThrows.remove(owner.getUniqueId());
-        boolean chargedPoseidon = started != null && System.nanoTime() - started <= 5_000_000_000L;
+        // A player may hold the vanilla charge animation before release. Keep the hand-identity
+        // fallback for that complete use session instead of expiring it after only five seconds.
+        boolean chargedPoseidon = started != null && System.nanoTime() - started <= 60_000_000_000L;
         if (!projectileIdentity && !chargedPoseidon) return;
         attachFlight(owner, trident);
     }
@@ -178,8 +182,7 @@ public final class WaterTridentListener implements Listener {
         Location at = trident.getLocation();
         // Visual identity is independent from the underwater-only combat gate.
         renderPoseidonTrail(at, flight.phase == WaterTridentState.FlightPhase.RETURNING);
-        if (flight.phase == WaterTridentState.FlightPhase.OUTWARD
-                && WaterTridentState.currentMayAttack(flight.phase, inWater(at))) {
+        if (WaterTridentState.currentMayAttack(flight.phase)) {
             for (LivingEntity target : targets(flight.owner, at, number("current-throw.trail-radius", 1.8))) {
                 if (!flight.trailHits.add(target.getUniqueId())) continue;
                 Vector pull = at.toVector().subtract(target.getLocation().toVector());
@@ -223,7 +226,8 @@ public final class WaterTridentListener implements Listener {
             if (object.phase == WaterTridentState.SyntheticPhase.OUTWARD && object.age >= 3)
                 object.phase = WaterTridentState.SyntheticPhase.SEEKING;
             if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) prepareSeeking(cast, object);
-            Location from = object.logicalPosition.clone();
+            Location from = object.entity.getLocation().clone();
+            object.logicalPosition = from.clone();
             Vector destination = cast.player.getEyeLocation().toVector().subtract(from.toVector());
             if (object.phase == WaterTridentState.SyntheticPhase.RETURNING && destination.lengthSquared() > .01D) {
                 double returnSpeed = number("signature.return-speed", .8);
@@ -247,8 +251,7 @@ public final class WaterTridentListener implements Listener {
             }
             if (object.phase == WaterTridentState.SyntheticPhase.SEEKING) contactSeeking(cast, object, from, to);
             object.logicalPosition = to;
-            object.entity.teleport(to);
-            object.entity.setVelocity(new Vector());
+            object.entity.setVelocity(object.velocity);
             orientSynthetic(object.entity, object.velocity);
             renderSyntheticTrail(to, object.phase == WaterTridentState.SyntheticPhase.RETURNING);
         }
@@ -500,10 +503,10 @@ public final class WaterTridentListener implements Listener {
     }
 
     private double number(String suffix, double fallback) {
-        return config.getSpecialEquipmentDouble("special-equipment.items." + ID + ".abilities." + suffix, fallback);
+        return config.getSpecialEquipmentDouble("special-equipment.items." + CONFIG_ID + ".abilities." + suffix, fallback);
     }
     private int ticks(String suffix, int fallback) {
-        return Math.max(1, config.getSpecialEquipmentInt("special-equipment.items." + ID + ".abilities." + suffix, fallback));
+        return Math.max(1, config.getSpecialEquipmentInt("special-equipment.items." + CONFIG_ID + ".abilities." + suffix, fallback));
     }
 
     private BukkitTask repeat(Runnable action, Runnable onFailure, long delay, long period) {
