@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "codex/exploration-*"
+      - "codex/fix-runtime-regressions-for-poseidon-s-spear-and-flame-axe"
       - "fix/desert-pyramid-full-flow-reconciliation"
   pull_request:
     branches:
