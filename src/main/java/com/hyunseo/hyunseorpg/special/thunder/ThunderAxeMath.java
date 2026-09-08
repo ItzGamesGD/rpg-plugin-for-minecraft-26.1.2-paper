@@ -19,15 +19,22 @@ public final class ThunderAxeMath {
 
     /** Wave one is central; waves two-five each contain five widening fan lanes. */
     public static List<Vector> fan(int wave, Vector forward, double firstDistance, double step, double angleDegrees) {
-        if (wave < 1 || wave > WAVE_COUNT) return List.of();
+        return fan(wave, WAVE_COUNT, 5, forward, firstDistance, step, angleDegrees);
+    }
+
+    public static List<Vector> fan(int wave, int waveCount, int directionCount, Vector forward,
+            double firstDistance, double step, double angleDegrees) {
+        if (wave < 1 || wave > Math.max(1, waveCount)) return List.of();
         Vector flat = forward.clone().setY(0);
         if (flat.lengthSquared() == 0) flat.setZ(1);
         flat.normalize();
         double distance = firstDistance + (wave - 1) * step;
         if (wave == 1) return List.of(flat.multiply(distance));
-        List<Vector> result = new ArrayList<>(5);
-        for (int lane = -2; lane <= 2; lane++) {
-            result.add(flat.clone().rotateAroundY(Math.toRadians(angleDegrees * lane / 2.0)).multiply(distance));
+        int lanes = Math.max(1, directionCount);
+        List<Vector> result = new ArrayList<>(lanes);
+        for (int lane = 0; lane < lanes; lane++) {
+            double fraction = lanes == 1 ? 0 : (lane - (lanes - 1) / 2.0) / ((lanes - 1) / 2.0);
+            result.add(flat.clone().rotateAroundY(Math.toRadians(angleDegrees * fraction)).multiply(distance));
         }
         return result;
     }
@@ -36,6 +43,12 @@ public final class ThunderAxeMath {
     public static List<Vector> anchoredFan(Vector castOrigin, int wave, Vector forward,
             double firstDistance, double step, double angleDegrees) {
         return fan(wave, forward, firstDistance, step, angleDegrees).stream()
+                .map(offset -> castOrigin.clone().add(offset)).toList();
+    }
+
+    public static List<Vector> anchoredFan(Vector castOrigin, int wave, int waveCount, int directionCount,
+            Vector forward, double firstDistance, double step, double angleDegrees) {
+        return fan(wave, waveCount, directionCount, forward, firstDistance, step, angleDegrees).stream()
                 .map(offset -> castOrigin.clone().add(offset)).toList();
     }
 

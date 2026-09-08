@@ -5,6 +5,8 @@ import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
+import com.hyunseo.hyunseorpg.vfx.lightning.CustomLightningParameters;
+import com.hyunseo.hyunseorpg.vfx.lightning.CustomLightningRenderer;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.Consumable;
 import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
@@ -22,7 +24,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import java.util.*;
 
-/** Runtime for Thunder God's Axe. All lightning is particle-rendered; combat is explicit skill damage. */
+/** Runtime for Thunder God's Axe. Display lightning is visual-only; combat remains explicit skill damage. */
 public final class ThunderAxeListener implements Listener {
     public static final String ID = "thunder_gods_axe";
     private static final String STRIKE_COOLDOWN = ID + ":strike";
@@ -33,6 +35,7 @@ public final class ThunderAxeListener implements Listener {
     private final CombatService combat;
     private final CooldownService cooldowns;
     private final ThunderAxeConfig config;
+    private final CustomLightningRenderer lightning;
     private final Map<UUID, UUID> charging = new HashMap<>();
     private final Map<UUID, HitState> hits = new HashMap<>();
     private final Map<UUID, Set<BukkitTask>> tasks = new HashMap<>();
@@ -41,6 +44,7 @@ public final class ThunderAxeListener implements Listener {
             EquipmentInstanceService instances, CombatService combat, CooldownService cooldowns) {
         this.plugin = plugin; this.specials = specials; this.instances = instances;
         this.combat = combat; this.cooldowns = cooldowns; this.config = ThunderAxeConfig.from(config);
+        this.lightning = new CustomLightningRenderer(plugin);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -114,7 +118,7 @@ public final class ThunderAxeListener implements Listener {
             Entity entity = Bukkit.getEntity(route.get(index[0]));
             if (!(entity instanceof LivingEntity target) || !validTarget(owner, target)) { index[0]++; return true; }
             Location end = target.getLocation().add(0, target.getHeight() * .55, 0);
-            jaggedPath(source[0], end, target.getUniqueId());
+            renderLightning(owner.getUniqueId(), source[0], end, target.getUniqueId().getLeastSignificantBits());
             target.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, end, 12, .3, .35, .3, .08);
             combat.applySkillDamage(owner, target, config.chainDamage() * Math.pow(config.chainFalloff(), index[0]));
             source[0] = end; index[0]++; return index[0] < route.size();
@@ -132,21 +136,25 @@ public final class ThunderAxeListener implements Listener {
         scheduleTimer(owner.getUniqueId(), () -> {
             if (!validOwner(owner, instance)) return false;
             int wave = tick[0] / Math.max(1, config.waveIntervalTicks()) + 1;
-            if (tick[0] % Math.max(1, config.waveIntervalTicks()) == 0 && wave <= ThunderAxeMath.WAVE_COUNT)
+            if (tick[0] % Math.max(1, config.waveIntervalTicks()) == 0 && wave <= config.fanWaveCount())
                 executeStrikeWave(owner, castBase, wave, facing, castHits);
-            double maxRadius = config.firstDistance() + 4 * config.distanceStep();
-            double radius = Math.min(maxRadius, maxRadius * tick[0] / Math.max(1.0, 4.0 * config.waveIntervalTicks()));
+            double maxRadius = config.firstDistance() + (config.fanWaveCount() - 1) * config.distanceStep();
+            double radius = Math.min(maxRadius, maxRadius * tick[0] / Math.max(1.0,
+                    (config.fanWaveCount() - 1.0) * config.waveIntervalTicks()));
             for (Vector point : ThunderAxeMath.ring(radius, 40))
                 origin.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, origin.clone().add(point), 1, 0, 0, 0, 0);
-            return ++tick[0] <= 4 * config.waveIntervalTicks();
+            return ++tick[0] <= (config.fanWaveCount() - 1) * config.waveIntervalTicks();
         }, 0, 1);
     }
 
     private void executeStrikeWave(Player owner, Location castBase, int wave, Vector facing, Set<UUID> castHits) {
         Set<UUID> waveHits = new HashSet<>();
-        for (Vector point : ThunderAxeMath.anchoredFan(castBase.toVector(), wave, facing,
+        for (Vector point : ThunderAxeMath.anchoredFan(castBase.toVector(), wave,
+                config.fanWaveCount(), config.fanDirectionCount(), facing,
                 config.firstDistance(), config.distanceStep(), config.fanAngleDegrees())) {
-            Location strike = point.toLocation(castBase.getWorld()); visualBolt(strike);
+            Location strike = point.toLocation(castBase.getWorld());
+            renderLightning(owner.getUniqueId(), strike.clone().add(0, config.verticalLightningHeight(), 0),
+                    strike, Double.doubleToLongBits(point.getX()) ^ Double.doubleToLongBits(point.getZ()) ^ wave);
             for (Entity entity : owner.getWorld().getNearbyEntities(strike, config.hitRadius(), 2.25, config.hitRadius())) {
                 if (!(entity instanceof LivingEntity target) || !validTarget(owner, target)
                         || !waveHits.add(target.getUniqueId()) || (!config.repeatAcrossWaves() && !castHits.add(target.getUniqueId()))) continue;
@@ -173,22 +181,19 @@ public final class ThunderAxeListener implements Listener {
                 Entity entity = Bukkit.getEntity(id);
                 if (!(entity instanceof LivingEntity target) || !validTarget(owner, target)
                         || target.getLocation().distanceSquared(center) > config.burstRadius() * config.burstRadius()) continue;
-                jaggedPath(center.clone().add(0, 1, 0), target.getLocation().add(0, target.getHeight() * .5, 0), id);
+                renderLightning(owner.getUniqueId(), center.clone().add(0, 1, 0),
+                        target.getLocation().add(0, target.getHeight() * .5, 0), id.getMostSignificantBits());
                 visualBolt(target.getLocation()); combat.applySkillDamage(owner, target, config.burstDamage());
             }
             return wave[0] < waves.size();
         }, 0, config.burstWaveIntervalTicks());
     }
 
-    private void jaggedPath(Location from, Location to, UUID seedId) {
-        Vector delta = to.toVector().subtract(from.toVector()); Vector side = delta.clone().crossProduct(new Vector(0, 1, 0));
-        if (side.lengthSquared() == 0) side.setX(1); else side.normalize();
-        Random random = new Random(seedId.getMostSignificantBits() ^ seedId.getLeastSignificantBits());
-        for (int i = 0; i <= 12; i++) {
-            double t = i / 12.0; Vector point = from.toVector().add(delta.clone().multiply(t));
-            if (i != 0 && i != 12) point.add(side.clone().multiply((random.nextDouble() - .5) * .55)).setY(point.getY() + (random.nextDouble() - .5) * .3);
-            from.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, point.toLocation(from.getWorld()), 1, 0, 0, 0, 0);
-        }
+    private void renderLightning(UUID owner, Location from, Location to, long seed) {
+        lightning.renderLightning(owner, from, to, new CustomLightningParameters(
+                config.coreThickness(), config.glowThickness(), config.segmentLength(), config.pathJitter(),
+                config.branchChance(), config.maxBranchDepth(), config.branchLength(),
+                config.lightningLifetimeTicks()), seed);
     }
 
     private void visualBolt(Location base) {
@@ -221,7 +226,7 @@ public final class ThunderAxeListener implements Listener {
     @EventHandler public void onDrop(PlayerDropItemEvent e) { cleanup(e.getPlayer().getUniqueId()); }
     @EventHandler public void onInventory(InventoryClickEvent e) { if (e.getWhoClicked() instanceof Player p) Bukkit.getScheduler().runTask(plugin, () -> { if (!holding(p)) cleanup(p.getUniqueId()); }); }
     @EventHandler public void onDrag(InventoryDragEvent e) { if (e.getWhoClicked() instanceof Player p) Bukkit.getScheduler().runTask(plugin, () -> { if (!holding(p)) cleanup(p.getUniqueId()); }); }
-    public void cleanup(UUID owner) { charging.remove(owner); hits.remove(owner); Set<BukkitTask> owned = tasks.remove(owner); if (owned != null) owned.forEach(BukkitTask::cancel); }
-    public void shutdown() { new HashSet<>(tasks.keySet()).forEach(this::cleanup); charging.clear(); hits.clear(); }
+    public void cleanup(UUID owner) { charging.remove(owner); hits.remove(owner); Set<BukkitTask> owned = tasks.remove(owner); if (owned != null) owned.forEach(BukkitTask::cancel); lightning.cleanup(owner); }
+    public void shutdown() { new HashSet<>(tasks.keySet()).forEach(this::cleanup); lightning.shutdown(); charging.clear(); hits.clear(); }
     private record HitState(UUID instance, int count) {}
 }
