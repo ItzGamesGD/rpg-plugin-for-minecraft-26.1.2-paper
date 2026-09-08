@@ -195,6 +195,7 @@ import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
 import com.hyunseo.hyunseorpg.special.water.WaterTridentListener;
 import com.hyunseo.hyunseorpg.special.flame.FlameAxeListener;
+import com.hyunseo.hyunseorpg.special.thanatos.ThanatosMaceListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import com.hyunseo.hyunseorpg.shop.ShopRegistry;
@@ -337,6 +338,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private SpecialEquipmentEffectListener specialEquipmentEffectListener;
     private WaterTridentListener waterTridentListener;
     private FlameAxeListener flameAxeListener;
+    private ThanatosMaceListener thanatosMaceListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -715,6 +717,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (waterTridentListener != null) waterTridentListener.shutdown();
         if (flameAxeListener != null) flameAxeListener.shutdown();
+        if (thanatosMaceListener != null) thanatosMaceListener.shutdown();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -1543,7 +1546,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, skillService, equipmentInstanceService, alchemyCombatAdapter,
                 item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)
-                        || specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)), this);
+                        || specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)
+                        || specialEquipmentService.getSpecialId(item).equals(ThanatosMaceListener.ID)), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);
@@ -1604,6 +1608,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.flameAxeListener = new FlameAxeListener(this, configService, specialEquipmentService,
                 equipmentInstanceService, combatService);
         getServer().getPluginManager().registerEvents(flameAxeListener, this);
+        this.thanatosMaceListener = new ThanatosMaceListener(this, configService, specialEquipmentService,
+                equipmentInstanceService, combatService, cooldownService, effectMovementLockService);
+        getServer().getPluginManager().registerEvents(thanatosMaceListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);
