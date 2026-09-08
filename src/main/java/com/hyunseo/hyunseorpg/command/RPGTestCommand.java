@@ -13,6 +13,7 @@ import com.hyunseo.hyunseorpg.equipment.EquipmentRegistry;
 import com.hyunseo.hyunseorpg.item.RPGItemRegistry;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.crafting.SoulboundItemService;
+import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
 import com.hyunseo.hyunseorpg.weapon.WeaponItemService;
 import com.hyunseo.hyunseorpg.weapon.WeaponType;
 import org.bukkit.Bukkit;
@@ -42,12 +43,14 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private final EquipmentRegistry equipmentRegistry;
     private final BossSessionManager bosses;
     private final RPGReloadService reload;
+    private final ThousandEyesController thousandEyes;
 
     public RPGTestCommand(CoinService coins, RPGItemRegistry itemRegistry, RPGItemService items,
                           SoulboundItemService soulbound, WeaponItemService weapons,
                           EquipmentEnhancementService enhancement, EquipmentPromotionService promotion,
                           BossSessionManager bosses, RPGReloadService reload,
-                          EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry) {
+                          EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry,
+                          ThousandEyesController thousandEyes) {
         this.coins = coins;
         this.itemRegistry = itemRegistry;
         this.items = items;
@@ -59,6 +62,7 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         this.equipmentRegistry = equipmentRegistry;
         this.bosses = bosses;
         this.reload = reload;
+        this.thousandEyes = thousandEyes;
     }
 
     @Override
@@ -74,9 +78,30 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
             case "option-roll" -> optionRoll(sender, args);
             case "boss" -> boss(sender, args, label);
             case "reload" -> sender.sendMessage(reload.reload(args.length > 1 ? args[1] : "all").message());
+            case "thousand-eyes" -> thousandEyes(sender, args, label);
             default -> usage(sender, label);
         }
         return true;
+    }
+
+    private void thousandEyes(CommandSender sender, String[] args, String label) {
+        if (!(sender instanceof Player player)) { sender.sendMessage("플레이어만 실행할 수 있습니다."); return; }
+        if (args.length < 2) { sender.sendMessage("/" + label + " thousand-eyes <spawn|remove|central-laser|gateway-burst|scatter-lasers|path-dash> [seed]"); return; }
+        String action = args[1].toLowerCase(Locale.ROOT);
+        if (action.equals("spawn")) {
+            long seed = 1000L;
+            if (args.length > 2) try { seed = Long.parseLong(args[2]); } catch (NumberFormatException ignored) { sender.sendMessage("seed는 정수여야 합니다."); return; }
+            sender.sendMessage("천 개의 눈 prototype spawn: " + thousandEyes.spawn(player, seed) + " (seed=" + seed + ")"); return;
+        }
+        if (action.equals("remove")) { thousandEyes.remove(); sender.sendMessage("천 개의 눈 prototype 제거 완료"); return; }
+        ThousandEyesController.Skill skill = switch (action) {
+            case "central-laser" -> ThousandEyesController.Skill.CENTRAL_LASER;
+            case "gateway-burst" -> ThousandEyesController.Skill.GATEWAY_BURST;
+            case "scatter-lasers" -> ThousandEyesController.Skill.SCATTER_LASERS;
+            case "path-dash" -> ThousandEyesController.Skill.PATH_DASH;
+            default -> null;
+        };
+        sender.sendMessage(skill == null ? "알 수 없는 천 개의 눈 동작입니다." : "스킬 시작: " + thousandEyes.start(skill));
     }
 
     private void give(CommandSender sender, String[] args, String label) {
@@ -231,11 +256,13 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("/" + label + " option-roll <optionId> [count]");
         sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
         sender.sendMessage("/" + label + " reload [all|bosses|recipes|mobs]");
+        sender.sendMessage("/" + label + " thousand-eyes <spawn|remove|central-laser|gateway-burst|scatter-lasers|path-dash> [seed]");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "option-roll", "boss", "reload"), args[0]);
+        if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "option-roll", "boss", "reload", "thousand-eyes"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("thousand-eyes")) return filter(List.of("spawn", "remove", "central-laser", "gateway-burst", "scatter-lasers", "path-dash"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("boss")) return filter(List.of("start", "end", "complete", "status"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("boss")) return filter(List.of("wither", "dragon"), args[2]);
         if (args.length == 4 && args[0].equalsIgnoreCase("boss")) return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[3]);

@@ -86,6 +86,7 @@ import com.hyunseo.hyunseorpg.mob.MobSpawnZoneRegistry;
 import com.hyunseo.hyunseorpg.mob.MonsterSpawnRegistry;
 import com.hyunseo.hyunseorpg.mob.MonsterSpawnService;
 import com.hyunseo.hyunseorpg.mob.MonsterBehaviorService;
+import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
 import com.hyunseo.hyunseorpg.mob.MobTagService;
 import com.hyunseo.hyunseorpg.mob.variant.ZombieVariantService;
 import com.hyunseo.hyunseorpg.mob.drop.MobDropRegistry;
@@ -283,6 +284,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private MonsterSpawnRegistry monsterSpawnRegistry;
     private MonsterSpawnService monsterSpawnService;
     private MonsterBehaviorService monsterBehaviorService;
+    private ThousandEyesController thousandEyesController;
     private MobRewardService mobRewardService;
     private ZombieVariantService zombieVariantService;
     private MythicMobRegistry mythicMobRegistry;
@@ -621,6 +623,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.monsterSpawnService = new MonsterSpawnService(
                 this, configService, monsterSpawnRegistry, mobService, mobLevelScalingService);
         this.monsterBehaviorService = new MonsterBehaviorService(this, configService, mobService);
+        this.thousandEyesController = new ThousandEyesController(this);
         this.mythicMobRegistry = new MythicMobRegistry(configService);
         this.mythicMobRegistry.load();
         this.mythicMobIntegrationService = new MythicMobIntegrationService(
@@ -718,6 +721,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (waterTridentListener != null) waterTridentListener.shutdown();
         if (flameAxeListener != null) flameAxeListener.shutdown();
         if (thanatosMaceListener != null) thanatosMaceListener.shutdown();
+        if (thousandEyesController != null) thousandEyesController.remove();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -937,7 +941,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             RPGTestCommand testCommand = new RPGTestCommand(
                     coinService, itemRegistry, itemService, soulboundItemService, weaponItemService,
                     equipmentEnhancementService, equipmentPromotionService, bossSessionManager, reloadService,
-                    equipmentMetadataService, equipmentRegistry);
+                    equipmentMetadataService, equipmentRegistry, thousandEyesController);
             rpgTestCommand.setExecutor(testCommand);
             rpgTestCommand.setTabCompleter(testCommand);
         }
@@ -1576,6 +1580,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 new com.hyunseo.hyunseorpg.mob.VanillaWitchSpawnBlockListener(), this);
         getServer().getPluginManager().registerEvents(monsterSpawnService, this);
         getServer().getPluginManager().registerEvents(monsterBehaviorService, this);
+        getServer().getPluginManager().registerEvents(thousandEyesController, this);
         getServer().getPluginManager().registerEvents(zombieVariantService, this);
         getServer().getPluginManager().registerEvents(new MobDeathListener(
                 mobRewardService, mobService, inventoryDeliveryService, mythicMobIntegrationService), this);
