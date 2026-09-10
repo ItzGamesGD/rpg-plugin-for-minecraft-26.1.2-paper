@@ -48,6 +48,21 @@ class ThunderAxeMathTest {
         assertTrue(ThunderAxeMath.fan(6, new Vector(0, 0, 1), 3, 2, 50).isEmpty());
     }
 
+    @Test void strikeFanKeepsTheSameFiveAngularLanesWhileOnlyRadiusIncreases() {
+        List<Double> angles = null;
+        for (int wave = 2; wave <= 5; wave++) {
+            List<Vector> points = ThunderAxeMath.fan(wave, 5, 5, new Vector(0, 0, 1), 3, 2, 50);
+            assertEquals(5, points.size());
+            List<Double> currentAngles = points.stream()
+                    .map(point -> Math.atan2(point.getX(), point.getZ())).toList();
+            if (angles != null) for (int lane = 0; lane < 5; lane++)
+                assertEquals(angles.get(lane), currentAngles.get(lane), 1.0e-12);
+            angles = currentAngles;
+            double expectedRadius = 3 + (wave - 1) * 2;
+            assertTrue(points.stream().allMatch(point -> Math.abs(point.length() - expectedRadius) < 1.0e-9));
+        }
+    }
+
     @Test void expandingRingHasIncreasingRadiusSaneCoordinatesAndBoundedBudget() {
         List<Vector> small = ThunderAxeMath.ring(1, 1_000);
         List<Vector> large = ThunderAxeMath.ring(8, 1_000);

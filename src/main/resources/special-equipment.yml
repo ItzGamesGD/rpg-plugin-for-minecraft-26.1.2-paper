@@ -336,5 +336,7 @@ special-equipment:
       abilities:
         lightning-strike: { id: lightning-strike, display-name: "낙뢰", trigger: MELEE_HIT, description: "다섯 번째 직접 타격에 강한 낙뢰 피해를 더합니다.", hit-threshold: 5, damage: 4.0 }
         chain-lightning: { id: chain-lightning, display-name: "천뢰쇄", trigger: LIGHTNING_STRIKE, description: "낙뢰에서 가까운 적으로 전기가 연쇄 전파됩니다.", radius: 5.0, maximum-targets: 4, damage: 3.0, damage-falloff: 0.75 }
-        thunder-god-strike: { id: thunder-god-strike, display-name: "뇌신격", trigger: CHARGED_RIGHT_CLICK_RELEASE, description: "충전 후 전방으로 다섯 단계의 넓어지는 번개 전선을 방출합니다.", full-charge-ticks: 20, cooldown-ticks: 240, damage: 6.0, wave-interval-ticks: 4, first-distance: 3.0, distance-step: 2.0, fan-angle-degrees: 50.0, hit-radius: 1.5, allow-repeat-across-waves: false }
+        thunder-god-strike: { id: thunder-god-strike, display-name: "뇌신격", trigger: CHARGED_RIGHT_CLICK_RELEASE, description: "충전 후 전방으로 다섯 단계의 넓어지는 번개 전선을 방출합니다.", full-charge-ticks: 20, cooldown-ticks: 240, damage: 6.0, wave-count: 5, direction-count: 5, wave-interval-ticks: 4, first-distance: 3.0, distance-step: 2.0, fan-angle-degrees: 50.0, hit-radius: 1.5, vertical-lightning-height: 5.5, allow-repeat-across-waves: false }
         heavenly-thunder-burst: { id: heavenly-thunder-burst, display-name: "천뢰폭발", trigger: OFFHAND_QUICK, description: "거리순 대상 파동으로 주위 적에게 번개를 전파합니다.", cooldown-ticks: 400, radius: 12.0, damage: 5.0, targets-per-wave: 4, wave-interval-ticks: 5, maximum-targets: 16, maximum-waves: 4 }
+      vfx:
+        custom-lightning: { core-thickness: 0.025, glow-thickness: 0.065, segment-length: 0.7, path-jitter: 0.16, branch-chance: 0.08, max-branch-depth: 2, branch-length: 0.7, lifetime-ticks: 5 }
