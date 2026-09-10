@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.Vector3f;
@@ -22,6 +23,7 @@ import java.util.Map;
 public final class BasicWeaponRuntime {
     private final Plugin plugin;
     private final List<ItemDisplay> displays = new ArrayList<>();
+    private final List<BukkitTask> tasks = new ArrayList<>();
 
     public BasicWeaponRuntime(Plugin plugin) { this.plugin = plugin; }
 
@@ -44,7 +46,7 @@ public final class BasicWeaponRuntime {
             entity.setTransformation(transformation);
         });
         displays.add(display);
-        new BukkitRunnable() {
+        BukkitTask task = new BukkitRunnable() {
             int age;
             final double orbitOffset = offset * 1.8;
             final Vector lockedLunge = snapshot.toVector().subtract(start.toVector()).normalize();
@@ -74,6 +76,7 @@ public final class BasicWeaponRuntime {
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
+        tasks.add(task);
     }
 
     private void impact(Location location) {
@@ -94,5 +97,11 @@ public final class BasicWeaponRuntime {
     }
 
     private void remove(ItemDisplay display) { displays.remove(display); display.remove(); }
-    public void cleanup() { List.copyOf(displays).forEach(ItemDisplay::remove); displays.clear(); }
+
+    public void cleanup() {
+        List.copyOf(tasks).forEach(BukkitTask::cancel);
+        tasks.clear();
+        List.copyOf(displays).forEach(ItemDisplay::remove);
+        displays.clear();
+    }
 }
