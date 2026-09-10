@@ -21,12 +21,12 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,7 +183,8 @@ public final class GatewayPrototypeService implements Listener {
         ReflectableProjectileState state = new ReflectableProjectileState(visual.getUniqueId(), pair.id(), type);
         ProjectileRuntime runtime = new ProjectileRuntime(session, pair, state, visual, hitbox, debug);
         projectilesByHitbox.put(hitbox.getUniqueId(), runtime);
-        runtime.runTaskTimer(plugin, 1L, 1L);
+        BukkitTask task = runtime.runTaskTimer(plugin, 1L, 1L);
+        session.tasks().add(task);
     }
 
     private void sustained(GatewaySession session, GatewayPair pair, GatewayPayloadType type, boolean debug) {
@@ -201,8 +202,8 @@ public final class GatewayPrototypeService implements Listener {
                     pair.launcher().getWorld().spawnParticle(particle, pair.launcher().clone().add(forward.clone().multiply(distance)), 1, 0, 0, 0, 0);
             }
         };
-        runnable.runTaskTimer(plugin, type == GatewayPayloadType.SONIC_BOOM ? 10L : 1L, 1L);
-        session.tasks().add(runnable);
+        BukkitTask task = runnable.runTaskTimer(plugin, type == GatewayPayloadType.SONIC_BOOM ? 10L : 1L, 1L);
+        session.tasks().add(task);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -273,7 +274,6 @@ public final class GatewayPrototypeService implements Listener {
                 if (state.type() == GatewayPayloadType.END_CRYSTAL_BOMB) { state.beginFuse(); return; }
             }
             Vector movement = delta.normalize().multiply(speed);
-            // Shulker homing is the sole outbound exception; every reflected phase uses authoritative destinations above.
             if (state.type() == GatewayPayloadType.SHULKER_BULLET && state.phase() == ReflectableProjectileState.Phase.OUTBOUND) {
                 Player owner = plugin.getServer().getPlayer(session.ownerId());
                 if (owner != null) movement = owner.getEyeLocation().toVector().subtract(visual.getLocation().toVector()).normalize().multiply(speed);
