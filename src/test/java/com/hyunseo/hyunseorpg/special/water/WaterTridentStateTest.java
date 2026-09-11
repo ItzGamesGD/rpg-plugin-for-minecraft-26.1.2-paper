@@ -8,23 +8,17 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WaterTridentStateTest {
-    @Test void landWaterLandWaterTransitionsControlOnlyCurrentEffects() {
+    @Test void outwardCurrentEffectsWorkOnLandAndInWater() {
         assertTrue(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.OUTWARD),
                 "ordinary direct impact remains legal on land");
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
-                "land prohibits current damage and pull");
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
-                "entering water activates current damage and pull");
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
-                "leaving water immediately deactivates both effects");
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
-                "re-entering water activates them again");
+        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD),
+                "outward flight always activates path damage and pull");
     }
 
     @Test void loyaltyReturnNeverReactivatesCurrentDamage() {
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.RETURNING, true));
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.RETURNING));
         assertFalse(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.RETURNING));
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.REMOVED, true));
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.REMOVED));
     }
 
     @Test void thirdConsecutiveHitBurstsThenResets() {
@@ -61,7 +55,10 @@ class WaterTridentStateTest {
             attacks[i] = new WaterTridentState.SyntheticAttack(3);
             UUID first = UUID.randomUUID();
             assertTrue(attacks[i].tryHit(first)); assertFalse(attacks[i].tryHit(first));
+            assertTrue(attacks[i].hasHit(first));
+            assertFalse(attacks[i].exhausted());
             assertTrue(attacks[i].tryHit(UUID.randomUUID())); assertTrue(attacks[i].tryHit(UUID.randomUUID()));
+            assertTrue(attacks[i].exhausted());
             assertFalse(attacks[i].tryHit(UUID.randomUUID())); assertEquals(3, attacks[i].hitCount());
         }
     }
@@ -94,6 +91,19 @@ class WaterTridentStateTest {
         assertEquals(1.0, result.length(), 1e-9);
         assertTrue(result.dot(current) < current.lengthSquared());
         assertTrue(Math.acos(result.clone().normalize().dot(current.clone().normalize())) <= .200001);
+    }
+
+    @Test void syntheticSweptContactUsesTheWholePathAndTargetCenter() {
+        Vector from = new Vector(0, 1, 0), to = new Vector(4, 1, 0);
+        assertEquals(0, WaterTridentListener.distanceToSegment(new Vector(2, 1, 0), from, to), 1e-9);
+        assertEquals(1, WaterTridentListener.distanceToSegment(new Vector(2, 2, 0), from, to), 1e-9);
+    }
+
+    @Test void syntheticLifecycleHasDistinctForwardSeekingReturnAndDonePhases() {
+        assertEquals(WaterTridentState.SyntheticPhase.OUTWARD, WaterTridentState.SyntheticPhase.valueOf("OUTWARD"));
+        assertEquals(WaterTridentState.SyntheticPhase.SEEKING, WaterTridentState.SyntheticPhase.valueOf("SEEKING"));
+        assertEquals(WaterTridentState.SyntheticPhase.RETURNING, WaterTridentState.SyntheticPhase.valueOf("RETURNING"));
+        assertEquals(WaterTridentState.SyntheticPhase.DONE, WaterTridentState.SyntheticPhase.valueOf("DONE"));
     }
 
     @Test void onlyNormalRiptideTerminationReceivesBoost() {

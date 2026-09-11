@@ -13,6 +13,7 @@ public final class WaterTridentState {
     public enum FlightPhase { OUTWARD, RETURNING, REMOVED }
     public enum MovementEnd { NORMAL, COLLISION, CANCELLED, INVALIDATED }
     public enum ProjectileOwnership { VANILLA_REAL, PLUGIN_SYNTHETIC }
+    public enum SyntheticPhase { OUTWARD, SEEKING, RETURNING, DONE }
 
     private final Map<UUID, Combo> combos = new HashMap<>();
 
@@ -28,8 +29,8 @@ public final class WaterTridentState {
     public void clear(UUID player) { combos.remove(player); }
     public int activeCombos() { return combos.size(); }
 
-    public static boolean currentMayAttack(FlightPhase phase, boolean projectileInWater) {
-        return phase == FlightPhase.OUTWARD && projectileInWater;
+    public static boolean currentMayAttack(FlightPhase phase) {
+        return phase == FlightPhase.OUTWARD;
     }
 
     /** Direct impact is valid on land, but never during the synthetic return phase. */
@@ -64,6 +65,8 @@ public final class WaterTridentState {
 
         public int hitCount() { return hitTargets.size(); }
         public int maximumHits() { return maximumHits; }
+        public boolean exhausted() { return hitTargets.size() >= maximumHits; }
+        public boolean hasHit(UUID target) { return hitTargets.contains(target); }
     }
 
     private record Combo(UUID target, int hits, long expiresAt) { }
