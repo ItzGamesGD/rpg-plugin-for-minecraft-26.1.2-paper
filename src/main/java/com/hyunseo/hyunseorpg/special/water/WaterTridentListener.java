@@ -16,6 +16,7 @@ import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
@@ -23,11 +24,15 @@ import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerRiptideEvent;
 import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -40,10 +45,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /** Runtime for the Poseidon spear's water-trident abilities. No spawned trident is collectible. */
 public final class WaterTridentListener implements Listener {
-    public static final String ID = "poseidons_spear";
+    public static final String ID = SpecialEquipmentService.POSEIDON_ID;
+    private static final String CONFIG_ID = "poseidons_spear";
+    private static final long VANILLA_USE_SESSION_NANOS = 60_000_000_000L;
     private final ConfigService config;
     private final SpecialEquipmentService specials;
     private final CombatService combat;
@@ -54,6 +62,7 @@ public final class WaterTridentListener implements Listener {
     private final Map<UUID, TimedPlayerState> movements = new HashMap<>();
     private final Set<UUID> syntheticProjectiles = new HashSet<>();
     private final Set<BukkitTask> tasks = new HashSet<>();
+    private final Map<UUID, Long> pendingVanillaThrows = new HashMap<>();
 
     public WaterTridentListener(ConfigService config, SpecialEquipmentService specials,
                                 CombatService combat, CooldownService cooldowns) {
@@ -87,12 +96,34 @@ public final class WaterTridentListener implements Listener {
         }
     }
 
+    /** Captures Poseidon identity before vanilla removes the charged item from the hand. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPoseidonUse(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || (event.getAction() != Action.RIGHT_CLICK_AIR
+                && event.getAction() != Action.RIGHT_CLICK_BLOCK)) return;
+        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+        specials.ensureRuntimeComponents(item);
+        if (event.isCancelled() || !holding(event.getPlayer())) {
+            pendingVanillaThrows.remove(event.getPlayer().getUniqueId());
+            return;
+        }
+        pendingVanillaThrows.put(event.getPlayer().getUniqueId(), System.nanoTime());
+    }
+
     /** Vanilla charge/release creates the authoritative projectile. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTridentLaunch(ProjectileLaunchEvent event) {
         if (!(event.getEntity() instanceof Trident trident)
-                || !(trident.getShooter() instanceof Player owner)
-                || !specials.getSpecialId(trident.getItemStack()).equals(ID)) return;
+                || !(trident.getShooter() instanceof Player owner)) return;
+        boolean projectileIdentity = specials.getSpecialId(trident.getItemStack()).equals(ID);
+        Long started = pendingVanillaThrows.remove(owner.getUniqueId());
+        boolean chargedPoseidon = started != null && System.nanoTime() - started <= VANILLA_USE_SESSION_NANOS;
+        if (!projectileIdentity && !chargedPoseidon) return;
+        attachFlight(owner, trident);
+    }
+
+    private void attachFlight(Player owner, Trident trident) {
+        if (flights.containsKey(trident.getUniqueId())) return;
         Flight flight = new Flight(owner, trident);
         flights.put(trident.getUniqueId(), flight);
         flight.task = repeat(() -> tickFlight(flight), 1, 1);
@@ -142,7 +173,7 @@ public final class WaterTridentListener implements Listener {
             forgetRealFlightTracking(flight); return;
         }
         if (flight.phase == WaterTridentState.FlightPhase.OUTWARD) {
-            if (WaterTridentState.currentMayAttack(flight.phase, inWater(trident.getLocation()))) {
+            if (WaterTridentState.currentMayAttack(flight.phase)) {
                 Location at = trident.getLocation();
                 at.getWorld().spawnParticle(Particle.BUBBLE, at, 5, .15, .15, .15, .03);
                 if (flight.age % 4 == 0) at.getWorld().spawnParticle(Particle.SPLASH, at, 5, .2, .2, .2, .05);
@@ -353,17 +384,17 @@ public final class WaterTridentListener implements Listener {
     }
 
     private double number(String suffix, double fallback) {
-        return config.getSpecialEquipmentDouble("special-equipment.items." + ID + ".abilities." + suffix, fallback);
+        return config.getSpecialEquipmentDouble("special-equipment.items." + CONFIG_ID + ".abilities." + suffix, fallback);
     }
     private int ticks(String suffix, int fallback) {
-        return Math.max(1, config.getSpecialEquipmentInt("special-equipment.items." + ID + ".abilities." + suffix, fallback));
+        return Math.max(1, config.getSpecialEquipmentInt("special-equipment.items." + CONFIG_ID + ".abilities." + suffix, fallback));
     }
 
     private BukkitTask repeat(Runnable action, long delay, long period) {
         final BukkitTask[] ref = new BukkitTask[1];
         ref[0] = Bukkit.getScheduler().runTaskTimer(config.getPlugin(), () -> {
             try { action.run(); } catch (RuntimeException exception) {
-                config.getPlugin().getLogger().warning("Water trident task cleaned after failure: " + exception.getMessage());
+                config.getPlugin().getLogger().log(Level.SEVERE, "Water trident task cleaned after failure", exception);
                 shutdown();
             }
         }, delay, period);
@@ -375,19 +406,32 @@ public final class WaterTridentListener implements Listener {
     @EventHandler public void onKick(PlayerKickEvent event) { clearPlayer(event.getPlayer()); }
     @EventHandler public void onDeath(PlayerDeathEvent event) { clearPlayer(event.getEntity()); }
     @EventHandler public void onWorld(PlayerChangedWorldEvent event) { clearPlayer(event.getPlayer()); }
-    @EventHandler public void onHeld(PlayerItemHeldEvent event) { clearPlayer(event.getPlayer()); }
+    @EventHandler public void onHeld(PlayerItemHeldEvent event) { validateHeldNextTick(event.getPlayer()); }
+    @EventHandler public void onDrop(PlayerDropItemEvent event) { validateHeldNextTick(event.getPlayer()); }
     @EventHandler public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getWhoClicked() instanceof Player player && holding(player)) clearPlayer(player);
+        if (event.getWhoClicked() instanceof Player player) validateHeldNextTick(player);
     }
     @EventHandler public void onInventoryDrag(InventoryDragEvent event) {
-        if (event.getWhoClicked() instanceof Player player && holding(player)) clearPlayer(player);
+        if (event.getWhoClicked() instanceof Player player) validateHeldNextTick(player);
+    }
+
+    private void validateHeldNextTick(Player player) {
+        Bukkit.getScheduler().runTask(config.getPlugin(), () -> {
+            if (!holding(player)) clearActivePlayerState(player);
+        });
+    }
+
+    private void clearActivePlayerState(Player player) {
+        UUID id = player.getUniqueId();
+        pendingVanillaThrows.remove(id);
+        state.clear(id);
+        clearCast(id);
+        clearTimed(movements.remove(id));
     }
 
     private void clearPlayer(Player player) {
         UUID id = player.getUniqueId();
-        state.clear(id);
-        clearCast(id);
-        clearTimed(movements.remove(id));
+        clearActivePlayerState(player);
         flights.values().stream().filter(flight -> flight.owner.getUniqueId().equals(id)).toList()
                 .forEach(this::forgetRealFlightTracking);
     }
@@ -422,6 +466,7 @@ public final class WaterTridentListener implements Listener {
     }
 
     public void shutdown() {
+        pendingVanillaThrows.clear();
         new ArrayList<>(casts.keySet()).forEach(this::clearCast);
         new ArrayList<>(flights.values()).forEach(this::forgetRealFlightTracking);
         movements.values().forEach(this::clearTimed);

@@ -14,6 +14,8 @@ import com.hyunseo.hyunseorpg.command.ClassStatGuiCommand;
 import com.hyunseo.hyunseorpg.command.CraftingCommand;
 import com.hyunseo.hyunseorpg.command.RPGGiveCommand;
 import com.hyunseo.hyunseorpg.command.RPGTestCommand;
+import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
+import com.hyunseo.hyunseorpg.rpgtest.gateway.GatewayPrototypeService;
 import com.hyunseo.hyunseorpg.command.WeaponProficiencyCommand;
 import com.hyunseo.hyunseorpg.command.RPGCooldownCommand;
 import com.hyunseo.hyunseorpg.command.RPGLevelAdminCommand;
@@ -193,9 +195,11 @@ import com.hyunseo.hyunseorpg.special.SpecialEquipmentMenuService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentProgressListener;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
+import com.hyunseo.hyunseorpg.special.DedicatedWeaponIds;
 import com.hyunseo.hyunseorpg.special.water.WaterTridentListener;
 import com.hyunseo.hyunseorpg.special.flame.FlameAxeListener;
 import com.hyunseo.hyunseorpg.special.thanatos.ThanatosMaceListener;
+import com.hyunseo.hyunseorpg.special.thunder.ThunderAxeListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import com.hyunseo.hyunseorpg.shop.ShopRegistry;
@@ -339,6 +343,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private WaterTridentListener waterTridentListener;
     private FlameAxeListener flameAxeListener;
     private ThanatosMaceListener thanatosMaceListener;
+    private ThunderAxeListener thunderAxeListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -360,6 +365,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private AlchemyGuiControllerService alchemyGuiController;
     private com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog alchemyAuditLog;
     private ExplorationModule explorationModule;
+    private GatewayPrototypeService gatewayPrototypeService;
+    private ThousandEyesController thousandEyesController;
 
     @Override
     public void onEnable() {
@@ -621,6 +628,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.monsterSpawnService = new MonsterSpawnService(
                 this, configService, monsterSpawnRegistry, mobService, mobLevelScalingService);
         this.monsterBehaviorService = new MonsterBehaviorService(this, configService, mobService);
+        this.thousandEyesController = new ThousandEyesController(this);
         this.mythicMobRegistry = new MythicMobRegistry(configService);
         this.mythicMobRegistry.load();
         this.mythicMobIntegrationService = new MythicMobIntegrationService(
@@ -675,6 +683,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                         ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
                         ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
                 null);
+        this.gatewayPrototypeService = new GatewayPrototypeService(this);
 
         configureReloadService();
         reloadService.register("exploration", explorationModule::reload);
@@ -718,6 +727,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (waterTridentListener != null) waterTridentListener.shutdown();
         if (flameAxeListener != null) flameAxeListener.shutdown();
         if (thanatosMaceListener != null) thanatosMaceListener.shutdown();
+        if (thunderAxeListener != null) thunderAxeListener.shutdown();
+        if (gatewayPrototypeService != null) gatewayPrototypeService.shutdown();
+        if (thousandEyesController != null) thousandEyesController.remove();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -937,7 +949,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             RPGTestCommand testCommand = new RPGTestCommand(
                     coinService, itemRegistry, itemService, soulboundItemService, weaponItemService,
                     equipmentEnhancementService, equipmentPromotionService, bossSessionManager, reloadService,
-                    equipmentMetadataService, equipmentRegistry);
+                    equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
             rpgTestCommand.setExecutor(testCommand);
             rpgTestCommand.setTabCompleter(testCommand);
         }
@@ -1529,6 +1541,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService, statService), this);
+        getServer().getPluginManager().registerEvents(gatewayPrototypeService, this);
         getServer().getPluginManager().registerEvents(effectService, this);
         getServer().getPluginManager().registerEvents(effectMovementLockService, this);
         getServer().getPluginManager().registerEvents(productionEffectListener, this);
@@ -1545,9 +1558,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RPGMenuListener(rpgMenuService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, skillService, equipmentInstanceService, alchemyCombatAdapter,
-                item -> specialEquipmentService.getSpecialId(item).equals(FlameAxeListener.ID)
-                        || specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)
-                        || specialEquipmentService.getSpecialId(item).equals(ThanatosMaceListener.ID)), this);
+                item -> DedicatedWeaponIds.owns(specialEquipmentService.getSpecialId(item))), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);
@@ -1576,6 +1587,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 new com.hyunseo.hyunseorpg.mob.VanillaWitchSpawnBlockListener(), this);
         getServer().getPluginManager().registerEvents(monsterSpawnService, this);
         getServer().getPluginManager().registerEvents(monsterBehaviorService, this);
+        getServer().getPluginManager().registerEvents(thousandEyesController, this);
         getServer().getPluginManager().registerEvents(zombieVariantService, this);
         getServer().getPluginManager().registerEvents(new MobDeathListener(
                 mobRewardService, mobService, inventoryDeliveryService, mythicMobIntegrationService), this);
@@ -1611,6 +1623,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.thanatosMaceListener = new ThanatosMaceListener(this, configService, specialEquipmentService,
                 equipmentInstanceService, combatService, cooldownService, effectMovementLockService);
         getServer().getPluginManager().registerEvents(thanatosMaceListener, this);
+        this.thunderAxeListener = new ThunderAxeListener(this, configService, specialEquipmentService,
+                equipmentInstanceService, combatService, cooldownService);
+        getServer().getPluginManager().registerEvents(thunderAxeListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);

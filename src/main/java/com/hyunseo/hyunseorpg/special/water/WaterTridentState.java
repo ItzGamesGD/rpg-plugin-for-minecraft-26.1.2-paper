@@ -28,8 +28,8 @@ public final class WaterTridentState {
     public void clear(UUID player) { combos.remove(player); }
     public int activeCombos() { return combos.size(); }
 
-    public static boolean currentMayAttack(FlightPhase phase, boolean projectileInWater) {
-        return phase == FlightPhase.OUTWARD && projectileInWater;
+    public static boolean currentMayAttack(FlightPhase phase) {
+        return phase == FlightPhase.OUTWARD;
     }
 
     /** Direct impact is valid on land, but never during the synthetic return phase. */
