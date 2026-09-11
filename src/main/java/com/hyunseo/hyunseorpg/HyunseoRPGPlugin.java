@@ -14,6 +14,7 @@ import com.hyunseo.hyunseorpg.command.ClassStatGuiCommand;
 import com.hyunseo.hyunseorpg.command.CraftingCommand;
 import com.hyunseo.hyunseorpg.command.RPGGiveCommand;
 import com.hyunseo.hyunseorpg.command.RPGTestCommand;
+import com.hyunseo.hyunseorpg.rpgtest.gateway.GatewayPrototypeService;
 import com.hyunseo.hyunseorpg.command.WeaponProficiencyCommand;
 import com.hyunseo.hyunseorpg.command.RPGCooldownCommand;
 import com.hyunseo.hyunseorpg.command.RPGLevelAdminCommand;
@@ -360,6 +361,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private AlchemyGuiControllerService alchemyGuiController;
     private com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog alchemyAuditLog;
     private ExplorationModule explorationModule;
+    private GatewayPrototypeService gatewayPrototypeService;
 
     @Override
     public void onEnable() {
@@ -675,6 +677,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                         ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
                         ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
                 null);
+        this.gatewayPrototypeService = new GatewayPrototypeService(this);
 
         configureReloadService();
         reloadService.register("exploration", explorationModule::reload);
@@ -718,6 +721,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (waterTridentListener != null) waterTridentListener.shutdown();
         if (flameAxeListener != null) flameAxeListener.shutdown();
         if (thanatosMaceListener != null) thanatosMaceListener.shutdown();
+        if (gatewayPrototypeService != null) gatewayPrototypeService.shutdown();
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
@@ -937,7 +941,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             RPGTestCommand testCommand = new RPGTestCommand(
                     coinService, itemRegistry, itemService, soulboundItemService, weaponItemService,
                     equipmentEnhancementService, equipmentPromotionService, bossSessionManager, reloadService,
-                    equipmentMetadataService, equipmentRegistry);
+                    equipmentMetadataService, equipmentRegistry, gatewayPrototypeService);
             rpgTestCommand.setExecutor(testCommand);
             rpgTestCommand.setTabCompleter(testCommand);
         }
@@ -1529,6 +1533,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService, statService), this);
+        getServer().getPluginManager().registerEvents(gatewayPrototypeService, this);
         getServer().getPluginManager().registerEvents(effectService, this);
         getServer().getPluginManager().registerEvents(effectMovementLockService, this);
         getServer().getPluginManager().registerEvents(productionEffectListener, this);
