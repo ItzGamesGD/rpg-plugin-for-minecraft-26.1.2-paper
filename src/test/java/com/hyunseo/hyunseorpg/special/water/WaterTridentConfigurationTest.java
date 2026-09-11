@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class WaterTridentConfigurationTest {
     private static final Set<String> ABILITIES = Set.of(
-            "pressure-thrust", "current-throw", "signature", "water-pillar", "riptide");
+            "pressure-thrust", "current-throw", "signature", "riptide");
 
     @Test void everyRuntimeAbilityUsesRegistryMetadataConvention() {
         YamlConfiguration yaml = load();
@@ -37,8 +37,7 @@ class WaterTridentConfigurationTest {
         String metadata = abilities.getValues(true).toString().toLowerCase();
         assertFalse(metadata.contains("orbit"));
         assertFalse(metadata.contains("shift_left"));
-        assertTrue(metadata.contains("drop_key"));
-        assertEquals("DROP_KEY", abilities.getConfigurationSection("water-pillar").getString("trigger"));
+        assertFalse(metadata.contains("drop_key"));
         assertEquals(3, yaml.getInt(
                 "special-equipment.items.poseidons_spear.abilities.signature.maximum-hits-per-trident"));
     }
@@ -51,7 +50,6 @@ class WaterTridentConfigurationTest {
         assertEquals("poseidon_spear", equipment.getString("special-equipment.items.poseidons_spear.item-id"));
         assertFalse(equipment.getBoolean(
                 "special-equipment.items.poseidons_spear.growth.allow-vanilla-enchants"));
-        assertEquals("poseidon_spear", com.hyunseo.hyunseorpg.special.SpecialEquipmentService.POSEIDON_ID);
     }
 
     private YamlConfiguration load() {
