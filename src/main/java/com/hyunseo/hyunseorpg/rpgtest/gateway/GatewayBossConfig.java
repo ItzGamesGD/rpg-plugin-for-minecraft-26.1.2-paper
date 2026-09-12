@@ -9,7 +9,7 @@ public record GatewayBossConfig(
         double weaponThrowSpeed, int weaponThrowTelegraphTicks,
         double maceDamage, double axeDamage, double hoeDamage,
         int basicActorCap, int basicActorLifetimeTicks, int maxActiveDrivers, int driverLifetimeTicks,
-        double phaseSpacing, double burstHealthThreshold, int attackCooldownTicks, int burstCooldownTicks,
+        double phaseSpacing, double burstHealthThreshold, double gatewaySpecialChance, int attackCooldownTicks, int burstCooldownTicks,
         int cleanupTimeoutTicks) {
 
     public static GatewayBossConfig from(ConfigService config) {
@@ -31,6 +31,7 @@ public record GatewayBossConfig(
                 config.getBossesInt(p + "internal-ai-driver.lifetime-ticks", 240),
                 config.getBossesDouble(p + "gateway.phase-spacing", 16.0D),
                 config.getBossesDouble(p + "phase-health-thresholds.burst-ratio", .45),
+                config.getBossesDouble(p + "gateway.special-chance", .20D),
                 config.getBossesInt(p + "attack-cooldown-ticks", 80),
                 config.getBossesInt(p + "burst-cooldown-ticks", 48),
                 config.getBossesInt(p + "gateway.cleanup-timeout-ticks", 100));
@@ -39,7 +40,7 @@ public record GatewayBossConfig(
     static GatewayBossConfig bounded(double range, double radius, double orbitSpeed, int weapons, double ringPlaneSpeed,
                                      double throwSpeed, int throwTelegraph, double sword, double axe, double hoe,
                                      int actorCap, int actorLifetime,
-                                     int maxDrivers, int driverLifetime, double phaseSpacing, double burstThreshold,
+                                     int maxDrivers, int driverLifetime, double phaseSpacing, double burstThreshold, double specialChance,
                                      int cooldown, int burstCooldown, int cleanupTimeout) {
         int safeActorCap = clamp(actorCap, 1, 24);
         double safeSpacing = finite(phaseSpacing, 12, 40, 24);
@@ -47,7 +48,7 @@ public record GatewayBossConfig(
                 orbitSlots(weapons, safeActorCap), finite(ringPlaneSpeed, .002, .08, .011), finite(throwSpeed, .12, .85, .48), clamp(throwTelegraph, 10, 60),
                 finite(sword, 0, 30, 8), finite(axe, 0, 30, 7), finite(hoe, 0, 30, 6),
                 safeActorCap, clamp(actorLifetime, 60, 1200), Math.max(safeActorCap, clamp(maxDrivers, 1, 24)), clamp(driverLifetime, 60, 1200),
-                safeSpacing, finite(burstThreshold, .05, .90, .45), clamp(cooldown, 30, 400), clamp(burstCooldown, 20, 300),
+                safeSpacing, finite(burstThreshold, .05, .90, .45), finite(specialChance, .02, .80, .20), clamp(cooldown, 30, 400), clamp(burstCooldown, 20, 300),
                 clamp(cleanupTimeout, 40, 600));
     }
 

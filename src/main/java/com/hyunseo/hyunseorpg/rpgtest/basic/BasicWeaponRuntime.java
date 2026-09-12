@@ -1,5 +1,6 @@
 package com.hyunseo.hyunseorpg.rpgtest.basic;
 
+import com.hyunseo.hyunseorpg.rpgtest.DisplayMotion;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -161,6 +162,7 @@ public final class BasicWeaponRuntime {
     private ItemDisplay display(Location at, Material material, float scale) {
         ItemDisplay display = at.getWorld().spawn(at, ItemDisplay.class, entity -> {
             entity.setItemStack(new ItemStack(material)); entity.setPersistent(false);
+            DisplayMotion.configure(entity);
             Transformation transformation = entity.getTransformation(); transformation.getScale().set(new Vector3f(scale)); entity.setTransformation(transformation);
         });
         entities.add(display); return display;

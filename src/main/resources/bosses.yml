@@ -29,6 +29,9 @@ gateway-boss:
       default: 1.10
   payload:
     speed-multiplier: 0.90
+    volume-margin: 6.0
+    volume-max-range: 64.0
+    projectile-lifetime-ticks: 900
     local-caps:
       sonic-boom: 2
       beam: 2
@@ -57,6 +60,7 @@ gateway-boss:
     upper-height: 10.0
     minimum-spacing: 5.0
     phase-spacing: 24.0
+    special-chance: 0.20
     global-payload-cap: 16
     cleanup-timeout-ticks: 100
   phase-health-thresholds:

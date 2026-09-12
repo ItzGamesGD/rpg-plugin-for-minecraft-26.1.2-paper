@@ -1,5 +1,6 @@
 package com.hyunseo.hyunseorpg.rpgtest.orbital;
 
+import com.hyunseo.hyunseorpg.rpgtest.DisplayMotion;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
@@ -9,6 +10,9 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
+import org.bukkit.util.Transformation;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +35,7 @@ public final class OrbitalWeaponCoreRuntime {
                 ItemDisplay display = core.getWorld().spawn(core, ItemDisplay.class, item -> {
                     item.setItemStack(new ItemStack(FAMILIES.get(weapons.size() / 4)));
                     item.setPersistent(false);
+                    DisplayMotion.configure(item);
                 });
                 weapons.add(display);
             }
@@ -47,7 +52,10 @@ public final class OrbitalWeaponCoreRuntime {
                     Vector localPoint = new Vector(Math.cos(local) * radius, Math.sin(local) * radius, 0);
                     Vector aroundY = rotateY(localPoint, plane);
                     Vector tilted = rotateX(aroundY, .42 + ring * .31);
-                    weapons.get(index).teleport(core.clone().add(tilted));
+                    ItemDisplay weapon = weapons.get(index);
+                    weapon.teleport(core.clone().add(tilted));
+                    weapon.setTransformation(pose(.62F, (float) (local + plane), (float) (tick * .11D + ring),
+                            (float) (Math.sin(local) * .5D)));
                 }
                 tick++;
             }
@@ -56,5 +64,9 @@ public final class OrbitalWeaponCoreRuntime {
 
     private Vector rotateY(Vector v, double a) { return new Vector(v.getX()*Math.cos(a)+v.getZ()*Math.sin(a), v.getY(), -v.getX()*Math.sin(a)+v.getZ()*Math.cos(a)); }
     private Vector rotateX(Vector v, double a) { return new Vector(v.getX(), v.getY()*Math.cos(a)-v.getZ()*Math.sin(a), v.getY()*Math.sin(a)+v.getZ()*Math.cos(a)); }
+    private Transformation pose(float scale, float yaw, float pitch, float roll) {
+        return new Transformation(new Vector3f(-scale / 2F), new Quaternionf().rotationYXZ(yaw, pitch, roll),
+                new Vector3f(scale), new Quaternionf());
+    }
     public void cleanup() { if (task != null) { task.cancel(); task = null; } weapons.forEach(Entity::remove); weapons.clear(); }
 }

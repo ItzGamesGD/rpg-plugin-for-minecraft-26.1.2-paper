@@ -33,7 +33,7 @@ class GatewayBossConfigTest {
 
     @Test void invalidValuesAreBoundedToReadableAndSafeLimits() {
         GatewayBossConfig config = GatewayBossConfig.bounded(1, 99, 9, 99, 9, 9, 1,
-                -1, -1, -1, 99, 9999, 99, 9999, 1, 9, 1, 1, 1);
+                -1, -1, -1, 99, 9999, 99, 9999, 1, 9, -1, 1, 1, 1);
         assertEquals(28.0D, config.attackRange());
         assertEquals(6.0D, config.orbitRadius());
         assertEquals(40, config.maxOrbitWeapons());
@@ -42,6 +42,7 @@ class GatewayBossConfigTest {
         assertEquals(24, config.maxActiveDrivers());
         assertEquals(1200, config.driverLifetimeTicks());
         assertEquals(12.0D, config.phaseSpacing());
+        assertEquals(.02D, config.gatewaySpecialChance());
     }
 
     private YamlConfiguration loadBosses() {

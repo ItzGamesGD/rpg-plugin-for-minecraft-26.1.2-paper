@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPattern;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPatternSelector;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponRuntime;
+import com.hyunseo.hyunseorpg.rpgtest.DisplayMotion;
 import com.hyunseo.hyunseorpg.rpgtest.orbital.OrbitalWeaponCoreRuntime;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import org.bukkit.FluidCollisionMode;
@@ -94,23 +95,17 @@ public final class GatewayPrototypeService implements Listener {
     /** Temporary special phase only; normal boss combat never owns Gateway visuals. */
     private void triggerGatewayPhase(GatewaySession session, Player player, boolean debug) {
         if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
-        double phaseSpacing = Math.max(8.0D, Math.min(32.0D, config.getBossesDouble("gateway-boss.gateway.phase-spacing", 16.0D)));
+        GatewayPhaseConfig tuning = gatewayPhaseConfig();
+        double phaseSpacing = tuning.phaseSpacing();
         // A player who closes to the core makes the broad portal formation unreadable. Defer this
         // special rather than applying a forced displacement; the next random cycle can try again.
         if (player.getLocation().distanceSquared(session.bossTarget()) < phaseSpacing * phaseSpacing * .36D) return;
         Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
         if (!session.gatewayPhase().begin(phaseSnapshot)) return;
-        int gatewayCount = Math.max(6, Math.min(16, config.getBossesInt("gateway-boss.gateway.count", DEFAULT_GATEWAY_COUNT)));
-        double radialMin = Math.max(4.0D, Math.min(20.0D, config.getBossesDouble("gateway-boss.gateway.radial-min", 8.0D)));
-        double radialMax = Math.max(8.0D, Math.min(24.0D, config.getBossesDouble("gateway-boss.gateway.radial-max", 14.0D)));
-        if (radialMax < radialMin) radialMax = radialMin;
-        double upperHeight = Math.max(2.0D, Math.min(16.0D, config.getBossesDouble("gateway-boss.gateway.upper-height", 5.0D)));
-        double minSpacing = Math.max(2.0D, Math.min(8.0D, config.getBossesDouble("gateway-boss.gateway.minimum-spacing", GatewayPlacement.MIN_SPACING)));
-        int payloadCap = Math.max(1, Math.min(48, config.getBossesInt("gateway-boss.gateway.global-payload-cap", GATEWAY_TOTAL_CAP)));
         List<Location> launchers = placement.launcherLocations(phaseSnapshot,
-                gatewayCount, radialMin, radialMax, upperHeight, minSpacing, random, this::gatewaySpaceClear);
-        if (launchers.size() != gatewayCount) { session.gatewayPhase().close(); return; }
-        List<Location> returns = placement.returnLocations(session.bossTarget(), gatewayCount);
+                tuning.gatewayCount(), tuning.minRadius(), tuning.maxRadius(), tuning.upperHeight(), tuning.minimumSpacing(), random, this::gatewaySpaceClear);
+        if (launchers.size() != tuning.gatewayCount()) { session.gatewayPhase().close(); return; }
+        List<Location> returns = placement.returnLocations(session.bossTarget(), tuning.gatewayCount());
         if (returns.stream().anyMatch(location -> !returnSpaceClear(location))) { session.gatewayPhase().close(); return; }
         List<Entity> phaseVisuals = new ArrayList<>();
         List<GatewayPair> pairs = new ArrayList<>();
@@ -121,8 +116,8 @@ public final class GatewayPrototypeService implements Listener {
                     placement.snapshotForward(launchers.get(i), phaseSnapshot), launcher.getUniqueId(), returning.getUniqueId()));
         }
         session.gatewayPhase().deploy();
-        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(payloadCap, localPayloadCaps());
-        int selectedPayloadCount = randomPayloadCount(random, payloadCap);
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(tuning.payloadCap(), localPayloadCaps());
+        int selectedPayloadCount = randomPayloadCount(random, tuning.payloadCap());
         long delay = 16;
         for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
@@ -133,19 +128,30 @@ public final class GatewayPrototypeService implements Listener {
                     () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay));
             delay += 7;
         }
-        session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            session.gatewayPhase().resolve();
-            phaseVisuals.forEach(Entity::remove);
-            session.gatewayPhase().close();
-        }, delay + 80));
+        long emissionCompleteAt = delay + 60;
+        BukkitRunnable closeWhenResolved = new BukkitRunnable() {
+            long age;
+            @Override public void run() {
+                age += 10;
+                if (sessions.get(player.getUniqueId()) != session) { cancel(); return; }
+                if (age < emissionCompleteAt) return; // all delayed emissions + sustained volumes have had time to resolve
+                if (phaseHasActiveProjectile(session) && age < tuning.projectileLifetimeTicks()) return;
+                session.gatewayPhase().resolve();
+                phaseVisuals.forEach(Entity::remove);
+                session.gatewayPhase().close();
+                cancel();
+            }
+        };
+        session.tasks().add(closeWhenResolved.runTaskTimer(plugin, 10, 10));
     }
 
     public String randomCycle(Player player, boolean debug) {
         String result = startSession(player, debug, true);
         GatewaySession session = sessions.get(player.getUniqueId());
         if (session == null) return result;
-        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, localPayloadCaps());
-        int selectedPayloadCount = randomPayloadCount(random, GATEWAY_TOTAL_CAP);
+        GatewayPhaseConfig tuning = gatewayPhaseConfig();
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(tuning.payloadCap(), localPayloadCaps());
+        int selectedPayloadCount = randomPayloadCount(random, tuning.payloadCap());
         long delay = 15;
         for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
@@ -156,7 +162,7 @@ public final class GatewayPrototypeService implements Listener {
                     () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay);
             session.tasks().add(task); delay += 7;
         }
-        return result + "; scheduled=" + scheduler.total() + "/" + GATEWAY_TOTAL_CAP;
+        return result + "; scheduled=" + scheduler.total() + "/" + tuning.payloadCap();
     }
 
     public String payload(Player player, GatewayPayloadType type, boolean debug) {
@@ -196,13 +202,14 @@ public final class GatewayPrototypeService implements Listener {
 
     private String startSession(Player player, boolean debug, boolean dummy) {
         cleanup(player.getUniqueId());
-        Location snapshot = player.getLocation().clone().add(0, 1, 0), boss = bossPoint(player);
-        List<Location> launchers = placement.launcherLocations(snapshot, DEFAULT_GATEWAY_COUNT, 7, 4.5, random, this::gatewaySpaceClear);
-        if (launchers.size() != DEFAULT_GATEWAY_COUNT) return "Gateway cast cancelled: insufficient clear positions.";
-        List<Location> returns = placement.returnLocations(boss, DEFAULT_GATEWAY_COUNT);
+        GatewayPhaseConfig tuning = gatewayPhaseConfig();
+        Location snapshot = player.getLocation().clone().add(0, 1, 0), boss = bossPoint(player, tuning.phaseSpacing());
+        List<Location> launchers = placement.launcherLocations(snapshot, tuning.gatewayCount(), tuning.minRadius(), tuning.maxRadius(), tuning.upperHeight(), tuning.minimumSpacing(), random, this::gatewaySpaceClear);
+        if (launchers.size() != tuning.gatewayCount()) return "Gateway cast cancelled: insufficient clear positions.";
+        List<Location> returns = placement.returnLocations(boss, tuning.gatewayCount());
         if (returns.stream().anyMatch(location -> !returnSpaceClear(location))) return "Gateway cast cancelled: return area obstructed.";
         List<GatewayPair> pairs = new ArrayList<>(); List<Entity> visuals = new ArrayList<>();
-        for (int i = 0; i < DEFAULT_GATEWAY_COUNT; i++) {
+        for (int i = 0; i < tuning.gatewayCount(); i++) {
             BlockDisplay launcher = gatewayDisplay(launchers.get(i), 2), returning = gatewayDisplay(returns.get(i), 1);
             visuals.add(launcher); visuals.add(returning);
             pairs.add(new GatewayPair(i + 1, launchers.get(i), returns.get(i), placement.snapshotForward(launchers.get(i), snapshot), launcher.getUniqueId(), returning.getUniqueId()));
@@ -215,7 +222,7 @@ public final class GatewayPrototypeService implements Listener {
             session.entities().add(stand); session.setDummy(new PrototypeBossDummy(stand));
         }
         sessions.put(player.getUniqueId(), session); if (debug) drawDebug(session);
-        return "gateways=" + DEFAULT_GATEWAY_COUNT + ", P0=" + format(snapshot) + ", debug=" + debug;
+        return "gateways=" + tuning.gatewayCount() + ", P0=" + format(snapshot) + ", debug=" + debug;
     }
 
     private boolean gatewaySpaceClear(Location center) {
@@ -229,9 +236,15 @@ public final class GatewayPrototypeService implements Listener {
             if (center.clone().add(x, y, z).getBlock().getType().isSolid()) return false;
         return true;
     }
+    private GatewayPhaseConfig gatewayPhaseConfig() { return GatewayPhaseConfig.from(config, GatewayBossConfig.from(config)); }
+    private boolean phaseHasActiveProjectile(GatewaySession session) {
+        return projectiles.values().stream().anyMatch(runtime -> runtime.session == session)
+                || reflections.values().stream().anyMatch(runtime -> runtime.session == session);
+    }
     private BlockDisplay gatewayDisplay(Location center, float scale) {
         return center.getWorld().spawn(center, BlockDisplay.class, display -> {
             display.setBlock(Material.END_GATEWAY.createBlockData()); display.setPersistent(false);
+            DisplayMotion.configure(display);
             Transformation t = display.getTransformation(); t.getTranslation().set(-scale/2, -scale/2, -scale/2); t.getScale().set(new Vector3f(scale)); display.setTransformation(t);
         });
     }
@@ -283,6 +296,7 @@ public final class GatewayPrototypeService implements Listener {
     private void fireCrystal(GatewaySession session, GatewayPair pair, boolean debug) {
         ItemDisplay crystal = pair.launcher().getWorld().spawn(pair.launcher(), ItemDisplay.class, item -> {
             item.setItemStack(new ItemStack(Material.END_CRYSTAL)); item.setPersistent(false);
+            DisplayMotion.configure(item);
             Transformation t=item.getTransformation(); t.getScale().set(new Vector3f(.55f)); item.setTransformation(t);
         });
         Interaction reflection = crystal.getWorld().spawn(crystal.getLocation(), Interaction.class, box -> {
@@ -302,8 +316,9 @@ public final class GatewayPrototypeService implements Listener {
                 if (++age > duration || !sessions.containsValue(session)) { cancel(); return; }
                 Vector forward = pair.snapshotForward();
                 Location origin = pair.launcher();
-                RayTraceResult obstruction = origin.getWorld().rayTraceBlocks(origin, forward, 11, FluidCollisionMode.NEVER, true);
-                Location endpoint = obstruction == null ? origin.clone().add(forward.clone().multiply(11))
+                double range = volumeRange(session, origin);
+                RayTraceResult obstruction = origin.getWorld().rayTraceBlocks(origin, forward, range, FluidCollisionMode.NEVER, true);
+                Location endpoint = obstruction == null ? origin.clone().add(forward.clone().multiply(range))
                         : obstruction.getHitPosition().toLocation(origin.getWorld());
                 double length = origin.distance(endpoint);
                 for (double d=.5; d<=length; d+=.5) origin.getWorld().spawnParticle(particle, origin.clone().add(forward.clone().multiply(d)), 1,0,0,0,0);
@@ -414,6 +429,12 @@ public final class GatewayPrototypeService implements Listener {
         if (globalCap < 1) throw new IllegalArgumentException("global payload cap must be positive");
         return 1 + random.nextInt(globalCap);
     }
+    private double volumeRange(GatewaySession session, Location origin) {
+        Location p0 = session.gatewayPhase().snapshot();
+        if (p0 == null) p0 = session.snapshot();
+        GatewayPhaseConfig tuning = gatewayPhaseConfig();
+        return Math.min(tuning.volumeMaxRange(), origin.distance(p0) + tuning.volumeMargin());
+    }
     static double pointToSegmentDistance(Vector p, Vector a, Vector b) {
         Vector ab=b.clone().subtract(a);
         if (ab.lengthSquared() < 1.0E-10) return p.distance(a);
@@ -433,7 +454,7 @@ public final class GatewayPrototypeService implements Listener {
             projectile.getWorld().playSound(projectile.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE,1,1.4f);
         }
         @Override public void run() {
-            if(!projectile.isValid()||!reflection.isValid()||!sessions.containsValue(session)||age++>300){finish();return;}
+            if(!projectile.isValid()||!reflection.isValid()||!sessions.containsValue(session)||age++>gatewayPhaseConfig().projectileLifetimeTicks()){finish();return;}
             reflection.teleport(projectile.getLocation());
             if(state.phase()==ReflectableProjectileState.Phase.OUTBOUND)return;
             if(state.phase()==ReflectableProjectileState.Phase.RETURNING_TO_SOURCE) {
@@ -468,7 +489,7 @@ public final class GatewayPrototypeService implements Listener {
             projectile.getWorld().playSound(projectile.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE,1,1.4f);
         }
         @Override public void run(){
-            if(!projectile.isValid()||!sessions.containsValue(session)||age++>300){finish();return;}
+            if(!projectile.isValid()||!sessions.containsValue(session)||age++>gatewayPhaseConfig().projectileLifetimeTicks()){finish();return;}
             reflection.teleport(projectile.getLocation());
             if(state.phase()==ReflectableProjectileState.Phase.FUSE){if(++fuse>=18)explode(false);return;}
             if(state.phase()==ReflectableProjectileState.Phase.OUTBOUND){

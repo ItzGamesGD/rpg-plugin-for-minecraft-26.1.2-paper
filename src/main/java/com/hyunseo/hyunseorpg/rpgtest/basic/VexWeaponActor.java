@@ -1,5 +1,6 @@
 package com.hyunseo.hyunseorpg.rpgtest.basic;
 
+import com.hyunseo.hyunseorpg.rpgtest.DisplayMotion;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -12,6 +13,9 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
+import org.bukkit.util.Transformation;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.function.Consumer;
 
@@ -39,6 +43,9 @@ public final class VexWeaponActor extends BukkitRunnable {
                            Consumer<Entity> entityRegistry, Runnable finishedCallback) {
         this.plugin = plugin; this.target = target; this.display = display; this.pattern = pattern; this.stats = stats;
         this.entityRegistry = entityRegistry; this.finishedCallback = finishedCallback;
+        // Gateway combat and the isolated RPGTest path both use this actor, so make the visual
+        // contract explicit here instead of relying on either caller to remember it.
+        DisplayMotion.configure(display);
         this.driver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
             vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true); vex.setCollidable(false);
             vex.getEquipment().clear(); vex.setTarget(target);
@@ -60,6 +67,9 @@ public final class VexWeaponActor extends BukkitRunnable {
         if (complete || !display.isValid() || !driver.isValid() || !target.isOnline() || target.isDead()
                 || !driver.getWorld().equals(target.getWorld()) || ++age > stats.lifetimeTicks()) { finish(); return; }
         display.teleport(driver.getLocation().add(0, .35, 0));
+        // The Vex controls position; this is only a smoothly interpolated visual pose for its weapon.
+        display.setTransformation(weaponPose(.88F, (float) (age * .31D), (float) (age * .17D),
+                (float) (driver.getVelocity().length() * .65D)));
         if (pattern == BasicWeaponPattern.TRIDENT_THROWER) tickTridentThrower();
         else tickMelee();
     }
@@ -103,6 +113,10 @@ public final class VexWeaponActor extends BukkitRunnable {
     private double range() { return switch (pattern) { case MACE_MELEE -> 1.25D; case SPEAR_MELEE -> 1.6D; case AXE_MELEE -> 1.8D; case HOE_MELEE -> 2.1D; default -> 1.4D; }; }
     private double damage() { return switch (pattern) { case MACE_MELEE -> stats.maceDamage(); case AXE_MELEE -> stats.axeDamage(); case HOE_MELEE -> stats.hoeDamage(); default -> stats.maceDamage() * .75D; }; }
     private Sound sound() { return switch (pattern) { case MACE_MELEE -> Sound.ITEM_MACE_SMASH_GROUND_HEAVY; case AXE_MELEE -> Sound.ITEM_AXE_STRIP; case HOE_MELEE -> Sound.ITEM_HOE_TILL; default -> Sound.ENTITY_PLAYER_ATTACK_SWEEP; }; }
+    private Transformation weaponPose(float scale, float yaw, float pitch, float roll) {
+        return new Transformation(new Vector3f(-scale / 2F), new Quaternionf().rotationYXZ(yaw, pitch, roll),
+                new Vector3f(scale), new Quaternionf());
+    }
     public void finish() {
         if (complete) return;
         complete = true; driver.remove(); cancel(); finishedCallback.run();

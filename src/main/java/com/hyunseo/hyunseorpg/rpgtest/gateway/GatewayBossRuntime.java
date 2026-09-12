@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPattern;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPatternSelector;
 import com.hyunseo.hyunseorpg.rpgtest.basic.VexWeaponActor;
+import com.hyunseo.hyunseorpg.rpgtest.DisplayMotion;
 import org.bukkit.Location;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Material;
@@ -67,6 +68,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
         coreDisplay = core.getWorld().spawn(core, ItemDisplay.class, display -> {
             display.setItemStack(new ItemStack(Material.END_CRYSTAL));
             display.setPersistent(false);
+            DisplayMotion.configure(display);
         });
         session.entities().add(coreDisplay);
         for (int slot = 0; slot < state.slotCount(); slot++) {
@@ -74,6 +76,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             ItemDisplay display = core.getWorld().spawn(core, ItemDisplay.class, item -> {
                 item.setItemStack(new ItemStack(materialFor(kind)));
                 item.setPersistent(false);
+                DisplayMotion.configure(item);
             });
             orbitWeapons.add(display);
             session.entities().add(display);
@@ -159,8 +162,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
     private void scheduleNextPhase() {
         int cadence = isBurst() ? config.burstCooldownTicks() : config.attackCooldownTicks();
         nextAttackTick = tick + cadence;
-        int choice = random.nextInt(5);
-        if (choice == 4) {
+        if (random.nextDouble() < config.gatewaySpecialChance()) {
             // The network appears only for this transient special phase, then the service removes it.
             gatewayPhase.run();
             return;
