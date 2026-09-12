@@ -13,7 +13,7 @@ final class GatewayOrbitGeometry {
                          double planeSpeed, boolean burst) {
         double localAngle = tick * orbitSpeed * (burst ? 1.35D : 1.0D) + localPosition * Math.PI;
         double planeAngle = tick * (planeSpeed + ring * .003D) + ring * 1.17D;
-        double radius = orbitRadius + ring * .55D;
+        double radius = orbitRadius + ring * .22D;
         Vector local = new Vector(Math.cos(localAngle) * radius, Math.sin(localAngle) * radius, 0);
         return rotateX(rotateY(local, planeAngle), .48D + ring * .42D);
     }

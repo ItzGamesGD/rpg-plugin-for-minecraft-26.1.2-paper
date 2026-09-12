@@ -1,18 +1,18 @@
 schema-version: 1
 
-# RPGTEST Gateway Boss tuning. The central gateway is the encounter owner; the dummy is only
-# a target for exercising phases until this is wired into a production boss spawner.
+# RPGTEST Gateway Boss tuning. The core and compact orbital weapon cloud are always present;
+# Gateway visuals exist only for the temporary long-range special phase.
 gateway-boss:
   enabled: true
-  attack-range: 28.0
+  attack-range: 40.0
   orbit:
-    radius: 5.5
+    radius: 3.4
     speed: 0.075
-    max-weapons: 10
+    max-weapons: 20
     ring-plane-speed: 0.011
   basic:
     actor-total-cap: 14
-    actor-lifetime-ticks: 100
+    actor-lifetime-ticks: 140
     detach-telegraph-ticks: 16
     weapon-throw-speed: 0.42
     mace-melee-damage: 8.0
@@ -20,12 +20,9 @@ gateway-boss:
     hoe-melee-damage: 6.0
   # The hidden Vex driver is bounded internally; it is never a visible summon or combat add.
   internal-ai-driver:
-    max-active: 6
-    lifetime-ticks: 240
+    max-active: 14
+    lifetime-ticks: 180
   reflection:
-    parry-telegraph-ticks: 22
-    parry-return-speed: 0.42
-    parry-cooldown-ticks: 100
     interaction:
       arrow: 0.90
       small-fireball: 1.35
@@ -55,11 +52,11 @@ gateway-boss:
       beam: 7.0
   gateway:
     count: 7
-    radial-min: 8.0
-    radial-max: 14.0
-    upper-height: 5.0
-    minimum-spacing: 3.0
-    phase-spacing: 16.0
+    radial-min: 16.0
+    radial-max: 30.0
+    upper-height: 10.0
+    minimum-spacing: 5.0
+    phase-spacing: 24.0
     global-payload-cap: 16
     cleanup-timeout-ticks: 100
   phase-health-thresholds:

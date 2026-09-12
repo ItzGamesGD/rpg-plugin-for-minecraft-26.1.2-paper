@@ -105,7 +105,7 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
 
     private void gateway(CommandSender sender, String[] args, String label) {
         if (!(sender instanceof Player player)) { sender.sendMessage("This prototype must be run by a player."); return; }
-        if (args.length < 2) { sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|cancel> [type] [debug]"); return; }
+        if (args.length < 2) { sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|weapon-ai|cancel> [type] [debug]"); return; }
         boolean debug = java.util.Arrays.stream(args).anyMatch(value -> value.equalsIgnoreCase("debug"));
         String message = switch (args[1].toLowerCase(Locale.ROOT)) {
             case "boss", "battle" -> gatewayPrototype.bossBattle(player, debug);
@@ -113,6 +113,9 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
             case "reflection" -> gatewayPrototype.reflection(player);
             case "placement" -> gatewayPrototype.place(player, debug);
             case "pairing" -> gatewayPrototype.pairing(player);
+            case "weapon-ai" -> args.length >= 3
+                    ? meleePattern(args[2]).map(pattern -> gatewayPrototype.weaponAiComparison(player, pattern)).orElse("weapon-ai supports mace, spear, axe, or hoe melee.")
+                    : "Usage: /" + label + " gateway weapon-ai <mace|spear|axe|hoe>";
             case "cancel" -> { gatewayPrototype.cleanup(player.getUniqueId()); yield "Gateway/basic prototype cleaned up."; }
             case "payload" -> args.length >= 3
                     ? GatewayPayloadType.fromInput(args[2]).map(type -> gatewayPrototype.payload(player, type, debug)).orElse("Unknown payload.")
@@ -120,6 +123,16 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
             default -> "Unknown gateway test mode.";
         };
         sender.sendMessage(message);
+    }
+
+    private java.util.Optional<BasicWeaponPattern> meleePattern(String input) {
+        return switch (input.toLowerCase(Locale.ROOT)) {
+            case "mace" -> java.util.Optional.of(BasicWeaponPattern.MACE_MELEE);
+            case "spear" -> java.util.Optional.of(BasicWeaponPattern.SPEAR_MELEE);
+            case "axe" -> java.util.Optional.of(BasicWeaponPattern.AXE_MELEE);
+            case "hoe" -> java.util.Optional.of(BasicWeaponPattern.HOE_MELEE);
+            default -> java.util.Optional.empty();
+        };
     }
 
     private void basicSwarm(CommandSender sender, String[] args, String label) {

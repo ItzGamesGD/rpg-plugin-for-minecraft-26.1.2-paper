@@ -182,6 +182,12 @@ public final class GatewayPrototypeService implements Listener {
         runtime.start(player, bossPoint(player), Map.of(pattern, safe));
         return "basic pattern=" + pattern + " actors=" + safe;
     }
+    /** Isolated live diagnostic; the visible reference Vex exists only for this ten-second test. */
+    public String weaponAiComparison(Player player, BasicWeaponPattern pattern) {
+        cleanup(player.getUniqueId());
+        BasicWeaponRuntime runtime = new BasicWeaponRuntime(plugin); basics.put(player.getUniqueId(), runtime);
+        return runtime.startAiComparison(player, bossPoint(player), pattern);
+    }
     public String orbitalCore(Player player, int rings) {
         cleanup(player.getUniqueId());
         OrbitalWeaponCoreRuntime runtime = new OrbitalWeaponCoreRuntime(plugin); orbitals.put(player.getUniqueId(), runtime);
@@ -335,6 +341,12 @@ public final class GatewayPrototypeService implements Listener {
         event.setCancelled(true); runtime.reflect();
     }
     @EventHandler public void onProjectileHit(ProjectileHitEvent event) {
+        if (event.getHitEntity() != null && isHiddenDriver(event.getHitEntity())) {
+            // Collidable(false) is the Paper-side physical mitigation; cancelling this event is the
+            // smallest additional guard against a hidden driver consuming a player's projectile.
+            event.setCancelled(true);
+            return;
+        }
         RoutedProjectile runtime = projectiles.get(event.getEntity().getUniqueId());
         if (runtime == null) return;
         boolean hitBoss = runtime.session.dummy() != null
@@ -368,6 +380,10 @@ public final class GatewayPrototypeService implements Listener {
                 GatewayPayloadType.DRAGON_BREATH, payloadCap("dragon-breath", 2),
                 GatewayPayloadType.FLAME_STREAM, payloadCap("flame-stream", 3),
                 GatewayPayloadType.END_CRYSTAL_BOMB, payloadCap("end-crystal-bomb", 3));
+    }
+    private boolean isHiddenDriver(Entity entity) {
+        return bossBattles.values().stream().anyMatch(battle -> battle.ownsHiddenDriver(entity))
+                || basics.values().stream().anyMatch(basic -> basic.ownsHiddenDriver(entity));
     }
     private int payloadCap(String name, int fallback) { return Math.max(1, Math.min(16, config.getBossesInt("gateway-boss.payload.local-caps." + name, fallback))); }
     private double payloadSpeedMultiplier() { return bounded("gateway-boss.payload.speed-multiplier", .90D, .10D, 1.20D); }

@@ -31,6 +31,7 @@ public final class BasicWeaponRuntime {
     private final Plugin plugin;
     private final List<Entity> entities = new ArrayList<>();
     private final List<BukkitTask> tasks = new ArrayList<>();
+    private final List<VexWeaponActor> actors = new ArrayList<>();
 
     public BasicWeaponRuntime(Plugin plugin) { this.plugin = plugin; }
 
@@ -58,7 +59,7 @@ public final class BasicWeaponRuntime {
             actor.setSilent(true);
             actor.setCollidable(false);
             actor.setTarget(target);
-            actor.setCharging(true);
+            // Do not force charging. Vanilla Vex AI owns its own approach/pass/reposition state.
             // A Vex is an internal movement driver only. The visible and damaging thing is
             // the paired ItemDisplay weapon below, never a Gateway Wraith/add mob.
             actor.getEquipment().clear();
@@ -69,59 +70,15 @@ public final class BasicWeaponRuntime {
     }
 
     private void spawnVexMelee(Player target, Location core, BasicWeaponPattern pattern, int offset) {
-        Vex vex = vexActor(target, offset(core, offset), material(pattern));
-        ItemDisplay weapon = display(vex.getLocation(), material(pattern), 1.35f);
-        int interval = switch (pattern) { case MACE_MELEE -> 32; case SPEAR_MELEE -> 20; case AXE_MELEE -> 25; default -> 17; };
-        double damage = switch (pattern) { case MACE_MELEE -> 7; case SPEAR_MELEE -> 4; case AXE_MELEE -> 5; default -> 3; };
-        BukkitRunnable task = new BukkitRunnable() {
-            int age;
-            @Override public void run() {
-                if (!valid(vex, target) || age++ > 400) { remove(weapon); remove(vex); cancel(); return; }
-                vex.setTarget(target);
-                weapon.teleport(vex.getLocation().add(0, .35, 0));
-                if (age % interval == 0 && vex.getLocation().distanceSquared(target.getLocation()) < 4.0) {
-                    target.damage(damage, vex);
-                    Vector push = target.getLocation().toVector().subtract(vex.getLocation().toVector()).normalize()
-                            .multiply(pattern == BasicWeaponPattern.MACE_MELEE ? 1.0 : .35).setY(.2);
-                    target.setVelocity(push);
-                    target.getWorld().playSound(target.getLocation(), sound(pattern), 1f, pattern == BasicWeaponPattern.MACE_MELEE ? .75f : 1.1f);
-                }
-            }
-        };
-        tasks.add(task.runTaskTimer(plugin, 1, 1));
+        ItemDisplay weapon = display(offset(core, offset), material(pattern), .88f);
+        actors.add(VexWeaponActor.start(plugin, target, weapon, pattern, new VexWeaponActor.Stats(180, 7, 5, 3),
+                entities::add, tasks::add, () -> { }));
     }
 
     private void spawnTridentThrower(Player target, Location core, int offset) {
-        Vex vex = vexActor(target, offset(core, offset), Material.TRIDENT);
-        ItemDisplay weapon = display(vex.getLocation(), Material.TRIDENT, 1.25f);
-        BukkitRunnable task = new BukkitRunnable() {
-            int age;
-            enum State { RETREAT, AIM, THROW, RECOVER, RESUME }
-            State state = State.RETREAT;
-            @Override public void run() {
-                if (!valid(vex, target) || age++ > 500) { remove(weapon); remove(vex); cancel(); return; }
-                weapon.teleport(vex.getLocation().add(0, .35, 0));
-                switch (state) {
-                    case RETREAT -> {
-                        vex.setTarget(null);
-                        Vector away = vex.getLocation().toVector().subtract(target.getLocation().toVector()).normalize().multiply(.25);
-                        vex.setVelocity(away.setY(.08));
-                        if (age >= 25 || vex.getLocation().distanceSquared(target.getLocation()) >= 64) { state = State.AIM; age = 0; }
-                    }
-                    case AIM -> { vex.setVelocity(new Vector()); if (age >= 18) { state = State.THROW; age = 0; } }
-                    case THROW -> {
-                        Vector aim = target.getEyeLocation().toVector().subtract(vex.getLocation().toVector()).normalize();
-                        Trident trident = vex.getWorld().spawn(vex.getEyeLocation(), Trident.class, projectile -> {
-                            projectile.setShooter(vex); projectile.setVelocity(aim.multiply(1.6)); projectile.setPersistent(false);
-                        });
-                        entities.add(trident); state = State.RECOVER; age = 0;
-                    }
-                    case RECOVER -> { if (age >= 35) { state = State.RESUME; age = 0; } }
-                    case RESUME -> { vex.setTarget(target); if (age >= 55) { state = State.RETREAT; age = 0; } }
-                }
-            }
-        };
-        tasks.add(task.runTaskTimer(plugin, 1, 1));
+        ItemDisplay weapon = display(offset(core, offset), Material.TRIDENT, .88f);
+        actors.add(VexWeaponActor.start(plugin, target, weapon, BasicWeaponPattern.TRIDENT_THROWER, new VexWeaponActor.Stats(180, 7, 5, 3),
+                entities::add, tasks::add, () -> { }));
     }
 
     private void spawnMaceDrop(Player target, int offset) {
@@ -173,6 +130,34 @@ public final class BasicWeaponRuntime {
         tasks.add(task.runTaskTimer(plugin, 1, 1));
     }
 
+    /** Debug-only comparison: a normal visible Vex and the hidden driver start together. */
+    public String startAiComparison(Player target, Location core, BasicWeaponPattern pattern) {
+        if (pattern != BasicWeaponPattern.MACE_MELEE && pattern != BasicWeaponPattern.SPEAR_MELEE
+                && pattern != BasicWeaponPattern.AXE_MELEE && pattern != BasicWeaponPattern.HOE_MELEE) {
+            throw new IllegalArgumentException("weapon-ai supports a Vex-driven melee pattern only");
+        }
+        Vex reference = core.getWorld().spawn(core.clone().add(-2, 1, 0), Vex.class, vex -> {
+            vex.setPersistent(false); vex.setInvulnerable(true); vex.setSilent(false); vex.setTarget(target);
+            vex.setCustomName("§eRPGTest vanilla Vex reference"); vex.setCustomNameVisible(true);
+        });
+        entities.add(reference);
+        Vex hidden = vexActor(target, core.clone().add(2, 1, 0), material(pattern));
+        ItemDisplay weapon = display(hidden.getLocation(), material(pattern), .88f);
+        BukkitRunnable task = new BukkitRunnable() {
+            int age;
+            @Override public void run() {
+                if (!valid(hidden, target) || !valid(reference, target) || age++ >= 200) {
+                    remove(weapon); remove(hidden); remove(reference); cancel(); return;
+                }
+                weapon.teleport(hidden.getLocation().add(0, .35, 0));
+                if (age % 40 == 0) target.sendMessage("§7weapon-ai " + pattern + " age=" + age
+                        + " driver=" + compact(hidden.getLocation()) + " reference=" + compact(reference.getLocation()));
+            }
+        };
+        tasks.add(task.runTaskTimer(plugin, 1, 1));
+        return "weapon-ai comparison started: visible vanilla Vex + hidden Vex-driven " + pattern + " weapon (10s).";
+    }
+
     private ItemDisplay display(Location at, Material material, float scale) {
         ItemDisplay display = at.getWorld().spawn(at, ItemDisplay.class, entity -> {
             entity.setItemStack(new ItemStack(material)); entity.setPersistent(false);
@@ -192,9 +177,11 @@ public final class BasicWeaponRuntime {
     private Material material(BasicWeaponPattern pattern) { return switch (pattern) { case MACE_MELEE -> Material.MACE; case SPEAR_MELEE -> Material.TRIDENT; case AXE_MELEE -> Material.NETHERITE_AXE; case HOE_MELEE -> Material.NETHERITE_HOE; default -> Material.AIR; }; }
     private Sound sound(BasicWeaponPattern pattern) { return switch (pattern) { case MACE_MELEE -> Sound.ITEM_MACE_SMASH_GROUND_HEAVY; case AXE_MELEE -> Sound.ITEM_AXE_STRIP; case HOE_MELEE -> Sound.ITEM_HOE_TILL; default -> Sound.ENTITY_PLAYER_ATTACK_SWEEP; }; }
     private void remove(Entity entity) { entities.remove(entity); entity.remove(); }
+    private String compact(Location location) { return "%.1f,%.1f,%.1f".formatted(location.getX(), location.getY(), location.getZ()); }
     /** Vexes are movement-only internal drivers; their vanilla bite is always suppressed. */
     public boolean ownsHiddenDriver(Entity entity) {
-        return entity instanceof Vex && entities.stream().anyMatch(owned -> owned.getUniqueId().equals(entity.getUniqueId()));
+        return entity instanceof Vex && (actors.stream().anyMatch(actor -> actor.driver().getUniqueId().equals(entity.getUniqueId()))
+                || entities.stream().anyMatch(owned -> owned.getUniqueId().equals(entity.getUniqueId())));
     }
-    public void cleanup() { tasks.forEach(BukkitTask::cancel); tasks.clear(); List.copyOf(entities).forEach(Entity::remove); entities.clear(); }
+    public void cleanup() { tasks.forEach(BukkitTask::cancel); tasks.clear(); actors.forEach(VexWeaponActor::finish); actors.clear(); List.copyOf(entities).forEach(Entity::remove); entities.clear(); }
 }

@@ -24,25 +24,24 @@ class GatewayBossConfigTest {
         assertTrue(yaml.getInt(root + "payload.local-caps.end-crystal-bomb") > 0);
         assertTrue(yaml.getDouble(root + "reflection.interaction.arrow") > 0.0D);
         assertTrue(yaml.getDouble(root + "damage.reflected.end-crystal-bomb") > 0.0D);
-        assertTrue(yaml.getInt(root + "reflection.parry-telegraph-ticks") >= 15);
-        assertTrue(yaml.getDouble(root + "reflection.parry-return-speed") < 1.0D);
         assertTrue(yaml.getInt(root + "internal-ai-driver.max-active") > 0);
+        assertTrue(yaml.getInt(root + "orbit.max-weapons") - yaml.getInt(root + "orbit.max-weapons") / 5 >= yaml.getInt(root + "basic.actor-total-cap"));
+        assertTrue(yaml.getInt(root + "internal-ai-driver.max-active") >= yaml.getInt(root + "basic.actor-total-cap"));
         assertTrue(!yaml.contains(root + "vex-summon-count"));
         assertNotNull(yaml.getConfigurationSection(root + "phase-health-thresholds"));
     }
 
     @Test void invalidValuesAreBoundedToReadableAndSafeLimits() {
         GatewayBossConfig config = GatewayBossConfig.bounded(1, 99, 9, 99, 9, 9, 1,
-                -1, -1, -1, 1, 9, 1, 99, 9999, 99, 9999, 1, 9, 1, 1, 1);
-        assertEquals(20.0D, config.attackRange());
-        assertEquals(12.0D, config.orbitRadius());
-        assertEquals(20, config.maxOrbitWeapons());
+                -1, -1, -1, 99, 9999, 99, 9999, 1, 9, 1, 1, 1);
+        assertEquals(28.0D, config.attackRange());
+        assertEquals(6.0D, config.orbitRadius());
+        assertEquals(40, config.maxOrbitWeapons());
         assertEquals(10, config.weaponThrowTelegraphTicks());
-        assertEquals(15, config.parryTelegraphTicks());
         assertEquals(1200, config.basicActorLifetimeTicks());
-        assertEquals(16, config.maxActiveDrivers());
+        assertEquals(24, config.maxActiveDrivers());
         assertEquals(1200, config.driverLifetimeTicks());
-        assertEquals(8.0D, config.phaseSpacing());
+        assertEquals(12.0D, config.phaseSpacing());
     }
 
     private YamlConfiguration loadBosses() {
