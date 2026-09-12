@@ -3,6 +3,9 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
+import java.util.List;
+import org.bukkit.Location;
+import org.bukkit.util.Vector;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -53,5 +56,13 @@ class ReflectableProjectileStateTest {
         bossHit.reflect();
         bossHit.enterSourceGateway();
         assertEquals(ReflectableProjectileState.CollisionResult.BOSS_HIT, bossHit.collide(true));
+    }
+    @Test void returnRoutingUsesRecordedSourcePairNotAttackDirectionOrNearestGateway() {
+        GatewayPair first = new GatewayPair(1, new Location(null, 100, 0, 0), new Location(null, 1, 0, 0),
+                new Vector(1, 0, 0), UUID.randomUUID(), UUID.randomUUID());
+        GatewayPair source = new GatewayPair(9, new Location(null, 2, 0, 0), new Location(null, 9, 0, 0),
+                new Vector(-1, 0, 0), UUID.randomUUID(), UUID.randomUUID());
+        ReflectableProjectileState state = new ReflectableProjectileState(UUID.randomUUID(), 9, GatewayPayloadType.ARROW);
+        assertSame(source, ReturnRouting.pairFor(List.of(first, source), state).orElseThrow());
     }
 }
