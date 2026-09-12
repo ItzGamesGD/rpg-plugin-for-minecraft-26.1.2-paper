@@ -565,7 +565,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.lancerSkillService = new LancerSkillService(this, configService, combatService, classStatService);
         this.skillStatService = new SkillStatService(configService, playerDataService, skillRegistry, weaponProficiencyService);
         this.statGuiService = new StatGuiService(this, statService, skillStatService, classStatService);
-        this.cooldownService = new CooldownService();
+        this.cooldownService = new CooldownService(configService.getSpecialEquipmentBoolean(
+                "special-equipment.testing.disable-cooldowns", false));
         this.skillService = new SkillService(configService, playerDataService, weaponService, weaponProficiencyService, manaService, cooldownService, combatService, skillRegistry, swordmasterBladeService, bowmasterSkillService, lancerSkillService);
         this.enchantRegistry = new EnchantRegistry(configService);
         this.enchantRegistry.load();
