@@ -184,7 +184,6 @@ public final class ThunderAxeListener implements Listener {
         Location castBase = owner.getLocation().clone();
         Vector facing = flatFacing(owner);
         Location origin = castBase.clone().add(facing.clone().multiply(config.firstDistance()));
-        origin.getWorld().spawnParticle(Particle.EXPLOSION, origin.clone().add(0, .2, 0), 3, .3, .15, .3, 0);
         origin.getWorld().playSound(origin, Sound.ITEM_TOTEM_USE, 1.1f, .75f);
         final int[] tick = {0}; final Set<UUID> castHits = new HashSet<>();
         scheduleTimer(owner.getUniqueId(), () -> {
@@ -193,10 +192,14 @@ public final class ThunderAxeListener implements Listener {
             if (tick[0] % Math.max(1, config.waveIntervalTicks()) == 0 && wave <= config.fanWaveCount())
                 executeStrikeWave(owner, castBase, wave, facing, castHits);
             double maxRadius = config.firstDistance() + (config.fanWaveCount() - 1) * config.distanceStep();
-            double radius = Math.min(maxRadius, maxRadius * tick[0] / Math.max(1.0,
-                    (config.fanWaveCount() - 1.0) * config.waveIntervalTicks()));
-            for (Vector point : ThunderAxeMath.ring(radius, 40))
-                origin.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, origin.clone().add(point), 1, 0, 0, 0, 0);
+            double radius = Math.min(maxRadius, config.firstDistance()
+                    + config.distanceStep() * tick[0] / Math.max(1.0, config.waveIntervalTicks()));
+            // The moving front follows the forward fan, rather than exploding in a full circle.
+            if (tick[0] % 2 == 0) {
+                for (Vector point : ThunderAxeMath.fan(2, 2, 17, facing, radius, 0, config.fanAngleDegrees()))
+                    castBase.getWorld().spawnParticle(Particle.ELECTRIC_SPARK,
+                            castBase.clone().add(point).add(0, .12, 0), 1, 0, 0, 0, 0);
+            }
             return ++tick[0] <= (config.fanWaveCount() - 1) * config.waveIntervalTicks();
         }, 0, 1);
     }
@@ -251,7 +254,7 @@ public final class ThunderAxeListener implements Listener {
     }
 
     private void visualBolt(Location base) {
-        World world = base.getWorld(); world.spawnParticle(Particle.FLASH, base.clone().add(0, 1, 0), 1);
+        World world = base.getWorld(); world.spawnParticle(Particle.FLASH, base.clone().add(0, 1, 0), 1, 0, 0, 0, 0, Color.WHITE);
         Random random = new Random(Double.doubleToLongBits(base.getX()) ^ Double.doubleToLongBits(base.getZ()));
         for (int i = 0; i < 14; i++) world.spawnParticle(Particle.ELECTRIC_SPARK,
                 base.clone().add((random.nextDouble() - .5) * .35, i * .24, (random.nextDouble() - .5) * .35), 1, 0, 0, 0, 0);

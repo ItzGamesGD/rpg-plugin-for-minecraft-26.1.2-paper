@@ -22,6 +22,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -123,6 +124,15 @@ public final class SpecialEquipmentService {
                     UUID.fromString("9d4b44ca-51b4-4b6a-b7f0-0e9c3e6c2a10"),
                     "hyunseorpg_flowing_water_speed", 0.75D,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+        }
+        if (data.id().equals("moonlit_afterglow")) {
+            double attackSpeed = Math.max(0.1D, config.getSpecialEquipmentDouble(
+                    "special-equipment.items.moonlit_afterglow.abilities.base-attack-speed", 6.4D));
+            meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
+                    UUID.fromString("b99bb286-d005-4baa-9364-caa975b299ae"),
+                    // Swords contribute -2.4 to the player's 4.0 base (effective 1.6).
+                    "hyunseorpg_moonlit_afterglow_speed", attackSpeed - 1.6D,
+                    AttributeModifier.Operation.ADD_NUMBER, EquipmentSlot.HAND));
         }
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta)
                 .add(Component.text("Special equipment: " + data.element(), NamedTextColor.LIGHT_PURPLE))

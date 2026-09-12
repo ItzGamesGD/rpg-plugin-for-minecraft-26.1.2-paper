@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DedicatedWeaponIdsTest {
     @Test void preservesTheUnionOfAllDedicatedInputOwners() {
-        assertEquals(Set.of("flame_axe", "poseidon_spear", "thanatos_mace", "thunder_gods_axe"),
+        assertEquals(Set.of("flame_axe", "poseidon_spear", "thanatos_mace", "thunder_gods_axe", "solaris", "moonlit_afterglow"),
                 DedicatedWeaponIds.all());
         assertFalse(DedicatedWeaponIds.owns("ordinary_weapon"));
     }
