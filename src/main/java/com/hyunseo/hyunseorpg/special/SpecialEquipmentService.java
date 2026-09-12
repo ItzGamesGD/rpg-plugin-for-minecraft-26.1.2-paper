@@ -22,6 +22,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -39,6 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Owns late-game equipment identity, unlock checks, recipes, and per-item soul progress. */
 public final class SpecialEquipmentService {
+    public static final String POSEIDON_ID = "poseidon_spear";
+    private static final String LEGACY_POSEIDON_ID = "poseidons_spear";
     private final JavaPlugin plugin;
     private final ConfigService config;
     private final SpecialEquipmentRegistry registry;
@@ -92,7 +95,7 @@ public final class SpecialEquipmentService {
         if (item == null) return null;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
-        meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, data.id());
+        meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, canonicalId(data));
         meta.getPersistentDataContainer().set(schemaKey, PersistentDataType.INTEGER, 1);
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "equipment_grade"),
                 PersistentDataType.INTEGER, data.grade());
@@ -112,15 +115,24 @@ public final class SpecialEquipmentService {
             // Special weapons and equipment are intentionally not part of the durability economy.
             meta.setUnbreakable(true);
         }
-        if (data.id().equals("poseidons_spear")) {
+        if (data.itemId().equals(POSEIDON_ID)) {
             // Poseidon's physical throw/retrieval contract is vanilla Trident + Loyalty.
-            meta.addEnchant(Enchantment.LOYALTY, 1, true);
+            meta.addEnchant(Enchantment.LOYALTY, 3, true);
         }
         if (data.id().equals("flowing_water_sword")) {
             meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
                     UUID.fromString("9d4b44ca-51b4-4b6a-b7f0-0e9c3e6c2a10"),
                     "hyunseorpg_flowing_water_speed", 0.75D,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+        }
+        if (data.id().equals("moonlit_afterglow")) {
+            double attackSpeed = Math.max(0.1D, config.getSpecialEquipmentDouble(
+                    "special-equipment.items.moonlit_afterglow.abilities.base-attack-speed", 6.4D));
+            meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
+                    UUID.fromString("b99bb286-d005-4baa-9364-caa975b299ae"),
+                    // Swords contribute -2.4 to the player's 4.0 base (effective 1.6).
+                    "hyunseorpg_moonlit_afterglow_speed", attackSpeed - 1.6D,
+                    AttributeModifier.Operation.ADD_NUMBER, EquipmentSlot.HAND));
         }
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta)
                 .add(Component.text("Special equipment: " + data.element(), NamedTextColor.LIGHT_PURPLE))
@@ -136,7 +148,17 @@ public final class SpecialEquipmentService {
                 .add(Component.text("Growth is controlled by special-equipment.yml", NamedTextColor.DARK_GRAY))
                 .build());
         item.setItemMeta(meta);
+        ensureRuntimeComponents(item);
         return item;
+    }
+
+    /** Normalizes legacy identities and use components on both new and pre-existing special items. */
+    public void ensureRuntimeComponents(ItemStack item) {
+        String id = getSpecialId(item);
+        if (id.equals(POSEIDON_ID)) {
+            normalizePoseidon(item);
+            return;
+        }
     }
 
     private boolean isDurabilityEquipment(SpecialEquipmentData data) {
@@ -147,17 +169,48 @@ public final class SpecialEquipmentService {
     public String getSpecialId(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return "";
         String marker = item.getItemMeta().getPersistentDataContainer().get(specialIdKey, PersistentDataType.STRING);
-        if (marker != null && registry.get(marker).isPresent()) return marker.toLowerCase(Locale.ROOT);
-        String itemId = itemService.getItemId(item).orElse("");
-        return registry.get(itemId).map(SpecialEquipmentData::id).orElseGet(() -> registry.getAll().stream()
-                .filter(data -> data.itemId().equalsIgnoreCase(itemId))
-                .map(SpecialEquipmentData::id)
-                .findFirst().orElse(""));
+        String resolved;
+        if (marker != null && (registry.get(marker).isPresent() || canonicalId(marker).equals(POSEIDON_ID))) {
+            resolved = canonicalId(marker);
+        } else {
+            String itemId = itemService.getItemId(item).orElse("");
+            resolved = registry.get(itemId).map(this::canonicalId).orElseGet(() -> registry.getAll().stream()
+                    .filter(data -> data.itemId().equalsIgnoreCase(itemId))
+                    .map(this::canonicalId)
+                    .findFirst().orElse(""));
+        }
+        if (resolved.equals(POSEIDON_ID)) normalizePoseidon(item);
+        return resolved;
+    }
+
+    private void normalizePoseidon(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        String marker = meta.getPersistentDataContainer().get(specialIdKey, PersistentDataType.STRING);
+        boolean changed = !POSEIDON_ID.equals(marker);
+        if (changed) meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, POSEIDON_ID);
+        if (meta.getEnchantLevel(Enchantment.LOYALTY) != 3) {
+            meta.addEnchant(Enchantment.LOYALTY, 3, true);
+            changed = true;
+        }
+        if (changed) item.setItemMeta(meta);
+    }
+
+    private String canonicalId(SpecialEquipmentData data) {
+        return canonicalId(data.itemId().equalsIgnoreCase(POSEIDON_ID) ? POSEIDON_ID : data.id());
+    }
+
+    static String canonicalId(String id) {
+        String normalized = id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals(LEGACY_POSEIDON_ID) ? POSEIDON_ID : normalized;
     }
 
     public SpecialEquipmentData getData(ItemStack item) {
         String id = getSpecialId(item);
-        return id.isBlank() ? null : registry.get(id).orElse(null);
+        if (id.isBlank()) return null;
+        return registry.get(id).orElseGet(() -> registry.getAll().stream()
+                .filter(data -> canonicalId(data).equals(id))
+                .findFirst().orElse(null));
     }
 
     public boolean isSpecial(ItemStack item) {
