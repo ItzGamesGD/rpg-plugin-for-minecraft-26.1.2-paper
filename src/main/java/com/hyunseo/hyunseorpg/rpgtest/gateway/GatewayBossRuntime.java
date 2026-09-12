@@ -152,27 +152,16 @@ final class GatewayBossRuntime extends BukkitRunnable {
             if (!display.isValid()) { endSession.run(); return; }
             // Two local weapon slots per family ring.  The local orbit moves first, then its
             // orbital plane itself rotates: an armillary core, not stacked horizontal circles.
-            int ring = weaponFor(slot).ordinal();
-            int localSlot = slot / WeaponKind.values().length;
+            int ring = GatewayOrbitGeometry.familyRing(slot, WeaponKind.values().length);
+            int localSlot = GatewayOrbitGeometry.localPosition(slot, WeaponKind.values().length);
             double localAngle = tick * config.orbitSpeed() * (burst ? 1.35D : 1.0D) + localSlot * Math.PI;
             double planeAngle = tick * (config.ringPlaneSpeed() + ring * .003D) + ring * 1.17D;
-            double radius = config.orbitRadius() + ring * .55D;
-            Vector localPoint = new Vector(Math.cos(localAngle) * radius, Math.sin(localAngle) * radius, 0);
-            Vector planeRotated = rotateX(rotateY(localPoint, planeAngle), .48D + ring * .42D);
+            Vector planeRotated = GatewayOrbitGeometry.offset(ring, localSlot, tick, config.orbitRadius(), config.orbitSpeed(), config.ringPlaneSpeed(), burst);
             Location at = core.clone().add(planeRotated);
             display.teleport(at);
             display.setTransformation(transform(1.45F, (float) (localAngle + planeAngle + Math.PI / 2D),
                     (float) (tick * .12D + slot), (float) (Math.sin(localAngle) * .45D)));
         }
-    }
-
-    private Vector rotateY(Vector value, double angle) {
-        return new Vector(value.getX() * Math.cos(angle) + value.getZ() * Math.sin(angle), value.getY(),
-                -value.getX() * Math.sin(angle) + value.getZ() * Math.cos(angle));
-    }
-    private Vector rotateX(Vector value, double angle) {
-        return new Vector(value.getX(), value.getY() * Math.cos(angle) - value.getZ() * Math.sin(angle),
-                value.getY() * Math.sin(angle) + value.getZ() * Math.cos(angle));
     }
 
     private void scheduleNextPhase() {
