@@ -18,10 +18,11 @@ public final class GatewayPlacement {
         for (int index = 0; index < count; index++) {
             boolean accepted = false;
             for (int attempt = 0; attempt < ATTEMPTS_PER_GATEWAY; attempt++) {
-                double sector = Math.PI * 2.0 * index / count;
-                double angle = sector + (random.nextDouble() - .5) * (Math.PI * 1.6 / count);
-                double radial = radius * (.68 + random.nextDouble() * .42);
-                double y = height + random.nextDouble() * 3.0;
+                // Each portal owns an independently sampled position: this is intentionally
+                // not a rotated regular polygon around P0.
+                double angle = random.nextDouble() * Math.PI * 2.0;
+                double radial = radius * (.62 + random.nextDouble() * .58);
+                double y = height + random.nextDouble() * 5.0;
                 Location candidate = snapshot.clone().add(Math.cos(angle) * radial, y, Math.sin(angle) * radial);
                 boolean spaced = result.stream().allMatch(existing -> existing.distanceSquared(candidate) >= MIN_SPACING * MIN_SPACING);
                 if (spaced && spaceValidator.test(candidate)) {

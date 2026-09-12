@@ -4,7 +4,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -19,9 +18,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -36,31 +33,32 @@ final class GatewayBossRuntime extends BukkitRunnable {
     private final GatewaySession session;
     private final GatewayBossConfig config;
     private final Runnable endSession;
+    private final Runnable gatewayPhase;
     private final GatewayBossState state;
     private final Location core;
     private final List<ItemDisplay> orbitWeapons = new ArrayList<>();
     private final List<WeaponFlight> flights = new ArrayList<>();
-    private final List<PendingSummon> pendingSummons = new ArrayList<>();
-    private final Map<UUID, Integer> summonAges = new HashMap<>();
     private final Random random = new Random();
-    private BlockDisplay coreDisplay;
+    private ItemDisplay coreDisplay;
     private long tick;
     private long nextAttackTick = 45;
     private long nextParryTick;
     private boolean disposed;
 
-    GatewayBossRuntime(Plugin plugin, GatewaySession session, GatewayBossConfig config, Runnable endSession) {
+    GatewayBossRuntime(Plugin plugin, GatewaySession session, GatewayBossConfig config, Runnable endSession, Runnable gatewayPhase) {
         this.plugin = plugin;
         this.session = session;
         this.config = config;
         this.endSession = endSession;
+        this.gatewayPhase = gatewayPhase;
         this.state = new GatewayBossState(config.maxOrbitWeapons());
         this.core = session.bossTarget();
     }
 
     void start() {
-        coreDisplay = core.getWorld().spawn(core, BlockDisplay.class, display -> {
-            display.setBlock(Material.END_GATEWAY.createBlockData());
+        // This is a normal combat core, deliberately not an END_GATEWAY. Gateways are special-phase only.
+        coreDisplay = core.getWorld().spawn(core, ItemDisplay.class, display -> {
+            display.setItemStack(new ItemStack(Material.END_CRYSTAL));
             display.setPersistent(false);
         });
         session.entities().add(coreDisplay);
@@ -79,6 +77,11 @@ final class GatewayBossRuntime extends BukkitRunnable {
 
     boolean ownsDummy(Entity entity) {
         return session.dummy() != null && session.dummy().entity().getUniqueId().equals(entity.getUniqueId());
+    }
+
+    boolean ownsHiddenDriver(Entity entity) {
+        return flights.stream().anyMatch(flight -> flight.hiddenDriver != null
+                && flight.hiddenDriver.getUniqueId().equals(entity.getUniqueId()));
     }
 
     void playerStruckBoss(double damage) {
@@ -106,15 +109,12 @@ final class GatewayBossRuntime extends BukkitRunnable {
         updateCore();
         updateOrbitWeapons();
         updateFlights();
-        updateSummons();
         if (tick >= nextAttackTick && playerWithinRange()) scheduleNextPhase();
     }
 
     void dispose() {
         disposed = true;
         flights.clear();
-        pendingSummons.clear();
-        summonAges.clear();
         state.cleanup();
         cancel();
     }
@@ -143,24 +143,38 @@ final class GatewayBossRuntime extends BukkitRunnable {
             if (state.slotStatus(slot) != GatewayBossState.SlotStatus.ORBITING) continue;
             ItemDisplay display = orbitWeapons.get(slot);
             if (!display.isValid()) { endSession.run(); return; }
-            double angle = tick * config.orbitSpeed() * (burst ? 1.35D : 1.0D)
-                    + Math.PI * 2D * slot / orbitWeapons.size();
-            double radius = config.orbitRadius() + Math.sin(tick * .06D + slot) * .35D;
-            Location at = core.clone().add(Math.cos(angle) * radius, .45D + Math.sin(angle * 2D) * .9D,
-                    Math.sin(angle) * radius);
+            // Two local weapon slots per family ring.  The local orbit moves first, then its
+            // orbital plane itself rotates: an armillary core, not stacked horizontal circles.
+            int ring = slot % 3;
+            int localSlot = slot / 3;
+            double localAngle = tick * config.orbitSpeed() * (burst ? 1.35D : 1.0D) + localSlot * Math.PI;
+            double planeAngle = tick * (.011D + ring * .003D) + ring * 1.17D;
+            double radius = config.orbitRadius() + ring * .55D;
+            Vector localPoint = new Vector(Math.cos(localAngle) * radius, Math.sin(localAngle) * radius, 0);
+            Vector planeRotated = rotateX(rotateY(localPoint, planeAngle), .48D + ring * .42D);
+            Location at = core.clone().add(planeRotated);
             display.teleport(at);
-            display.setTransformation(transform(1.45F, (float) (angle + Math.PI / 2D),
-                    (float) (tick * .12D + slot), (float) (Math.sin(angle) * .45D)));
+            display.setTransformation(transform(1.45F, (float) (localAngle + planeAngle + Math.PI / 2D),
+                    (float) (tick * .12D + slot), (float) (Math.sin(localAngle) * .45D)));
         }
+    }
+
+    private Vector rotateY(Vector value, double angle) {
+        return new Vector(value.getX() * Math.cos(angle) + value.getZ() * Math.sin(angle), value.getY(),
+                -value.getX() * Math.sin(angle) + value.getZ() * Math.cos(angle));
+    }
+    private Vector rotateX(Vector value, double angle) {
+        return new Vector(value.getX(), value.getY() * Math.cos(angle) - value.getZ() * Math.sin(angle),
+                value.getY() * Math.sin(angle) + value.getZ() * Math.cos(angle));
     }
 
     private void scheduleNextPhase() {
         int cadence = isBurst() ? config.burstCooldownTicks() : config.attackCooldownTicks();
         nextAttackTick = tick + cadence;
-        int choice = random.nextInt(4);
-        if (choice == 3 && state.activeSummons() < config.maxActiveSummons()) {
-            pendingSummons.add(new PendingSummon(18));
-            pulseGateway(2.8F, Particle.END_ROD);
+        int choice = random.nextInt(5);
+        if (choice == 4) {
+            // The network appears only for this transient special phase, then the service removes it.
+            gatewayPhase.run();
             return;
         }
         int slot = firstOrbitingSlot();
@@ -179,53 +193,13 @@ final class GatewayBossRuntime extends BukkitRunnable {
         }
     }
 
-    private void updateSummons() {
-        for (int index = pendingSummons.size() - 1; index >= 0; index--) {
-            PendingSummon pending = pendingSummons.get(index);
-            if (--pending.telegraphTicks > 0) {
-                core.getWorld().spawnParticle(Particle.END_ROD, core, 3, .55, .55, .55, .01);
-                continue;
-            }
-            int remaining = config.maxActiveSummons() - state.activeSummons();
-            for (int count = 0; count < Math.min(config.vexSummonCount(), remaining); count++) spawnVex(count);
-            pendingSummons.remove(index);
-        }
-        for (var iterator = summonAges.entrySet().iterator(); iterator.hasNext();) {
-            var entry = iterator.next();
-            Entity entity = plugin.getServer().getEntity(entry.getKey());
-            if (!(entity instanceof Vex vex) || !vex.isValid() || entry.getValue() >= config.summonLifetimeTicks()) {
-                if (entity != null && entity.isValid()) entity.remove();
-                state.removeSummon(entry.getKey()); iterator.remove(); continue;
-            }
-            Player owner = plugin.getServer().getPlayer(session.ownerId());
-            if (owner != null) vex.setTarget(owner);
-            entry.setValue(entry.getValue() + 1);
-        }
-    }
-
-    private void spawnVex(int offset) {
-        Location at = core.clone().add((offset - .5D) * 1.4D, .4D, 0);
-        Vex vex = core.getWorld().spawn(at, Vex.class, entity -> {
-            entity.setPersistent(false);
-            entity.setCustomName("§5Gateway Wraith");
-            entity.setCustomNameVisible(false);
-            entity.setGlowing(true);
-        });
-        if (!state.addSummon(vex.getUniqueId(), config.maxActiveSummons())) { vex.remove(); return; }
-        Player owner = plugin.getServer().getPlayer(session.ownerId());
-        if (owner != null) vex.setTarget(owner);
-        summonAges.put(vex.getUniqueId(), 0);
-        session.entities().add(vex);
-        core.getWorld().spawnParticle(Particle.WITCH, at, 14, .35, .35, .35, .04);
-        core.getWorld().playSound(at, Sound.ENTITY_VEX_CHARGE, .8F, .75F);
-    }
 
     private int firstOrbitingSlot() {
-        for (int offset = 0; offset < state.slotCount(); offset++) {
-            int slot = (int) ((tick + offset) % state.slotCount());
-            if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING) return slot;
+        List<Integer> eligible = new ArrayList<>();
+        for (int slot = 0; slot < state.slotCount(); slot++) {
+            if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING) eligible.add(slot);
         }
-        return -1;
+        return eligible.isEmpty() ? -1 : eligible.get(random.nextInt(eligible.size()));
     }
 
     private boolean isBurst() {
@@ -256,7 +230,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
         private int age;
         private boolean launched;
         private boolean hit;
-        private Vector velocity;
+        private Vex hiddenDriver;
 
         private WeaponFlight(int slot, WeaponKind kind, boolean counter, int telegraphTicks) {
             this.slot = slot; this.kind = kind; this.counter = counter; this.telegraphTicks = telegraphTicks;
@@ -275,24 +249,25 @@ final class GatewayBossRuntime extends BukkitRunnable {
                 launched = true; state.launch(slot);
                 Player owner = plugin.getServer().getPlayer(session.ownerId());
                 if (owner == null) return true;
-                Vector delta = owner.getEyeLocation().toVector().subtract(display.getLocation().toVector());
-                if (delta.lengthSquared() < .001D) delta = new Vector(0, 0, 1);
-                velocity = delta.normalize().multiply(counter ? config.parryReturnSpeed() : config.weaponThrowSpeed());
+                hiddenDriver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
+                    vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true);
+                    vex.setTarget(owner); vex.setCharging(true);
+                });
+                session.entities().add(hiddenDriver);
                 core.getWorld().playSound(display.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.2F, counter ? .65F : .85F);
             }
             age++;
-            Location from = display.getLocation();
-            Vector step = velocity.clone();
-            if (kind == WeaponKind.HOE) {
-                Vector side = new Vector(-velocity.getZ(), 0, velocity.getX()).normalize().multiply(Math.sin(age * .22D) * .14D);
-                step.add(side);
-            }
-            display.teleport(from.add(step));
+            if (hiddenDriver == null || !hiddenDriver.isValid()) return true;
+            Player owner = plugin.getServer().getPlayer(session.ownerId());
+            if (owner == null || !owner.isOnline()) return true;
+            // The invisible Vex is strictly a movement driver.  The visible, damaging actor is this
+            // detached orbital weapon display; it follows the driver's vanilla aerial pursuit.
+            hiddenDriver.setTarget(owner);
+            display.teleport(hiddenDriver.getLocation().add(0, .35, 0));
             display.setTransformation(transform(2.65F, (float) (age * .28D), (float) (age * .18D), (float) (age * .33D)));
             display.getWorld().spawnParticle(kind == WeaponKind.AXE ? Particle.CRIT : Particle.END_ROD,
                     display.getLocation(), 5, .12, .12, .12, .01);
-            Player owner = plugin.getServer().getPlayer(session.ownerId());
-            if (!hit && owner != null && owner.getWorld().equals(display.getWorld())) {
+            if (!hit && owner.getWorld().equals(display.getWorld())) {
                 double radius = kind == WeaponKind.SWORD ? 1.25D : kind == WeaponKind.AXE ? 2.0D : 2.3D;
                 if (owner.getLocation().distanceSquared(display.getLocation()) <= radius * radius) {
                     owner.damage(damageFor(kind)); hit = true;
@@ -301,6 +276,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             }
             if (age >= config.cleanupTimeoutTicks() || hit) {
                 display.getWorld().spawnParticle(Particle.END_ROD, display.getLocation(), 18, .25, .25, .25, .05);
+                hiddenDriver.remove();
                 return true;
             }
             return false;
@@ -311,8 +287,4 @@ final class GatewayBossRuntime extends BukkitRunnable {
         }
     }
 
-    private static final class PendingSummon {
-        private int telegraphTicks;
-        private PendingSummon(int telegraphTicks) { this.telegraphTicks = telegraphTicks; }
-    }
 }

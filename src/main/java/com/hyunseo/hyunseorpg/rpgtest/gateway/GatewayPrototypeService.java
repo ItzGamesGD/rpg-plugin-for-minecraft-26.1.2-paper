@@ -24,6 +24,7 @@ import org.bukkit.entity.SmallFireball;
 import org.bukkit.entity.Trident;
 import org.bukkit.entity.WindCharge;
 import org.bukkit.entity.WitherSkull;
+import org.bukkit.entity.Vex;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -77,15 +78,52 @@ public final class GatewayPrototypeService implements Listener {
 
     /** Starts the complete gateway-owned boss loop, not the legacy one-shot payload test. */
     public String bossBattle(Player player, boolean debug) {
-        String result = startSession(player, debug, true);
-        GatewaySession session = sessions.get(player.getUniqueId());
-        if (session == null) return result;
+        cleanup(player.getUniqueId());
+        Location snapshot = player.getLocation().clone().add(0, 1, 0);
+        Location boss = bossPoint(player).add(player.getLocation().getDirection().setY(0).normalize().multiply(7));
+        GatewaySession session = new GatewaySession(player, snapshot, boss, List.of());
+        ArmorStand stand = boss.getWorld().spawn(boss, ArmorStand.class, entity -> {
+            entity.setGravity(false); entity.setPersistent(false); entity.setInvulnerable(true); entity.setVisible(true);
+        });
+        session.entities().add(stand); session.setDummy(new PrototypeBossDummy(stand));
+        sessions.put(player.getUniqueId(), session);
         GatewayBossRuntime runtime = new GatewayBossRuntime(plugin, session, GatewayBossConfig.from(config),
-                () -> cleanup(player.getUniqueId()));
+                () -> cleanup(player.getUniqueId()), () -> triggerGatewayPhase(session, player, debug));
         bossBattles.put(player.getUniqueId(), runtime);
         runtime.start();
-        return "Gateway Boss engaged: orbit/throw/summon/counter phases active; range="
+        return "Gateway Boss engaged: orbital/basic/gateway phases active; range="
                 + GatewayBossConfig.from(config).attackRange();
+    }
+
+    /** Temporary special phase only; normal boss combat never owns Gateway visuals. */
+    private void triggerGatewayPhase(GatewaySession session, Player player, boolean debug) {
+        if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
+        Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
+        List<Location> launchers = placement.launcherLocations(phaseSnapshot,
+                DEFAULT_GATEWAY_COUNT, 12, 5, random, this::gatewaySpaceClear);
+        if (launchers.size() != DEFAULT_GATEWAY_COUNT) return;
+        List<Location> returns = placement.returnLocations(session.bossTarget(), DEFAULT_GATEWAY_COUNT);
+        List<Entity> phaseVisuals = new ArrayList<>();
+        List<GatewayPair> pairs = new ArrayList<>();
+        for (int i = 0; i < launchers.size(); i++) {
+            BlockDisplay launcher = gatewayDisplay(launchers.get(i), 2), returning = gatewayDisplay(returns.get(i), 1);
+            phaseVisuals.add(launcher); phaseVisuals.add(returning); session.entities().add(launcher); session.entities().add(returning);
+            pairs.add(new GatewayPair(i + 1, launchers.get(i), returns.get(i),
+                    placement.snapshotForward(launchers.get(i), phaseSnapshot), launcher.getUniqueId(), returning.getUniqueId()));
+        }
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, LOCAL_CAPS);
+        long delay = 16;
+        for (int attempt = 0; attempt < GATEWAY_TOTAL_CAP * 4 && scheduler.total() < GATEWAY_TOTAL_CAP; attempt++) {
+            GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
+            GatewayPair pair = pairs.get(random.nextInt(pairs.size()));
+            long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
+            if (!scheduler.reserve(pair.id(), type, delay, active, GATEWAY_RECOVERY_TICKS)) { delay += 3; continue; }
+            session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin,
+                    () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay));
+            delay += 7;
+        }
+        session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin,
+                () -> phaseVisuals.forEach(Entity::remove), delay + 80));
     }
 
     public String randomCycle(Player player, boolean debug) {
@@ -254,6 +292,14 @@ public final class GatewayPrototypeService implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true) public void onReflect(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Vex) {
+            for (GatewayBossRuntime battle : bossBattles.values()) {
+                if (battle.ownsHiddenDriver(event.getDamager())) { event.setCancelled(true); return; }
+            }
+            for (BasicWeaponRuntime basic : basics.values()) {
+                if (basic.ownsHiddenDriver(event.getDamager())) { event.setCancelled(true); return; }
+            }
+        }
         if (event.getDamager() instanceof Player) {
             for (GatewayBossRuntime battle : new ArrayList<>(bossBattles.values())) {
                 if (battle.ownsDummy(event.getEntity())) {

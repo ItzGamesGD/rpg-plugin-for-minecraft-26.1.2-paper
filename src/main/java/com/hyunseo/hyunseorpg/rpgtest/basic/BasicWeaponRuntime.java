@@ -53,10 +53,14 @@ public final class BasicWeaponRuntime {
     private Vex vexActor(Player target, Location location, Material weapon) {
         Vex vex = location.getWorld().spawn(location, Vex.class, actor -> {
             actor.setPersistent(false);
+            actor.setInvisible(true);
+            actor.setInvulnerable(true);
+            actor.setSilent(true);
             actor.setTarget(target);
             actor.setCharging(true);
-            actor.getEquipment().setItemInMainHand(new ItemStack(weapon));
-            actor.getEquipment().setItemInMainHandDropChance(0);
+            // A Vex is an internal movement driver only. The visible and damaging thing is
+            // the paired ItemDisplay weapon below, never a Gateway Wraith/add mob.
+            actor.getEquipment().clear();
             actor.setCustomNameVisible(false);
         });
         entities.add(vex);
@@ -65,13 +69,15 @@ public final class BasicWeaponRuntime {
 
     private void spawnVexMelee(Player target, Location core, BasicWeaponPattern pattern, int offset) {
         Vex vex = vexActor(target, offset(core, offset), material(pattern));
+        ItemDisplay weapon = display(vex.getLocation(), material(pattern), 1.35f);
         int interval = switch (pattern) { case MACE_MELEE -> 32; case SPEAR_MELEE -> 20; case AXE_MELEE -> 25; default -> 17; };
         double damage = switch (pattern) { case MACE_MELEE -> 7; case SPEAR_MELEE -> 4; case AXE_MELEE -> 5; default -> 3; };
         BukkitRunnable task = new BukkitRunnable() {
             int age;
             @Override public void run() {
-                if (!valid(vex, target) || age++ > 400) { remove(vex); cancel(); return; }
+                if (!valid(vex, target) || age++ > 400) { remove(weapon); remove(vex); cancel(); return; }
                 vex.setTarget(target);
+                weapon.teleport(vex.getLocation().add(0, .35, 0));
                 if (age % interval == 0 && vex.getLocation().distanceSquared(target.getLocation()) < 4.0) {
                     target.damage(damage, vex);
                     Vector push = target.getLocation().toVector().subtract(vex.getLocation().toVector()).normalize()
@@ -86,12 +92,14 @@ public final class BasicWeaponRuntime {
 
     private void spawnTridentThrower(Player target, Location core, int offset) {
         Vex vex = vexActor(target, offset(core, offset), Material.TRIDENT);
+        ItemDisplay weapon = display(vex.getLocation(), Material.TRIDENT, 1.25f);
         BukkitRunnable task = new BukkitRunnable() {
             int age;
             enum State { RETREAT, AIM, THROW, RECOVER, RESUME }
             State state = State.RETREAT;
             @Override public void run() {
-                if (!valid(vex, target) || age++ > 500) { remove(vex); cancel(); return; }
+                if (!valid(vex, target) || age++ > 500) { remove(weapon); remove(vex); cancel(); return; }
+                weapon.teleport(vex.getLocation().add(0, .35, 0));
                 switch (state) {
                     case RETREAT -> {
                         vex.setTarget(null);
@@ -183,5 +191,9 @@ public final class BasicWeaponRuntime {
     private Material material(BasicWeaponPattern pattern) { return switch (pattern) { case MACE_MELEE -> Material.MACE; case SPEAR_MELEE -> Material.TRIDENT; case AXE_MELEE -> Material.NETHERITE_AXE; case HOE_MELEE -> Material.NETHERITE_HOE; default -> Material.AIR; }; }
     private Sound sound(BasicWeaponPattern pattern) { return switch (pattern) { case MACE_MELEE -> Sound.ITEM_MACE_SMASH_GROUND_HEAVY; case AXE_MELEE -> Sound.ITEM_AXE_STRIP; case HOE_MELEE -> Sound.ITEM_HOE_TILL; default -> Sound.ENTITY_PLAYER_ATTACK_SWEEP; }; }
     private void remove(Entity entity) { entities.remove(entity); entity.remove(); }
+    /** Vexes are movement-only internal drivers; their vanilla bite is always suppressed. */
+    public boolean ownsHiddenDriver(Entity entity) {
+        return entity instanceof Vex && entities.stream().anyMatch(owned -> owned.getUniqueId().equals(entity.getUniqueId()));
+    }
     public void cleanup() { tasks.forEach(BukkitTask::cancel); tasks.clear(); List.copyOf(entities).forEach(Entity::remove); entities.clear(); }
 }

@@ -16,10 +16,11 @@ class GatewayBossConfigTest {
         YamlConfiguration yaml = loadBosses();
         String root = "gateway-boss.";
         assertTrue(yaml.getDouble(root + "attack-range") >= 20.0D);
-        assertTrue(yaml.getInt(root + "weapon-throw-telegraph-ticks") >= 10);
-        assertTrue(yaml.getInt(root + "parry-telegraph-ticks") >= 15);
-        assertTrue(yaml.getDouble(root + "parry-return-speed") < yaml.getDouble(root + "weapon-throw-speed"));
-        assertTrue(yaml.getInt(root + "max-active-summons") >= yaml.getInt(root + "vex-summon-count"));
+        assertTrue(yaml.getInt(root + "basic.detach-telegraph-ticks") >= 10);
+        assertTrue(yaml.getInt(root + "reflection.parry-telegraph-ticks") >= 15);
+        assertTrue(yaml.getDouble(root + "reflection.parry-return-speed") < 1.0D);
+        assertTrue(yaml.getInt(root + "internal-ai-driver.max-active") > 0);
+        assertTrue(!yaml.contains(root + "vex-summon-count"));
         assertNotNull(yaml.getConfigurationSection(root + "phase-health-thresholds"));
     }
 
