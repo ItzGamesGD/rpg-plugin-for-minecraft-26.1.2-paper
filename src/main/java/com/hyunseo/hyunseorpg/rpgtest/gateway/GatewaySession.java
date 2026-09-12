@@ -16,6 +16,7 @@ public final class GatewaySession {
     private final List<GatewayPair> pairs;
     private final List<Entity> entities = new ArrayList<>();
     private final List<BukkitTask> tasks = new ArrayList<>();
+    private final GatewayPhaseState gatewayPhase = new GatewayPhaseState();
     private PrototypeBossDummy dummy;
 
     public GatewaySession(Player owner, Location snapshot, Location bossTarget, List<GatewayPair> pairs) {
@@ -32,6 +33,7 @@ public final class GatewaySession {
     public List<Entity> entities() { return entities; }
     public List<BukkitTask> tasks() { return tasks; }
     public PrototypeBossDummy dummy() { return dummy; }
+    public GatewayPhaseState gatewayPhase() { return gatewayPhase; }
     public void setDummy(PrototypeBossDummy dummy) { this.dummy = dummy; }
 
     public void cleanup() {
@@ -39,5 +41,6 @@ public final class GatewaySession {
         tasks.clear();
         entities.forEach(entity -> { if (entity.isValid()) entity.remove(); });
         entities.clear();
+        gatewayPhase.close();
     }
 }

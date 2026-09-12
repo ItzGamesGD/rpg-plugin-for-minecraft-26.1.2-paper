@@ -99,9 +99,10 @@ public final class GatewayPrototypeService implements Listener {
     private void triggerGatewayPhase(GatewaySession session, Player player, boolean debug) {
         if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
         Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
+        if (!session.gatewayPhase().begin(phaseSnapshot)) return;
         List<Location> launchers = placement.launcherLocations(phaseSnapshot,
                 DEFAULT_GATEWAY_COUNT, 12, 5, random, this::gatewaySpaceClear);
-        if (launchers.size() != DEFAULT_GATEWAY_COUNT) return;
+        if (launchers.size() != DEFAULT_GATEWAY_COUNT) { session.gatewayPhase().close(); return; }
         List<Location> returns = placement.returnLocations(session.bossTarget(), DEFAULT_GATEWAY_COUNT);
         List<Entity> phaseVisuals = new ArrayList<>();
         List<GatewayPair> pairs = new ArrayList<>();
@@ -111,6 +112,7 @@ public final class GatewayPrototypeService implements Listener {
             pairs.add(new GatewayPair(i + 1, launchers.get(i), returns.get(i),
                     placement.snapshotForward(launchers.get(i), phaseSnapshot), launcher.getUniqueId(), returning.getUniqueId()));
         }
+        session.gatewayPhase().deploy();
         GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, LOCAL_CAPS);
         long delay = 16;
         for (int attempt = 0; attempt < GATEWAY_TOTAL_CAP * 4 && scheduler.total() < GATEWAY_TOTAL_CAP; attempt++) {
@@ -122,8 +124,11 @@ public final class GatewayPrototypeService implements Listener {
                     () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay));
             delay += 7;
         }
-        session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin,
-                () -> phaseVisuals.forEach(Entity::remove), delay + 80));
+        session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            session.gatewayPhase().resolve();
+            phaseVisuals.forEach(Entity::remove);
+            session.gatewayPhase().close();
+        }, delay + 80));
     }
 
     public String randomCycle(Player player, boolean debug) {
