@@ -7,7 +7,7 @@ public record GatewayBossConfig(
         double attackRange, double orbitRadius, double orbitSpeed, int maxOrbitWeapons,
         double ringPlaneSpeed,
         double weaponThrowSpeed, int weaponThrowTelegraphTicks,
-        double swordThrowDamage, double axeSpinDamage, double hoeSweepDamage,
+        double maceDamage, double axeDamage, double hoeDamage,
         int parryTelegraphTicks, double parryReturnSpeed, int parryCooldownTicks,
         int basicActorCap, int basicActorLifetimeTicks, int maxActiveDrivers, int driverLifetimeTicks,
         double phaseSpacing, double burstHealthThreshold, int attackCooldownTicks, int burstCooldownTicks,

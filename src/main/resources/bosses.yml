@@ -26,6 +26,33 @@ gateway-boss:
     parry-telegraph-ticks: 22
     parry-return-speed: 0.42
     parry-cooldown-ticks: 100
+    interaction:
+      arrow: 0.90
+      small-fireball: 1.35
+      default: 1.10
+  payload:
+    speed-multiplier: 0.90
+    local-caps:
+      sonic-boom: 2
+      beam: 2
+      dragon-breath: 2
+      flame-stream: 3
+      end-crystal-bomb: 3
+  damage:
+    reflected:
+      arrow: 6.0
+      trident: 10.0
+      blaze-small-fireball: 7.0
+      ghast-fireball: 13.0
+      wither-skull: 11.0
+      shulker-bullet: 8.0
+      wind-charge: 8.0
+      end-crystal-bomb: 22.0
+    volume:
+      sonic-boom: 8.0
+      dragon-breath: 4.0
+      flame-stream: 3.0
+      beam: 7.0
   gateway:
     count: 7
     radial-min: 8.0

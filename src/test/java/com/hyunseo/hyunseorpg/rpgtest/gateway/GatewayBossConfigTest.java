@@ -20,6 +20,10 @@ class GatewayBossConfigTest {
         assertTrue(yaml.getInt(root + "basic.detach-telegraph-ticks") >= 10);
         assertTrue(yaml.getDouble(root + "basic.weapon-throw-speed") < 1.0D);
         assertTrue(yaml.getDouble(root + "gateway.phase-spacing") >= 8.0D);
+        assertTrue(yaml.getDouble(root + "payload.speed-multiplier") > 0.0D);
+        assertTrue(yaml.getInt(root + "payload.local-caps.end-crystal-bomb") > 0);
+        assertTrue(yaml.getDouble(root + "reflection.interaction.arrow") > 0.0D);
+        assertTrue(yaml.getDouble(root + "damage.reflected.end-crystal-bomb") > 0.0D);
         assertTrue(yaml.getInt(root + "reflection.parry-telegraph-ticks") >= 15);
         assertTrue(yaml.getDouble(root + "reflection.parry-return-speed") < 1.0D);
         assertTrue(yaml.getInt(root + "internal-ai-driver.max-active") > 0);

@@ -56,6 +56,7 @@ public final class BasicWeaponRuntime {
             actor.setInvisible(true);
             actor.setInvulnerable(true);
             actor.setSilent(true);
+            actor.setCollidable(false);
             actor.setTarget(target);
             actor.setCharging(true);
             // A Vex is an internal movement driver only. The visible and damaging thing is

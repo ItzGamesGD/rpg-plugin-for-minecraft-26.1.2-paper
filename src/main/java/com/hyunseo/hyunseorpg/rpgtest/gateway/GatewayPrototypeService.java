@@ -53,12 +53,7 @@ public final class GatewayPrototypeService implements Listener {
     public static final int GATEWAY_TOTAL_CAP = 16;
     /** Caps attack-pattern AI actors. Projectiles emitted by an actor do not consume this cap. */
     public static final int BASIC_ACTOR_CAP = 14;
-    public static final double PROJECTILE_SPEED_MULTIPLIER = .90;
     public static final long GATEWAY_RECOVERY_TICKS = 8;
-    private static final Map<GatewayPayloadType, Integer> LOCAL_CAPS = Map.of(
-            GatewayPayloadType.SONIC_BOOM, 2, GatewayPayloadType.BEAM, 2,
-            GatewayPayloadType.DRAGON_BREATH, 2, GatewayPayloadType.FLAME_STREAM, 3,
-            GatewayPayloadType.END_CRYSTAL_BOMB, 3);
 
     private final Plugin plugin;
     private final ConfigService config;
@@ -99,6 +94,10 @@ public final class GatewayPrototypeService implements Listener {
     /** Temporary special phase only; normal boss combat never owns Gateway visuals. */
     private void triggerGatewayPhase(GatewaySession session, Player player, boolean debug) {
         if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
+        double phaseSpacing = Math.max(8.0D, Math.min(32.0D, config.getBossesDouble("gateway-boss.gateway.phase-spacing", 16.0D)));
+        // A player who closes to the core makes the broad portal formation unreadable. Defer this
+        // special rather than applying a forced displacement; the next random cycle can try again.
+        if (player.getLocation().distanceSquared(session.bossTarget()) < phaseSpacing * phaseSpacing * .36D) return;
         Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
         if (!session.gatewayPhase().begin(phaseSnapshot)) return;
         int gatewayCount = Math.max(6, Math.min(16, config.getBossesInt("gateway-boss.gateway.count", DEFAULT_GATEWAY_COUNT)));
@@ -122,7 +121,7 @@ public final class GatewayPrototypeService implements Listener {
                     placement.snapshotForward(launchers.get(i), phaseSnapshot), launcher.getUniqueId(), returning.getUniqueId()));
         }
         session.gatewayPhase().deploy();
-        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(payloadCap, LOCAL_CAPS);
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(payloadCap, localPayloadCaps());
         long delay = 16;
         for (int attempt = 0; attempt < payloadCap * 4 && scheduler.total() < payloadCap; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
@@ -144,7 +143,7 @@ public final class GatewayPrototypeService implements Listener {
         String result = startSession(player, debug, true);
         GatewaySession session = sessions.get(player.getUniqueId());
         if (session == null) return result;
-        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, LOCAL_CAPS);
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, localPayloadCaps());
         long delay = 15;
         for (int attempt = 0; attempt < GATEWAY_TOTAL_CAP * 4 && scheduler.total() < GATEWAY_TOTAL_CAP; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
@@ -247,12 +246,12 @@ public final class GatewayPrototypeService implements Listener {
         ReflectableProjectileState state = new ReflectableProjectileState(projectile.getUniqueId(), pair.id(), type);
         RoutedProjectile routed = new RoutedProjectile(session, pair, state, projectile, reflection, debug);
         reflections.put(reflection.getUniqueId(), routed); projectiles.put(projectile.getUniqueId(), routed);
-        routed.runTaskTimer(plugin, 1, 1);
+        session.tasks().add(routed.runTaskTimer(plugin, 1, 1));
     }
 
     private Projectile spawnNativeProjectile(GatewaySession session, GatewayPair pair, GatewayPayloadType type) {
         Location origin = pair.launcher().clone().add(pair.snapshotForward().multiply(1.2));
-        Vector velocity = pair.snapshotForward().multiply(baseSpeed(type) * PROJECTILE_SPEED_MULTIPLIER);
+        Vector velocity = pair.snapshotForward().multiply(baseSpeed(type) * payloadSpeedMultiplier());
         Projectile projectile = switch (type) {
             case ARROW -> origin.getWorld().spawn(origin, org.bukkit.entity.Arrow.class);
             case TRIDENT -> origin.getWorld().spawn(origin, Trident.class);
@@ -283,7 +282,7 @@ public final class GatewayPrototypeService implements Listener {
         });
         session.entities().add(crystal); session.entities().add(reflection);
         CrystalRuntime runtime = new CrystalRuntime(session, pair, new ReflectableProjectileState(crystal.getUniqueId(), pair.id(), GatewayPayloadType.END_CRYSTAL_BOMB), crystal, reflection, debug);
-        reflections.put(reflection.getUniqueId(), runtime); runtime.runTaskTimer(plugin, 1, 1);
+        reflections.put(reflection.getUniqueId(), runtime); session.tasks().add(runtime.runTaskTimer(plugin, 1, 1));
     }
 
     private void fireVolume(GatewaySession session, GatewayPair pair, GatewayPayloadType type) {
@@ -360,11 +359,35 @@ public final class GatewayPrototypeService implements Listener {
     private Location bossPoint(Player player) { return bossPoint(player, 10.0D); }
     private Location bossPoint(Player player, double spacing) { Vector forward=player.getLocation().getDirection().setY(0); if(forward.lengthSquared()<.01)forward.setZ(1); return player.getLocation().clone().add(forward.normalize().multiply(spacing)).add(0,1,0); }
     private String format(Location l) { return "%.1f,%.1f,%.1f".formatted(l.getX(),l.getY(),l.getZ()); }
-    private float reflectionSize(GatewayPayloadType type) { return type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? 1.35f : type == GatewayPayloadType.ARROW ? .9f : 1.1f; }
+    private Map<GatewayPayloadType, Integer> localPayloadCaps() {
+        return Map.of(
+                GatewayPayloadType.SONIC_BOOM, payloadCap("sonic-boom", 2),
+                GatewayPayloadType.BEAM, payloadCap("beam", 2),
+                GatewayPayloadType.DRAGON_BREATH, payloadCap("dragon-breath", 2),
+                GatewayPayloadType.FLAME_STREAM, payloadCap("flame-stream", 3),
+                GatewayPayloadType.END_CRYSTAL_BOMB, payloadCap("end-crystal-bomb", 3));
+    }
+    private int payloadCap(String name, int fallback) { return Math.max(1, Math.min(16, config.getBossesInt("gateway-boss.payload.local-caps." + name, fallback))); }
+    private double payloadSpeedMultiplier() { return bounded("gateway-boss.payload.speed-multiplier", .90D, .10D, 1.20D); }
+    private float reflectionSize(GatewayPayloadType type) {
+        String key = type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? "small-fireball" : type == GatewayPayloadType.ARROW ? "arrow" : "default";
+        return (float) bounded("gateway-boss.reflection.interaction." + key, type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? 1.35D : type == GatewayPayloadType.ARROW ? .90D : 1.10D, .25D, 3.0D);
+    }
     private double baseSpeed(GatewayPayloadType type) { return switch(type) { case ARROW->1.5; case BLAZE_SMALL_FIREBALL->1.1; case TRIDENT->1.25; case WIND_CHARGE->.9; case SHULKER_BULLET->.55; case GHAST_FIREBALL->.65; case WITHER_SKULL->.7; default->.5; }; }
-    private double reflectedDamage(GatewayPayloadType type) { return switch(type) { case ARROW->6; case TRIDENT->10; case BLAZE_SMALL_FIREBALL->7; case GHAST_FIREBALL->13; case WITHER_SKULL->11; case SHULKER_BULLET->8; case WIND_CHARGE->8; case END_CRYSTAL_BOMB->22; default->0; }; }
+    private double reflectedDamage(GatewayPayloadType type) {
+        double fallback = switch(type) { case ARROW->6; case TRIDENT->10; case BLAZE_SMALL_FIREBALL->7; case GHAST_FIREBALL->13; case WITHER_SKULL->11; case SHULKER_BULLET->8; case WIND_CHARGE->8; case END_CRYSTAL_BOMB->22; default->0; };
+        return bounded("gateway-boss.damage.reflected." + payloadKey(type), fallback, 0, 40);
+    }
     private double volumeRadius(GatewayPayloadType type) { return switch(type) { case SONIC_BOOM, BEAM->.75; case FLAME_STREAM->1.2; default->1.5; }; }
-    private double volumeDamage(GatewayPayloadType type) { return switch(type) { case SONIC_BOOM->8; case BEAM->7; case FLAME_STREAM->3; default->4; }; }
+    private double volumeDamage(GatewayPayloadType type) {
+        double fallback = switch(type) { case SONIC_BOOM->8; case BEAM->7; case FLAME_STREAM->3; default->4; };
+        return bounded("gateway-boss.damage.volume." + payloadKey(type), fallback, 0, 30);
+    }
+    private String payloadKey(GatewayPayloadType type) { return type.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'); }
+    private double bounded(String path, double fallback, double min, double max) {
+        double value = config.getBossesDouble(path, fallback);
+        return Double.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+    }
     static boolean shouldDamageVolume(GatewayPayloadType type, int age, int telegraph) {
         if (type == GatewayPayloadType.SONIC_BOOM) return age == telegraph;
         return type.sustained() && age >= telegraph && (age - telegraph) % 8 == 0;

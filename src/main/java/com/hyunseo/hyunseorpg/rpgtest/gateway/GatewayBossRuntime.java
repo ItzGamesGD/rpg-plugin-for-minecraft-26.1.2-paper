@@ -290,7 +290,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
                 if (owner == null) return true;
                 if (requiresDriver()) {
                     hiddenDriver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
-                        vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true);
+                        vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true); vex.setCollidable(false);
                         vex.getEquipment().clear(); vex.setTarget(owner); vex.setCharging(true);
                     });
                     if (!state.addDriver(hiddenDriver.getUniqueId(), config.maxActiveDrivers())) {
@@ -335,7 +335,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             display.teleport(display.getLocation().add(0, -.42D, 0));
             display.setTransformation(transform(2.4F, age * .32F, 0, 0));
             if (display.getLocation().getBlock().getType().isSolid() || display.getBoundingBox().expand(.25).overlaps(owner.getBoundingBox())) {
-                if (owner.getLocation().distanceSquared(display.getLocation()) <= 9) owner.damage(config.swordThrowDamage());
+                if (owner.getLocation().distanceSquared(display.getLocation()) <= 9) owner.damage(config.maceDamage());
                 display.getWorld().spawnParticle(Particle.EXPLOSION, display.getLocation(), 2, .25, .1, .25, .01);
                 return true;
             }
@@ -369,11 +369,11 @@ final class GatewayBossRuntime extends BukkitRunnable {
             if (hiddenDriver != null) { state.removeDriver(hiddenDriver.getUniqueId()); hiddenDriver.remove(); hiddenDriver = null; }
         }
         private double damageFor(BasicWeaponPattern weapon) {
-            if (counter) return config.swordThrowDamage();
+            if (counter) return config.maceDamage();
             return switch (weapon) {
-                case MACE_MELEE, MACE_DROP -> config.swordThrowDamage();
-                case SPEAR_MELEE, SPEAR_LUNGE, TRIDENT_THROWER -> config.swordThrowDamage() * .75D;
-                case AXE_MELEE -> config.axeSpinDamage(); case HOE_MELEE -> config.hoeSweepDamage();
+                case MACE_MELEE, MACE_DROP -> config.maceDamage();
+                case SPEAR_MELEE, SPEAR_LUNGE, TRIDENT_THROWER -> config.maceDamage() * .75D;
+                case AXE_MELEE -> config.axeDamage(); case HOE_MELEE -> config.hoeDamage();
                 case SHIELD_ORBIT -> 0.0D;
             };
         }
