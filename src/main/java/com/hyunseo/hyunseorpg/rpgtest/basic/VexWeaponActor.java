@@ -24,7 +24,12 @@ import java.util.function.Consumer;
  * It never steers normal melee movement itself: the display only mirrors the Vex position.
  */
 public final class VexWeaponActor extends BukkitRunnable {
-    public record Stats(int lifetimeTicks, double maceDamage, double axeDamage, double hoeDamage) { }
+    public record Stats(int lifetimeTicks, double maceDamage, double axeDamage, double hoeDamage,
+                        int maceCadenceTicks, int spearCadenceTicks, int axeCadenceTicks, int hoeCadenceTicks) {
+        public Stats(int lifetimeTicks, double maceDamage, double axeDamage, double hoeDamage) {
+            this(lifetimeTicks, maceDamage, axeDamage, hoeDamage, 30, 18, 24, 16);
+        }
+    }
 
     private final Plugin plugin;
     private final Player target;
@@ -109,7 +114,11 @@ public final class VexWeaponActor extends BukkitRunnable {
         tickMelee();
     }
 
-    private int cadence() { return switch (pattern) { case MACE_MELEE -> 30; case SPEAR_MELEE -> 18; case AXE_MELEE -> 24; case HOE_MELEE -> 16; default -> 20; }; }
+    private int cadence() { return switch (pattern) {
+        case MACE_MELEE -> stats.maceCadenceTicks(); case SPEAR_MELEE -> stats.spearCadenceTicks();
+        case AXE_MELEE -> stats.axeCadenceTicks(); case HOE_MELEE -> stats.hoeCadenceTicks();
+        default -> stats.spearCadenceTicks();
+    }; }
     private double range() { return switch (pattern) { case MACE_MELEE -> 1.25D; case SPEAR_MELEE -> 1.6D; case AXE_MELEE -> 1.8D; case HOE_MELEE -> 2.1D; default -> 1.4D; }; }
     private double damage() { return switch (pattern) { case MACE_MELEE -> stats.maceDamage(); case AXE_MELEE -> stats.axeDamage(); case HOE_MELEE -> stats.hoeDamage(); default -> stats.maceDamage() * .75D; }; }
     private Sound sound() { return switch (pattern) { case MACE_MELEE -> Sound.ITEM_MACE_SMASH_GROUND_HEAVY; case AXE_MELEE -> Sound.ITEM_AXE_STRIP; case HOE_MELEE -> Sound.ITEM_HOE_TILL; default -> Sound.ENTITY_PLAYER_ATTACK_SWEEP; }; }

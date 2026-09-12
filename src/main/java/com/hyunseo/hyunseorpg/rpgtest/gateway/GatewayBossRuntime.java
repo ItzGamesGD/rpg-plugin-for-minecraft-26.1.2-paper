@@ -288,7 +288,9 @@ final class GatewayBossRuntime extends BukkitRunnable {
                     if (usesSharedVexActor()) {
                         sharedActor = VexWeaponActor.start(plugin, owner, display, pattern,
                                 new VexWeaponActor.Stats(Math.min(config.basicActorLifetimeTicks(), config.driverLifetimeTicks()),
-                                        config.maceDamage(), config.axeDamage(), config.hoeDamage()),
+                                        config.maceDamage(), config.axeDamage(), config.hoeDamage(),
+                                        config.maceMeleeCadenceTicks(), config.spearMeleeCadenceTicks(),
+                                        config.axeMeleeCadenceTicks(), config.hoeMeleeCadenceTicks()),
                                 session.entities()::add, session.tasks()::add, () -> { });
                         hiddenDriver = sharedActor.driver();
                     } else hiddenDriver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
@@ -355,16 +357,16 @@ final class GatewayBossRuntime extends BukkitRunnable {
             display.teleport(display.getLocation().add(lockedDirection.clone().multiply(config.weaponThrowSpeed())));
             display.setTransformation(transform(.92F, age * .34F, 0, .3F));
             if (owner.getLocation().distanceSquared(display.getLocation()) <= 2.25D) { owner.damage(damageFor(pattern)); return true; }
-            return age >= 36;
+            return age >= config.spearLungeLifetimeTicks();
         }
         private boolean tickTridentThrower(ItemDisplay display, Player owner) {
             if (hiddenDriver == null || !hiddenDriver.isValid()) return true;
-            if (age < 28) {
+            if (age < config.tridentRetreatTicks()) {
                 // Retreat is a short scripted setup only; after the throw the actual Vex AI resumes.
                 hiddenDriver.setTarget(null);
-                if (age < 14) hiddenDriver.setVelocity(hiddenDriver.getLocation().toVector().subtract(owner.getLocation().toVector()).normalize().multiply(.16D).setY(.06D));
+                if (age < config.tridentRetreatMotionTicks()) hiddenDriver.setVelocity(hiddenDriver.getLocation().toVector().subtract(owner.getLocation().toVector()).normalize().multiply(.16D).setY(.06D));
                 else hiddenDriver.setVelocity(new Vector());
-            } else if (age == 28) hiddenDriver.setTarget(owner);
+            } else if (age == config.tridentRetreatTicks()) hiddenDriver.setTarget(owner);
             display.teleport(hiddenDriver.getLocation().add(0, .35, 0));
             if (age == 20) {
                 Vector aim = owner.getEyeLocation().toVector().subtract(display.getLocation().toVector()).normalize();
@@ -397,7 +399,13 @@ final class GatewayBossRuntime extends BukkitRunnable {
             };
         }
         private int attackCadence(BasicWeaponPattern weapon) {
-            return switch (weapon) { case MACE_MELEE -> 30; case SPEAR_MELEE -> 18; case AXE_MELEE -> 24; case HOE_MELEE -> 16; default -> 20; };
+            return switch (weapon) {
+                case MACE_MELEE -> config.maceMeleeCadenceTicks();
+                case SPEAR_MELEE -> config.spearMeleeCadenceTicks();
+                case AXE_MELEE -> config.axeMeleeCadenceTicks();
+                case HOE_MELEE -> config.hoeMeleeCadenceTicks();
+                default -> config.spearMeleeCadenceTicks();
+            };
         }
     }
 

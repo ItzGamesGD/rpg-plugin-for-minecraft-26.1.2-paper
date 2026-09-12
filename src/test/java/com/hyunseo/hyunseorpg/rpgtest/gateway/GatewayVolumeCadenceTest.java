@@ -25,4 +25,12 @@ class GatewayVolumeCadenceTest {
                 .count();
         assertTrue(beamHits > 1);
     }
+
+    @Test void configuredCadenceControlsSustainedDamageWindows() {
+        long hits = IntStream.rangeClosed(1, 100)
+                .filter(age -> GatewayPrototypeService.shouldDamageVolume(
+                        GatewayPayloadType.BEAM, age, 24, 16))
+                .count();
+        assertEquals(5, hits);
+    }
 }

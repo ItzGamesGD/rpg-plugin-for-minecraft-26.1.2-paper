@@ -1,0 +1,90 @@
+schema-version: 1
+
+# Gateway Boss combat tuning. All attack-time values below are deliberately set to
+# twice the previous runtime values so telegraphs, active windows, and recovery
+# remain readable in live combat.
+gateway-boss:
+  enabled: true
+  attack-range: 40.0
+  orbit:
+    radius: 3.4
+    speed: 0.075
+    max-weapons: 20
+    ring-plane-speed: 0.011
+  basic:
+    actor-total-cap: 14
+    actor-lifetime-ticks: 280
+    detach-telegraph-ticks: 32
+    weapon-throw-speed: 0.42
+    mace-melee-damage: 8.0
+    axe-melee-damage: 7.0
+    hoe-melee-damage: 6.0
+    mace-melee-cadence-ticks: 60
+    spear-melee-cadence-ticks: 36
+    axe-melee-cadence-ticks: 48
+    hoe-melee-cadence-ticks: 32
+    spear-lunge-lifetime-ticks: 72
+    trident-retreat-ticks: 56
+    trident-retreat-motion-ticks: 28
+  # The hidden Vex driver is bounded internally; it is never a visible summon or combat add.
+  internal-ai-driver:
+    max-active: 14
+    lifetime-ticks: 360
+  reflection:
+    interaction:
+      arrow: 0.90
+      small-fireball: 1.35
+      default: 1.10
+  payload:
+    speed-multiplier: 0.90
+    volume-margin: 6.0
+    volume-max-range: 64.0
+    projectile-lifetime-ticks: 1800
+    local-caps:
+      sonic-boom: 2
+      beam: 2
+      dragon-breath: 2
+      flame-stream: 3
+      end-crystal-bomb: 3
+  damage:
+    reflected:
+      arrow: 6.0
+      trident: 10.0
+      blaze-small-fireball: 7.0
+      ghast-fireball: 13.0
+      wither-skull: 11.0
+      shulker-bullet: 8.0
+      wind-charge: 8.0
+      end-crystal-bomb: 22.0
+    volume:
+      sonic-boom: 8.0
+      dragon-breath: 4.0
+      flame-stream: 3.0
+      beam: 7.0
+  gateway:
+    count: 7
+    radial-min: 16.0
+    radial-max: 30.0
+    upper-height: 10.0
+    minimum-spacing: 5.0
+    phase-spacing: 24.0
+    special-chance: 0.20
+    global-payload-cap: 16
+    cleanup-timeout-ticks: 200
+  phase-health-thresholds:
+    burst-ratio: 0.45
+  attack-cooldown-ticks: 160
+  burst-cooldown-ticks: 96
+  cleanup-timeout-ticks: 200
+  timing:
+    payload-initial-delay-ticks: 32
+    payload-retry-delay-ticks: 6
+    payload-emission-interval-ticks: 14
+    payload-resolve-grace-ticks: 120
+    gateway-recovery-ticks: 16
+    sustained-volume-duration-ticks: 100
+    sonic-boom-duration-ticks: 40
+    volume-default-telegraph-ticks: 8
+    volume-advanced-telegraph-ticks: 24
+    volume-damage-cadence-ticks: 16
+    crystal-fuse-ticks: 36

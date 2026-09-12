@@ -54,7 +54,6 @@ public final class GatewayPrototypeService implements Listener {
     public static final int GATEWAY_TOTAL_CAP = 16;
     /** Caps attack-pattern AI actors. Projectiles emitted by an actor do not consume this cap. */
     public static final int BASIC_ACTOR_CAP = 14;
-    public static final long GATEWAY_RECOVERY_TICKS = 8;
 
     private final Plugin plugin;
     private final ConfigService config;
@@ -118,17 +117,17 @@ public final class GatewayPrototypeService implements Listener {
         session.gatewayPhase().deploy();
         GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(tuning.payloadCap(), localPayloadCaps());
         int selectedPayloadCount = randomPayloadCount(random, tuning.payloadCap());
-        long delay = 16;
+        long delay = tuning.payloadInitialDelayTicks();
         for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
             GatewayPair pair = pairs.get(random.nextInt(pairs.size()));
-            long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
-            if (!scheduler.reserve(pair.id(), type, delay, active, GATEWAY_RECOVERY_TICKS)) { delay += 3; continue; }
+            long active = payloadActiveTicks(type, tuning);
+            if (!scheduler.reserve(pair.id(), type, delay, active, tuning.gatewayRecoveryTicks())) { delay += tuning.payloadRetryDelayTicks(); continue; }
             session.tasks().add(plugin.getServer().getScheduler().runTaskLater(plugin,
                     () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay));
-            delay += 7;
+            delay += tuning.payloadEmissionIntervalTicks();
         }
-        long emissionCompleteAt = delay + 60;
+        long emissionCompleteAt = delay + tuning.payloadResolveGraceTicks();
         BukkitRunnable closeWhenResolved = new BukkitRunnable() {
             long age;
             @Override public void run() {
@@ -152,15 +151,15 @@ public final class GatewayPrototypeService implements Listener {
         GatewayPhaseConfig tuning = gatewayPhaseConfig();
         GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(tuning.payloadCap(), localPayloadCaps());
         int selectedPayloadCount = randomPayloadCount(random, tuning.payloadCap());
-        long delay = 15;
+        long delay = tuning.payloadInitialDelayTicks();
         for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
             GatewayPair pair = session.pairs().get(random.nextInt(session.pairs().size()));
-            long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
-            if (!scheduler.reserve(pair.id(), type, delay, active, GATEWAY_RECOVERY_TICKS)) { delay += 3; continue; }
+            long active = payloadActiveTicks(type, tuning);
+            if (!scheduler.reserve(pair.id(), type, delay, active, tuning.gatewayRecoveryTicks())) { delay += tuning.payloadRetryDelayTicks(); continue; }
             var task = plugin.getServer().getScheduler().runTaskLater(plugin,
                     () -> { if (sessions.get(player.getUniqueId()) == session) fire(session, pair, type, debug); }, delay);
-            session.tasks().add(task); delay += 7;
+            session.tasks().add(task); delay += tuning.payloadEmissionIntervalTicks();
         }
         return result + "; scheduled=" + scheduler.total() + "/" + tuning.payloadCap();
     }
@@ -309,7 +308,10 @@ public final class GatewayPrototypeService implements Listener {
 
     private void fireVolume(GatewaySession session, GatewayPair pair, GatewayPayloadType type) {
         Particle particle = switch(type) { case SONIC_BOOM -> Particle.SONIC_BOOM; case DRAGON_BREATH -> Particle.DRAGON_BREATH; case FLAME_STREAM -> Particle.FLAME; default -> Particle.END_ROD; };
-        int duration = type == GatewayPayloadType.SONIC_BOOM ? 20 : 50, telegraph = type == GatewayPayloadType.SONIC_BOOM || type == GatewayPayloadType.BEAM ? 12 : 4;
+        GatewayPhaseConfig tuning = gatewayPhaseConfig();
+        int duration = type == GatewayPayloadType.SONIC_BOOM ? tuning.sonicBoomDurationTicks() : tuning.sustainedVolumeDurationTicks();
+        int telegraph = type == GatewayPayloadType.SONIC_BOOM || type == GatewayPayloadType.BEAM
+                ? tuning.volumeAdvancedTelegraphTicks() : tuning.volumeDefaultTelegraphTicks();
         BukkitRunnable task = new BukkitRunnable() {
             int age;
             @Override public void run() {
@@ -322,7 +324,7 @@ public final class GatewayPrototypeService implements Listener {
                         : obstruction.getHitPosition().toLocation(origin.getWorld());
                 double length = origin.distance(endpoint);
                 for (double d=.5; d<=length; d+=.5) origin.getWorld().spawnParticle(particle, origin.clone().add(forward.clone().multiply(d)), 1,0,0,0,0);
-                if (shouldDamageVolume(type, age, telegraph)) {
+                if (shouldDamageVolume(type, age, telegraph, tuning.volumeDamageCadenceTicks())) {
                     Player owner = plugin.getServer().getPlayer(session.ownerId());
                     if (owner != null && pointToSegmentDistance(owner.getEyeLocation().toVector(), origin.toVector(), endpoint.toVector()) <= volumeRadius(type))
                         owner.damage(volumeDamage(type));
@@ -400,7 +402,7 @@ public final class GatewayPrototypeService implements Listener {
         return bossBattles.values().stream().anyMatch(battle -> battle.ownsHiddenDriver(entity))
                 || basics.values().stream().anyMatch(basic -> basic.ownsHiddenDriver(entity));
     }
-    private int payloadCap(String name, int fallback) { return Math.max(1, Math.min(16, config.getBossesInt("gateway-boss.payload.local-caps." + name, fallback))); }
+    private int payloadCap(String name, int fallback) { return Math.max(1, Math.min(16, config.getGatewayBossInt("gateway-boss.payload.local-caps." + name, fallback))); }
     private double payloadSpeedMultiplier() { return bounded("gateway-boss.payload.speed-multiplier", .90D, .10D, 1.20D); }
     private float reflectionSize(GatewayPayloadType type) {
         String key = type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? "small-fireball" : type == GatewayPayloadType.ARROW ? "arrow" : "default";
@@ -418,12 +420,19 @@ public final class GatewayPrototypeService implements Listener {
     }
     private String payloadKey(GatewayPayloadType type) { return type.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'); }
     private double bounded(String path, double fallback, double min, double max) {
-        double value = config.getBossesDouble(path, fallback);
+        double value = config.getGatewayBossDouble(path, fallback);
         return Double.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
     }
-    static boolean shouldDamageVolume(GatewayPayloadType type, int age, int telegraph) {
+    static boolean shouldDamageVolume(GatewayPayloadType type, int age, int telegraph, int cadence) {
         if (type == GatewayPayloadType.SONIC_BOOM) return age == telegraph;
-        return type.sustained() && age >= telegraph && (age - telegraph) % 8 == 0;
+        return type.sustained() && age >= telegraph && (age - telegraph) % cadence == 0;
+    }
+    static boolean shouldDamageVolume(GatewayPayloadType type, int age, int telegraph) {
+        return shouldDamageVolume(type, age, telegraph, 8);
+    }
+    private static long payloadActiveTicks(GatewayPayloadType type, GatewayPhaseConfig tuning) {
+        return type.sustained() ? tuning.sustainedVolumeDurationTicks()
+                : type == GatewayPayloadType.SONIC_BOOM ? tuning.sonicBoomDurationTicks() : 2;
     }
     static int randomPayloadCount(java.util.random.RandomGenerator random, int globalCap) {
         if (globalCap < 1) throw new IllegalArgumentException("global payload cap must be positive");
@@ -491,7 +500,7 @@ public final class GatewayPrototypeService implements Listener {
         @Override public void run(){
             if(!projectile.isValid()||!sessions.containsValue(session)||age++>gatewayPhaseConfig().projectileLifetimeTicks()){finish();return;}
             reflection.teleport(projectile.getLocation());
-            if(state.phase()==ReflectableProjectileState.Phase.FUSE){if(++fuse>=18)explode(false);return;}
+            if(state.phase()==ReflectableProjectileState.Phase.FUSE){if(++fuse>=gatewayPhaseConfig().crystalFuseTicks())explode(false);return;}
             if(state.phase()==ReflectableProjectileState.Phase.OUTBOUND){
                 if(outboundVelocity==null) outboundVelocity=pair.snapshotForward().multiply(.32);
                 outboundVelocity.setY(outboundVelocity.getY()-.012);

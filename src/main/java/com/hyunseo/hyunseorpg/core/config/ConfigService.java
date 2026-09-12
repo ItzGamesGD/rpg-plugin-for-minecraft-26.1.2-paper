@@ -40,6 +40,7 @@ public final class ConfigService {
     private FileConfiguration progressionLoopConfig;
     private FileConfiguration mythicMobsConfig;
     private FileConfiguration bossesConfig;
+    private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
     private FileConfiguration specialEquipmentConfig;
     private FileConfiguration equipmentSupportConfig;
@@ -97,6 +98,7 @@ public final class ConfigService {
         this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
         this.mythicMobsConfig = loadManagedConfig("mythic-mobs.yml");
         this.bossesConfig = loadManagedConfig("bosses.yml");
+        this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
         this.equipmentSupportConfig = loadManagedConfig("equipment-support.yml");
@@ -350,6 +352,20 @@ public final class ConfigService {
 
     public void reloadBossesConfig() {
         this.bossesConfig = loadManagedConfig("bosses.yml");
+        this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
+    }
+
+    /** Dedicated Gateway Boss combat tuning; kept apart from ordinary boss-session rewards. */
+    public boolean getGatewayBossBoolean(String path, boolean defaultValue) {
+        return gatewayBossConfig.getBoolean(path, defaultValue);
+    }
+
+    public int getGatewayBossInt(String path, int defaultValue) {
+        return gatewayBossConfig.getInt(path, defaultValue);
+    }
+
+    public double getGatewayBossDouble(String path, double defaultValue) {
+        return gatewayBossConfig.getDouble(path, defaultValue);
     }
 
     public Set<String> getQuestsKeys(String path) {
