@@ -2,12 +2,20 @@ package com.hyunseo.hyunseorpg.skill;
 
 import java.time.Clock;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.UUID;
 
 public final class CooldownService {
+    private static final List<String> NO_COOLDOWN_PREFIXES = List.of(
+            "special:",
+            "thanatos:",
+            "thunder_gods_axe:",
+            "solaris:",
+            "moonlit_afterglow:");
+
     private final Clock clock;
     private final boolean disabled;
     private final Map<UUID, Map<String, Long>> cooldownEndsByPlayer = new HashMap<>();
@@ -34,6 +42,11 @@ public final class CooldownService {
     }
 
     public long getRemainingMillis(UUID playerId, String cooldownId) {
+        if (cooldownDisabled(cooldownId)) {
+            clearCooldown(playerId, cooldownId);
+            return 0L;
+        }
+
         OptionalLong expiresAt = getExpiresAt(playerId, cooldownId);
         if (expiresAt.isEmpty()) {
             return 0L;
@@ -48,6 +61,9 @@ public final class CooldownService {
     }
 
     public OptionalLong getExpiresAt(UUID playerId, String cooldownId) {
+        if (cooldownDisabled(cooldownId)) {
+            return OptionalLong.empty();
+        }
         Map<String, Long> playerCooldowns = cooldownEndsByPlayer.get(playerId);
         if (playerCooldowns == null) {
             return OptionalLong.empty();
@@ -58,7 +74,7 @@ public final class CooldownService {
     }
 
     public void startCooldown(UUID playerId, String cooldownId, long durationMillis) {
-        if (disabled || durationMillis <= 0L) {
+        if (cooldownDisabled(cooldownId) || durationMillis <= 0L) {
             clearCooldown(playerId, cooldownId);
             return;
         }
@@ -106,6 +122,12 @@ public final class CooldownService {
 
     public void clearAll() {
         cooldownEndsByPlayer.clear();
+    }
+
+    private boolean cooldownDisabled(String cooldownId) {
+        if (disabled) return true;
+        String normalized = normalizeId(cooldownId);
+        return NO_COOLDOWN_PREFIXES.stream().anyMatch(normalized::startsWith);
     }
 
     private String normalizeId(String cooldownId) {

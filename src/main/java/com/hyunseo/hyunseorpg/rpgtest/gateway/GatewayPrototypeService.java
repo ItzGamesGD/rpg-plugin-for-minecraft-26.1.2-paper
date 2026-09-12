@@ -323,7 +323,8 @@ public final class GatewayPrototypeService implements Listener {
                 Location endpoint = obstruction == null ? origin.clone().add(forward.clone().multiply(range))
                         : obstruction.getHitPosition().toLocation(origin.getWorld());
                 double length = origin.distance(endpoint);
-                for (double d=.5; d<=length; d+=.5) origin.getWorld().spawnParticle(particle, origin.clone().add(forward.clone().multiply(d)), 1,0,0,0,0);
+                for (double d=.5; d<=length; d+=.5)
+                    spawnVolumeParticle(origin.getWorld(), particle, origin.clone().add(forward.clone().multiply(d)));
                 if (shouldDamageVolume(type, age, telegraph, tuning.volumeDamageCadenceTicks())) {
                     Player owner = plugin.getServer().getPlayer(session.ownerId());
                     if (owner != null && pointToSegmentDistance(owner.getEyeLocation().toVector(), origin.toVector(), endpoint.toVector()) <= volumeRadius(type))
@@ -332,6 +333,20 @@ public final class GatewayPrototypeService implements Listener {
             }
         };
         session.tasks().add(task.runTaskTimer(plugin, 1, 1));
+    }
+
+    private void spawnVolumeParticle(org.bukkit.World world, Particle particle, Location location) {
+        Object data = volumeParticleData(particle);
+        if (data == null) world.spawnParticle(particle, location, 1, 0, 0, 0, 0);
+        else world.spawnParticle(particle, location, 1, data);
+    }
+
+    static Object volumeParticleData(Particle particle) {
+        Class<?> required = particle.getDataType();
+        if (required == Void.class) return null;
+        if (required == Float.class) return 1.0f;
+        throw new IllegalArgumentException("Unsupported Gateway volume particle data type: "
+                + particle + " requires " + required.getName());
     }
 
     @EventHandler(ignoreCancelled = true) public void onReflect(EntityDamageByEntityEvent event) {

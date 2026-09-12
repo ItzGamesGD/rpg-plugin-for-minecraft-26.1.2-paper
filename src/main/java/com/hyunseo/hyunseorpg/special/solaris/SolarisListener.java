@@ -131,7 +131,7 @@ public final class SolarisListener implements Listener {
     private void dropSword(Session s,LivingEntity target,double size,int fallTicks,double damage){if(!active(s)||!validTarget(s.owner,target))return; Location top=target.getLocation().add(0,5,0);
         ItemDisplay sword=top.getWorld().spawn(top,ItemDisplay.class,d->d.setItemStack(new ItemStack(Material.GOLDEN_SWORD)));scale(sword,(float)size);s.entities.add(sword);
         for(int i=1;i<=fallTicks;i++){int step=i;later(s,i,()->{if(sword.isValid())sword.teleport(top.clone().subtract(0,4.5*step/fallTicks,0));});}
-        later(s,fallTicks,()->{if(sword.isValid())sword.remove();if(validTarget(s.owner,target)){mark(s.owner,target);combat.applySkillDamage(s.owner,target,damage);Location p=target.getLocation().add(0,.8,0);p.getWorld().spawnParticle(Particle.FLASH,p,1,0,0,0,0,Color.WHITE);p.getWorld().playSound(p,Sound.BLOCK_ANVIL_LAND,1,1.5f);}}); }
+        later(s,fallTicks,()->{if(sword.isValid())sword.remove();if(validTarget(s.owner,target)){mark(s.owner,target);combat.applySkillDamage(s.owner,target,damage);Location p=target.getLocation().add(0,.8,0);p.getWorld().spawnParticle(Particle.FLASH,p,1,Color.WHITE);p.getWorld().playSound(p,Sound.BLOCK_ANVIL_LAND,1,1.5f);}}); }
 
     @EventHandler(priority=EventPriority.MONITOR) public void onDeath(EntityDeathEvent e){ long now=System.currentTimeMillis();pruneDamageMarks(now);DamageMark m=damageMarks.remove(e.getEntity().getUniqueId()); Player killer=e.getEntity().getKiller();
         if(m!=null&&killer!=null&&killer.getUniqueId().equals(m.owner)&&instances.is(killer.getInventory().getItemInMainHand(),m.instance)) kills.computeIfAbsent(m.owner,k->new ArrayDeque<>()).addLast(now); }
