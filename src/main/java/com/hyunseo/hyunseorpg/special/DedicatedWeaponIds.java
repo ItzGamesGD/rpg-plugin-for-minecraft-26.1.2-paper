@@ -13,7 +13,9 @@ public final class DedicatedWeaponIds {
             FlameAxeListener.ID,
             WaterTridentListener.ID,
             ThanatosMaceListener.ID,
-            ThunderAxeListener.ID);
+            ThunderAxeListener.ID,
+            com.hyunseo.hyunseorpg.special.solaris.SolarisListener.ID,
+            com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener.ID);
 
     private DedicatedWeaponIds() { }
 

@@ -251,7 +251,7 @@ public final class ThunderAxeListener implements Listener {
     }
 
     private void visualBolt(Location base) {
-        World world = base.getWorld(); world.spawnParticle(Particle.FLASH, base.clone().add(0, 1, 0), 1);
+        World world = base.getWorld(); world.spawnParticle(Particle.FLASH, base.clone().add(0, 1, 0), 1, 0, 0, 0, 0, Color.WHITE);
         Random random = new Random(Double.doubleToLongBits(base.getX()) ^ Double.doubleToLongBits(base.getZ()));
         for (int i = 0; i < 14; i++) world.spawnParticle(Particle.ELECTRIC_SPARK,
                 base.clone().add((random.nextDouble() - .5) * .35, i * .24, (random.nextDouble() - .5) * .35), 1, 0, 0, 0, 0);

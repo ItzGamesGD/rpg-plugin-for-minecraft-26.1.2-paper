@@ -200,6 +200,8 @@ import com.hyunseo.hyunseorpg.special.water.WaterTridentListener;
 import com.hyunseo.hyunseorpg.special.flame.FlameAxeListener;
 import com.hyunseo.hyunseorpg.special.thanatos.ThanatosMaceListener;
 import com.hyunseo.hyunseorpg.special.thunder.ThunderAxeListener;
+import com.hyunseo.hyunseorpg.special.solaris.SolarisListener;
+import com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiListener;
 import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import com.hyunseo.hyunseorpg.shop.ShopRegistry;
@@ -344,6 +346,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private FlameAxeListener flameAxeListener;
     private ThanatosMaceListener thanatosMaceListener;
     private ThunderAxeListener thunderAxeListener;
+    private SolarisListener solarisListener;
+    private MoonlitAfterglowListener moonlitAfterglowListener;
     private EquipmentSupportGuiService equipmentSupportGuiService;
     private FutureEquipmentFeatureRegistry futureEquipmentFeatureRegistry;
     private ConfigMigrationService configMigrationService;
@@ -728,6 +732,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (flameAxeListener != null) flameAxeListener.shutdown();
         if (thanatosMaceListener != null) thanatosMaceListener.shutdown();
         if (thunderAxeListener != null) thunderAxeListener.shutdown();
+        if (solarisListener != null) solarisListener.shutdown();
+        if (moonlitAfterglowListener != null) moonlitAfterglowListener.shutdown();
         if (gatewayPrototypeService != null) gatewayPrototypeService.shutdown();
         if (thousandEyesController != null) thousandEyesController.remove();
         if (equipmentEnchantContentService != null) {
@@ -1626,6 +1632,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.thunderAxeListener = new ThunderAxeListener(this, configService, specialEquipmentService,
                 equipmentInstanceService, combatService, cooldownService);
         getServer().getPluginManager().registerEvents(thunderAxeListener, this);
+        this.solarisListener = new SolarisListener(this, configService, specialEquipmentService,
+                equipmentInstanceService, combatService, cooldownService);
+        getServer().getPluginManager().registerEvents(solarisListener, this);
+        this.moonlitAfterglowListener = new MoonlitAfterglowListener(configService, specialEquipmentService,
+                combatService, cooldownService);
+        getServer().getPluginManager().registerEvents(moonlitAfterglowListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);

@@ -241,3 +241,5 @@ items:
   earth_heavy_bow: { material: BOW, display-name: "대지의 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23523, lore: ["적을 둔화시키는 묵직한 화살입니다."] }
   freezing_bow: { material: BOW, display-name: "빙결의 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23524, lore: ["화살 적중 시 빙결 스택을 쌓습니다."] }
   dark_energy_bow: { material: BOW, display-name: "마기가 깃든 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23525, lore: ["화살 적중 시 약화와 위더를 부여합니다."] }
+  solaris: { material: GOLDEN_SWORD, display-name: "성검 · 솔라리스", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["Holy Sword: Solaris", "빛과 태양의 신성한 힘을 다룹니다."] }
+  moonlit_afterglow: { material: NETHERITE_SWORD, display-name: "월야잔광", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["달빛을 보는 순간 이미 늦었다.", "우클릭: 월섬 / F: 월영난무"] }
