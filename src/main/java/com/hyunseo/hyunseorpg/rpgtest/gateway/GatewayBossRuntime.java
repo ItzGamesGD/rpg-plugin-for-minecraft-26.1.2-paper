@@ -1,5 +1,7 @@
 package com.hyunseo.hyunseorpg.rpgtest.gateway;
 
+import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPattern;
+import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPatternSelector;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -7,6 +9,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Trident;
 import org.bukkit.entity.Vex;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -19,6 +22,7 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -39,6 +43,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
     private final List<ItemDisplay> orbitWeapons = new ArrayList<>();
     private final List<WeaponFlight> flights = new ArrayList<>();
     private final Random random = new Random();
+    private final BasicWeaponPatternSelector patternSelector = new BasicWeaponPatternSelector();
     private ItemDisplay coreDisplay;
     private long tick;
     private long nextAttackTick = 45;
@@ -94,10 +99,10 @@ final class GatewayBossRuntime extends BukkitRunnable {
             }
         }
         if (tick >= nextParryTick) {
-            int slot = randomOrbitingSlot();
+            int slot = randomOrbitingSlot(BasicWeaponPattern.SPEAR_LUNGE);
             if (slot >= 0) {
                 state.reserve(slot);
-                flights.add(new WeaponFlight(slot, WeaponKind.SPEAR, true, config.parryTelegraphTicks()));
+                flights.add(new WeaponFlight(slot, BasicWeaponPattern.SPEAR_LUNGE, true, config.parryTelegraphTicks()));
                 nextParryTick = tick + config.parryCooldownTicks();
             }
         }
@@ -148,7 +153,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             int ring = weaponFor(slot).ordinal();
             int localSlot = slot / WeaponKind.values().length;
             double localAngle = tick * config.orbitSpeed() * (burst ? 1.35D : 1.0D) + localSlot * Math.PI;
-            double planeAngle = tick * (.011D + ring * .003D) + ring * 1.17D;
+            double planeAngle = tick * (config.ringPlaneSpeed() + ring * .003D) + ring * 1.17D;
             double radius = config.orbitRadius() + ring * .55D;
             Vector localPoint = new Vector(Math.cos(localAngle) * radius, Math.sin(localAngle) * radius, 0);
             Vector planeRotated = rotateX(rotateY(localPoint, planeAngle), .48D + ring * .42D);
@@ -177,10 +182,16 @@ final class GatewayBossRuntime extends BukkitRunnable {
             gatewayPhase.run();
             return;
         }
-        int slot = randomOrbitingSlot();
-        if (slot < 0) return;
-        state.reserve(slot);
-        flights.add(new WeaponFlight(slot, weaponFor(slot), false, config.weaponThrowTelegraphTicks()));
+        int capacity = Math.min(config.basicActorCap() - flights.size(), countEligibleOrbitWeapons());
+        if (capacity <= 0) return;
+        Map<BasicWeaponPattern, Integer> selection = patternSelector.select(random, capacity);
+        for (Map.Entry<BasicWeaponPattern, Integer> entry : selection.entrySet()) {
+            for (int count = 0; count < entry.getValue() && flights.size() < config.basicActorCap(); count++) {
+                int slot = randomOrbitingSlot(entry.getKey());
+                if (slot < 0 || !state.reserve(slot)) break;
+                flights.add(new WeaponFlight(slot, entry.getKey(), false, config.weaponThrowTelegraphTicks()));
+            }
+        }
     }
 
     private void updateFlights() {
@@ -207,6 +218,32 @@ final class GatewayBossRuntime extends BukkitRunnable {
         return session.dummy() != null && session.dummy().health() / PrototypeBossDummy.MAX_HEALTH <= config.burstHealthThreshold();
     }
 
+    private int randomOrbitingSlot(BasicWeaponPattern pattern) {
+        if (pattern == BasicWeaponPattern.SHIELD_ORBIT) return -1;
+        List<Integer> eligible = new ArrayList<>();
+        for (int slot = 0; slot < state.slotCount(); slot++) {
+            if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING && weaponFor(slot) == familyFor(pattern)) eligible.add(slot);
+        }
+        return eligible.isEmpty() ? -1 : eligible.get(random.nextInt(eligible.size()));
+    }
+
+    private int countEligibleOrbitWeapons() {
+        int count = 0;
+        for (int slot = 0; slot < state.slotCount(); slot++)
+            if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING && weaponFor(slot) != WeaponKind.SHIELD) count++;
+        return count;
+    }
+
+    private WeaponKind familyFor(BasicWeaponPattern pattern) {
+        return switch (pattern) {
+            case MACE_MELEE, MACE_DROP -> WeaponKind.MACE;
+            case SPEAR_MELEE, SPEAR_LUNGE, TRIDENT_THROWER -> WeaponKind.SPEAR;
+            case AXE_MELEE -> WeaponKind.AXE;
+            case HOE_MELEE -> WeaponKind.HOE;
+            case SHIELD_ORBIT -> WeaponKind.SHIELD;
+        };
+    }
+
     private void pulseGateway(float scale, Particle particle) {
         if (coreDisplay != null && coreDisplay.isValid()) coreDisplay.setTransformation(transform(scale, (float) tick * .2F, .4F, .2F));
         core.getWorld().spawnParticle(particle, core, 24, .7, .8, .7, .04);
@@ -225,16 +262,17 @@ final class GatewayBossRuntime extends BukkitRunnable {
 
     private final class WeaponFlight {
         private final int slot;
-        private final WeaponKind kind;
+        private final BasicWeaponPattern pattern;
         private final boolean counter;
         private int telegraphTicks;
         private int age;
         private boolean launched;
         private boolean hit;
         private Vex hiddenDriver;
+        private Vector lockedDirection;
 
-        private WeaponFlight(int slot, WeaponKind kind, boolean counter, int telegraphTicks) {
-            this.slot = slot; this.kind = kind; this.counter = counter; this.telegraphTicks = telegraphTicks;
+        private WeaponFlight(int slot, BasicWeaponPattern pattern, boolean counter, int telegraphTicks) {
+            this.slot = slot; this.pattern = pattern; this.counter = counter; this.telegraphTicks = telegraphTicks;
         }
         boolean tick() {
             ItemDisplay display = orbitWeapons.get(slot);
@@ -250,41 +288,94 @@ final class GatewayBossRuntime extends BukkitRunnable {
                 launched = true; state.launch(slot);
                 Player owner = plugin.getServer().getPlayer(session.ownerId());
                 if (owner == null) return true;
-                hiddenDriver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
-                    vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true);
-                    vex.setTarget(owner); vex.setCharging(true);
-                });
-                session.entities().add(hiddenDriver);
+                if (requiresDriver()) {
+                    hiddenDriver = display.getWorld().spawn(display.getLocation(), Vex.class, vex -> {
+                        vex.setPersistent(false); vex.setInvisible(true); vex.setInvulnerable(true); vex.setSilent(true);
+                        vex.getEquipment().clear(); vex.setTarget(owner); vex.setCharging(true);
+                    });
+                    if (!state.addDriver(hiddenDriver.getUniqueId(), config.maxActiveDrivers())) {
+                        hiddenDriver.remove(); hiddenDriver = null; return true;
+                    }
+                    session.entities().add(hiddenDriver);
+                }
+                if (pattern == BasicWeaponPattern.MACE_DROP)
+                    display.teleport(owner.getLocation().clone().add(0, 8, 0));
+                if (pattern == BasicWeaponPattern.SPEAR_LUNGE)
+                    lockedDirection = owner.getEyeLocation().toVector().subtract(display.getLocation().toVector()).normalize();
                 core.getWorld().playSound(display.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.2F, counter ? .65F : .85F);
             }
             age++;
-            if (hiddenDriver == null || !hiddenDriver.isValid()) return true;
             Player owner = plugin.getServer().getPlayer(session.ownerId());
             if (owner == null || !owner.isOnline()) return true;
-            // The invisible Vex is strictly a movement driver.  The visible, damaging actor is this
-            // detached orbital weapon display; it follows the driver's vanilla aerial pursuit.
+            if (pattern == BasicWeaponPattern.MACE_DROP) return tickDrop(display, owner);
+            if (pattern == BasicWeaponPattern.SPEAR_LUNGE) return tickLunge(display, owner);
+            if (pattern == BasicWeaponPattern.TRIDENT_THROWER) return tickTridentThrower(display, owner);
+            if (hiddenDriver == null || !hiddenDriver.isValid()) return true;
+            // The invisible Vex is strictly a movement driver. The display is the visible attack.
             hiddenDriver.setTarget(owner);
             display.teleport(hiddenDriver.getLocation().add(0, .35, 0));
             display.setTransformation(transform(2.65F, (float) (age * .28D), (float) (age * .18D), (float) (age * .33D)));
-            display.getWorld().spawnParticle(kind == WeaponKind.AXE ? Particle.CRIT : Particle.END_ROD,
+            display.getWorld().spawnParticle(pattern == BasicWeaponPattern.AXE_MELEE ? Particle.CRIT : Particle.END_ROD,
                     display.getLocation(), 5, .12, .12, .12, .01);
             if (!hit && owner.getWorld().equals(display.getWorld())) {
-                double radius = kind == WeaponKind.MACE ? 1.25D : kind == WeaponKind.SPEAR ? 1.45D : kind == WeaponKind.AXE ? 2.0D : 2.3D;
+                double radius = radiusFor(pattern);
                 if (owner.getLocation().distanceSquared(display.getLocation()) <= radius * radius) {
-                    owner.damage(damageFor(kind)); hit = true;
+                    owner.damage(damageFor(pattern)); hit = true;
                     display.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, owner.getLocation().add(0, 1, 0), 12, .35, .5, .35, .1);
                 }
             }
-            if (age >= config.cleanupTimeoutTicks() || hit) {
+            if (age >= Math.min(config.basicActorLifetimeTicks(), config.driverLifetimeTicks()) || hit) {
                 display.getWorld().spawnParticle(Particle.END_ROD, display.getLocation(), 18, .25, .25, .25, .05);
-                hiddenDriver.remove();
+                removeDriver();
                 return true;
             }
             return false;
         }
-        private double damageFor(WeaponKind weapon) {
+        private boolean tickDrop(ItemDisplay display, Player owner) {
+            display.teleport(display.getLocation().add(0, -.42D, 0));
+            display.setTransformation(transform(2.4F, age * .32F, 0, 0));
+            if (display.getLocation().getBlock().getType().isSolid() || display.getBoundingBox().expand(.25).overlaps(owner.getBoundingBox())) {
+                if (owner.getLocation().distanceSquared(display.getLocation()) <= 9) owner.damage(config.swordThrowDamage());
+                display.getWorld().spawnParticle(Particle.EXPLOSION, display.getLocation(), 2, .25, .1, .25, .01);
+                return true;
+            }
+            return age >= config.basicActorLifetimeTicks();
+        }
+        private boolean tickLunge(ItemDisplay display, Player owner) {
+            display.teleport(display.getLocation().add(lockedDirection.clone().multiply(config.weaponThrowSpeed())));
+            display.setTransformation(transform(2.45F, age * .34F, 0, .3F));
+            if (owner.getLocation().distanceSquared(display.getLocation()) <= 2.25D) { owner.damage(damageFor(pattern)); return true; }
+            return age >= 36;
+        }
+        private boolean tickTridentThrower(ItemDisplay display, Player owner) {
+            if (hiddenDriver == null || !hiddenDriver.isValid()) return true;
+            hiddenDriver.setTarget(null); hiddenDriver.setVelocity(new Vector());
+            display.teleport(hiddenDriver.getLocation().add(0, .35, 0));
+            if (age == 16) {
+                Vector aim = owner.getEyeLocation().toVector().subtract(display.getLocation().toVector()).normalize();
+                Trident trident = display.getWorld().spawn(display.getLocation(), Trident.class, projectile -> {
+                    projectile.setVelocity(aim.multiply(config.weaponThrowSpeed() * 2.8D)); projectile.setPersistent(false);
+                });
+                session.entities().add(trident);
+            }
+            if (age >= 42) { removeDriver(); return true; }
+            return false;
+        }
+        private boolean requiresDriver() { return pattern != BasicWeaponPattern.MACE_DROP && pattern != BasicWeaponPattern.SPEAR_LUNGE; }
+        private double radiusFor(BasicWeaponPattern weapon) {
+            return switch (weapon) { case MACE_MELEE -> 1.25D; case SPEAR_MELEE -> 1.45D; case AXE_MELEE -> 2.0D; case HOE_MELEE -> 2.3D; default -> 1.2D; };
+        }
+        private void removeDriver() {
+            if (hiddenDriver != null) { state.removeDriver(hiddenDriver.getUniqueId()); hiddenDriver.remove(); hiddenDriver = null; }
+        }
+        private double damageFor(BasicWeaponPattern weapon) {
             if (counter) return config.swordThrowDamage();
-            return switch (weapon) { case MACE -> config.swordThrowDamage(); case SPEAR -> config.swordThrowDamage() * .75D; case AXE -> config.axeSpinDamage(); case HOE -> config.hoeSweepDamage(); case SHIELD -> 0.0D; };
+            return switch (weapon) {
+                case MACE_MELEE, MACE_DROP -> config.swordThrowDamage();
+                case SPEAR_MELEE, SPEAR_LUNGE, TRIDENT_THROWER -> config.swordThrowDamage() * .75D;
+                case AXE_MELEE -> config.axeSpinDamage(); case HOE_MELEE -> config.hoeSweepDamage();
+                case SHIELD_ORBIT -> 0.0D;
+            };
         }
     }
 

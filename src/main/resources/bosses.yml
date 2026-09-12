@@ -14,6 +14,7 @@ gateway-boss:
     actor-total-cap: 14
     actor-lifetime-ticks: 100
     detach-telegraph-ticks: 16
+    weapon-throw-speed: 0.42
     mace-melee-damage: 8.0
     axe-melee-damage: 7.0
     hoe-melee-damage: 6.0

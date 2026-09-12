@@ -21,4 +21,15 @@ class GatewayPlacementTest {
         double z = left.getZ() - right.getZ();
         return x * x + y * y + z * z;
     }
+
+    @Test void randomizedDeploymentStaysInsideExplicitP0RadialBounds() {
+        Location p0 = new Location(null, 3, 10, -2);
+        List<Location> gateways = new GatewayPlacement().launcherLocations(p0, 6, 8, 14, 5, 3,
+                new Random(7), location -> true);
+        assertEquals(6, gateways.size());
+        for (Location gateway : gateways) {
+            double horizontal = Math.hypot(gateway.getX() - p0.getX(), gateway.getZ() - p0.getZ());
+            assertTrue(horizontal >= 8 && horizontal <= 14);
+        }
+    }
 }

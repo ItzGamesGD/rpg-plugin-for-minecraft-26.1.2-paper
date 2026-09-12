@@ -16,7 +16,10 @@ class GatewayBossConfigTest {
         YamlConfiguration yaml = loadBosses();
         String root = "gateway-boss.";
         assertTrue(yaml.getDouble(root + "attack-range") >= 20.0D);
+        assertTrue(yaml.getDouble(root + "orbit.ring-plane-speed") > 0.0D);
         assertTrue(yaml.getInt(root + "basic.detach-telegraph-ticks") >= 10);
+        assertTrue(yaml.getDouble(root + "basic.weapon-throw-speed") < 1.0D);
+        assertTrue(yaml.getDouble(root + "gateway.phase-spacing") >= 8.0D);
         assertTrue(yaml.getInt(root + "reflection.parry-telegraph-ticks") >= 15);
         assertTrue(yaml.getDouble(root + "reflection.parry-return-speed") < 1.0D);
         assertTrue(yaml.getInt(root + "internal-ai-driver.max-active") > 0);
@@ -25,15 +28,17 @@ class GatewayBossConfigTest {
     }
 
     @Test void invalidValuesAreBoundedToReadableAndSafeLimits() {
-        GatewayBossConfig config = GatewayBossConfig.bounded(1, 99, 9, 99, 9, 1,
-                -1, -1, -1, 1, 9, 1, 99, 99, 9999, 9, 1, 1, 1);
+        GatewayBossConfig config = GatewayBossConfig.bounded(1, 99, 9, 99, 9, 9, 1,
+                -1, -1, -1, 1, 9, 1, 99, 9999, 99, 9999, 1, 9, 1, 1, 1);
         assertEquals(20.0D, config.attackRange());
         assertEquals(12.0D, config.orbitRadius());
         assertEquals(20, config.maxOrbitWeapons());
         assertEquals(10, config.weaponThrowTelegraphTicks());
         assertEquals(15, config.parryTelegraphTicks());
-        assertEquals(16, config.maxActiveSummons());
-        assertEquals(1200, config.summonLifetimeTicks());
+        assertEquals(1200, config.basicActorLifetimeTicks());
+        assertEquals(16, config.maxActiveDrivers());
+        assertEquals(1200, config.driverLifetimeTicks());
+        assertEquals(8.0D, config.phaseSpacing());
     }
 
     private YamlConfiguration loadBosses() {

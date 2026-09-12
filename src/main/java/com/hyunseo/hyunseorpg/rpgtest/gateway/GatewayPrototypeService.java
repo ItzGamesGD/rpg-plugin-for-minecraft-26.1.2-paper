@@ -80,19 +80,20 @@ public final class GatewayPrototypeService implements Listener {
     public String bossBattle(Player player, boolean debug) {
         cleanup(player.getUniqueId());
         Location snapshot = player.getLocation().clone().add(0, 1, 0);
-        Location boss = bossPoint(player).add(player.getLocation().getDirection().setY(0).normalize().multiply(7));
+        GatewayBossConfig bossConfig = GatewayBossConfig.from(config);
+        Location boss = bossPoint(player, bossConfig.phaseSpacing());
         GatewaySession session = new GatewaySession(player, snapshot, boss, List.of());
         ArmorStand stand = boss.getWorld().spawn(boss, ArmorStand.class, entity -> {
             entity.setGravity(false); entity.setPersistent(false); entity.setInvulnerable(true); entity.setVisible(true);
         });
         session.entities().add(stand); session.setDummy(new PrototypeBossDummy(stand));
         sessions.put(player.getUniqueId(), session);
-        GatewayBossRuntime runtime = new GatewayBossRuntime(plugin, session, GatewayBossConfig.from(config),
+        GatewayBossRuntime runtime = new GatewayBossRuntime(plugin, session, bossConfig,
                 () -> cleanup(player.getUniqueId()), () -> triggerGatewayPhase(session, player, debug));
         bossBattles.put(player.getUniqueId(), runtime);
         runtime.start();
         return "Gateway Boss engaged: orbital/basic/gateway phases active; range="
-                + GatewayBossConfig.from(config).attackRange();
+                + bossConfig.attackRange();
     }
 
     /** Temporary special phase only; normal boss combat never owns Gateway visuals. */
@@ -101,14 +102,17 @@ public final class GatewayPrototypeService implements Listener {
         Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
         if (!session.gatewayPhase().begin(phaseSnapshot)) return;
         int gatewayCount = Math.max(6, Math.min(16, config.getBossesInt("gateway-boss.gateway.count", DEFAULT_GATEWAY_COUNT)));
+        double radialMin = Math.max(4.0D, Math.min(20.0D, config.getBossesDouble("gateway-boss.gateway.radial-min", 8.0D)));
         double radialMax = Math.max(8.0D, Math.min(24.0D, config.getBossesDouble("gateway-boss.gateway.radial-max", 14.0D)));
+        if (radialMax < radialMin) radialMax = radialMin;
         double upperHeight = Math.max(2.0D, Math.min(16.0D, config.getBossesDouble("gateway-boss.gateway.upper-height", 5.0D)));
         double minSpacing = Math.max(2.0D, Math.min(8.0D, config.getBossesDouble("gateway-boss.gateway.minimum-spacing", GatewayPlacement.MIN_SPACING)));
         int payloadCap = Math.max(1, Math.min(48, config.getBossesInt("gateway-boss.gateway.global-payload-cap", GATEWAY_TOTAL_CAP)));
         List<Location> launchers = placement.launcherLocations(phaseSnapshot,
-                gatewayCount, radialMax, upperHeight, minSpacing, random, this::gatewaySpaceClear);
+                gatewayCount, radialMin, radialMax, upperHeight, minSpacing, random, this::gatewaySpaceClear);
         if (launchers.size() != gatewayCount) { session.gatewayPhase().close(); return; }
         List<Location> returns = placement.returnLocations(session.bossTarget(), gatewayCount);
+        if (returns.stream().anyMatch(location -> !returnSpaceClear(location))) { session.gatewayPhase().close(); return; }
         List<Entity> phaseVisuals = new ArrayList<>();
         List<GatewayPair> pairs = new ArrayList<>();
         for (int i = 0; i < launchers.size(); i++) {
@@ -290,10 +294,15 @@ public final class GatewayPrototypeService implements Listener {
             @Override public void run() {
                 if (++age > duration || !sessions.containsValue(session)) { cancel(); return; }
                 Vector forward = pair.snapshotForward();
-                for (double d=.5; d<=11; d+=.5) pair.launcher().getWorld().spawnParticle(particle, pair.launcher().clone().add(forward.clone().multiply(d)), 1,0,0,0,0);
+                Location origin = pair.launcher();
+                RayTraceResult obstruction = origin.getWorld().rayTraceBlocks(origin, forward, 11, FluidCollisionMode.NEVER, true);
+                Location endpoint = obstruction == null ? origin.clone().add(forward.clone().multiply(11))
+                        : obstruction.getHitPosition().toLocation(origin.getWorld());
+                double length = origin.distance(endpoint);
+                for (double d=.5; d<=length; d+=.5) origin.getWorld().spawnParticle(particle, origin.clone().add(forward.clone().multiply(d)), 1,0,0,0,0);
                 if (shouldDamageVolume(type, age, telegraph)) {
                     Player owner = plugin.getServer().getPlayer(session.ownerId());
-                    if (owner != null && pointToSegmentDistance(owner.getEyeLocation().toVector(), pair.launcher().toVector(), pair.launcher().toVector().add(forward.clone().multiply(11))) <= volumeRadius(type))
+                    if (owner != null && pointToSegmentDistance(owner.getEyeLocation().toVector(), origin.toVector(), endpoint.toVector()) <= volumeRadius(type))
                         owner.damage(volumeDamage(type));
                 }
             }
@@ -348,7 +357,8 @@ public final class GatewayPrototypeService implements Listener {
         projectiles.entrySet().removeIf(entry -> entry.getValue().session.ownerId().equals(owner));
     }
     public void shutdown() { new ArrayList<>(sessions.keySet()).forEach(this::cleanup); new ArrayList<>(bossBattles.keySet()).forEach(this::cleanup); new ArrayList<>(basics.keySet()).forEach(this::cleanup); new ArrayList<>(orbitals.keySet()).forEach(this::cleanup); }
-    private Location bossPoint(Player player) { Vector forward=player.getLocation().getDirection().setY(0); if(forward.lengthSquared()<.01)forward.setZ(1); return player.getLocation().clone().add(forward.normalize().multiply(10)).add(0,1,0); }
+    private Location bossPoint(Player player) { return bossPoint(player, 10.0D); }
+    private Location bossPoint(Player player, double spacing) { Vector forward=player.getLocation().getDirection().setY(0); if(forward.lengthSquared()<.01)forward.setZ(1); return player.getLocation().clone().add(forward.normalize().multiply(spacing)).add(0,1,0); }
     private String format(Location l) { return "%.1f,%.1f,%.1f".formatted(l.getX(),l.getY(),l.getZ()); }
     private float reflectionSize(GatewayPayloadType type) { return type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? 1.35f : type == GatewayPayloadType.ARROW ? .9f : 1.1f; }
     private double baseSpeed(GatewayPayloadType type) { return switch(type) { case ARROW->1.5; case BLAZE_SMALL_FIREBALL->1.1; case TRIDENT->1.25; case WIND_CHARGE->.9; case SHULKER_BULLET->.55; case GHAST_FIREBALL->.65; case WITHER_SKULL->.7; default->.5; }; }

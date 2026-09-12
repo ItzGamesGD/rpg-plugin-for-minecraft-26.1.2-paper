@@ -19,6 +19,12 @@ public final class GatewayPlacement {
 
     public List<Location> launcherLocations(Location snapshot, int count, double radius, double height, double minSpacing,
                                             RandomGenerator random, Predicate<Location> spaceValidator) {
+        return launcherLocations(snapshot, count, radius * .62D, radius * 1.20D, height, minSpacing, random, spaceValidator);
+    }
+
+    public List<Location> launcherLocations(Location snapshot, int count, double minRadius, double maxRadius, double height,
+                                            double minSpacing, RandomGenerator random, Predicate<Location> spaceValidator) {
+        if (minRadius < 0 || maxRadius < minRadius) throw new IllegalArgumentException("Invalid gateway radial bounds");
         List<Location> result = new ArrayList<>();
         for (int index = 0; index < count; index++) {
             boolean accepted = false;
@@ -26,7 +32,7 @@ public final class GatewayPlacement {
                 // Each portal owns an independently sampled position: this is intentionally
                 // not a rotated regular polygon around P0.
                 double angle = random.nextDouble() * Math.PI * 2.0;
-                double radial = radius * (.62 + random.nextDouble() * .58);
+                double radial = minRadius + random.nextDouble() * (maxRadius - minRadius);
                 double y = height + random.nextDouble() * 5.0;
                 Location candidate = snapshot.clone().add(Math.cos(angle) * radial, y, Math.sin(angle) * radial);
                 boolean spaced = result.stream().allMatch(existing -> squaredDistance(existing, candidate) >= minSpacing * minSpacing);

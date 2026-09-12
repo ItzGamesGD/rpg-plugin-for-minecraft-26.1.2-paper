@@ -20,14 +20,14 @@ class GatewayBossStateTest {
         assertEquals(GatewayBossState.SlotStatus.ORBITING, state.slotStatus(1));
     }
 
-    @Test void activeSummonsRespectCapAndCleanupResetsAllEncounterState() {
+    @Test void hiddenDriversRespectCapAndCleanupResetsAllEncounterState() {
         GatewayBossState state = new GatewayBossState(2);
         UUID first = UUID.randomUUID();
-        assertTrue(state.addSummon(first, 1));
-        assertFalse(state.addSummon(UUID.randomUUID(), 1));
+        assertTrue(state.addDriver(first, 1));
+        assertFalse(state.addDriver(UUID.randomUUID(), 1));
         state.reserve(0);
         state.cleanup();
-        assertEquals(0, state.activeSummons());
+        assertEquals(0, state.activeDrivers());
         assertEquals(GatewayBossState.SlotStatus.ORBITING, state.slotStatus(0));
     }
 }

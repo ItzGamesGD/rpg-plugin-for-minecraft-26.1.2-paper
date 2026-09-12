@@ -4,11 +4,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-/** Server-free encounter state. Keeps every display slot and AI summon bounded. */
+/** Server-free encounter state. Keeps every display slot and hidden AI driver bounded. */
 public final class GatewayBossState {
     public enum SlotStatus { ORBITING, TELEGRAPHING, FLYING }
     private final SlotStatus[] slots;
-    private final Set<UUID> activeSummons = new HashSet<>();
+    private final Set<UUID> activeDrivers = new HashSet<>();
 
     public GatewayBossState(int slotCount) {
         slots = new SlotStatus[Math.max(1, slotCount)];
@@ -22,10 +22,10 @@ public final class GatewayBossState {
     }
     public void launch(int slot) { if (slots[slot] == SlotStatus.TELEGRAPHING) slots[slot] = SlotStatus.FLYING; }
     public void recover(int slot) { slots[slot] = SlotStatus.ORBITING; }
-    public boolean addSummon(UUID id, int cap) {
-        return activeSummons.size() < cap && activeSummons.add(id);
+    public boolean addDriver(UUID id, int cap) {
+        return activeDrivers.size() < cap && activeDrivers.add(id);
     }
-    public void removeSummon(UUID id) { activeSummons.remove(id); }
-    public int activeSummons() { return activeSummons.size(); }
-    public void cleanup() { java.util.Arrays.fill(slots, SlotStatus.ORBITING); activeSummons.clear(); }
+    public void removeDriver(UUID id) { activeDrivers.remove(id); }
+    public int activeDrivers() { return activeDrivers.size(); }
+    public void cleanup() { java.util.Arrays.fill(slots, SlotStatus.ORBITING); activeDrivers.clear(); }
 }
