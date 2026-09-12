@@ -688,7 +688,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                         ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
                         ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
                 null);
-        this.gatewayPrototypeService = new GatewayPrototypeService(this);
+        this.gatewayPrototypeService = new GatewayPrototypeService(this, configService);
 
         configureReloadService();
         reloadService.register("exploration", explorationModule::reload);

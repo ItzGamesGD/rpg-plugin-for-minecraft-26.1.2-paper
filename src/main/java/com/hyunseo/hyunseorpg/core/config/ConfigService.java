@@ -323,6 +323,10 @@ public final class ConfigService {
         return bossesConfig.getBoolean(path, defaultValue);
     }
 
+    public int getBossesInt(String path, int defaultValue) {
+        return bossesConfig.getInt(path, defaultValue);
+    }
+
     public long getBossesLong(String path, long defaultValue) {
         return bossesConfig.getLong(path, defaultValue);
     }

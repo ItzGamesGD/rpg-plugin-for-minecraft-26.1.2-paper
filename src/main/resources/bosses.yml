@@ -1,5 +1,32 @@
 schema-version: 1
 
+# RPGTEST Gateway Boss tuning. The central gateway is the encounter owner; the dummy is only
+# a target for exercising phases until this is wired into a production boss spawner.
+gateway-boss:
+  enabled: true
+  # Keeps the encounter active across a real arena rather than a 5-10 block prototype pocket.
+  attack-range: 28.0
+  orbit-radius: 5.5
+  orbit-speed: 0.075
+  max-orbit-weapons: 6
+  weapon-throw-speed: 0.48
+  weapon-throw-telegraph-ticks: 16
+  sword-throw-damage: 8.0
+  axe-spin-damage: 7.0
+  hoe-sweep-damage: 6.0
+  # Counter is deliberately slower than normal throws. It must show the gateway pulse first.
+  parry-telegraph-ticks: 22
+  parry-return-speed: 0.42
+  parry-cooldown-ticks: 100
+  vex-summon-count: 2
+  max-active-summons: 6
+  summon-lifetime-ticks: 240
+  phase-health-thresholds:
+    burst-ratio: 0.45
+  attack-cooldown-ticks: 80
+  burst-cooldown-ticks: 48
+  cleanup-timeout-ticks: 100
+
 boss-sessions:
   enabled: true
   wither:

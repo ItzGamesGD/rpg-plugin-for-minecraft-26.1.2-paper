@@ -4,6 +4,7 @@ import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPattern;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPatternSelector;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponRuntime;
 import com.hyunseo.hyunseorpg.rpgtest.orbital.OrbitalWeaponCoreRuntime;
+import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -26,6 +27,7 @@ import org.bukkit.entity.WitherSkull;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -58,6 +60,7 @@ public final class GatewayPrototypeService implements Listener {
             GatewayPayloadType.END_CRYSTAL_BOMB, 3);
 
     private final Plugin plugin;
+    private final ConfigService config;
     private final GatewayPlacement placement = new GatewayPlacement();
     private final BasicWeaponPatternSelector basicSelector = new BasicWeaponPatternSelector();
     private final Map<UUID, GatewaySession> sessions = new HashMap<>();
@@ -65,11 +68,25 @@ public final class GatewayPrototypeService implements Listener {
     private final Map<UUID, RoutedProjectile> projectiles = new HashMap<>();
     private final Map<UUID, BasicWeaponRuntime> basics = new HashMap<>();
     private final Map<UUID, OrbitalWeaponCoreRuntime> orbitals = new HashMap<>();
+    private final Map<UUID, GatewayBossRuntime> bossBattles = new HashMap<>();
     private final Random random = new Random();
 
-    public GatewayPrototypeService(Plugin plugin) { this.plugin = plugin; }
+    public GatewayPrototypeService(Plugin plugin, ConfigService config) { this.plugin = plugin; this.config = config; }
     public String place(Player player, boolean debug) { return startSession(player, debug, false); }
     public String pairing(Player player) { return startSession(player, true, false); }
+
+    /** Starts the complete gateway-owned boss loop, not the legacy one-shot payload test. */
+    public String bossBattle(Player player, boolean debug) {
+        String result = startSession(player, debug, true);
+        GatewaySession session = sessions.get(player.getUniqueId());
+        if (session == null) return result;
+        GatewayBossRuntime runtime = new GatewayBossRuntime(plugin, session, GatewayBossConfig.from(config),
+                () -> cleanup(player.getUniqueId()));
+        bossBattles.put(player.getUniqueId(), runtime);
+        runtime.start();
+        return "Gateway Boss engaged: orbit/throw/summon/counter phases active; range="
+                + GatewayBossConfig.from(config).attackRange();
+    }
 
     public String randomCycle(Player player, boolean debug) {
         String result = startSession(player, debug, true);
@@ -237,6 +254,15 @@ public final class GatewayPrototypeService implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true) public void onReflect(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player) {
+            for (GatewayBossRuntime battle : new ArrayList<>(bossBattles.values())) {
+                if (battle.ownsDummy(event.getEntity())) {
+                    event.setCancelled(true);
+                    battle.playerStruckBoss(event.getFinalDamage());
+                    return;
+                }
+            }
+        }
         if (!(event.getDamager() instanceof Player)) return;
         RoutedProjectile runtime = reflections.get(event.getEntity().getUniqueId());
         if (runtime == null || runtime.state.phase() != ReflectableProjectileState.Phase.OUTBOUND) return;
@@ -255,15 +281,17 @@ public final class GatewayPrototypeService implements Listener {
     }
     @EventHandler public void onQuit(PlayerQuitEvent event) { cleanup(event.getPlayer().getUniqueId()); }
     @EventHandler public void onWorldChange(PlayerChangedWorldEvent event) { cleanup(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onDeath(PlayerDeathEvent event) { cleanup(event.getEntity().getUniqueId()); }
 
     public void cleanup(UUID owner) {
+        GatewayBossRuntime battle=bossBattles.remove(owner); if (battle!=null) battle.dispose();
         GatewaySession session=sessions.remove(owner); if(session!=null) session.cleanup();
         BasicWeaponRuntime basic=basics.remove(owner); if(basic!=null) basic.cleanup();
         OrbitalWeaponCoreRuntime orbital=orbitals.remove(owner); if(orbital!=null) orbital.cleanup();
         reflections.entrySet().removeIf(entry -> entry.getValue().session.ownerId().equals(owner));
         projectiles.entrySet().removeIf(entry -> entry.getValue().session.ownerId().equals(owner));
     }
-    public void shutdown() { new ArrayList<>(sessions.keySet()).forEach(this::cleanup); new ArrayList<>(basics.keySet()).forEach(this::cleanup); new ArrayList<>(orbitals.keySet()).forEach(this::cleanup); }
+    public void shutdown() { new ArrayList<>(sessions.keySet()).forEach(this::cleanup); new ArrayList<>(bossBattles.keySet()).forEach(this::cleanup); new ArrayList<>(basics.keySet()).forEach(this::cleanup); new ArrayList<>(orbitals.keySet()).forEach(this::cleanup); }
     private Location bossPoint(Player player) { Vector forward=player.getLocation().getDirection().setY(0); if(forward.lengthSquared()<.01)forward.setZ(1); return player.getLocation().clone().add(forward.normalize().multiply(10)).add(0,1,0); }
     private String format(Location l) { return "%.1f,%.1f,%.1f".formatted(l.getX(),l.getY(),l.getZ()); }
     private float reflectionSize(GatewayPayloadType type) { return type == GatewayPayloadType.BLAZE_SMALL_FIREBALL ? 1.35f : type == GatewayPayloadType.ARROW ? .9f : 1.1f; }
