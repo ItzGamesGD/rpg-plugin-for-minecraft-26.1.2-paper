@@ -1,8 +1,10 @@
 package com.hyunseo.hyunseorpg.rpgtest.gateway;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.random.RandomGenerator;
 
 /** Server-free encounter state. Keeps every display slot and hidden AI driver bounded. */
 public final class GatewayBossState {
@@ -22,6 +24,12 @@ public final class GatewayBossState {
     }
     public void launch(int slot) { if (slots[slot] == SlotStatus.TELEGRAPHING) slots[slot] = SlotStatus.FLYING; }
     public void recover(int slot) { slots[slot] = SlotStatus.ORBITING; }
+    /** Selects among the caller's eligible family slots; it never falls back to a sequential slot. */
+    public int randomOrbitingSlot(List<Integer> candidates, RandomGenerator random) {
+        java.util.ArrayList<Integer> available = new java.util.ArrayList<>();
+        for (int slot : candidates) if (slot >= 0 && slot < slots.length && slots[slot] == SlotStatus.ORBITING) available.add(slot);
+        return available.isEmpty() ? -1 : available.get(random.nextInt(available.size()));
+    }
     public boolean addDriver(UUID id, int cap) {
         return activeDrivers.size() < cap && activeDrivers.add(id);
     }

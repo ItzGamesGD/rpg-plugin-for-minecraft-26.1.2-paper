@@ -3,6 +3,8 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,5 +31,16 @@ class GatewayBossStateTest {
         state.cleanup();
         assertEquals(0, state.activeDrivers());
         assertEquals(GatewayBossState.SlotStatus.ORBITING, state.slotStatus(0));
+    }
+
+    @Test void eligibleOrbitSlotsAreSampledRatherThanAlwaysTakingTheFirst() {
+        GatewayBossState state = new GatewayBossState(4);
+        boolean sawNonFirst = false;
+        for (int seed = 0; seed < 100; seed++) {
+            int selected = state.randomOrbitingSlot(List.of(1, 2, 3), new Random(seed));
+            assertTrue(selected >= 1 && selected <= 3);
+            sawNonFirst |= selected != 1;
+        }
+        assertTrue(sawNonFirst);
     }
 }

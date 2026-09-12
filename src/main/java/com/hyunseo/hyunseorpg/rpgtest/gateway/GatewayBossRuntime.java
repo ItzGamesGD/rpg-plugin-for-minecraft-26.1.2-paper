@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPattern;
 import com.hyunseo.hyunseorpg.rpgtest.basic.BasicWeaponPatternSelector;
 import org.bukkit.Location;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -16,6 +17,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -211,7 +213,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING) eligible.add(slot);
         }
         eligible.removeIf(slot -> weaponFor(slot) == WeaponKind.SHIELD);
-        return eligible.isEmpty() ? -1 : eligible.get(random.nextInt(eligible.size()));
+        return state.randomOrbitingSlot(eligible, random);
     }
 
     private boolean isBurst() {
@@ -224,7 +226,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
         for (int slot = 0; slot < state.slotCount(); slot++) {
             if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING && weaponFor(slot) == familyFor(pattern)) eligible.add(slot);
         }
-        return eligible.isEmpty() ? -1 : eligible.get(random.nextInt(eligible.size()));
+        return state.randomOrbitingSlot(eligible, random);
     }
 
     private int countEligibleOrbitWeapons() {
@@ -332,9 +334,13 @@ final class GatewayBossRuntime extends BukkitRunnable {
             return false;
         }
         private boolean tickDrop(ItemDisplay display, Player owner) {
-            display.teleport(display.getLocation().add(0, -.42D, 0));
+            Location before = display.getLocation();
+            Vector step = new Vector(0, -.42D, 0);
+            RayTraceResult block = before.getWorld().rayTraceBlocks(before, step.clone().normalize(), step.length(), FluidCollisionMode.NEVER, true);
+            if (block != null) display.teleport(block.getHitPosition().toLocation(before.getWorld()));
+            else display.teleport(before.add(step));
             display.setTransformation(transform(2.4F, age * .32F, 0, 0));
-            if (display.getLocation().getBlock().getType().isSolid() || display.getBoundingBox().expand(.25).overlaps(owner.getBoundingBox())) {
+            if (block != null || display.getBoundingBox().expand(.25).overlaps(owner.getBoundingBox())) {
                 if (owner.getLocation().distanceSquared(display.getLocation()) <= 9) owner.damage(config.maceDamage());
                 display.getWorld().spawnParticle(Particle.EXPLOSION, display.getLocation(), 2, .25, .1, .25, .01);
                 return true;
