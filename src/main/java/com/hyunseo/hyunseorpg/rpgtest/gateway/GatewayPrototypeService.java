@@ -122,8 +122,9 @@ public final class GatewayPrototypeService implements Listener {
         }
         session.gatewayPhase().deploy();
         GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(payloadCap, localPayloadCaps());
+        int selectedPayloadCount = randomPayloadCount(random, payloadCap);
         long delay = 16;
-        for (int attempt = 0; attempt < payloadCap * 4 && scheduler.total() < payloadCap; attempt++) {
+        for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
             GatewayPair pair = pairs.get(random.nextInt(pairs.size()));
             long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
@@ -144,8 +145,9 @@ public final class GatewayPrototypeService implements Listener {
         GatewaySession session = sessions.get(player.getUniqueId());
         if (session == null) return result;
         GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, localPayloadCaps());
+        int selectedPayloadCount = randomPayloadCount(random, GATEWAY_TOTAL_CAP);
         long delay = 15;
-        for (int attempt = 0; attempt < GATEWAY_TOTAL_CAP * 4 && scheduler.total() < GATEWAY_TOTAL_CAP; attempt++) {
+        for (int attempt = 0; attempt < selectedPayloadCount * 4 && scheduler.total() < selectedPayloadCount; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
             GatewayPair pair = session.pairs().get(random.nextInt(session.pairs().size()));
             long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
@@ -391,6 +393,10 @@ public final class GatewayPrototypeService implements Listener {
     static boolean shouldDamageVolume(GatewayPayloadType type, int age, int telegraph) {
         if (type == GatewayPayloadType.SONIC_BOOM) return age == telegraph;
         return type.sustained() && age >= telegraph && (age - telegraph) % 8 == 0;
+    }
+    static int randomPayloadCount(java.util.random.RandomGenerator random, int globalCap) {
+        if (globalCap < 1) throw new IllegalArgumentException("global payload cap must be positive");
+        return 1 + random.nextInt(globalCap);
     }
     static double pointToSegmentDistance(Vector p, Vector a, Vector b) {
         Vector ab=b.clone().subtract(a);

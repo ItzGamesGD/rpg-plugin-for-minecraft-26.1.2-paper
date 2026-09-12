@@ -3,6 +3,7 @@ package com.hyunseo.hyunseorpg.rpgtest.gateway;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,5 +24,17 @@ class GatewayPayloadSchedulerTest {
         assertFalse(scheduler.reserve(7, GatewayPayloadType.ARROW, 62, 1, 8));
         assertTrue(scheduler.ready(7, 63));
         assertTrue(scheduler.reserve(7, GatewayPayloadType.ARROW, 63, 1, 8));
+    }
+
+    @Test void payloadCountIsRandomizedButNeverExceedsGlobalCap() {
+        boolean sawDifferentCounts = false;
+        Random random = new Random(0);
+        int first = GatewayPrototypeService.randomPayloadCount(random, 16);
+        for (int attempt = 0; attempt < 100; attempt++) {
+            int count = GatewayPrototypeService.randomPayloadCount(random, 16);
+            assertTrue(count >= 1 && count <= 16);
+            sawDifferentCounts |= count != first;
+        }
+        assertTrue(sawDifferentCounts);
     }
 }
