@@ -18,7 +18,7 @@ public record GatewayBossConfig(
                 config.getBossesDouble(p + "attack-range", 28.0),
                 config.getBossesDouble(p + "orbit.radius", 5.5),
                 config.getBossesDouble(p + "orbit.speed", .075),
-                config.getBossesInt(p + "orbit.max-weapons", 6),
+                config.getBossesInt(p + "orbit.max-weapons", 10),
                 config.getBossesDouble(p + "reflection.parry-return-speed", .42),
                 config.getBossesInt(p + "basic.detach-telegraph-ticks", 16),
                 config.getBossesDouble(p + "basic.mace-melee-damage", 8.0),
@@ -42,7 +42,7 @@ public record GatewayBossConfig(
                                      int maxSummons, int summonLifetime, double burstThreshold,
                                      int cooldown, int burstCooldown, int cleanupTimeout) {
         return new GatewayBossConfig(finite(range, 20, 48, 28), finite(radius, 2, 12, 5.5), finite(orbitSpeed, .01, .30, .075),
-                clamp(weapons, 3, 12), finite(throwSpeed, .12, .85, .48), clamp(throwTelegraph, 10, 60),
+                clamp(weapons, 5, 20), finite(throwSpeed, .12, .85, .48), clamp(throwTelegraph, 10, 60),
                 finite(sword, 0, 30, 8), finite(axe, 0, 30, 7), finite(hoe, 0, 30, 6),
                 clamp(parryTelegraph, 15, 60), finite(parrySpeed, .12, .75, .42), clamp(parryCooldown, 40, 600),
                 clamp(vexCount, 1, 6), clamp(maxSummons, 1, 16), clamp(summonLifetime, 40, 1200),

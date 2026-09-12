@@ -29,7 +29,7 @@ class GatewayBossConfigTest {
                 -1, -1, -1, 1, 9, 1, 99, 99, 9999, 9, 1, 1, 1);
         assertEquals(20.0D, config.attackRange());
         assertEquals(12.0D, config.orbitRadius());
-        assertEquals(12, config.maxOrbitWeapons());
+        assertEquals(20, config.maxOrbitWeapons());
         assertEquals(10, config.weaponThrowTelegraphTicks());
         assertEquals(15, config.parryTelegraphTicks());
         assertEquals(16, config.maxActiveSummons());

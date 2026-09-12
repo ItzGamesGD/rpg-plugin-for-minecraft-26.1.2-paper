@@ -8,7 +8,7 @@ gateway-boss:
   orbit:
     radius: 5.5
     speed: 0.075
-    max-weapons: 6
+    max-weapons: 10
     ring-plane-speed: 0.011
   basic:
     actor-total-cap: 14

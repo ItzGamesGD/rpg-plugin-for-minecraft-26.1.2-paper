@@ -27,7 +27,7 @@ import java.util.UUID;
  * damageable training target. Every display, Vex and timer is registered with the session.
  */
 final class GatewayBossRuntime extends BukkitRunnable {
-    private enum WeaponKind { SWORD, AXE, HOE }
+    private enum WeaponKind { MACE, SPEAR, AXE, HOE, SHIELD }
 
     private final Plugin plugin;
     private final GatewaySession session;
@@ -94,10 +94,10 @@ final class GatewayBossRuntime extends BukkitRunnable {
             }
         }
         if (tick >= nextParryTick) {
-            int slot = firstOrbitingSlot();
+            int slot = randomOrbitingSlot();
             if (slot >= 0) {
                 state.reserve(slot);
-                flights.add(new WeaponFlight(slot, WeaponKind.SWORD, true, config.parryTelegraphTicks()));
+                flights.add(new WeaponFlight(slot, WeaponKind.SPEAR, true, config.parryTelegraphTicks()));
                 nextParryTick = tick + config.parryCooldownTicks();
             }
         }
@@ -145,8 +145,8 @@ final class GatewayBossRuntime extends BukkitRunnable {
             if (!display.isValid()) { endSession.run(); return; }
             // Two local weapon slots per family ring.  The local orbit moves first, then its
             // orbital plane itself rotates: an armillary core, not stacked horizontal circles.
-            int ring = slot % 3;
-            int localSlot = slot / 3;
+            int ring = weaponFor(slot).ordinal();
+            int localSlot = slot / WeaponKind.values().length;
             double localAngle = tick * config.orbitSpeed() * (burst ? 1.35D : 1.0D) + localSlot * Math.PI;
             double planeAngle = tick * (.011D + ring * .003D) + ring * 1.17D;
             double radius = config.orbitRadius() + ring * .55D;
@@ -177,7 +177,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             gatewayPhase.run();
             return;
         }
-        int slot = firstOrbitingSlot();
+        int slot = randomOrbitingSlot();
         if (slot < 0) return;
         state.reserve(slot);
         flights.add(new WeaponFlight(slot, weaponFor(slot), false, config.weaponThrowTelegraphTicks()));
@@ -194,11 +194,12 @@ final class GatewayBossRuntime extends BukkitRunnable {
     }
 
 
-    private int firstOrbitingSlot() {
+    private int randomOrbitingSlot() {
         List<Integer> eligible = new ArrayList<>();
         for (int slot = 0; slot < state.slotCount(); slot++) {
             if (state.slotStatus(slot) == GatewayBossState.SlotStatus.ORBITING) eligible.add(slot);
         }
+        eligible.removeIf(slot -> weaponFor(slot) == WeaponKind.SHIELD);
         return eligible.isEmpty() ? -1 : eligible.get(random.nextInt(eligible.size()));
     }
 
@@ -219,7 +220,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
 
     private WeaponKind weaponFor(int slot) { return WeaponKind.values()[slot % WeaponKind.values().length]; }
     private Material materialFor(WeaponKind kind) {
-        return switch (kind) { case SWORD -> Material.NETHERITE_SWORD; case AXE -> Material.NETHERITE_AXE; case HOE -> Material.NETHERITE_HOE; };
+        return switch (kind) { case MACE -> Material.MACE; case SPEAR -> Material.TRIDENT; case AXE -> Material.NETHERITE_AXE; case HOE -> Material.NETHERITE_HOE; case SHIELD -> Material.SHIELD; };
     }
 
     private final class WeaponFlight {
@@ -268,7 +269,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
             display.getWorld().spawnParticle(kind == WeaponKind.AXE ? Particle.CRIT : Particle.END_ROD,
                     display.getLocation(), 5, .12, .12, .12, .01);
             if (!hit && owner.getWorld().equals(display.getWorld())) {
-                double radius = kind == WeaponKind.SWORD ? 1.25D : kind == WeaponKind.AXE ? 2.0D : 2.3D;
+                double radius = kind == WeaponKind.MACE ? 1.25D : kind == WeaponKind.SPEAR ? 1.45D : kind == WeaponKind.AXE ? 2.0D : 2.3D;
                 if (owner.getLocation().distanceSquared(display.getLocation()) <= radius * radius) {
                     owner.damage(damageFor(kind)); hit = true;
                     display.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, owner.getLocation().add(0, 1, 0), 12, .35, .5, .35, .1);
@@ -283,7 +284,7 @@ final class GatewayBossRuntime extends BukkitRunnable {
         }
         private double damageFor(WeaponKind weapon) {
             if (counter) return config.swordThrowDamage();
-            return switch (weapon) { case SWORD -> config.swordThrowDamage(); case AXE -> config.axeSpinDamage(); case HOE -> config.hoeSweepDamage(); };
+            return switch (weapon) { case MACE -> config.swordThrowDamage(); case SPEAR -> config.swordThrowDamage() * .75D; case AXE -> config.axeSpinDamage(); case HOE -> config.hoeSweepDamage(); case SHIELD -> 0.0D; };
         }
     }
 
