@@ -320,7 +320,7 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("/" + label + " maxhand [player]");
         sender.sendMessage("/" + label + " option-roll <optionId> [count]");
         sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
-        sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|cancel> [type] [debug]");
+        sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|weapon-ai|cancel> [type] [debug]");
         sender.sendMessage("/" + label + " basic-swarm <random|pattern <name> [count]>");
         sender.sendMessage("/" + label + " orbital-core [1-4|cancel]");
         sender.sendMessage("/" + label + " thousand-eyes <spawn|remove|central-laser|gateway-burst|scatter-lasers|path-dash> [seed]");
@@ -331,8 +331,9 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "option-roll", "boss", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
         if (args.length == 2 && args[0].equalsIgnoreCase("orbital-core")) return filter(List.of("1", "2", "3", "4", "cancel"), args[1]);
-        if (args.length == 2 && args[0].equalsIgnoreCase("gateway")) return filter(List.of("boss", "cycle", "payload", "reflection", "placement", "pairing", "cancel"), args[1]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("gateway")) return filter(List.of("boss", "cycle", "payload", "reflection", "placement", "pairing", "weapon-ai", "cancel"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("gateway") && args[1].equalsIgnoreCase("payload")) return filter(java.util.Arrays.stream(GatewayPayloadType.values()).map(Enum::name).toList(), args[2]);
+        if (args.length == 3 && args[0].equalsIgnoreCase("gateway") && args[1].equalsIgnoreCase("weapon-ai")) return filter(List.of("mace", "spear", "axe", "hoe"), args[2]);
         if (args.length == 2 && args[0].equalsIgnoreCase("basic-swarm")) return filter(List.of("random", "pattern"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("basic-swarm") && args[1].equalsIgnoreCase("pattern")) return filter(java.util.Arrays.stream(BasicWeaponPattern.values()).map(Enum::name).toList(), args[2]);
         if (args.length == 2 && args[0].equalsIgnoreCase("thousand-eyes")) return filter(List.of("spawn", "remove", "central-laser", "gateway-burst", "scatter-lasers", "path-dash"), args[1]);
