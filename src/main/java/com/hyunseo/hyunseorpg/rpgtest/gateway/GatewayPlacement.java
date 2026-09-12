@@ -14,6 +14,11 @@ public final class GatewayPlacement {
 
     public List<Location> launcherLocations(Location snapshot, int count, double radius, double height,
                                             RandomGenerator random, Predicate<Location> spaceValidator) {
+        return launcherLocations(snapshot, count, radius, height, MIN_SPACING, random, spaceValidator);
+    }
+
+    public List<Location> launcherLocations(Location snapshot, int count, double radius, double height, double minSpacing,
+                                            RandomGenerator random, Predicate<Location> spaceValidator) {
         List<Location> result = new ArrayList<>();
         for (int index = 0; index < count; index++) {
             boolean accepted = false;
@@ -24,7 +29,7 @@ public final class GatewayPlacement {
                 double radial = radius * (.62 + random.nextDouble() * .58);
                 double y = height + random.nextDouble() * 5.0;
                 Location candidate = snapshot.clone().add(Math.cos(angle) * radial, y, Math.sin(angle) * radial);
-                boolean spaced = result.stream().allMatch(existing -> existing.distanceSquared(candidate) >= MIN_SPACING * MIN_SPACING);
+                boolean spaced = result.stream().allMatch(existing -> squaredDistance(existing, candidate) >= minSpacing * minSpacing);
                 if (spaced && spaceValidator.test(candidate)) {
                     result.add(candidate);
                     accepted = true;
@@ -34,6 +39,13 @@ public final class GatewayPlacement {
             if (!accepted) return List.of();
         }
         return result;
+    }
+
+    private double squaredDistance(Location left, Location right) {
+        double x = left.getX() - right.getX();
+        double y = left.getY() - right.getY();
+        double z = left.getZ() - right.getZ();
+        return x * x + y * y + z * z;
     }
 
     public List<Location> returnLocations(Location boss, int count) {

@@ -100,10 +100,15 @@ public final class GatewayPrototypeService implements Listener {
         if (sessions.get(player.getUniqueId()) != session || !player.isOnline()) return;
         Location phaseSnapshot = player.getLocation().clone().add(0, 1, 0);
         if (!session.gatewayPhase().begin(phaseSnapshot)) return;
+        int gatewayCount = Math.max(6, Math.min(16, config.getBossesInt("gateway-boss.gateway.count", DEFAULT_GATEWAY_COUNT)));
+        double radialMax = Math.max(8.0D, Math.min(24.0D, config.getBossesDouble("gateway-boss.gateway.radial-max", 14.0D)));
+        double upperHeight = Math.max(2.0D, Math.min(16.0D, config.getBossesDouble("gateway-boss.gateway.upper-height", 5.0D)));
+        double minSpacing = Math.max(2.0D, Math.min(8.0D, config.getBossesDouble("gateway-boss.gateway.minimum-spacing", GatewayPlacement.MIN_SPACING)));
+        int payloadCap = Math.max(1, Math.min(48, config.getBossesInt("gateway-boss.gateway.global-payload-cap", GATEWAY_TOTAL_CAP)));
         List<Location> launchers = placement.launcherLocations(phaseSnapshot,
-                DEFAULT_GATEWAY_COUNT, 12, 5, random, this::gatewaySpaceClear);
-        if (launchers.size() != DEFAULT_GATEWAY_COUNT) { session.gatewayPhase().close(); return; }
-        List<Location> returns = placement.returnLocations(session.bossTarget(), DEFAULT_GATEWAY_COUNT);
+                gatewayCount, radialMax, upperHeight, minSpacing, random, this::gatewaySpaceClear);
+        if (launchers.size() != gatewayCount) { session.gatewayPhase().close(); return; }
+        List<Location> returns = placement.returnLocations(session.bossTarget(), gatewayCount);
         List<Entity> phaseVisuals = new ArrayList<>();
         List<GatewayPair> pairs = new ArrayList<>();
         for (int i = 0; i < launchers.size(); i++) {
@@ -113,9 +118,9 @@ public final class GatewayPrototypeService implements Listener {
                     placement.snapshotForward(launchers.get(i), phaseSnapshot), launcher.getUniqueId(), returning.getUniqueId()));
         }
         session.gatewayPhase().deploy();
-        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(GATEWAY_TOTAL_CAP, LOCAL_CAPS);
+        GatewayPayloadScheduler scheduler = new GatewayPayloadScheduler(payloadCap, LOCAL_CAPS);
         long delay = 16;
-        for (int attempt = 0; attempt < GATEWAY_TOTAL_CAP * 4 && scheduler.total() < GATEWAY_TOTAL_CAP; attempt++) {
+        for (int attempt = 0; attempt < payloadCap * 4 && scheduler.total() < payloadCap; attempt++) {
             GatewayPayloadType type = GatewayPayloadType.values()[random.nextInt(GatewayPayloadType.values().length)];
             GatewayPair pair = pairs.get(random.nextInt(pairs.size()));
             long active = type.sustained() ? 50 : type == GatewayPayloadType.SONIC_BOOM ? 20 : 2;
