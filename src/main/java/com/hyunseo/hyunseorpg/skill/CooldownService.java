@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public final class CooldownService {
     private final Clock clock;
+    private final boolean disabled;
     private final Map<UUID, Map<String, Long>> cooldownEndsByPlayer = new HashMap<>();
 
     public CooldownService() {
@@ -16,7 +17,16 @@ public final class CooldownService {
     }
 
     CooldownService(Clock clock) {
+        this(clock, false);
+    }
+
+    public CooldownService(boolean disabled) {
+        this(Clock.systemUTC(), disabled);
+    }
+
+    CooldownService(Clock clock, boolean disabled) {
         this.clock = clock;
+        this.disabled = disabled;
     }
 
     public boolean isOnCooldown(UUID playerId, String cooldownId) {
@@ -48,7 +58,7 @@ public final class CooldownService {
     }
 
     public void startCooldown(UUID playerId, String cooldownId, long durationMillis) {
-        if (durationMillis <= 0L) {
+        if (disabled || durationMillis <= 0L) {
             clearCooldown(playerId, cooldownId);
             return;
         }
