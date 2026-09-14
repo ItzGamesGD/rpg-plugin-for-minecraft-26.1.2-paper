@@ -217,7 +217,12 @@ import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyListener;
 import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyService;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
 import com.hyunseo.hyunseorpg.weapon.WeaponItemService;
-import org.bukkit.command.PluginCommand;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.TabCompleter;
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import com.hyunseo.hyunseorpg.command.paper.PaperCommandBridge;
+import com.hyunseo.hyunseorpg.command.paper.PaperCommandCatalog;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -910,284 +915,74 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         return mobService;
     }
 
+    @SuppressWarnings("UnstableApiUsage")
     private void registerCommandsSafe() {
-        PluginCommand rpgCommand = getCommand("rpg");
-        if (rpgCommand == null) {
-            getLogger().severe("Command 'rpg' is missing from plugin.yml.");
-        } else {
-            RPGGiveCommand giveCommand = new RPGGiveCommand(
-                    itemRegistry, itemService, soulboundItemService, reloadService, weaponItemService,
-                    rpgMenuService, zombieVariantService);
-            giveCommand.setMaintenanceServices(new ConfigDoctor(this), new ConfigMigrationService(this));
-            giveCommand.setPendingRewardService(pendingRewardService);
-            giveCommand.setFarmingServices(farmingProfileService, farmingPromotionService, playerDataService);
-            giveCommand.setFarmingOperations(farmingStatTokenService, cropGrowthService);
-            giveCommand.setFarmingDiagnostics(deliveryService, cropQualityService);
-            giveCommand.setFarmingAuditLogger(message -> getLogger().info("[FarmingAdmin] " + message));
-            giveCommand.setDeliveryGuiService(deliveryGuiService);
-            giveCommand.setFarmingHubGuiService(farmingHubGuiService);
-            giveCommand.setEffectService(effectService);
-            giveCommand.setEffectListGuiService(effectListGuiService);
-            giveCommand.setAlchemyServices(potionRegistry,
-                    potionPdc,
-                    specialCatalystExecutionService, alchemyGuiController, alchemyAuditLog);
-            giveCommand.setPotionFactory(potionFactory);
-            giveCommand.setSpecialEquipmentService(specialEquipmentService);
-            giveCommand.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
-            giveCommand.setExplorationModule(explorationModule);
-            rpgCommand.setExecutor(giveCommand);
-            rpgCommand.setTabCompleter(giveCommand);
-        }
+        RPGGiveCommand give = new RPGGiveCommand(
+                itemRegistry, itemService, soulboundItemService, reloadService, weaponItemService,
+                rpgMenuService, zombieVariantService);
+        give.setMaintenanceServices(new ConfigDoctor(this), new ConfigMigrationService(this));
+        give.setPendingRewardService(pendingRewardService);
+        give.setFarmingServices(farmingProfileService, farmingPromotionService, playerDataService);
+        give.setFarmingOperations(farmingStatTokenService, cropGrowthService);
+        give.setFarmingDiagnostics(deliveryService, cropQualityService);
+        give.setFarmingAuditLogger(message -> getLogger().info("[FarmingAdmin] " + message));
+        give.setDeliveryGuiService(deliveryGuiService);
+        give.setFarmingHubGuiService(farmingHubGuiService);
+        give.setEffectService(effectService);
+        give.setEffectListGuiService(effectListGuiService);
+        give.setAlchemyServices(potionRegistry, potionPdc, specialCatalystExecutionService,
+                alchemyGuiController, alchemyAuditLog);
+        give.setPotionFactory(potionFactory);
+        give.setSpecialEquipmentService(specialEquipmentService);
+        give.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
+        give.setExplorationModule(explorationModule);
 
-        PluginCommand effectCommand = getCommand("effectlist");
-        if (effectCommand == null) {
-            getLogger().severe("Command 'effectlist' is missing from plugin.yml.");
-        } else {
-            EffectCommand executor = new EffectCommand(effectListGuiService);
-            effectCommand.setExecutor(executor);
-            effectCommand.setTabCompleter(executor);
-        }
+        RPGTestCommand test = new RPGTestCommand(coinService, itemRegistry, itemService, soulboundItemService,
+                weaponItemService, equipmentEnhancementService, equipmentPromotionService, bossSessionManager,
+                reloadService, equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
+        CraftingCommand crafting = new CraftingCommand(craftingGuiService, craftingRecipeRegistry,
+                craftingLayoutRegistry, craftingTransactionService);
+        WeaponProficiencyCommand weaponInfo = new WeaponProficiencyCommand(weaponProficiencyService);
+        RPGStatAdminCommand stat = new RPGStatAdminCommand(statService, manaService);
+        RPGStatBalanceCommand balance = new RPGStatBalanceCommand(configService);
+        RPGLevelAdminCommand level = new RPGLevelAdminCommand(playerDataService, expService, levelService);
+        RPGCooldownCommand cooldown = new RPGCooldownCommand(configService, cooldownService);
+        RPGMobCommand mob = new RPGMobCommand(configService, mobService, mobLevelScalingService,
+                mythicCustomMobService, monsterBehaviorService);
+        RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService, rpgMenuService,
+                contentAvailabilityService, playerDiscoveryService);
+        ShopCommand shop = new ShopCommand(shopGuiService, shopRegistry);
+        ShopAdminCommand shopAdmin = new ShopAdminCommand(shopGuiService, shopRegistry);
+        SpecialEquipmentCommand special = new SpecialEquipmentCommand(specialEquipmentService, specialEquipmentMenuService);
+        EffectCommand effects = new EffectCommand(effectListGuiService);
 
-        PluginCommand rpgTestCommand = getCommand("rpgtest");
-        if (rpgTestCommand == null) {
-            getLogger().severe("Command 'rpgtest' is missing from plugin.yml.");
-        } else {
-            RPGTestCommand testCommand = new RPGTestCommand(
-                    coinService, itemRegistry, itemService, soulboundItemService, weaponItemService,
-                    equipmentEnhancementService, equipmentPromotionService, bossSessionManager, reloadService,
-                    equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
-            rpgTestCommand.setExecutor(testCommand);
-            rpgTestCommand.setTabCompleter(testCommand);
-        }
-
-        PluginCommand craftingCommand = getCommand("crafting");
-        if (craftingCommand == null) {
-            getLogger().severe("Command 'crafting' is missing from plugin.yml.");
-        } else {
-            CraftingCommand executor = new CraftingCommand(craftingGuiService, craftingRecipeRegistry,
-                    craftingLayoutRegistry, craftingTransactionService);
-            craftingCommand.setExecutor(executor);
-            craftingCommand.setTabCompleter(executor);
-        }
-
-        PluginCommand weaponInfoCommand = getCommand("weaponinfo");
-        if (weaponInfoCommand == null) {
-            getLogger().severe("Command 'weaponinfo' is missing from plugin.yml.");
-        } else {
-            WeaponProficiencyCommand proficiencyCommand = new WeaponProficiencyCommand(weaponProficiencyService);
-            weaponInfoCommand.setExecutor(proficiencyCommand);
-            weaponInfoCommand.setTabCompleter(proficiencyCommand);
-        }
-
-        PluginCommand statAdminCommand = getCommand("rpgstat");
-        if (statAdminCommand == null) {
-            getLogger().severe("Command 'rpgstat' is missing from plugin.yml.");
-        } else {
-            RPGStatAdminCommand statAdminExecutor = new RPGStatAdminCommand(statService, manaService);
-            statAdminCommand.setExecutor(statAdminExecutor);
-            statAdminCommand.setTabCompleter(statAdminExecutor);
-        }
-
-        PluginCommand statBalanceCommand = getCommand("rpgstatbalance");
-        if (statBalanceCommand == null) {
-            getLogger().severe("Command 'rpgstatbalance' is missing from plugin.yml.");
-        } else {
-            RPGStatBalanceCommand statBalanceExecutor = new RPGStatBalanceCommand(configService);
-            statBalanceCommand.setExecutor(statBalanceExecutor);
-            statBalanceCommand.setTabCompleter(statBalanceExecutor);
-        }
-
-        PluginCommand statGuiCommand = getCommand("stats");
-        if (statGuiCommand == null) {
-            getLogger().severe("Command 'stats' is missing from plugin.yml.");
-        } else {
-            statGuiCommand.setExecutor(new StatGuiCommand(statGuiService));
-        }
-
-        PluginCommand skillStatGuiCommand = getCommand("skillstats");
-        if (skillStatGuiCommand == null) {
-            getLogger().severe("Command 'skillstats' is missing from plugin.yml.");
-        } else {
-            skillStatGuiCommand.setExecutor(new SkillStatGuiCommand(statGuiService));
-        }
-
-        PluginCommand classStatGuiCommand = getCommand("weaponstats");
-        if (classStatGuiCommand == null) {
-            getLogger().severe("Command 'classstats' is missing from plugin.yml.");
-        } else {
-            classStatGuiCommand.setExecutor(new ClassStatGuiCommand(statGuiService));
-        }
-
-        PluginCommand levelAdminCommand = getCommand("rpglevel");
-        if (levelAdminCommand == null) {
-            getLogger().severe("Command 'rpglevel' is missing from plugin.yml.");
-        } else {
-            RPGLevelAdminCommand levelAdminExecutor = new RPGLevelAdminCommand(playerDataService, expService, levelService);
-            levelAdminCommand.setExecutor(levelAdminExecutor);
-            levelAdminCommand.setTabCompleter(levelAdminExecutor);
-        }
-
-        PluginCommand cooldownCommand = getCommand("rpgcooldown");
-        if (cooldownCommand == null) {
-            getLogger().severe("Command 'rpgcooldown' is missing from plugin.yml.");
-        } else {
-            RPGCooldownCommand cooldownExecutor = new RPGCooldownCommand(configService, cooldownService);
-            cooldownCommand.setExecutor(cooldownExecutor);
-            cooldownCommand.setTabCompleter(cooldownExecutor);
-        }
-
-        PluginCommand rpgMobCommand = getCommand("rpgmob");
-        if (rpgMobCommand == null) {
-            getLogger().severe("Command 'rpgmob' is missing from plugin.yml.");
-        } else {
-            RPGMobCommand rpgMobExecutor = new RPGMobCommand(configService, mobService, mobLevelScalingService,
-                    mythicCustomMobService, monsterBehaviorService);
-            rpgMobCommand.setExecutor(rpgMobExecutor);
-            rpgMobCommand.setTabCompleter(rpgMobExecutor);
-        }
-
-        PluginCommand rpgQuestCommand = getCommand("rpgquest");
-        if (rpgQuestCommand == null) {
-            getLogger().severe("Command 'rpgquest' is missing from plugin.yml.");
-        } else {
-            RPGQuestCommand rpgQuestExecutor = new RPGQuestCommand(questService);
-            rpgQuestCommand.setExecutor(rpgQuestExecutor);
-            rpgQuestCommand.setTabCompleter(rpgQuestExecutor);
-        }
-        PluginCommand shopCommand = getCommand("shop");
-        if (shopCommand == null) {
-            getLogger().severe("Command 'shop' is missing from plugin.yml.");
-        } else {
-            ShopCommand shopExecutor = new ShopCommand(shopGuiService, shopRegistry);
-            shopCommand.setExecutor(shopExecutor);
-            shopCommand.setTabCompleter(shopExecutor);
-        }
-
-        PluginCommand shopAdminCommand = getCommand("shopadmin");
-        if (shopAdminCommand == null) {
-            getLogger().severe("Command 'shopadmin' is missing from plugin.yml.");
-        } else {
-            ShopAdminCommand shopAdminExecutor = new ShopAdminCommand(shopGuiService, shopRegistry);
-            shopAdminCommand.setExecutor(shopAdminExecutor);
-            shopAdminCommand.setTabCompleter(shopAdminExecutor);
-        }
-
-        PluginCommand specialEquipmentCommand = getCommand("specialequipment");
-        if (specialEquipmentCommand == null) {
-            getLogger().severe("Command 'specialequipment' is missing from plugin.yml.");
-        } else {
-            SpecialEquipmentCommand executor = new SpecialEquipmentCommand(specialEquipmentService, specialEquipmentMenuService);
-            specialEquipmentCommand.setExecutor(executor);
-            specialEquipmentCommand.setTabCompleter(executor);
-        }
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            Commands commands = event.registrar();
+            registerPaperCommand(commands, "rpg", give, give);
+            registerPaperCommand(commands, "effectlist", effects, effects);
+            registerPaperCommand(commands, "rpgtest", test, test);
+            registerPaperCommand(commands, "crafting", crafting, crafting);
+            registerPaperCommand(commands, "weaponinfo", weaponInfo, weaponInfo);
+            registerPaperCommand(commands, "rpgstat", stat, stat);
+            registerPaperCommand(commands, "rpgstatbalance", balance, balance);
+            registerPaperCommand(commands, "stats", new StatGuiCommand(statGuiService), null);
+            registerPaperCommand(commands, "skillstats", new SkillStatGuiCommand(statGuiService), null);
+            registerPaperCommand(commands, "weaponstats", new ClassStatGuiCommand(statGuiService), null);
+            registerPaperCommand(commands, "rpglevel", level, level);
+            registerPaperCommand(commands, "rpgcooldown", cooldown, cooldown);
+            registerPaperCommand(commands, "rpgmob", mob, mob);
+            registerPaperCommand(commands, "rpgquest", quest, quest);
+            registerPaperCommand(commands, "shop", shop, shop);
+            registerPaperCommand(commands, "shopadmin", shopAdmin, shopAdmin);
+            registerPaperCommand(commands, "specialequipment", special, special);
+        });
     }
 
-    private void registerCommands() {
-        PluginCommand classSelectCommand = getCommand("직업선택");
-        if (classSelectCommand == null) {
-            getLogger().severe("Command '직업선택' is missing from plugin.yml.");
-            return;
-        }
-
-        ClassSelectCommand classSelectExecutor = new ClassSelectCommand(classService);
-        classSelectCommand.setExecutor(classSelectExecutor);
-        classSelectCommand.setTabCompleter(classSelectExecutor);
-
-        PluginCommand classResetCommand = getCommand("직업초기화");
-        if (classResetCommand == null) {
-            getLogger().severe("Command '직업초기화' is missing from plugin.yml.");
-            return;
-        }
-
-        classResetCommand.setExecutor(new ClassResetCommand(classService));
-
-        PluginCommand statAdminCommand = getCommand("rpgstat");
-        if (statAdminCommand == null) {
-            getLogger().severe("Command 'rpgstat' is missing from plugin.yml.");
-            return;
-        }
-
-        RPGStatAdminCommand statAdminExecutor = new RPGStatAdminCommand(statService, manaService);
-        statAdminCommand.setExecutor(statAdminExecutor);
-        statAdminCommand.setTabCompleter(statAdminExecutor);
-
-        PluginCommand statBalanceCommand = getCommand("rpgstatbalance");
-        if (statBalanceCommand == null) {
-            getLogger().severe("Command 'rpgstatbalance' is missing from plugin.yml.");
-            return;
-        }
-        RPGStatBalanceCommand statBalanceExecutor = new RPGStatBalanceCommand(configService);
-        statBalanceCommand.setExecutor(statBalanceExecutor);
-        statBalanceCommand.setTabCompleter(statBalanceExecutor);
-
-        PluginCommand statGuiCommand = getCommand("스탯");
-        if (statGuiCommand == null) {
-            getLogger().severe("Command '스탯' is missing from plugin.yml.");
-            return;
-        }
-        statGuiCommand.setExecutor(new StatGuiCommand(statGuiService));
-
-        PluginCommand skillStatGuiCommand = getCommand("스킬스탯");
-        if (skillStatGuiCommand == null) {
-            getLogger().severe("Command '스킬스탯' is missing from plugin.yml.");
-            return;
-        }
-        skillStatGuiCommand.setExecutor(new SkillStatGuiCommand(statGuiService));
-
-        PluginCommand classStatGuiCommand = getCommand("직업스탯");
-        if (classStatGuiCommand == null) {
-            getLogger().severe("Command '직업스탯' is missing from plugin.yml.");
-            return;
-        }
-        classStatGuiCommand.setExecutor(new ClassStatGuiCommand(statGuiService));
-
-        PluginCommand levelAdminCommand = getCommand("rpglevel");
-        if (levelAdminCommand == null) {
-            getLogger().severe("Command 'rpglevel' is missing from plugin.yml.");
-            return;
-        }
-
-        RPGLevelAdminCommand levelAdminExecutor = new RPGLevelAdminCommand(playerDataService, expService, levelService);
-        levelAdminCommand.setExecutor(levelAdminExecutor);
-        levelAdminCommand.setTabCompleter(levelAdminExecutor);
-
-        PluginCommand cooldownCommand = getCommand("rpgcooldown");
-        if (cooldownCommand == null) {
-            getLogger().severe("Command 'rpgcooldown' is missing from plugin.yml.");
-            return;
-        }
-
-        RPGCooldownCommand cooldownExecutor = new RPGCooldownCommand(configService, cooldownService);
-        cooldownCommand.setExecutor(cooldownExecutor);
-        cooldownCommand.setTabCompleter(cooldownExecutor);
-
-        PluginCommand rpgMobCommand = getCommand("rpgmob");
-        if (rpgMobCommand == null) {
-            getLogger().severe("Command 'rpgmob' is missing from plugin.yml.");
-            return;
-        }
-
-        RPGMobCommand rpgMobExecutor = new RPGMobCommand(configService, mobService, mobLevelScalingService,
-                mythicCustomMobService, monsterBehaviorService);
-        rpgMobCommand.setExecutor(rpgMobExecutor);
-        rpgMobCommand.setTabCompleter(rpgMobExecutor);
-
-        PluginCommand rpgQuestCommand = getCommand("rpgquest");
-        if (rpgQuestCommand == null) {
-            getLogger().severe("Command 'rpgquest' is missing from plugin.yml.");
-            return;
-        }
-
-        RPGQuestCommand rpgQuestExecutor = new RPGQuestCommand(questService, autoQuestService,
-                rpgMenuService, contentAvailabilityService, playerDiscoveryService);
-        rpgQuestCommand.setExecutor(rpgQuestExecutor);
-        rpgQuestCommand.setTabCompleter(rpgQuestExecutor);
-        PluginCommand questCommand = getCommand("quest");
-        if (questCommand != null) {
-            questCommand.setExecutor(rpgQuestExecutor);
-            questCommand.setTabCompleter(rpgQuestExecutor);
-        }
-
+    @SuppressWarnings("UnstableApiUsage")
+    private void registerPaperCommand(Commands commands, String name, CommandExecutor executor, TabCompleter completer) {
+        var spec = PaperCommandCatalog.BY_NAME.get(name);
+        if (spec == null) throw new IllegalStateException("Missing Paper command metadata: " + name);
+        commands.register(name, spec.description(), spec.aliases(), new PaperCommandBridge(name, executor, completer));
     }
 
     private void registerProductionEffectHandlers() {

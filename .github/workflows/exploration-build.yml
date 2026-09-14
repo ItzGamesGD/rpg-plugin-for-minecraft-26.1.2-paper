@@ -9,6 +9,7 @@ on:
     branches:
       - "codex/exploration-*"
       - "main"
+      - "codex/gateway-boss-authoritative-second-pass"
 
 jobs:
   build-and-test:

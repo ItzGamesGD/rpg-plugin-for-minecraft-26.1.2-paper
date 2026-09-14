@@ -6,51 +6,69 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Definitions needed before the Bukkit plugin is enabled. Runtime-only trigger settings remain in enchants.yml.
- * Vanilla acquisition is intentionally controlled by Minecraft enchantment tags, not plugin loot listeners.
+ * Immutable bootstrap metadata, separate because registries freeze before runtime YAML is available.
+ * NativeEnchantDefinitionParityTest prevents this table from drifting from enchants.yml.
  */
 public final class NativeEnchantDefinitions {
     public static final String NAMESPACE = "hyunseorpg";
+    private static final String BOW_SHIFT_EXCLUSIVE = "exclusive_set/bow_shift_left";
     public static final List<NativeEnchantDefinition> ALL = List.of(
-        d("blade_chain", "칼날 연쇄", 1, "enchantable/sword"),
-        d("light_greatsword", "빛의 대검", 1, "enchantable/sword"),
-        d("laser_arrow", "레이저 화살", 1, "enchantable/bow"),
-        d("axe_heavy_strike", "강타", 1, "enchantable/mining"),
-        d("titans_wrath", "타이탄의 분노", 1, "enchantable/mining"),
-        d("protection", "보호", 4, "enchantable/armor"),
-        d("fire_protection", "화염 보호", 4, "enchantable/armor"),
-        d("blast_protection", "폭발 보호", 4, "enchantable/armor"),
-        d("projectile_protection", "투사체 보호", 4, "enchantable/armor"),
-        d("skill_protection", "스킬 보호", 4, "enchantable/armor"),
-        d("thorns", "가시", 3, "enchantable/armor"),
-        d("rolling_landing", "구르기 착지", 1, "enchantable/foot_armor"),
-        d("respiration", "호흡", 3, "enchantable/head_armor"),
-        d("aqua_affinity", "친수성", 1, "enchantable/head_armor"),
-        d("swift_sneak", "신속한 잠행", 3, "enchantable/leg_armor"),
-        d("depth_strider", "물갈퀴", 3, "enchantable/foot_armor"),
-        d("soul_speed", "영혼 가속", 3, "enchantable/foot_armor"),
-        d("frost_walker", "얼음 걸음", 2, "enchantable/foot_armor"),
-        d("wind_arrow", "바람 화살", 1, "enchantable/bow"),
-        d("fire_arrow_rain", "불화살 비", 1, "enchantable/bow"),
-        d("crossbow_barrage", "쇠뇌 연발", 1, "enchantable/crossbow"),
-        d("unbreaking", "내구도 보존", 1, "enchantable/durability"),
-        d("mining_bonus_drop", "광맥 추가 채굴", 1, "enchantable/mining"),
-        d("area_excavation", "광역 채굴", 1, "enchantable/mining"),
-        d("auto_replant", "자동 심기", 1, "enchantable/mining"),
-        d("auto_smelt", "자동 제련", 1, "enchantable/mining"),
-        d("chain_logging", "연쇄 벌목", 1, "enchantable/mining"),
-        d("treasure_finder", "보물 찾기", 1, "enchantable/fishing"),
-        d("multi_catch", "다중 낚시", 1, "enchantable/fishing"),
-        d("elytra_launch", "겉날개 발사", 1, "enchantable/equippable"),
-        d("precision_flight", "정밀 비행", 3, "enchantable/equippable"),
-        d("explosive_mace", "폭발 철퇴", 1, "enchantable/mace")
+        t("blade_chain", "칼날 연쇄", 1, "swords"),
+        t("light_greatsword", "빛의 대검", 1, "swords"),
+        t("laser_arrow", "레이저 화살", 1, "bows"),
+        t("axe_heavy_strike", "강타", 1, "axes"),
+        t("titans_wrath", "타이탄의 분노", 1, "axes"),
+        c("protection", "보호", 4, "minecraft:enchantable/armor"),
+        c("fire_protection", "화염 보호", 4, "minecraft:enchantable/armor"),
+        c("blast_protection", "폭발 보호", 4, "minecraft:enchantable/armor"),
+        c("projectile_protection", "투사체 보호", 4, "minecraft:enchantable/armor"),
+        c("skill_protection", "스킬 보호", 4, "minecraft:enchantable/armor"),
+        c("thorns", "가시", 3, "minecraft:enchantable/armor"),
+        c("rolling_landing", "구르기 착지", 1, "minecraft:enchantable/foot_armor"),
+        c("respiration", "호흡", 3, "minecraft:enchantable/head_armor"),
+        c("aqua_affinity", "친수성", 1, "minecraft:enchantable/head_armor"),
+        c("swift_sneak", "신속한 잠행", 3, "minecraft:enchantable/leg_armor"),
+        c("depth_strider", "물갈퀴", 3, "minecraft:enchantable/foot_armor"),
+        c("soul_speed", "영혼 가속", 3, "minecraft:enchantable/foot_armor"),
+        c("frost_walker", "얼음 걸음", 2, "minecraft:enchantable/foot_armor"),
+        x("wind_arrow", "바람 화살", 1, "bows", BOW_SHIFT_EXCLUSIVE, AcquisitionPolicy.common()),
+        x("fire_arrow_rain", "불화살 비", 1, "bows", BOW_SHIFT_EXCLUSIVE, AcquisitionPolicy.treasure()),
+        t("crossbow_barrage", "쇠뇌 연발", 1, "crossbows"),
+        c("unbreaking", "내구도 보존", 1, "minecraft:enchantable/durability"),
+        c("mining_bonus_drop", "광맥 추가 채굴", 1, "pickaxes"),
+        t("area_excavation", "광역 채굴", 1, "excavation_tools"),
+        c("auto_replant", "자동 심기", 1, "hoes"),
+        c("auto_smelt", "자동 제련", 1, "pickaxes"),
+        c("chain_logging", "연쇄 벌목", 1, "axes"),
+        c("treasure_finder", "보물 찾기", 1, "fishing_rods"),
+        c("multi_catch", "다중 낚시", 1, "fishing_rods"),
+        t("elytra_launch", "겉날개 발사", 1, "elytra"),
+        t("precision_flight", "정밀 비행", 3, "elytra"),
+        t("explosive_mace", "폭발 철퇴", 1, "maces")
     );
     public static final Map<String, NativeEnchantDefinition> BY_ID = ALL.stream()
             .collect(Collectors.toUnmodifiableMap(NativeEnchantDefinition::id, Function.identity()));
 
-    private NativeEnchantDefinitions() { }
 
-    private static NativeEnchantDefinition d(String id, String name, int maxLevel, String itemTag) {
-        return new NativeEnchantDefinition(id, name, maxLevel, 5, 10, 8, 55, 8, 4, itemTag, false);
+    public static boolean conflicts(String firstId, String secondId) {
+        NativeEnchantDefinition first = BY_ID.get(firstId);
+        NativeEnchantDefinition second = BY_ID.get(secondId);
+        return first != null && second != null && !firstId.equals(secondId)
+                && !first.exclusiveSetTag().isBlank()
+                && first.exclusiveSetTag().equals(second.exclusiveSetTag());
+    }
+
+    private NativeEnchantDefinitions() { }
+    private static NativeEnchantDefinition c(String id, String name, int level, String tag) {
+        return x(id, name, level, tag, "", AcquisitionPolicy.common());
+    }
+    private static NativeEnchantDefinition t(String id, String name, int level, String tag) {
+        return x(id, name, level, tag, "", AcquisitionPolicy.treasure());
+    }
+    private static NativeEnchantDefinition x(String id, String name, int level, String tag, String exclusive,
+                                             AcquisitionPolicy acquisition) {
+        String qualifiedTag = tag.contains(":") ? tag : NAMESPACE + ":" + tag;
+        return new NativeEnchantDefinition(id, name, level, 5, 10, 8, 55, 8, 4,
+                qualifiedTag, exclusive, acquisition);
     }
 }

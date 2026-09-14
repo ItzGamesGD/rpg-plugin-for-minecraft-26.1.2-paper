@@ -5,70 +5,12 @@ bootstrapper: com.hyunseo.hyunseorpg.enchant.nativeapi.HyunseoRPGPluginBootstrap
 api-version: '26.1.2'
 author: Hyunseo
 description: HyunseoRPG vanilla-plus progression plugin
-softdepend:
-  - MythicMobs
-
-commands:
-  rpg:
-    description: HyunseoRPG utility command
-    usage: /rpg <give|reload|doctor|migrate|debug>
-  effectlist:
-    description: Open the active status effect list
-    usage: /effectlist
-  rpgtest:
-    description: Operator-only testing utilities
-    usage: /rpgtest <give|coins|setcoins|hand|maxhand|boss|gateway|basic-swarm|orbital-core|thousand-eyes|reload>
-  crafting:
-      description: Open crafting or edit the canonical crafting layout
-      usage: /crafting [edit <materials|equipment|special|consumables>]
-  weaponinfo:
-    description: Inspect weapon proficiency
-    usage: /weaponinfo [sword|bow|spear|axe|magic]
-    aliases: [weaponlevel]
-  rpgstat:
-    description: Admin stat command
-    usage: /rpgstat <get|set|add|reset|mana|modifier>
-    aliases: [statadmin]
-  rpgstatbalance:
-    description: Admin stat balance command
-    usage: /rpgstatbalance <list|max|skillmax|bonus>
-    aliases: [statbalance]
-  stats:
-    description: Open common stat menu
-    usage: /stats
-    aliases: [stat]
-  skillstats:
-    description: Open skill stat menu
-    usage: /skillstats
-    aliases: [skillstat]
-  weaponstats:
-    description: Open weapon stat menu
-    usage: /weaponstats
-    aliases: [classstats, weaponstat]
-  rpglevel:
-    description: Admin level command
-    usage: /rpglevel <get|addexp|addclassexp|setlevel|setexp|setclasslevel|setclassexp|points|refresh>
-    aliases: [leveladmin]
-  rpgcooldown:
-    description: Admin cooldown command
-    usage: /rpgcooldown <clear|get|set|list>
-    aliases: [cooldownadmin]
-  rpgmob:
-    description: RPG mob management command
-    usage: /rpgmob <info|spawn|spawncustom|clear|debug|scaling>
-  rpgquest:
-    description: RPG quest command
-    usage: /rpgquest <list|start|info|claim|cancel>
-    aliases: [quest]
-  shop:
-    description: Open shop menu
-    usage: /shop [shopId]
-  shopadmin:
-    description: Shop admin command
-    usage: /shopadmin <edit [shopId]|save [shopId]|reload>
-  specialequipment:
-    description: Late-game special equipment administration and testing
-    usage: /specialequipment <list|info|give|unlock|soul|craft|debug>
+dependencies:
+  server:
+    MythicMobs:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 permissions:
   hyunseorpg.item.give:

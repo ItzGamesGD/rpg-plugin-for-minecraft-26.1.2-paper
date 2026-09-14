@@ -21,10 +21,11 @@ public final class HyunseoRPGPluginBootstrap implements PluginBootstrap {
             for (NativeEnchantDefinition definition : NativeEnchantDefinitions.ALL) {
                 TypedKey<org.bukkit.enchantments.Enchantment> key = TypedKey.create(
                         RegistryKey.ENCHANTMENT, Key.key(NativeEnchantDefinitions.NAMESPACE, definition.id()));
-                event.registry().register(key, builder -> builder
-                        .description(Component.text(definition.displayName()))
+                String[] supported = definition.supportedItemTag().split(":", 2);
+                event.registry().register(key, builder -> {
+                    builder.description(Component.text(definition.displayName()))
                         .supportedItems(event.getOrCreateTag(TagKey.create(RegistryKey.ITEM,
-                                Key.key("minecraft", definition.supportedItemTag()))))
+                                Key.key(supported[0], supported[1]))))
                         .weight(definition.weight())
                         .maxLevel(definition.maxLevel())
                         .minimumCost(EnchantmentRegistryEntry.EnchantmentCost.of(
@@ -32,7 +33,12 @@ public final class HyunseoRPGPluginBootstrap implements PluginBootstrap {
                         .maximumCost(EnchantmentRegistryEntry.EnchantmentCost.of(
                                 definition.maximumBaseCost(), definition.maximumPerLevelCost()))
                         .anvilCost(definition.anvilCost())
-                        .activeSlots(EquipmentSlotGroup.ANY));
+                        .activeSlots(EquipmentSlotGroup.ANY);
+                    if (!definition.exclusiveSetTag().isBlank()) {
+                        builder.exclusiveWith(event.getOrCreateTag(TagKey.create(RegistryKey.ENCHANTMENT,
+                                Key.key(NativeEnchantDefinitions.NAMESPACE, definition.exclusiveSetTag()))));
+                    }
+                });
             }
         }));
     }

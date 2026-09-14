@@ -1,6 +1,7 @@
 package com.hyunseo.hyunseorpg.enchant;
 
 import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
+import com.hyunseo.hyunseorpg.enchant.nativeapi.LegacyEnchantMigrationPlanner;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
@@ -18,6 +19,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
@@ -94,13 +96,15 @@ public final class EnchantService {
 
     public Optional<EnchantData> getEnchantFromBook(ItemStack book) {
         if (book != null && book.hasItemMeta()) {
-            Map<Enchantment, Integer> stored = allNativeEnchantments(book);
-            for (Enchantment enchantment : stored.keySet()) {
-                if (NATIVE_NAMESPACE.equals(enchantment.getKey().getNamespace())) {
-                    Optional<EnchantData> resolved = registry.get(enchantment.getKey().getKey());
-                    if (resolved.isPresent()) return resolved;
-                }
-            }
+            List<EnchantData> custom = allNativeEnchantments(book).keySet().stream()
+                    .filter(enchantment -> NATIVE_NAMESPACE.equals(enchantment.getKey().getNamespace()))
+                    .map(enchantment -> registry.get(enchantment.getKey().getKey()).orElse(null))
+                    .filter(Objects::nonNull)
+                    .toList();
+            // Compatibility books intentionally have one custom enchant. Reject ambiguous native books
+            // instead of selecting whichever map entry happens to iterate first.
+            if (custom.size() == 1) return Optional.of(custom.getFirst());
+            if (custom.size() > 1) return Optional.empty();
         }
         // Temporary compatibility path for old shop/crafting books.
         return registry.getAll().stream().filter(data -> itemService.isItem(book, data.bookItemId())).findFirst();
@@ -128,10 +132,12 @@ public final class EnchantService {
     public Optional<ItemStack> createBook(String enchantId, int level) {
         EnchantData data = registry.get(enchantId).orElse(null);
         if (data == null || data.bookItemId().isBlank()) return Optional.empty();
+        Enchantment nativeEnchant = nativeEnchant(data.enchantId());
+        if (nativeEnchant == null) return Optional.empty();
         ItemStack book = itemService.create(data.bookItemId(), 1).orElse(null);
-        if (book == null) return Optional.empty();
+        if (book == null || book.getType() != Material.ENCHANTED_BOOK) return Optional.empty();
         ItemMeta meta = book.getItemMeta();
-        if (meta == null) return Optional.empty();
+        if (!(meta instanceof EnchantmentStorageMeta storage)) return Optional.empty();
         int safeLevel = Math.max(1, Math.min(data.maxLevel(), level));
         var pdc = meta.getPersistentDataContainer();
         pdc.set(bookLevelKey, PersistentDataType.INTEGER, safeLevel);
@@ -140,8 +146,6 @@ public final class EnchantService {
                 .filter(binding -> binding.type() == TriggerType.INPUT && binding.input() != null)
                 .map(binding -> binding.input().name()).findFirst().orElse("PASSIVE"));
         pdc.set(bookCategoryKey, PersistentDataType.STRING, data.equipmentCategory());
-        Enchantment nativeEnchant = nativeEnchant(data.enchantId());
-        if (nativeEnchant == null || !(meta instanceof EnchantmentStorageMeta storage)) return Optional.empty();
         storage.addStoredEnchant(nativeEnchant, safeLevel, true);
         book.setItemMeta(meta);
         refreshBookLore(book);
@@ -256,10 +260,10 @@ public final class EnchantService {
     /** Rebuilds only the previously generated enchant section; all other item lore remains untouched. */
     public void refreshEquippedLore(ItemStack equipment) {
         if (equipment == null || !equipment.hasItemMeta()) return;
+        List<EquippedEnchant> equipped = getEquippedEntries(equipment);
+        // Migration may replace ItemMeta; always reacquire it before rebuilding lore.
         ItemMeta meta = equipment.getItemMeta();
         if (meta == null) return;
-        List<EquippedEnchant> equipped = getEquippedEntries(equipment);
-        // Registry aliases are resolved while legacy PDC converges to native enchantments.
         rebuildEquippedLore(meta, equipped);
         equipment.setItemMeta(meta);
     }
@@ -323,29 +327,31 @@ public final class EnchantService {
         ItemMeta meta = equipment.getItemMeta();
         String raw = meta.getPersistentDataContainer().get(equippedKey, PersistentDataType.STRING);
         if (raw == null || raw.isBlank()) return false;
-        boolean changed = false;
-        List<String> unknown = new ArrayList<>();
-        for (String part : raw.split(",")) {
-            String[] split = part.trim().split("@", 2);
-            EnchantData data = registry.get(split[0]).orElse(null);
-            if (data == null) {
-                config.getPlugin().getLogger().warning("Preserving unknown legacy enchant '" + split[0] + "'");
-                unknown.add(part.trim());
-                continue;
-            }
-            int level = 1;
-            if (split.length == 2) try { level = Integer.parseInt(split[1]); } catch (NumberFormatException ignored) { }
-            Enchantment enchantment = nativeEnchant(data.enchantId());
-            if (enchantment == null) continue;
-            int safeLevel = Math.max(1, Math.min(data.maxLevel(), level));
-            if (meta.getEnchantLevel(enchantment) < safeLevel) {
-                meta.addEnchant(enchantment, safeLevel, true);
-                changed = true;
+        Map<String, Enchantment> migrationTargets = new java.util.HashMap<>();
+        LegacyEnchantMigrationPlanner.Plan plan = LegacyEnchantMigrationPlanner.plan(raw, legacyId -> {
+            EnchantData data = registry.get(legacyId).orElse(null);
+            if (data == null) return null;
+            Enchantment target = nativeEnchant(data.enchantId());
+            if (target != null) migrationTargets.put(data.enchantId(), target);
+            return new LegacyEnchantMigrationPlanner.Target(data.enchantId(), data.maxLevel(), target != null,
+                    target == null ? 0 : meta.getEnchantLevel(target));
+        });
+        for (LegacyEnchantMigrationPlanner.Failure failure : plan.preserved()) {
+            if (failure.reason() == LegacyEnchantMigrationPlanner.FailureReason.UNKNOWN_RUNTIME_ID) {
+                config.getPlugin().getLogger().warning("Preserving unknown legacy enchant '" + failure.encodedEntry() + "'");
+            } else {
+                config.getPlugin().getLogger().severe("Preserving legacy enchant with missing native target '"
+                        + failure.encodedEntry() + "'");
             }
         }
-        // Known entries have been copied; unknown values remain recoverable for a future definition.
-        if (unknown.isEmpty()) meta.getPersistentDataContainer().remove(equippedKey);
-        else meta.getPersistentDataContainer().set(equippedKey, PersistentDataType.STRING, String.join(",", unknown));
+        boolean changed = false;
+        for (Map.Entry<String, Integer> addition : plan.additions().entrySet()) {
+            Enchantment target = migrationTargets.get(addition.getKey());
+            meta.addEnchant(target, addition.getValue(), true);
+            changed = true;
+        }
+        if (plan.preserved().isEmpty()) meta.getPersistentDataContainer().remove(equippedKey);
+        else meta.getPersistentDataContainer().set(equippedKey, PersistentDataType.STRING, plan.preservedEncoding());
         equipment.setItemMeta(meta);
         return changed;
     }

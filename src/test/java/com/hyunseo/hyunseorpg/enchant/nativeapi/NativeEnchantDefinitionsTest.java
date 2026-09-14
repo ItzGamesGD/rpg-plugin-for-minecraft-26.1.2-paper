@@ -26,15 +26,19 @@ class NativeEnchantDefinitionsTest {
             assertTrue(definition.minimumBaseCost() >= 1, definition.id());
             assertTrue(definition.maximumBaseCost() >= definition.minimumBaseCost(), definition.id());
             assertTrue(definition.anvilCost() >= 0, definition.id());
-            assertTrue(definition.supportedItemTag().startsWith("enchantable/"), definition.id());
+            assertTrue(definition.supportedItemTag().contains(":"), definition.id());
         }
     }
 
     @Test
     void knownLevelAndSupportedItemContractsAreStable() {
         assertEquals(4, NativeEnchantDefinitions.BY_ID.get("protection").maxLevel());
-        assertEquals("enchantable/sword", NativeEnchantDefinitions.BY_ID.get("blade_chain").supportedItemTag());
-        assertEquals("enchantable/bow", NativeEnchantDefinitions.BY_ID.get("laser_arrow").supportedItemTag());
-        assertEquals("enchantable/foot_armor", NativeEnchantDefinitions.BY_ID.get("frost_walker").supportedItemTag());
+        assertEquals("hyunseorpg:swords", NativeEnchantDefinitions.BY_ID.get("blade_chain").supportedItemTag());
+        assertEquals("hyunseorpg:bows", NativeEnchantDefinitions.BY_ID.get("laser_arrow").supportedItemTag());
+        assertEquals("minecraft:enchantable/foot_armor", NativeEnchantDefinitions.BY_ID.get("frost_walker").supportedItemTag());
+        assertEquals("hyunseorpg:axes", NativeEnchantDefinitions.BY_ID.get("axe_heavy_strike").supportedItemTag());
+        assertEquals("hyunseorpg:hoes", NativeEnchantDefinitions.BY_ID.get("auto_replant").supportedItemTag());
+        assertEquals("hyunseorpg:pickaxes", NativeEnchantDefinitions.BY_ID.get("auto_smelt").supportedItemTag());
+        assertEquals("hyunseorpg:elytra", NativeEnchantDefinitions.BY_ID.get("elytra_launch").supportedItemTag());
     }
 }
