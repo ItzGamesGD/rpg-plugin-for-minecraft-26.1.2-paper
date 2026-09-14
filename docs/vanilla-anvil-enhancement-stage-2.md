@@ -35,8 +35,10 @@ The cap no longer reads promotion grade/star, promotion stage, promotion options
 
 The result clone retains amount-independent item state: durability, repair cost, instance UUID, item ID, custom model data, display name, other lore, unrelated PDC, vanilla enchantments, and registered Hyunseo enchantments. `applySuccessfulEnhancement` changes only `enhancement_level`, schema metadata when needed, and the generated `강화:` lore line. Stage-1 `equipped_enchants` migration remains migration-only and is not reintroduced as authoritative storage.
 
-`VanillaAnvilPolicyListener` independently applies an unlimited maximum-repair-cost threshold on
-every anvil prepare cycle. It removes only the `Too Expensive!` output cutoff: the computed XP price,
+`VanillaAnvilPolicyListener` installs an unlimited maximum-repair-cost threshold from
+`InventoryOpenEvent`, after `AnvilMenu` construction but before a player can provide its first inputs.
+It defensively reasserts the same server-wide policy on every anvil prepare cycle. This ordering avoids
+losing the first cost-40+ preview before `PrepareAnvilEvent`. It removes only the `Too Expensive!` output cutoff: the computed XP price,
 prior-work penalty, repair-cost escalation, survival XP requirement, supported-item rules,
 compatibility, and enchant maximum levels remain untouched. The Upgrade Stone listener therefore
 owns only its recipe, one-stone material cost, and configured XP-level price, and never changes the

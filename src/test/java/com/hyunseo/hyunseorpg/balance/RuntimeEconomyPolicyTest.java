@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,19 +24,31 @@ final class RuntimeEconomyPolicyTest {
     }
 
     @Test
-    void allActiveEnchantBooksUseTheFixedMagicStonePrice() {
+    void genuinelyCustomEnchantBooksUseTheFixedMagicStonePrice() {
         YamlConfiguration shops = load("shops.yml");
+        YamlConfiguration enchants = load("enchants.yml");
         ConfigurationSection items = shops.getConfigurationSection("shops.enchant.items");
         assertNotNull(items);
-        assertEquals(32, items.getKeys(false).size());
+        ConfigurationSection definitions = enchants.getConfigurationSection("enchants");
+        assertNotNull(definitions);
+        var expectedBooks = new HashSet<String>();
+        for (String enchant : definitions.getKeys(false)) {
+            String book = enchants.getString("enchants." + enchant + ".book-item-id", "");
+            if (!book.isBlank()) expectedBooks.add(book);
+        }
+        var offeredBooks = new HashSet<String>();
         for (String product : items.getKeys(false)) {
             String root = "shops.enchant.items." + product;
-            assertTrue(shops.getString(root + ".item.id", "").startsWith("enchant_book_"));
+            String book = shops.getString(root + ".item.id", "");
+            assertTrue(book.startsWith("enchant_book_"));
+            offeredBooks.add(book);
             assertEquals(9, shops.getInt(root + ".buy-price"));
             assertEquals("magic_stone", shops.getString(root + ".currency-item-id"));
             assertTrue(shops.getBoolean(root + ".purchasable"));
             assertFalse(shops.getBoolean(root + ".sellable"));
         }
+        assertEquals(expectedBooks, offeredBooks,
+                "shop catalogue must match the active genuinely-custom enchant definitions");
     }
 
     @Test
