@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /** Session-owned holder for equipment support screens. Display items are never source items. */
 public final class EquipmentSupportMenuHolder implements InventoryHolder {
-    public enum View { EXTRACTION_LIST, EXTRACTION_ENCHANTS, EXTRACTION_CONFIRM, REROLL_LIST, REROLL_OPTIONS, REROLL_CONFIRM, FUTURE, FUTURE_DETAIL }
+    public enum View { EXTRACTION_LIST, EXTRACTION_ENCHANTS, EXTRACTION_CONFIRM, FUTURE, FUTURE_DETAIL }
 
     private final View view;
     private final UUID sessionId = UUID.randomUUID();
@@ -20,14 +20,11 @@ public final class EquipmentSupportMenuHolder implements InventoryHolder {
     private UUID sourceId;
     private String selectedId;
     private String selectedFeatureId;
-    private double snapshotValue;
     private UUID playerId;
     private int sourceSlot = -1;
     private String sourceItemId = "";
     private EquipmentTierService.Category sourceCategory = EquipmentTierService.Category.UNSUPPORTED;
-    private String sourcePromotionStage = "";
     private int sourceEnchantLevel;
-    private final Map<String, Double> optionSnapshot = new LinkedHashMap<>();
     private Inventory inventory;
     private int page;
 
@@ -47,8 +44,6 @@ public final class EquipmentSupportMenuHolder implements InventoryHolder {
     public void setSelectedId(String selectedId) { this.selectedId = selectedId; }
     public String selectedFeatureId() { return selectedFeatureId; }
     public void setSelectedFeatureId(String selectedFeatureId) { this.selectedFeatureId = selectedFeatureId; }
-    public double snapshotValue() { return snapshotValue; }
-    public void setSnapshotValue(double snapshotValue) { this.snapshotValue = snapshotValue; }
     public UUID playerId() { return playerId; }
     public void setPlayerId(UUID playerId) { this.playerId = playerId; }
     public int sourceSlot() { return sourceSlot; }
@@ -59,13 +54,8 @@ public final class EquipmentSupportMenuHolder implements InventoryHolder {
     public void setSourceCategory(EquipmentTierService.Category sourceCategory) {
         this.sourceCategory = sourceCategory == null ? EquipmentTierService.Category.UNSUPPORTED : sourceCategory;
     }
-    public String sourcePromotionStage() { return sourcePromotionStage; }
-    public void setSourcePromotionStage(String sourcePromotionStage) {
-        this.sourcePromotionStage = sourcePromotionStage == null ? "" : sourcePromotionStage;
-    }
     public int sourceEnchantLevel() { return sourceEnchantLevel; }
     public void setSourceEnchantLevel(int sourceEnchantLevel) { this.sourceEnchantLevel = Math.max(0, sourceEnchantLevel); }
-    public Map<String, Double> optionSnapshot() { return optionSnapshot; }
     public int page() { return page; }
     public void setPage(int page) { this.page = Math.max(0, page); }
     public void setInventory(Inventory inventory) { this.inventory = inventory; }

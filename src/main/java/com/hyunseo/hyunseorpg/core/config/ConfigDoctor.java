@@ -572,7 +572,7 @@ public final class ConfigDoctor {
             if (enabled && !implemented) warning(lines, counts,
                     "equipment-support.yml: future feature '" + id + "' is enabled but not implemented");
         }
-        info(lines, counts, "equipment-support.yml: extraction and promotion-option support settings inspected");
+        info(lines, counts, "equipment-support.yml: enchant extraction support settings inspected");
     }
 
     private void checkGrowthCoverage(FileConfiguration growth, List<String> lines, int[] counts) {

@@ -25,12 +25,8 @@ public final class EquipmentMetadataService {
     private final EquipmentTierService tiers;
     private final NamespacedKey itemIdKey;
     private final NamespacedKey enhancementLevelKey;
-    private final NamespacedKey promotionStageKey;
-    private final NamespacedKey promotionGradeKey;
-    private final NamespacedKey promotionStarKey;
     private final NamespacedKey equippedEnchantsKey;
     private final NamespacedKey dataVersionKey;
-    private final NamespacedKey gradeKey;
     private final NamespacedKey killCountKey;
     private final NamespacedKey legacyEnhancementSchemaKey;
     private final NamespacedKey specialEquipmentSchemaKey;
@@ -40,12 +36,8 @@ public final class EquipmentMetadataService {
         this.tiers = tiers;
         this.itemIdKey = new NamespacedKey(plugin, "item_id");
         this.enhancementLevelKey = new NamespacedKey(plugin, "enhancement_level");
-        this.promotionStageKey = new NamespacedKey(plugin, "promotion_stage");
-        this.promotionGradeKey = new NamespacedKey(plugin, "promotion_grade");
-        this.promotionStarKey = new NamespacedKey(plugin, "promotion_star");
         this.equippedEnchantsKey = new NamespacedKey(plugin, "equipped_enchants");
         this.dataVersionKey = new NamespacedKey(plugin, "equipment_data_version");
-        this.gradeKey = new NamespacedKey(plugin, "equipment_grade");
         this.killCountKey = new NamespacedKey(plugin, "equipment_kill_count");
         this.legacyEnhancementSchemaKey = new NamespacedKey(plugin, "equipment_schema_version");
         this.specialEquipmentSchemaKey = new NamespacedKey(plugin, "special_equipment_schema");
@@ -67,10 +59,6 @@ public final class EquipmentMetadataService {
             pdc.set(dataVersionKey, PersistentDataType.INTEGER, CURRENT_DATA_VERSION);
             changed = true;
         }
-        if (!pdc.has(gradeKey, PersistentDataType.INTEGER)) {
-            pdc.set(gradeKey, PersistentDataType.INTEGER, EquipmentGrade.UNSPECIFIED.value());
-            changed = true;
-        }
         if (!pdc.has(killCountKey, PersistentDataType.LONG)) {
             pdc.set(killCountKey, PersistentDataType.LONG, 0L);
             changed = true;
@@ -86,19 +74,10 @@ public final class EquipmentMetadataService {
         var pdc = meta.getPersistentDataContainer();
         String itemId = pdc.get(itemIdKey, PersistentDataType.STRING);
         if (itemId == null || itemId.isBlank()) itemId = "vanilla:" + item.getType().name().toLowerCase(Locale.ROOT);
-        String promotionGrade = value(pdc.get(promotionGradeKey, PersistentDataType.STRING));
-        String promotionStage = value(pdc.get(promotionStageKey, PersistentDataType.STRING));
-        if (promotionStage.isBlank()) {
-            Integer star = pdc.get(promotionStarKey, PersistentDataType.INTEGER);
-            if (!promotionGrade.isBlank() && star != null) promotionStage = promotionGrade + "-" + star;
-        }
         return Optional.of(new EquipmentData(
                 itemId.toLowerCase(Locale.ROOT),
                 tiers.getCategory(item),
-                EquipmentGrade.fromValue(pdc.getOrDefault(gradeKey, PersistentDataType.INTEGER, 0)),
                 bounded(pdc.getOrDefault(enhancementLevelKey, PersistentDataType.INTEGER, 0)),
-                promotionStage,
-                promotionGrade,
                 readEnchantData(pdc.get(equippedEnchantsKey, PersistentDataType.STRING)),
                 Math.max(0L, pdc.getOrDefault(killCountKey, PersistentDataType.LONG, 0L)),
                 readFlags(pdc.getKeys()),
@@ -134,7 +113,4 @@ public final class EquipmentMetadataService {
         return Math.min(1000, Math.max(0, value));
     }
 
-    private String value(String value) {
-        return value == null ? "" : value;
-    }
 }

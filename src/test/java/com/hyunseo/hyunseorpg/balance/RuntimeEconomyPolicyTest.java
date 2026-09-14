@@ -57,16 +57,15 @@ final class RuntimeEconomyPolicyTest {
         assertFalse(shops.getBoolean("shops.general.items.basic_upgrade_stone.purchasable"));
         assertFalse(shops.getBoolean("shops.general.items.basic_upgrade_stone.sellable"));
         assertFalse(shops.getBoolean("shops.equipment_support.items.enchant_extraction_ticket.purchasable"));
-        assertFalse(shops.getBoolean("shops.equipment_support.items.promotion_option_reroll_ticket.purchasable"));
+        assertFalse(shops.isConfigurationSection("shops.equipment_support.items.promotion_option_reroll_ticket"));
     }
 
     @Test
     void supportRecipesUseCanonicalCosts() {
         YamlConfiguration crafting = load("crafting.yml");
         assertEquals(4, crafting.getInt("crafting-recipes.enchant_extraction_ticket.inputs.magic_stone"));
-        assertEquals(4, crafting.getInt("crafting-recipes.enchant_extraction_ticket.inputs.basic_promotion_stone"));
-        assertEquals(2, crafting.getInt("crafting-recipes.promotion_option_reroll_ticket.inputs.magic_stone"));
-        assertEquals(1, crafting.getInt("crafting-recipes.promotion_option_reroll_ticket.inputs.basic_promotion_stone"));
+        assertFalse(crafting.isSet("crafting-recipes.enchant_extraction_ticket.inputs.basic_promotion_stone"));
+        assertFalse(crafting.isConfigurationSection("crafting-recipes.promotion_option_reroll_ticket"));
     }
 
     private YamlConfiguration load(String fileName) {

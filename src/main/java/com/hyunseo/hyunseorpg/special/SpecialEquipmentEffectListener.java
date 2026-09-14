@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.special;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.combat.CombatService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
 import net.kyori.adventure.text.Component;
@@ -62,7 +61,6 @@ public final class SpecialEquipmentEffectListener implements Listener {
     private final RPGItemService items;
     private final CombatService combat;
     private final CooldownService cooldowns;
-    private final EquipmentPromotionService promotion;
     private final FireElementDamageUtil fireDamage;
     private final NamespacedKey projectileSpecialKey;
     private final NamespacedKey projectileAbilityKey;
@@ -80,15 +78,13 @@ public final class SpecialEquipmentEffectListener implements Listener {
     private static final UUID LAST_FLAME_HEALTH_MODIFIER = UUID.fromString("f7de7f06-6d0f-4d6a-a1b3-11d8e68a3a30");
 
     public SpecialEquipmentEffectListener(ConfigService config, SpecialEquipmentService specials, RPGItemService items,
-                                          CombatService combat, CooldownService cooldowns,
-                                          EquipmentPromotionService promotion) {
+                                          CombatService combat, CooldownService cooldowns) {
         this.config = config;
         this.specials = specials;
         this.items = items;
         this.combat = combat;
         this.cooldowns = cooldowns;
-        this.promotion = promotion;
-        this.fireDamage = new FireElementDamageUtil(promotion);
+        this.fireDamage = new FireElementDamageUtil();
         this.projectileSpecialKey = new NamespacedKey(config.getPlugin(), "special_projectile_equipment");
         this.projectileAbilityKey = new NamespacedKey(config.getPlugin(), "special_projectile_ability");
         this.empoweredProjectileKey = new NamespacedKey(config.getPlugin(), "special_projectile_empowered");
@@ -715,20 +711,16 @@ public final class SpecialEquipmentEffectListener implements Listener {
             player.sendActionBar(Component.text("재사용 대기시간: " + ((remaining + 999L) / 1000L) + "초", NamedTextColor.RED));
             return false;
         }
-        double reduction = promotion == null ? 0.0D
-                : Math.max(0.0D, Math.min(.9D, promotion.getLegacyOptionValue(item, "cooldown-reduction-percent")));
-        cooldowns.startCooldown(player.getUniqueId(), cooldownId,
-                Math.max(1L, Math.round(seconds * 1000.0D * (1.0D - reduction))));
+        cooldowns.startCooldown(player.getUniqueId(), cooldownId, Math.max(1L, Math.round(seconds * 1000.0D)));
         return true;
     }
 
     private int fireTicks(Player player, String id, int base) {
-        return Math.max(0, base + (int) Math.round(option(player, "burn-duration-bonus-ticks")));
+        return Math.max(0, base);
     }
 
     private double option(Player player, String id) {
-        if (promotion == null || player == null) return 0.0D;
-        return Math.max(0.0D, promotion.getLegacyOptionValue(player.getInventory().getItemInMainHand(), id));
+        return 0.0D;
     }
 
     private void applyConfiguredEffect(Player player, PotionEffectType type, String id, String path) {

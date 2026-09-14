@@ -770,14 +770,6 @@ drop-tables:
         chance: 1.0
         min-amount: 1
         max-amount: 1
-      - item-id: basic_promotion_stone
-        material: PRISMARINE_CRYSTALS
-        display-name: Basic Promotion Stone
-        chance: 1.0
-        min-amount: 1
-        max-amount: 1
-        boss-only: true
-
 mob-definitions:
   forest_wolf:
     display-name: Forest Wolf

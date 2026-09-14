@@ -31,19 +31,16 @@ public final class AnvilGrowthListener implements Listener {
             event.setCancelled(true);
             if (event.getClickedInventory() != top) return;
             if (event.getRawSlot() == 11) player.sendMessage(Component.text("강화는 바닐라 모루에서 진행합니다.", NamedTextColor.YELLOW));
-            else if (event.getRawSlot() == 13) guiService.openPromotion(player);
             else if (event.getRawSlot() == 17) guiService.openRepair(player);
             else if (event.getRawSlot() == 15) player.sendMessage(Component.text("인챈트는 인챈팅 테이블과 바닐라 모루를 사용합니다.", NamedTextColor.YELLOW));
-            else if (event.getRawSlot() == 20 && guiService.getSupportService() != null) guiService.getSupportService().openReroll(player);
             else if (event.getRawSlot() == 24 && guiService.getSupportService() != null) guiService.getSupportService().openFuture(player);
             else if (event.getRawSlot() == EquipmentGrowthGuiService.CLOSE_SLOT) player.closeInventory();
             return;
         }
         boolean enhancement = top.getHolder() instanceof EnhancementInventoryHolder;
-        boolean promotion = top.getHolder() instanceof PromotionInventoryHolder;
         boolean enchant = top.getHolder() instanceof EnchantInventoryHolder;
         boolean repair = top.getHolder() instanceof RepairInventoryHolder;
-        if (!enhancement && !promotion && !enchant && !repair) return;
+        if (!enhancement && !enchant && !repair) return;
         if (unsafe(event.getClick()) || event.isShiftClick()) { event.setCancelled(true); return; }
         if (event.getClickedInventory() != top) return;
         int slot = event.getRawSlot();
@@ -55,7 +52,6 @@ public final class AnvilGrowthListener implements Listener {
         event.setCancelled(true);
         if (slot == EquipmentGrowthGuiService.EXECUTE_SLOT) {
             if (enhancement) guiService.enhance(player, top);
-            else if (promotion) guiService.promote(player, top);
             else if (enchant) player.sendMessage(Component.text("인챈트는 바닐라 모루에서 적용합니다.", NamedTextColor.YELLOW));
             else guiService.repair(player, top);
         } else if (slot == EquipmentGrowthGuiService.BACK_SLOT) {
@@ -67,8 +63,7 @@ public final class AnvilGrowthListener implements Listener {
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
         Inventory top = event.getView().getTopInventory();
-        if (!(top.getHolder() instanceof EnhancementInventoryHolder) && !(top.getHolder() instanceof PromotionInventoryHolder)
-                && !(top.getHolder() instanceof EnchantInventoryHolder)
+        if (!(top.getHolder() instanceof EnhancementInventoryHolder) && !(top.getHolder() instanceof EnchantInventoryHolder)
                 && !(top.getHolder() instanceof RepairInventoryHolder)) return;
         if (event.getRawSlots().stream().anyMatch(slot -> slot < top.getSize() && !guiService.isInputSlot(slot))) event.setCancelled(true);
     }
@@ -76,7 +71,6 @@ public final class AnvilGrowthListener implements Listener {
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
         if (event.getPlayer() instanceof Player player && (event.getInventory().getHolder() instanceof EnhancementInventoryHolder
-                || event.getInventory().getHolder() instanceof PromotionInventoryHolder
                 || event.getInventory().getHolder() instanceof EnchantInventoryHolder
                 || event.getInventory().getHolder() instanceof RepairInventoryHolder)) {
             guiService.returnInputs(player, event.getInventory());

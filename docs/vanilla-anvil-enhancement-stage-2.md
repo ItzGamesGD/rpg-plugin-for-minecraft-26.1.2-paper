@@ -8,10 +8,10 @@ Stage 2 starts from the completed Stage-1 native-enchantment head `1632923297987
 
 - `EquipmentEnhancementService` owns `hyunseorpg:enhancement_level`, generated enhancement lore, profile effects used by `CombatService`, tool/farming speed hooks, and admin force-level behavior. Previously it asked `EquipmentPromotionService` for its cap and exposed coin/chance/failure APIs.
 - `EnhancementRegistry` maps vanilla materials/custom IDs to stat profiles, interpolated the old +50 stone/coin/chance curves, and reads `equipment-growth.yml`.
-- `EquipmentGrowthPolicy` and `EquipmentTierService` classify supported materials, grades, endgame state, and registered special equipment. Promotion, enchant-slot, and repair policy remain for later stages.
+- `EquipmentGrowthPolicy` and `EquipmentTierService` classify supported materials, endgame state, and registered special equipment.
 - `SpecialEquipmentRegistry` contains both mid-tier elemental equipment and dedicated special/endgame equipment. Stage 2 therefore adds an explicit configured elemental boundary rather than treating every registry member alike.
 - `EquipmentInstanceService` UUID and all ItemMeta/PDC, damage, model, display, lore, vanilla enchants, and Stage-1 native enchants survive because the anvil preview starts with `equipment.clone()` and changes only enhancement PDC/generated lore.
-- `EquipmentGrowthGuiService` previously spent coins/stones and rolled chance/failure. Its enhancement screen is now unreachable; promotion, enchant compatibility, repair, support, and later-removal classes remain intact.
+- `EquipmentGrowthGuiService` previously spent coins/stones and rolled chance/failure. Its enhancement screen is now unreachable. Stage 3 subsequently removed ordinary equipment Promotion and its option/slot surfaces.
 - `AnvilGrowthListener` already stopped hijacking anvil blocks in Stage 1 and continues to handle only legacy growth inventories. `RPGMenuService` remains the growth-menu entry.
 - Existing item crafting/shop/drop paths still create `basic_upgrade_stone`; Stage 2 only consumes it as the physical second anvil input and does not redesign its acquisition.
 
@@ -26,10 +26,10 @@ The enhancement is deterministic. Coin cost is zero, success is 100%, and fail c
 - `VANILLA`: any supported ordinary vanilla or starter equipment, enchanted or not; configurable cap, default +30.
 - `ELEMENTAL`: IDs explicitly listed under `enhancement.elemental-item-ids`, resolved through existing RPG item and special registries; configurable cap, default +40.
 - `SPECIAL`: other registered special equipment, including dedicated Thanatos, Solaris, Thunder, Poseidon and Moonlit equipment; no output.
-- `ENDGAME`: grade/endgame policy result; no output.
+- `ENDGAME`: explicit endgame policy result; no output.
 - `UNSUPPORTED`: non-equipment; no output.
 
-The cap no longer reads promotion grade/star, promotion stage, promotion options, or enchant slots. Existing promotion classes/data remain for Stage 3 removal.
+The cap does not read promotion grade/star, promotion stage, promotion options, or enchant slots. Stage 3 removes those retired ordinary-equipment structures; historical PDC is ignored.
 
 ## Vanilla and native-enchantment preservation
 
@@ -64,4 +64,4 @@ item's stored vanilla repair cost.
 
 ## Deliberately retained
 
-Promotion/Promotion Stone, Coin, Magic Stone/fragments, legacy growth/repair/support classes, Class, Skill, Mana, Stats, proficiency, RPG level, mob scaling, farming, alchemy, quest, exploration, shops and special-weapon progression remain. No content gate, mob scaling, global XP curve, ore, recipe, rune, or endgame system was added.
+Coin, Magic Stone/fragments, legacy repair/support classes, Class, Skill, Mana, Stats, proficiency, RPG level, mob scaling, farming, alchemy, quest, exploration, shops and special-weapon progression remain. Ordinary equipment Promotion and Promotion Stone are removed in Stage 3. No content gate, mob scaling, global XP curve, ore, rune, or endgame system was added.

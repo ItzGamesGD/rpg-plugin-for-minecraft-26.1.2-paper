@@ -207,38 +207,6 @@ repair:
     tier-5: 1.80
   enhancement:
     multiplier-per-progress: 0.50
-  promotion-multipliers:
-    default: 1.0
-    normal-1: 1.02
-    normal-2: 1.04
-    normal-3: 1.06
-    normal-4: 1.08
-    normal-5: 1.10
-    advanced-1: 1.13
-    advanced-2: 1.16
-    advanced-3: 1.19
-    advanced-4: 1.22
-    advanced-5: 1.25
-    rare-1: 1.29
-    rare-2: 1.33
-    rare-3: 1.37
-    rare-4: 1.41
-    rare-5: 1.45
-    heroic-1: 1.50
-    heroic-2: 1.55
-    heroic-3: 1.60
-    heroic-4: 1.65
-    heroic-5: 1.70
-    legendary-1: 1.76
-    legendary-2: 1.82
-    legendary-3: 1.88
-    legendary-4: 1.94
-    legendary-5: 2.00
-    mythic-1: 2.08
-    mythic-2: 2.16
-    mythic-3: 2.24
-    mythic-4: 2.32
-    mythic-5: 2.40
   cost-per-durability: 3
   minimum-cost: 50
   max-repair-percent: 100

@@ -4,15 +4,15 @@ migration-policy: KEEP_LEVEL
 # Equipment family and tier limits. Axes deliberately belong to TOOL.
 tiers:
   definitions:
-    wooden: { max-enhancement: 50, max-promotion-stage: 1 }
-    stone: { max-enhancement: 50, max-promotion-stage: 1 }
-    gold: { max-enhancement: 50, max-promotion-stage: 1 }
-    iron: { max-enhancement: 50, max-promotion-stage: 2 }
-    diamond: { max-enhancement: 50, max-promotion-stage: 4 }
-    netherite: { max-enhancement: 50, max-promotion-stage: 6 }
-    custom_rare: { max-enhancement: 50, max-promotion-stage: 7 }
-    custom_legendary: { max-enhancement: 50, max-promotion-stage: 8 }
-    elytra: { max-enhancement: 50, max-promotion-stage: 0 }
+    wooden: { max-enhancement: 50 }
+    stone: { max-enhancement: 50 }
+    gold: { max-enhancement: 50 }
+    iron: { max-enhancement: 50 }
+    diamond: { max-enhancement: 50 }
+    netherite: { max-enhancement: 50 }
+    custom_rare: { max-enhancement: 50 }
+    custom_legendary: { max-enhancement: 50 }
+    elytra: { max-enhancement: 50 }
   custom-item-tiers:
     basic_sword: iron
     basic_bow: iron
@@ -35,7 +35,7 @@ tiers:
 
 enhancement:
   required-stone-item-id: basic_upgrade_stone
-  # Stage 2 category caps are independent of promotion grade/stars.
+  # Stage 2 category caps are independent equipment-class policy.
   max-level: 40
   caps:
     vanilla: 30
@@ -77,8 +77,7 @@ enhancement:
     armor:
       target: DAMAGE_REDUCTION
       operation: ADD
-      # Four fully enhanced vanilla pieces provide 12% direct reduction before
-      # promotion and vanilla armor are considered.
+      # Four fully enhanced vanilla pieces provide 12% direct reduction before vanilla armor is considered.
       per-level: 0.001
       materials: [LEATHER_HELMET, LEATHER_CHESTPLATE, LEATHER_LEGGINGS, LEATHER_BOOTS, CHAINMAIL_HELMET, CHAINMAIL_CHESTPLATE, CHAINMAIL_LEGGINGS, CHAINMAIL_BOOTS, IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS, GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS, DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS, NETHERITE_HELMET, NETHERITE_CHESTPLATE, NETHERITE_LEGGINGS, NETHERITE_BOOTS, TURTLE_HELMET]
       custom-item-ids: []
@@ -93,279 +92,7 @@ enhancement:
       operation: ADD
       # With config.yml's 0.1 conversion this produces +3.25 block-break
       # speed at +50. A diamond tool reaches vanilla Efficiency V's raw
-      # speed at the configured cap, while promotion remains a separate legacy layer sits only slightly above it.
+      # speed at the configured cap, at the configured cap.
       per-level: 0.65
       materials: [WOODEN_PICKAXE, STONE_PICKAXE, IRON_PICKAXE, GOLDEN_PICKAXE, DIAMOND_PICKAXE, NETHERITE_PICKAXE, WOODEN_AXE, STONE_AXE, IRON_AXE, GOLDEN_AXE, DIAMOND_AXE, NETHERITE_AXE, WOODEN_SHOVEL, STONE_SHOVEL, IRON_SHOVEL, GOLDEN_SHOVEL, DIAMOND_SHOVEL, NETHERITE_SHOVEL, WOODEN_HOE, STONE_HOE, IRON_HOE, GOLDEN_HOE, DIAMOND_HOE, NETHERITE_HOE]
       custom-item-ids: [basic_axe]
-
-# Shared numerical promotion/reroll distribution. The maximum remains reachable
-# while the lower half is more common by default. Per-option overrides are optional.
-option-roll:
-  enabled: true
-  distribution: weighted-halves
-  lower-half-weight: 3.0
-  upper-half-weight: 1.0
-  within-range-distribution: uniform
-  preserve-maximum-roll: true
-  overrides: {}
-
-promotion:
-  required-stone-item-id: basic_promotion_stone
-  # Cumulative unlocked slot count at each promotion stage.
-  # Temporary test progression: normal 3-star, normal 4-star, advanced 1-star.
-  slot-unlocks:
-    normal-3: 1
-    normal-4: 2
-    advanced-1: 3
-  option-definitions:
-    attack-damage:
-      promotion-eligible: true
-      display-name: "공격 피해"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.2, max: 0.6, precision: 0.1 }
-    thrust-damage:
-      promotion-eligible: true
-      display-name: "찌르기 피해"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.2, max: 0.6, precision: 0.1 }
-    projectile-damage:
-      promotion-eligible: true
-      display-name: "투사체 피해"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.2, max: 0.6, precision: 0.1 }
-    mining-speed:
-      promotion-eligible: true
-      display-name: "채굴 속도"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.25, max: 1.00, precision: 0.25 }
-    excavation-speed:
-      promotion-eligible: true
-      display-name: "굴착 속도"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.25, max: 1.00, precision: 0.25 }
-    logging-speed:
-      promotion-eligible: true
-      display-name: "벌목 속도"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.25, max: 1.00, precision: 0.25 }
-    bonus-drop-chance:
-      promotion-eligible: true
-      display-name: "추가 드롭 확률"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.01, max: 0.03, precision: 0.01 }
-    durability-save-chance:
-      promotion-eligible: true
-      display-name: "내구도 보존 확률"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.01, max: 0.03, precision: 0.01 }
-    max-health-bonus:
-      promotion-eligible: true
-      display-name: "최대 체력"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 1.0, max: 2.0, precision: 1.0 }
-    critical-chance:
-      promotion-eligible: true
-      display-name: "치명타 확률"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.01, max: 0.03, precision: 0.01 }
-    piercing-chance:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "관통 확률"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.02, max: 0.05, precision: 0.01 }
-    skill-damage:
-      promotion-eligible: true
-      display-name: "스킬 피해"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.02, max: 0.06, precision: 0.01 }
-    damage-reduction:
-      promotion-eligible: true
-      display-name: "피해 경감"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.005, max: 0.020, precision: 0.005 }
-    knockback-resistance:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "넉백 저항"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.02, max: 0.05, precision: 0.01 }
-    blade-throw-fire:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "칼날 화염"
-      unit: LEVEL
-      allow-duplicate: false
-      value: { min: 1.0, max: 1.0, precision: 1.0 }
-    fire-damage-bonus-percent:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "불 원소 피해"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.03, max: 0.08, precision: 0.01 }
-    skill-damage-bonus-percent:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "화염 스킬 피해"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.03, max: 0.08, precision: 0.01 }
-    cooldown-reduction-percent:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "화염 스킬 재사용 감소"
-      unit: PERCENT_POINT
-      allow-duplicate: true
-      value: { min: 0.02, max: 0.05, precision: 0.01 }
-    burn-duration-bonus-ticks:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "연소 지속시간"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 10.0, max: 30.0, precision: 10.0 }
-    radius-bonus:
-      promotion-eligible: false
-      legacy-only: true
-      display-name: "화염 범위"
-      unit: FLAT
-      allow-duplicate: true
-      value: { min: 0.10, max: 0.30, precision: 0.10 }
-  profiles:
-    sword:
-      max-stage: mythic-5
-      general-option-pool: [attack-damage]
-      special-option-pool: [skill-damage, critical-chance]
-    melee:
-      max-stage: mythic-5
-      general-option-pool: [attack-damage]
-      special-option-pool: [skill-damage, critical-chance]
-    bow:
-      max-stage: mythic-5
-      general-option-pool: [projectile-damage]
-      special-option-pool: [skill-damage, critical-chance]
-    crossbow:
-      max-stage: mythic-5
-      general-option-pool: [projectile-damage]
-      special-option-pool: [skill-damage, critical-chance]
-    pickaxe:
-      max-stage: mythic-5
-      general-option-pool: [mining-speed]
-      special-option-pool: [bonus-drop-chance, durability-save-chance]
-    shovel:
-      max-stage: mythic-5
-      general-option-pool: [excavation-speed]
-      special-option-pool: [bonus-drop-chance, durability-save-chance]
-    hoe:
-      max-stage: mythic-5
-      # Hoe farming speed comes from enhancement.profiles.tool. Farming
-      # promotion changes the player stage and unlocks only.
-      general-option-pool: []
-      special-option-pool: []
-    axe:
-      max-stage: mythic-5
-      general-option-pool: [logging-speed]
-      special-option-pool: [bonus-drop-chance, durability-save-chance]
-    spear:
-      max-stage: mythic-5
-      general-option-pool: [attack-damage]
-      special-option-pool: [thrust-damage, critical-chance]
-    armor:
-      max-stage: mythic-5
-      general-option-pool: [damage-reduction]
-      special-option-pool: [damage-reduction, max-health-bonus]
-    elytra:
-      max-stage: normal-1
-      general-option-pool: []
-      special-option-pool: []
-    shield:
-      max-stage: mythic-5
-      general-option-pool: [damage-reduction]
-      special-option-pool: [damage-reduction]
-    fishing_rod:
-      max-stage: normal-1
-      general-option-pool: []
-      special-option-pool: []
-  grades:
-    normal:
-      order: 1
-      stars: 5
-      # max-enhancement is retained as the legacy fallback for existing server files.
-      max-enhancement: 10
-      required-enhancement: 10
-      stars-data:
-        "1": { display-name: "일반 1성", stones: 1, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "2": { display-name: "일반 2성", stones: 1, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "일반 3성", stones: 2, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "4": { display-name: "일반 4성", stones: 2, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "5": { display-name: "일반 5성", stones: 3, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 1 }
-    advanced:
-      order: 2
-      stars: 5
-      max-enhancement: 20
-      required-enhancement: 20
-      stars-data:
-        "1": { display-name: "고급 1성", stones: 2, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "2": { display-name: "고급 2성", stones: 2, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "고급 3성", stones: 3, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 1 }
-        "4": { display-name: "고급 4성", stones: 3, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "5": { display-name: "고급 5성", stones: 4, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-    rare:
-      order: 3
-      stars: 5
-      max-enhancement: 30
-      required-enhancement: 30
-      stars-data:
-        "1": { display-name: "희귀 1성", stones: 3, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "2": { display-name: "희귀 2성", stones: 3, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "희귀 3성", stones: 4, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "4": { display-name: "희귀 4성", stones: 4, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 1 }
-        "5": { display-name: "희귀 5성", stones: 5, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-    heroic:
-      order: 4
-      stars: 5
-      max-enhancement: 40
-      required-enhancement: 40
-      stars-data:
-        "1": { display-name: "영웅 1성", stones: 6, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "2": { display-name: "영웅 2성", stones: 6, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "영웅 3성", stones: 7, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "4": { display-name: "영웅 4성", stones: 7, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 1 }
-        "5": { display-name: "영웅 5성", stones: 8, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-    legendary:
-      order: 5
-      stars: 5
-      max-enhancement: 50
-      required-enhancement: 50
-      stars-data:
-        "1": { display-name: "전설 1성", stones: 9, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "2": { display-name: "전설 2성", stones: 9, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "전설 3성", stones: 10, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 1 }
-        "4": { display-name: "전설 4성", stones: 10, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "5": { display-name: "전설 5성", stones: 11, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-    mythic:
-      order: 6
-      stars: 5
-      max-enhancement: 50
-      required-enhancement: 50
-      stars-data:
-        "1": { display-name: "신화 1성", stones: 12, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "2": { display-name: "신화 2성", stones: 12, general-option-count: 1, special-option-count: 0, unlock-enchant-slots: 0 }
-        "3": { display-name: "신화 3성", stones: 13, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }
-        "4": { display-name: "신화 4성", stones: 13, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 1 }
-        "5": { display-name: "신화 5성", stones: 14, general-option-count: 1, special-option-count: 1, unlock-enchant-slots: 0 }

@@ -38,14 +38,6 @@ public final class ShopRegistry {
             List<ShopItemData> products = new ArrayList<>();
             for (String rawProductId : configService.getShopsKeys(basePath + ".items")) {
                 String productPath = basePath + ".items." + rawProductId;
-                String promotionStoneId = configService.getEquipmentGrowthString(
-                        "promotion.required-stone-item-id", "basic_promotion_stone");
-                String configuredCustomId = configService.getShopsString(productPath + ".item.id", "");
-                if (rawProductId.equalsIgnoreCase(promotionStoneId)
-                        || configuredCustomId.equalsIgnoreCase(promotionStoneId)) {
-                    logger.info("Skipping boss-loop promotion stone shop product: " + shopId + "/" + rawProductId);
-                    continue;
-                }
                 ItemStack template = readTemplate(productPath);
                 if (template == null || template.getType().isAir()) {
                     logger.warning("Skipping shop product without a valid item: " + shopId + "/" + rawProductId);

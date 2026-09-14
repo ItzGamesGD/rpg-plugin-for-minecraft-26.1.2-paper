@@ -1,9 +1,7 @@
 package com.hyunseo.hyunseorpg.enchant;
 
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.enchant.nativeapi.RetiredVanillaEnchantments;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
@@ -11,8 +9,6 @@ import com.hyunseo.hyunseorpg.equipment.trigger.EnchantTriggerBinding;
 import com.hyunseo.hyunseorpg.equipment.trigger.TriggerType;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.skill.SkillInputType;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentData;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
 import com.hyunseo.hyunseorpg.weapon.WeaponType;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -42,10 +38,8 @@ public final class EnchantService {
     private final EnchantRegistry registry;
     private final ConfigService config;
     private final RPGItemService itemService;
-    private final EquipmentPromotionService promotionService;
     private final WeaponService weaponService;
     private final EquipmentTierService tierService;
-    private final SpecialEquipmentRegistry specialEquipment;
     private final EquipmentInstanceService equipmentInstances;
     private final NamespacedKey equippedKey;
     private final NamespacedKey generatedLoreKey;
@@ -56,19 +50,16 @@ public final class EnchantService {
     private final NamespacedKey swiftSneakSyncKey;
     private final NamespacedKey swiftSneakOriginalKey;
     private final NamespacedKey itemIdKey;
-    private EquipmentGrowthPolicy growthPolicy;
 
     public EnchantService(JavaPlugin plugin, ConfigService config, EnchantRegistry registry, RPGItemService itemService,
-                          EquipmentPromotionService promotionService, WeaponService weaponService,
-                          EquipmentTierService tierService, SpecialEquipmentRegistry specialEquipment,
+                          WeaponService weaponService,
+                          EquipmentTierService tierService,
                           EquipmentInstanceService equipmentInstances) {
         this.registry = registry;
         this.config = config;
         this.itemService = itemService;
-        this.promotionService = promotionService;
         this.weaponService = weaponService;
         this.tierService = tierService;
-        this.specialEquipment = specialEquipment;
         this.equipmentInstances = equipmentInstances;
         this.equippedKey = new NamespacedKey(plugin, "equipped_enchants");
         this.generatedLoreKey = new NamespacedKey(plugin, "generated_enchant_lore");
@@ -79,10 +70,6 @@ public final class EnchantService {
         this.swiftSneakSyncKey = new NamespacedKey(plugin, "swift_sneak_vanilla_sync");
         this.swiftSneakOriginalKey = new NamespacedKey(plugin, "swift_sneak_original_level");
         this.itemIdKey = new NamespacedKey(plugin, "item_id");
-    }
-
-    public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) {
-        this.growthPolicy = growthPolicy;
     }
 
     public Optional<EnchantData> findForInput(ItemStack equipment, SkillInputType inputType) {
@@ -168,7 +155,6 @@ public final class EnchantService {
 
     public List<String> getActiveEquipped(ItemStack equipment) {
         // Native enchantments are governed by their registry definition and vanilla application rules.
-        // Legacy promotion slots remain for growth UI compatibility but no longer suppress runtime effects.
         return getEquipped(equipment);
     }
 
@@ -492,20 +478,6 @@ public final class EnchantService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    public int getEnchantSlotLimit(ItemStack equipment) {
-        int existing = promotionService.getUnlockedEnchantSlots(equipment);
-        int baseline = Math.max(0, config.getEnchantsInt("enchant-slots.baseline."
-                + tierService.getCategory(equipment).name(), 0));
-        int direct = growthPolicy != null && growthPolicy.canEnchantDirectly(equipment) ? 1 : 0;
-        if (growthPolicy == null || growthPolicy.grade(equipment) != com.hyunseo.hyunseorpg.equipment.EquipmentGrade.GRADE_4) {
-            return Math.max(direct, Math.max(existing, baseline));
-        }
-        String id = itemService.getItemId(equipment).orElse("");
-        SpecialEquipmentData data = specialEquipment.get(id).orElse(null);
-        return data == null ? Math.max(direct, Math.max(existing, baseline))
-                : Math.max(Math.max(direct, Math.max(existing, baseline)), data.customEnchantSlots());
     }
 
     private record EquippedEnchant(String id, int level) { }

@@ -4,13 +4,6 @@ config-version: 5
 # Custom enchant definitions. Gameplay numbers live under each settings node so
 # they can be adjusted without recompiling. Custom enchants default to level I;
 # vanilla-style families use their familiar maximum level instead.
-enchant-slots:
-  baseline:
-    ARMOR: 1
-    SHIELD: 1
-    FISHING_ROD: 2
-    ELYTRA: 2
-
 enchants:
   blade_chain:
     display-name: "칼날 연쇄"

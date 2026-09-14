@@ -42,15 +42,9 @@ crafting-recipes:
   magic_stone_from_fragments:
     inputs: { magic_stone_fragment: 9 }
     output: { item-id: magic_stone, amount: 1 }
-  basic_promotion_stone_from_magic:
-    inputs: { magic_stone: 1, basic_upgrade_stone: 1 }
-    output: { item-id: basic_promotion_stone, amount: 1 }
   enchant_extraction_ticket:
-    inputs: { magic_stone: 4, basic_promotion_stone: 4 }
+    inputs: { magic_stone: 4 }
     output: { item-id: enchant_extraction_ticket, amount: 1 }
-  promotion_option_reroll_ticket:
-    inputs: { magic_stone: 2, basic_promotion_stone: 1 }
-    output: { item-id: promotion_option_reroll_ticket, amount: 1 }
   abundance_essence:
     category: materials
     farming-type: essence
@@ -230,7 +224,6 @@ legacy-craft2:
     - earth_blessing
     - basic_upgrade_stone
     - magic_stone_from_fragments
-    - basic_promotion_stone_from_magic
 
 # The editor writes crafting.layout and keeps these lists as a readable fallback.
 crafting:
@@ -255,9 +248,7 @@ crafting:
       - earth_blessing
       - basic_upgrade_stone
       - magic_stone_from_fragments
-      - basic_promotion_stone_from_magic
       - enchant_extraction_ticket
-      - promotion_option_reroll_ticket
       - abundance_essence
     equipment:
        - poseidon_spear
@@ -276,9 +267,7 @@ crafting:
       earth_blessing: 12
       basic_upgrade_stone: 18
       magic_stone_from_fragments: 19
-      basic_promotion_stone_from_magic: 20
       enchant_extraction_ticket: 21
-      promotion_option_reroll_ticket: 22
       abundance_essence: 44
       process_corn_normal: 24
       process_corn_basic: 25

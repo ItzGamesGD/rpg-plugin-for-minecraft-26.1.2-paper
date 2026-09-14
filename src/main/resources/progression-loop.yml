@@ -56,21 +56,7 @@ stages:
     inputs: []
     outputs:
       - type: ITEM
-        id: basic_promotion_stone
-      - type: ITEM
         id: magic_stone
-    next:
-      - promotion
-      - enchant
-
-  promotion:
-    display-name: "승급"
-    inputs:
-      - type: ITEM
-        id: basic_promotion_stone
-    outputs:
-      - type: EQUIPMENT_TIER
-      - type: ENCHANT_SLOT
     next:
       - enchant
 

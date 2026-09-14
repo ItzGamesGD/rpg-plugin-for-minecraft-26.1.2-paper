@@ -130,13 +130,10 @@ public final class ProgressionLoopRegistry {
 
         String enhancementStone = normalize(config.getEquipmentGrowthString(
                 "enhancement.required-stone-item-id", "basic_upgrade_stone"));
-        String promotionStone = normalize(config.getEquipmentGrowthString(
-                "promotion.required-stone-item-id", "basic_promotion_stone"));
         String magicStone = "magic_stone";
         String fragment = normalize(config.getProgressionLoopString(
                 "access-materials.fragment-item-id", "basic_upgrade_fragment"));
         valid &= requireItem("enhancement.required-stone-item-id", enhancementStone);
-        valid &= requireItem("promotion.required-stone-item-id", promotionStone);
         valid &= requireItem("boss-sessions reward item", magicStone);
         valid &= requireItem("access-materials.fragment-item-id", fragment);
 

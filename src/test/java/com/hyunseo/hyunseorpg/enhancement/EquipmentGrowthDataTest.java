@@ -43,27 +43,7 @@ final class EquipmentGrowthDataTest {
         }
     }
 
-    @Test
-    void eachPromotableFamilyHasAResolvedPromotionProfile() {
-        YamlConfiguration growth = load();
-        Map<Material, String> profiles = Map.of(
-                Material.DIAMOND_PICKAXE, "pickaxe",
-                Material.DIAMOND_SHOVEL, "shovel",
-                Material.DIAMOND_HOE, "hoe",
-                Material.DIAMOND_AXE, "axe",
-                Material.CROSSBOW, "crossbow",
-                Material.BOW, "bow",
-                Material.TRIDENT, "spear",
-                Material.MACE, "melee",
-                Material.DIAMOND_SWORD, "sword",
-                Material.DIAMOND_CHESTPLATE, "armor"
-        );
-        for (Map.Entry<Material, String> entry : profiles.entrySet()) {
-            assertNotNull(findEnhancementProfile(growth, entry.getKey()), entry.getKey().name());
-            assertTrue(growth.isConfigurationSection("promotion.profiles." + entry.getValue()),
-                    () -> entry.getKey() + " is missing promotion profile " + entry.getValue());
-        }
-    }
+
 
     @Test
     void stageTwoCapsAreCategoryBasedAndIndependentOfLegacyTierCeilings() {
@@ -74,68 +54,15 @@ final class EquipmentGrowthDataTest {
         for (String tier : Set.of("wooden", "stone", "gold", "iron", "diamond", "netherite")) {
             assertTrue(growth.getInt("tiers.definitions." + tier + ".max-enhancement") >= 30, tier);
         }
-        assertEquals(0, growth.getInt("tiers.definitions.elytra.max-promotion-stage"));
     }
 
-    @Test
-    void promotionRequirementsAreSeparateFromTheUniversalEnhancementCeiling() {
-        YamlConfiguration growth = load();
-        assertEquals(10, growth.getInt("promotion.grades.normal.required-enhancement"));
-        assertEquals(20, growth.getInt("promotion.grades.advanced.required-enhancement"));
-        assertEquals(30, growth.getInt("promotion.grades.rare.required-enhancement"));
-        assertEquals(40, growth.getInt("promotion.grades.heroic.required-enhancement"));
-        assertEquals(50, growth.getInt("promotion.grades.legendary.required-enhancement"));
-        assertEquals(50, growth.getInt("promotion.grades.mythic.required-enhancement"));
-    }
 
-    @Test
-    void everyPromotionDefinitionHasAClosedFirstRollAndRerollRange() {
-        YamlConfiguration growth = load();
-        ConfigurationSection definitions = growth.getConfigurationSection("promotion.option-definitions");
-        assertNotNull(definitions);
-        for (String id : definitions.getKeys(false)) {
-            String path = "promotion.option-definitions." + id + ".value";
-            double min = growth.getDouble(path + ".min", Double.NaN);
-            double max = growth.getDouble(path + ".max", Double.NaN);
-            double step = growth.getDouble(path + ".precision", Double.NaN);
-            assertTrue(Double.isFinite(min) && Double.isFinite(max) && Double.isFinite(step), id);
-            assertTrue(min >= 0.0D && max >= min && step > 0.0D, id);
-            // The service uses this same max for the first promotion roll and reroll upper bound.
-            assertTrue(max >= min, id + " has a reroll upper bound below its first-roll lower bound");
-        }
-    }
 
-    @Test
-    void duplicatePromotionRollsMustRemainWithinTheSharedDefinitionMaximum() {
-        YamlConfiguration growth = load();
-        ConfigurationSection definitions = growth.getConfigurationSection("promotion.option-definitions");
-        assertNotNull(definitions);
-        for (String id : definitions.getKeys(false)) {
-            String path = "promotion.option-definitions." + id + ".value";
-            double max = growth.getDouble(path + ".max", 0.0D);
-            assertTrue(max >= 0.0D, id);
-            // The runtime now treats this value as the aggregate cap, including duplicate rolls.
-            double accumulated = 0.0D;
-            for (int roll = 0; roll < 20; roll++) {
-                accumulated = Math.min(max, accumulated + max);
-                assertTrue(accumulated <= max + 0.000001D, id);
-            }
-        }
-    }
 
-    @Test
-    void aggregateOptionValueCannotExceedTheSharedDefinitionMaximum() {
-        EquipmentPromotionService.OptionDefinition definition = new EquipmentPromotionService.OptionDefinition(
-                "damage-reduction", "Damage Reduction", "PERCENT_POINT",
-                0.01D, 0.03D, 0.01D, 1, true, true, false);
 
-        assertEquals(0.03D, EquipmentPromotionService.capAggregateOptionValue(0.06D, definition), 0.000001D);
-        assertEquals(0.0D, EquipmentPromotionService.capAggregateOptionValue(-0.01D, definition), 0.000001D);
-        assertEquals(0.06D, EquipmentPromotionService.capAggregateOptionValue(0.06D,
-                new EquipmentPromotionService.OptionDefinition(
-                        "legacy", "Legacy", "FLAT", 0.0D, 0.03D, 0.01D,
-                        1, true, false, true)), 0.000001D);
-    }
+
+
+
 
     private ConfigurationSection findEnhancementProfile(YamlConfiguration growth, Material material) {
         ConfigurationSection profiles = growth.getConfigurationSection("enhancement.profiles");

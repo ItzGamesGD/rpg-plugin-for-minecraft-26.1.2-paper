@@ -1220,10 +1220,13 @@ public final class ConfigMigrationService {
         FileConfiguration defaults = loadResource(fileName);
         if (target == null || defaults == null) return;
         boolean changed = copyMissingTree(target, defaults, "extraction")
-                | copyMissingTree(target, defaults, "promotion-option-reroll")
                 | copyMissingTree(target, defaults, "future-features");
+        if (target.isSet("promotion-option-reroll")) {
+            target.set("promotion-option-reroll", null);
+            changed = true;
+        }
         if (changed) {
-            lines.add(fileName + ": added support extraction/reroll settings");
+            lines.add(fileName + ": normalized support settings after equipment promotion retirement");
             mark(target, fileName, changedFiles, lines, "equipment support migration staged");
         }
         migrateSupportShop(lines, changedFiles);
@@ -1308,8 +1311,7 @@ public final class ConfigMigrationService {
         File dataFolder = plugin.getDataFolder();
         File canonical = new File(dataFolder, "equipment-growth.yml");
         FileConfiguration growth = canonical.isFile() ? YamlConfiguration.loadConfiguration(canonical) : null;
-        if (growth == null || !growth.isConfigurationSection("enhancement")
-                || !growth.isConfigurationSection("promotion")) {
+        if (growth == null || !growth.isConfigurationSection("enhancement")) {
             throw new IOException("Cannot archive legacy growth files before equipment-growth.yml is complete");
         }
 
@@ -1571,11 +1573,14 @@ public final class ConfigMigrationService {
                 | removeRetiredEnchantDefinitions(target, lines)
                 | migrateLegacyEnchantDefaults(target, lines)
                 | migrateEnchantLore(target, defaults, lines)
-                | copyMissingTree(target, defaults, "enchant-slots")
                 | copyMissingTree(target, defaults, "enchants")
                 | copyMissingTree(target, defaults, "enchant-lore");
+        if (target.isSet("enchant-slots")) {
+            target.set("enchant-slots", null);
+            changed = true;
+        }
         if (changed) {
-            lines.add("enchants.yml: reconciled enchant definitions and slot settings");
+            lines.add("enchants.yml: reconciled native enchant definitions");
             mark(target, fileName, changedFiles, lines, "enchant content migration staged");
         }
     }
@@ -1722,16 +1727,6 @@ public final class ConfigMigrationService {
             lines.add("enchants.yml: consolidated blade_chain to one F input");
             changed = true;
         }
-        if (target.getInt("enchant-slots.baseline.FISHING_ROD", 0) == 1) {
-            target.set("enchant-slots.baseline.FISHING_ROD", 2);
-            lines.add("enchants.yml: expanded fishing rod enchant slots from 1 to 2");
-            changed = true;
-        }
-        if (target.getInt("enchant-slots.baseline.ELYTRA", 0) == 1) {
-            target.set("enchant-slots.baseline.ELYTRA", 2);
-            lines.add("enchants.yml: expanded elytra enchant slots from 1 to 2");
-            changed = true;
-        }
         ConfigurationSection speeds = target.getConfigurationSection("enchants.precision_flight.settings.hotbar-speed");
         if (speeds != null && speeds.isSet("0")) {
             List<Object> values = new ArrayList<>();
@@ -1789,8 +1784,6 @@ public final class ConfigMigrationService {
         FileConfiguration defaults = loadResource(fileName);
         if (target == null || defaults == null) return;
         boolean changed = copyMissingTree(target, defaults, "special-equipment");
-        FileConfiguration growthDefaults = loadResource("equipment-growth.yml");
-        changed |= normalizeSpecialPromotionPools(target, defaults, growthDefaults, lines);
         changed |= normalizeSpecialGrowthPolicy(target, lines);
         if (changed) {
             lines.add("special-equipment.yml: added missing special equipment settings");
@@ -1813,8 +1806,8 @@ public final class ConfigMigrationService {
                 growth.set("enhancement-enabled", false);
                 changed = true;
             }
-            if (!Boolean.FALSE.equals(growth.get("promotion-enabled"))) {
-                growth.set("promotion-enabled", false);
+            if (growth.isSet("promotion-enabled")) {
+                growth.set("promotion-enabled", null);
                 changed = true;
             }
             if (!Boolean.TRUE.equals(growth.get("unbreakable"))) {
@@ -1829,13 +1822,15 @@ public final class ConfigMigrationService {
                 growth.set("allow-promotion", null);
                 changed = true;
             }
-            String promotion = root + ".promotion";
-            String futurePromotion = root + ".future-promotion";
-            if (target.isConfigurationSection(promotion) && !target.isSet(futurePromotion)) {
-                target.set(futurePromotion, target.get(promotion));
-                target.set(promotion, null);
-                lines.add("special-equipment.yml: moved inactive promotion settings for " + id
-                        + " to future-promotion");
+            for (String retired : List.of("promotion", "future-promotion", "grade")) {
+                String path = root + "." + retired;
+                if (target.isSet(path)) {
+                    target.set(path, null);
+                    changed = true;
+                }
+            }
+            if (growth.isSet("custom-enchant-slots")) {
+                growth.set("custom-enchant-slots", null);
                 changed = true;
             }
         }
@@ -1867,19 +1862,12 @@ public final class ConfigMigrationService {
                 "added axe combat enhancement profile");
         changed |= mergeMissingListValues(target, defaults, "enhancement.profiles.tool.materials", lines,
                 "added missing tool enhancement materials");
-        changed |= migrateGrowthProfile(target, defaults, "promotion.option-definitions", lines,
-                "added promotion option definitions and eligibility flags");
-        changed |= migrateGrowthProfile(target, defaults, "option-roll", lines,
-                "added weighted promotion option roll settings");
-        for (String profile : List.of("pickaxe", "shovel", "hoe", "axe", "crossbow")) {
-            changed |= migrateGrowthProfile(target, defaults, "promotion.profiles." + profile, lines,
-                    "added promotion profile " + profile);
+        if (target.isSet("promotion") || target.isSet("option-roll")) {
+            target.set("promotion", null);
+            target.set("option-roll", null);
+            lines.add("equipment-growth.yml: removed retired equipment promotion configuration");
+            changed = true;
         }
-        changed |= normalizePromotionPools(target, defaults, lines);
-        changed |= migrateGrowthProfile(target, defaults, "promotion.grades", lines,
-                "added promotion enhancement requirement settings");
-        changed |= migrateGrowthProfile(target, defaults, "promotion.slot-unlocks", lines,
-                "added promotion enchant-slot unlock settings");
         changed |= normalizeEnhancementMaxLevel(target, defaults, lines);
         changed |= migrateStageTwoAnvilEnhancement(target, defaults, lines);
         if (target.getInt("schema-version", 0) < 2) {
@@ -1915,45 +1903,7 @@ public final class ConfigMigrationService {
         return true;
     }
 
-    private boolean normalizePromotionPools(FileConfiguration target, FileConfiguration defaults,
-                                             List<String> lines) {
-        ConfigurationSection definitions = defaults.getConfigurationSection("promotion.option-definitions");
-        ConfigurationSection profiles = target.getConfigurationSection("promotion.profiles");
-        if (definitions == null || profiles == null) return false;
-        Set<String> blocked = definitions.getKeys(false).stream()
-                .filter(id -> !definitions.getBoolean(id + ".promotion-eligible", true))
-                .map(ConfigMigrationService::normalize)
-                .collect(java.util.stream.Collectors.toSet());
-        boolean changed = false;
-        for (String profile : profiles.getKeys(false)) {
-            for (String pool : List.of("general-option-pool", "special-option-pool")) {
-                String path = "promotion.profiles." + profile + "." + pool;
-                List<String> current = new ArrayList<>(target.getStringList(path));
-                if (current.isEmpty()) continue;
-                List<String> normalized = new ArrayList<>();
-                for (String raw : current) {
-                    String value = normalize(raw);
-                    if (blocked.contains(value)) continue;
-                    if ((profile.equalsIgnoreCase("bow") || profile.equalsIgnoreCase("crossbow"))
-                            && pool.equals("general-option-pool") && value.equals("attack-damage")) {
-                        value = "projectile-damage";
-                    }
-                    if (!normalized.contains(value)) normalized.add(value);
-                }
-                List<String> defaultsForPool = defaults.getStringList("promotion.profiles." + profile + "." + pool);
-                for (String raw : defaultsForPool) {
-                    String value = normalize(raw);
-                    if (!blocked.contains(value) && !normalized.contains(value)) normalized.add(value);
-                }
-                if (!normalized.equals(current)) {
-                    target.set(path, normalized);
-                    lines.add("equipment-growth.yml: normalized promotion option pool " + profile + "/" + pool);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
+
 
     private boolean normalizeEnhancementMaxLevel(FileConfiguration target, FileConfiguration defaults,
                                                   List<String> lines) {
@@ -2002,39 +1952,7 @@ public final class ConfigMigrationService {
         return changed;
     }
 
-    private boolean normalizeSpecialPromotionPools(FileConfiguration target, FileConfiguration defaults,
-                                                    FileConfiguration growthDefaults, List<String> lines) {
-        ConfigurationSection definitions = growthDefaults == null
-                ? null : growthDefaults.getConfigurationSection("promotion.option-definitions");
-        ConfigurationSection items = target.getConfigurationSection("special-equipment.items");
-        if (definitions == null || items == null) return false;
-        Set<String> blocked = definitions.getKeys(false).stream()
-                .filter(id -> !definitions.getBoolean(id + ".promotion-eligible", true))
-                .map(ConfigMigrationService::normalize)
-                .collect(java.util.stream.Collectors.toSet());
-        boolean changed = false;
-        for (String itemId : items.getKeys(false)) {
-            for (String pool : List.of("general-option-pool", "special-option-pool")) {
-                String path = "special-equipment.items." + itemId + ".promotion.options." + pool;
-                List<String> current = new ArrayList<>(target.getStringList(path));
-                if (current.isEmpty()) continue;
-                List<String> normalized = current.stream().map(ConfigMigrationService::normalize)
-                        .filter(value -> !blocked.contains(value)).distinct().collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-                List<String> defaultsForPool = defaults.getStringList(
-                        "special-equipment.items." + itemId + ".promotion.options." + pool);
-                for (String raw : defaultsForPool) {
-                    String value = normalize(raw);
-                    if (!blocked.contains(value) && !normalized.contains(value)) normalized.add(value);
-                }
-                if (!normalized.equals(current)) {
-                    target.set(path, normalized);
-                    lines.add("special-equipment.yml: normalized promotion option pool " + itemId + "/" + pool);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
+
 
     private void migrateProgression(List<String> lines, List<File> changedFiles) {
         String fileName = "progression-loop.yml";
@@ -2236,7 +2154,6 @@ public final class ConfigMigrationService {
         if (support != null) {
             boolean changed = false;
             changed |= setIfDifferent(support, "extraction.currency-cost", 6000);
-            changed |= setIfDifferent(support, "promotion-option-reroll.currency-cost", 2000);
             if (changed) mark(support, "equipment-support.yml", changedFiles, lines,
                     "support transaction fees applied");
         }
@@ -2246,16 +2163,8 @@ public final class ConfigMigrationService {
             boolean changed = false;
             changed |= setRecipe(crafting, "magic_stone_from_fragments",
                     Map.of("magic_stone_fragment", 9), "magic_stone");
-            changed |= setRecipe(crafting, "basic_promotion_stone_from_magic",
-                    Map.of("magic_stone", 1, "basic_upgrade_stone", 1), "basic_promotion_stone");
             changed |= setRecipe(crafting, "enchant_extraction_ticket",
-                    Map.of("magic_stone", 4, "basic_promotion_stone", 4), "enchant_extraction_ticket");
-            changed |= setRecipe(crafting, "promotion_option_reroll_ticket",
-                    Map.of("magic_stone", 2, "basic_promotion_stone", 1), "promotion_option_reroll_ticket");
-            changed |= appendMissingCraftingEntry(crafting, loadResource("crafting.yml"),
-                    "crafting.categories.materials", "basic_promotion_stone_from_magic");
-            changed |= appendMissingCraftingEntry(crafting, loadResource("crafting.yml"),
-                    "crafting.categories.materials", "promotion_option_reroll_ticket");
+                    Map.of("magic_stone", 4), "enchant_extraction_ticket");
             if (changed) mark(crafting, "crafting.yml", changedFiles, lines,
                     "canonical material and support recipes applied");
         }
@@ -2284,14 +2193,13 @@ public final class ConfigMigrationService {
                             changed |= setIfDifferent(shops, root + ".sellable", false);
                             changed |= setIfDifferent(shops, root + ".currency-item-id", "magic_stone");
                         } else if (Set.of("basic_upgrade_stone", "basic_upgrade_fragment", "magic_stone",
-                                "magic_stone_fragment", "basic_promotion_stone").contains(itemId)) {
+                                "magic_stone_fragment").contains(itemId)) {
                             changed |= setIfDifferent(shops, root + ".buy-price", 0);
                             changed |= setIfDifferent(shops, root + ".sell-price", 0);
                             changed |= setIfDifferent(shops, root + ".purchasable", false);
                             changed |= setIfDifferent(shops, root + ".sellable", false);
                             changed |= setIfDifferent(shops, root + ".currency-item-id", "");
-                        } else if (itemId.equals("enchant_extraction_ticket")
-                                || itemId.equals("promotion_option_reroll_ticket")) {
+                        } else if (itemId.equals("enchant_extraction_ticket")) {
                             changed |= setIfDifferent(shops, root + ".buy-price", 0);
                             changed |= setIfDifferent(shops, root + ".sell-price", 0);
                             changed |= setIfDifferent(shops, root + ".purchasable", false);

@@ -4,15 +4,12 @@ package com.hyunseo.hyunseorpg.equipment;
 public record EquipmentDefinition(
         String equipmentId,
         EquipmentTierService.Category equipmentType,
-        EquipmentGrade grade,
         boolean upgradeAllowed,
-        boolean promotionAllowed,
         boolean specialEquipment,
         boolean endgameEquipment
 ) {
     public EquipmentDefinition {
         equipmentId = equipmentId == null ? "" : equipmentId;
         equipmentType = equipmentType == null ? EquipmentTierService.Category.UNSUPPORTED : equipmentType;
-        grade = grade == null ? EquipmentGrade.UNSPECIFIED : grade;
     }
 }

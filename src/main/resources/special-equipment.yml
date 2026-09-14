@@ -14,9 +14,8 @@ special-equipment:
       attribute: { element: NONE, equipment-type: MACE }
       unlock: { required-rpg-level: 50 }
       crafting: { enabled: false, amount: 1, inputs: {} }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: true, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: true, allow-custom-enchants: true }
       abilities:
         mortal: { id: thanatos-mortal, display-name: "필멸", trigger: MELEE_HIT, description: "첫 타격이 소유하는 5초 판결 뒤 검이 낙하합니다.", delay-ticks: 100, fall-ticks: 8, damage: 6.0, sword-custom-model-data: 23601 }
         deaths-oppression: { id: thanatos-oppression, display-name: "죽음의 위압", trigger: VANILLA_MACE_SMASH, description: "자연 낙하 강타가 준비된 경우에만 주변을 짓누릅니다.", cooldown-ticks: 200, radius: 5.0, duration-ticks: 40, damage: 4.0 }
@@ -28,7 +27,7 @@ special-equipment:
       attribute: { element: FIRE, equipment-type: CONSUMABLE }
       unlock: { required-rpg-level: 20 }
       crafting: { enabled: true, amount: 1, inputs: { "fire_fragment": 1, "vanilla:FIRE_CHARGE": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
       abilities:
         active-1:
           id: fireball
@@ -65,7 +64,7 @@ special-equipment:
       attribute: { element: FIRE, equipment-type: BUFF }
       unlock: { required-rpg-level: 20 }
       crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 1, "basic_upgrade_stone": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
       abilities:
         active-1:
           id: flame_spirit
@@ -87,7 +86,7 @@ special-equipment:
       attribute: { element: WATER, equipment-type: BUFF }
       unlock: { required-rpg-level: 20 }
       crafting: { enabled: true, amount: 1, inputs: { "water_fragment": 1, "basic_upgrade_stone": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
       abilities:
         water-breathing: { enabled: true, duration-ticks: 1200, amplifier: 0 }
         dolphins-grace: { enabled: true, duration-ticks: 1200, amplifier: 0 }
@@ -98,7 +97,7 @@ special-equipment:
       attribute: { element: EARTH, equipment-type: BUFF }
       unlock: { required-rpg-level: 20 }
       crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 1, "earth_fragment": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: false }
       abilities: { haste: { enabled: true, duration-ticks: 1200, amplifier: 0 } }
     burning_sword:
       item-id: burning_sword
@@ -109,9 +108,8 @@ special-equipment:
         vanilla-progress: { required-worlds: [NETHER] }
         required-custom-mob-kills: { frost_blaze: 25 }
       crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 64, "vanilla:GOLDEN_SWORD": 8 } }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         passive:
           id: fire_blade
@@ -153,17 +151,6 @@ special-equipment:
           particle-enabled: true
           sound-enabled: true
         last-flame: { enabled: true, trigger-health-ratio: 0.20, cooldown-ticks: 2400 }
-      future-promotion:
-        enabled: true
-        max-stage: mythic-5
-        cost-multiplier: 3.0
-        success-chance: 1.0
-        options:
-          general-option-pool: [attack-damage]
-          special-option-pool: [skill-damage, critical-chance]
-        soul-requirements:
-          normal-1: { frost_blaze: 10 }
-          normal-2: { frost_blaze: 25 }
     flowing_water_sword:
       item-id: flowing_water_sword
       display: { name: "흐르는 물의 검" }
@@ -173,7 +160,7 @@ special-equipment:
         vanilla-progress: { required-worlds: [NETHER] }
         required-custom-mob-kills: { riptide_drowned: 25 }
       crafting: { enabled: true, amount: 1, inputs: { "water_crystal": 64, "vanilla:DIAMOND_SWORD": 8 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         attack-speed-multiplier: 1.75
         on-kill: { heal-ratio: 0.05, speed-duration-ticks: 100, speed-amplifier: 1 }
@@ -186,7 +173,7 @@ special-equipment:
         vanilla-progress: { required-worlds: [NETHER] }
         required-custom-mob-kills: { explosive_breeze: 25 }
       crafting: { enabled: true, amount: 1, inputs: { "condensed_vortex": 64, "vanilla:IRON_SWORD": 8 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { slash: { range: 7.0, damage: 1.0 } }
     earth_special_sword:
       item-id: earth_special_sword
@@ -197,7 +184,7 @@ special-equipment:
         vanilla-progress: { required-worlds: [OVERWORLD] }
         required-custom-mob-kills: { mining_giant: 25 }
       crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 64, "vanilla:WOODEN_SWORD": 8 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { on-hit: { slowness: { amplifier: 1, duration-ticks: 40 }, knockback: { enabled: true, strength: 0.35 } } }
     ice_special_sword:
       item-id: ice_special_sword
@@ -208,7 +195,7 @@ special-equipment:
         vanilla-progress: { required-worlds: [NETHER] }
         required-custom-mob-kills: { frost_blaze: 25 }
       crafting: { enabled: true, amount: 1, inputs: { "frozen_heart": 64, "vanilla:DIAMOND_SWORD": 8 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { ice-stacks: { maximum: 5, duration-ticks: 80, slowness-duration-ticks: 40, freeze-ticks: 60 } }
     dark_energy_sword:
       item-id: dark_energy_sword
@@ -219,7 +206,7 @@ special-equipment:
         vanilla-progress: { required-worlds: [NETHER] }
         required-boss-kills: { WITHER: 1 }
       crafting: { enabled: true, amount: 1, inputs: { "dead_soul": 64, "vanilla:NETHERITE_SWORD": 5 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { life-steal: { damage-ratio: 0.05 }, weakness: { duration-ticks: 60, amplifier: 0 } }
     burning_bow:
       item-id: burning_bow
@@ -227,9 +214,8 @@ special-equipment:
       attribute: { element: FIRE, equipment-type: BOW }
       unlock: { required-rpg-level: 40, required-custom-mob-kills: { lava_cube: 25 } }
       crafting: { enabled: true, amount: 1, inputs: { "fire_heart": 64, "vanilla:BOW": 1, "fire_fragment": 64 } }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         passive:
           id: fire_arrow
@@ -270,24 +256,13 @@ special-equipment:
           fire-ticks: 80
           particle-enabled: true
           sound-enabled: true
-      future-promotion:
-        enabled: true
-        max-stage: mythic-5
-        cost-multiplier: 3.0
-        success-chance: 1.0
-        options:
-          general-option-pool: [projectile-damage]
-          special-option-pool: [skill-damage, critical-chance]
-        soul-requirements:
-          normal-1: { lava_cube: 10 }
-          normal-2: { lava_cube: 25 }
     wind_archers_bow:
       item-id: wind_archers_bow
       display: { name: "바람궁수의 활" }
       attribute: { element: WIND, equipment-type: BOW }
       unlock: { required-rpg-level: 40, required-custom-mob-kills: { explosive_breeze: 25 } }
       crafting: { enabled: true, amount: 1, inputs: { "condensed_vortex": 64, "vanilla:BOW": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { homing: { enabled: true, range: 12.0, turn-rate: 0.12 } }
     earth_heavy_bow:
       item-id: earth_heavy_bow
@@ -295,7 +270,7 @@ special-equipment:
       attribute: { element: EARTH, equipment-type: BOW }
       unlock: { required-rpg-level: 40, required-custom-mob-kills: { mining_giant: 25 } }
       crafting: { enabled: true, amount: 1, inputs: { "earth_heart": 64, "vanilla:BOW": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { slowness: { duration-ticks: 60, amplifier: 1 }, knockback: 0.45 }
     freezing_bow:
       item-id: freezing_bow
@@ -303,7 +278,7 @@ special-equipment:
       attribute: { element: ICE, equipment-type: BOW }
       unlock: { required-rpg-level: 40, required-custom-mob-kills: { frost_blaze: 25 } }
       crafting: { enabled: true, amount: 1, inputs: { "frozen_heart": 64, "vanilla:BOW": 1 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { ice-stacks: { maximum: 5, duration-ticks: 80, slowness-duration-ticks: 40, freeze-ticks: 60 } }
     dark_energy_bow:
       item-id: dark_energy_bow
@@ -311,7 +286,7 @@ special-equipment:
       attribute: { element: DARK_ENERGY, equipment-type: BOW }
       unlock: { required-rpg-level: 50, required-boss-kills: { WITHER: 1 } }
       crafting: { enabled: true, amount: 1, inputs: { "dead_soul": 64, "vanilla:BOW": 1, "vanilla:NETHERITE_INGOT": 3 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities: { wither: { duration-ticks: 60, amplifier: 0 }, weakness: { duration-ticks: 80, amplifier: 0 } }
     poseidons_spear:
       item-id: poseidon_spear
@@ -319,7 +294,7 @@ special-equipment:
       attribute: { element: WATER, equipment-type: SPEAR }
       unlock: { required-rpg-level: 50, required-custom-mob-kills: { riptide_drowned: 50 } }
       crafting: { enabled: true, amount: 1, inputs: { "water_crystal": 64, "vanilla:TRIDENT": 3 } }
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         life-steal: { damage-ratio: 0.005 }
         # Provisional values: tune only after live-server combat testing.
@@ -333,9 +308,8 @@ special-equipment:
       attribute: { element: FIRE, equipment-type: AXE }
       unlock: { required-rpg-level: 50, required-custom-mob-kills: { frost_blaze: 50 } }
       crafting: { enabled: false, amount: 1, inputs: {} }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         heavy-attack: { id: flame-axe-heavy, display-name: "화염 강타", trigger: RIGHT_CLICK, description: "완전 충전 후 전방의 적을 불태우고 밀쳐냅니다.", full-charge-ticks: 20, damage: 7.0, range: 4.0, angle-cosine: 0.55, fire-ticks: 80, knockback: 0.65 }
         spinning-throw: { id: flame-axe-spin, display-name: "회전 도끼", trigger: OFFHAND_QUICK, description: "방문하지 않은 적을 추적한 뒤 소유자에게 돌아옵니다.", max-targets: 5, search-radius: 8.0, display-scale: 0.8, spin-degrees-per-tick: 30.0, travel-speed: 0.7, turn-radians-per-tick: 0.16, contact-radius: 1.1, hit-rotation-requirement: 360.0, damage: 4.0, max-lifetime-ticks: 200, return-distance: 1.2 }
@@ -345,9 +319,8 @@ special-equipment:
       attribute: { element: LIGHTNING, equipment-type: AXE }
       unlock: { required-rpg-level: 50, required-boss-kills: { WITHER: 1 } }
       crafting: { enabled: false, amount: 1, inputs: {} }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         lightning-strike: { id: lightning-strike, display-name: "낙뢰", trigger: MELEE_HIT, description: "다섯 번째 직접 타격에 강한 낙뢰 피해를 더합니다.", hit-threshold: 5, damage: 4.0 }
         chain-lightning: { id: chain-lightning, display-name: "천뢰쇄", trigger: LIGHTNING_STRIKE, description: "낙뢰에서 가까운 적으로 전기가 연쇄 전파됩니다.", radius: 5.0, maximum-targets: 4, damage: 3.0, damage-falloff: 0.75 }
@@ -361,9 +334,8 @@ special-equipment:
       attribute: { element: LIGHT, equipment-type: SWORD }
       unlock: { required-rpg-level: 50 }
       crafting: { enabled: false, amount: 1, inputs: {} }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       # INITIAL / BALANCE_UNVERIFIED: live-server tuning is required.
       abilities:
         dawn: { id: solaris-dawn, display-name: "여명", trigger: MELEE_HIT, description: "처음 맞은 적에게서 연쇄하는 빛을 방출합니다.", reset-seconds: 20.0, radius: 4.0, damage: 4.0, fire-seconds: 3.0 }
@@ -376,9 +348,8 @@ special-equipment:
       attribute: { element: LIGHT, equipment-type: SWORD }
       unlock: { required-rpg-level: 50 }
       crafting: { enabled: false, amount: 1, inputs: {} }
-      grade: 4
       final-gear-material-allowed: true
-      growth: { enhancement-enabled: false, promotion-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true, custom-enchant-slots: 1 }
+      growth: { enhancement-enabled: false, unbreakable: true, allow-vanilla-enchants: false, allow-custom-enchants: true }
       abilities:
         base-attack-speed: 6.4
         passive: { id: afterglow-cut, display-name: "잔광", trigger: MELEE_HIT, description: "추가 검격과 짧은 피해 경감을 얻습니다.", additional-damage: 1.5, damage-reduction: 0.30, mitigation-duration-seconds: 0.125, mitigation-duration-ticks: 3 }

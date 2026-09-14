@@ -6,9 +6,7 @@ import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
 import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
 import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrade;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
@@ -49,7 +47,6 @@ public final class SpecialEquipmentService {
     private final PlayerDataService playerDataService;
     private final InventoryDeliveryService delivery;
     private final EquipmentEnhancementService enhancement;
-    private final EquipmentPromotionService promotion;
     private final NamespacedKey specialIdKey;
     private final NamespacedKey schemaKey;
     private final Set<UUID> unlockBypass = ConcurrentHashMap.newKeySet();
@@ -58,8 +55,7 @@ public final class SpecialEquipmentService {
 
     public SpecialEquipmentService(JavaPlugin plugin, ConfigService config, SpecialEquipmentRegistry registry,
                                    RPGItemService itemService, PlayerDataService playerDataService,
-                                   InventoryDeliveryService delivery, EquipmentEnhancementService enhancement,
-                                   EquipmentPromotionService promotion) {
+                                   InventoryDeliveryService delivery, EquipmentEnhancementService enhancement) {
         this.plugin = plugin;
         this.config = config;
         this.registry = registry;
@@ -67,7 +63,6 @@ public final class SpecialEquipmentService {
         this.playerDataService = playerDataService;
         this.delivery = delivery;
         this.enhancement = enhancement;
-        this.promotion = promotion;
         this.specialIdKey = new NamespacedKey(plugin, "special_equipment_id");
         this.schemaKey = new NamespacedKey(plugin, "special_equipment_schema");
     }
@@ -97,14 +92,8 @@ public final class SpecialEquipmentService {
         if (meta == null) return item;
         meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, canonicalId(data));
         meta.getPersistentDataContainer().set(schemaKey, PersistentDataType.INTEGER, 1);
-        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "equipment_grade"),
-                PersistentDataType.INTEGER, data.grade());
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "enhancement_level"),
                 PersistentDataType.INTEGER, 0);
-        if (data.customEnchantSlots() > 0) {
-            meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "unlocked_enchant_slots"),
-                    PersistentDataType.INTEGER, data.customEnchantSlots());
-        }
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "special_equipment"),
                 PersistentDataType.BYTE, (byte) 1);
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "equipment_element"),
@@ -136,9 +125,7 @@ public final class SpecialEquipmentService {
         }
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta)
                 .add(Component.text("Special equipment: " + data.element(), NamedTextColor.LIGHT_PURPLE))
-                .add(Component.text("Equipment grade: " + data.grade(), NamedTextColor.LIGHT_PURPLE))
                 .add(Component.text("Enhancement: unavailable", NamedTextColor.GRAY))
-                .add(Component.text("Promotion: unavailable", NamedTextColor.GRAY))
                 .add(Component.text("Custom enchantment: " + (data.allowCustomEnchants() ? "available" : "unavailable"), NamedTextColor.AQUA))
                 .add(Component.text("Final equipment material: " + (data.finalGearMaterialAllowed() ? "allowed" : "not allowed"), NamedTextColor.GRAY));
         data.abilities().values().forEach(ability -> lore
@@ -253,8 +240,7 @@ public final class SpecialEquipmentService {
             if (current < entry.getValue()) missing.add(entry.getKey() + " x" + entry.getValue() + " (current " + current + ")");
         }
         if (!data.requiredEquipmentId().isBlank() && !hasRequiredEquipment(player, data)) {
-            missing.add("equipment " + data.requiredEquipmentId() + " +" + data.minimumEnhancementLevel()
-                    + " promotion " + data.minimumPromotionStage());
+            missing.add("equipment " + data.requiredEquipmentId() + " +" + data.minimumEnhancementLevel());
         }
         return missing;
     }
@@ -316,7 +302,6 @@ public final class SpecialEquipmentService {
             boolean materialMatch = item.getType().name().equalsIgnoreCase(data.requiredEquipmentId());
             if (!idMatch && !materialMatch) continue;
             if (enhancement.getLevel(item) < data.minimumEnhancementLevel()) continue;
-            if (promotionStageRank(promotion.getStage(item)) < data.minimumPromotionStage()) continue;
             return true;
         }
         return false;
@@ -370,16 +355,5 @@ public final class SpecialEquipmentService {
         return new NamespacedKey(plugin, "special_soul_" + safe);
     }
 
-    private int promotionStageRank(String stage) {
-        if (stage == null || stage.isBlank()) return 0;
-        String[] parts = stage.split("-", 2);
-        if (parts.length != 2) return 0;
-        try {
-            int gradeOrder = config.getEquipmentGrowthInt("promotion.grades." + parts[0] + ".order", 0);
-            int star = Integer.parseInt(parts[1]);
-            return gradeOrder <= 0 ? 0 : (gradeOrder - 1) * 5 + star;
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
-    }
+
 }

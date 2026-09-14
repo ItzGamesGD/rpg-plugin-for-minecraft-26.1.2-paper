@@ -308,18 +308,6 @@ shops:
         sellable: false
         match-mode: CUSTOM_ID
         currency-item-id: ""
-      promotion_option_reroll_ticket:
-        item:
-          type: custom
-          id: promotion_option_reroll_ticket
-        amount: 1
-        order: 1
-        buy-price: 0
-        sell-price: 0
-        purchasable: false
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: ""
   farming:
     title: "농사"
     items:

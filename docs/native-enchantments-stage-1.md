@@ -58,7 +58,7 @@ Legacy PDC migration is lazy and planned before mutation. Active aliases canonic
 
 ## Scope retained for later stages
 
-Coin, Magic Stone, Upgrade Stone, Promotion, growth/enhancement/repair UI, Class, Skill, Mana, Stat, proficiency, RPG level, mob scaling, farming, alchemy, quest, exploration, and special-equipment runtimes remain in place. No new GUI, currency, growth engine, or structure loot engine was introduced.
+At Stage 1 completion, Coin, Magic Stone, Upgrade Stone, Promotion, growth/enhancement/repair UI, Class, Skill, Mana, Stat, proficiency, RPG level, mob scaling, farming, alchemy, quest, exploration, and special-equipment runtimes remained in place. Stage 2 later moved enhancement to the vanilla anvil and Stage 3 removes ordinary equipment Promotion without changing the native-enchantment architecture.
 
 ## LIVE VERIFICATION REQUIRED
 
@@ -68,4 +68,4 @@ Coin, Magic Stone, Upgrade Stone, Promotion, growth/enhancement/repair UI, Class
 4. Apply a Hyunseo book with a vanilla enchant through a normal-player vanilla anvil and verify XP, repair, compatibility, and exclusivity.
 5. Save/restart mixed vanilla/Hyunseo items and confirm components persist.
 6. Exercise known, alias, missing-native, unknown, mixed, and pre-existing-higher-level legacy PDC fixtures twice.
-7. Open the growth UI and verify enchant buttons provide vanilla-workstation guidance while unrelated promotion/repair menus remain functional.
+7. Open the growth UI and verify enchant buttons provide vanilla-workstation guidance and no ordinary equipment Promotion route remains.

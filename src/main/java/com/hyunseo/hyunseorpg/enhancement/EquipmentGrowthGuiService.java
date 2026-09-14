@@ -1,8 +1,6 @@
 package com.hyunseo.hyunseorpg.enhancement;
 
-import com.hyunseo.hyunseorpg.enchant.EnchantService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
-import com.hyunseo.hyunseorpg.farming.FarmingPromotionService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -20,9 +18,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
-/** Shared GUI for enhancement, promotion and enchantment equipment input. */
+/** Legacy growth menu retained for repair navigation; enhancement itself uses the vanilla anvil. */
 public final class EquipmentGrowthGuiService {
     public static final int EQUIPMENT_SLOT = 10;
     public static final int STONE_SLOT = 16;
@@ -33,28 +30,21 @@ public final class EquipmentGrowthGuiService {
 
     private final JavaPlugin plugin;
     private final EquipmentEnhancementService enhancementService;
-    private final EquipmentPromotionService promotionService;
     private final Set<UUID> processing = ConcurrentHashMap.newKeySet();
-    private EnchantService enchantService;
     private EquipmentRepairService repairService;
     private EquipmentGrowthPolicy growthPolicy;
     private EquipmentSupportGuiService supportService;
     private com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService;
-    private FarmingPromotionService farmingPromotionService;
 
-    public EquipmentGrowthGuiService(JavaPlugin plugin, EquipmentEnhancementService enhancementService,
-                                     EquipmentPromotionService promotionService) {
+    public EquipmentGrowthGuiService(JavaPlugin plugin, EquipmentEnhancementService enhancementService) {
         this.plugin = plugin;
         this.enhancementService = enhancementService;
-        this.promotionService = promotionService;
     }
 
-    public void setEnchantService(EnchantService enchantService) { this.enchantService = enchantService; }
     public void setRepairService(EquipmentRepairService repairService) { this.repairService = repairService; }
     public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) { this.growthPolicy = growthPolicy; }
     public void setSupportService(EquipmentSupportGuiService supportService) { this.supportService = supportService; }
     public void setShopGuiService(com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService) { this.shopGuiService = shopGuiService; }
-    public void setFarmingPromotionService(FarmingPromotionService service) { this.farmingPromotionService = service; }
     public EquipmentSupportGuiService getSupportService() { return supportService; }
     public com.hyunseo.hyunseorpg.shop.ShopGuiService getShopGuiService() { return shopGuiService; }
     public boolean isInputSlot(int slot) { return INPUT_SLOTS.contains(slot); }
@@ -64,11 +54,9 @@ public final class EquipmentGrowthGuiService {
         Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 성장"));
         holder.setInventory(inventory);
         fill(inventory);
-        inventory.setItem(20, icon(Material.NETHER_STAR, "승급 옵션 초기화", List.of("선택한 옵션만 다시 결정합니다.")));
         inventory.setItem(24, icon(Material.KNOWLEDGE_BOOK, "향후 확장", List.of("아직 구현되지 않은 기능 목록")));
         inventory.setItem(11, icon(Material.ANVIL, "강화", List.of("바닐라 모루에 장비와 강화석을 넣어 강화합니다.")));
-        inventory.setItem(13, icon(Material.SMITHING_TABLE, "승급", List.of("승급석으로 등급과 성장 상한을 높입니다.")));
-        inventory.setItem(15, icon(Material.ENCHANTED_BOOK, "인챈트", List.of("해방된 슬롯에 인챈트 북을 장착합니다.")));
+        inventory.setItem(15, icon(Material.ENCHANTED_BOOK, "인챈트", List.of("인챈팅 테이블과 바닐라 모루를 사용합니다.")));
         inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
         inventory.setItem(17, icon(Material.IRON_INGOT, "수리", List.of("코인만 사용하여 내구도를 회복합니다.")));
         player.openInventory(inventory);
@@ -79,15 +67,6 @@ public final class EquipmentGrowthGuiService {
         Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 강화"));
         holder.setInventory(inventory);
         renderEnhancement(inventory);
-        player.openInventory(inventory);
-    }
-
-    public void openPromotion(Player player) {
-        PromotionInventoryHolder holder = new PromotionInventoryHolder();
-        holder.setPlayerId(player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 승급"));
-        holder.setInventory(inventory);
-        renderPromotion(inventory);
         player.openInventory(inventory);
     }
 
@@ -118,48 +97,6 @@ public final class EquipmentGrowthGuiService {
         }
     }
 
-    public void promote(Player player, Inventory inventory) {
-        if (!processing.add(player.getUniqueId())) return;
-        try {
-            ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-            ItemStack stone = inventory.getItem(STONE_SLOT);
-            if (farmingPromotionService != null && farmingPromotionService.isFarmingHoe(equipment)) {
-                FarmingPromotionService.FarmingPromotionResult result = farmingPromotionService.promote(player, equipment, stone);
-                player.sendMessage(Component.text(result.message(), result.success()
-                        ? NamedTextColor.GREEN : NamedTextColor.RED));
-                inventory.setItem(STONE_SLOT, stone == null || stone.getAmount() <= 0 ? null : stone);
-                inventory.setItem(EQUIPMENT_SLOT, equipment);
-                return;
-            }
-            if (growthPolicy != null && !growthPolicy.canPromote(equipment)) {
-                player.sendMessage(Component.text(growthPolicy.growthRestriction(equipment), NamedTextColor.RED));
-                return;
-            }
-            Optional<EquipmentPromotionService.PromotionPreview> preview = promotionService.preview(equipment);
-            if (preview.isEmpty()) {
-                player.sendMessage(Component.text("승급할 수 없는 장비입니다.", NamedTextColor.RED));
-                return;
-            }
-            EquipmentPromotionService.PromotionPreview rule = preview.get();
-            if (stone == null || !promotionService.isPromotionStone(stone) || stone.getAmount() < rule.stoneCost()) {
-                player.sendMessage(Component.text("승급석이 부족하거나 올바르지 않습니다.", NamedTextColor.RED));
-                return;
-            }
-            if (!consumeMaterial(inventory, STONE_SLOT, rule.stoneCost(), "승급석")) return;
-            double successChance = promotionService.getSuccessChance(equipment, rule);
-            if (successChance < 1.0D && ThreadLocalRandom.current().nextDouble() > successChance) {
-                player.sendMessage(Component.text("승급 실패", NamedTextColor.RED));
-                return;
-            }
-            promotionService.apply(equipment, rule);
-            inventory.setItem(EQUIPMENT_SLOT, equipment);
-            player.sendMessage(Component.text("승급 완료: " + rule.displayName(), NamedTextColor.LIGHT_PURPLE));
-        } finally {
-            renderPromotion(inventory);
-            processing.remove(player.getUniqueId());
-        }
-    }
-
     /** Legacy menu compatibility; normal enhancement is entered through a vanilla anvil. */
     public void enhance(Player player, Inventory inventory) {
         if (!processing.add(player.getUniqueId())) return;
@@ -185,8 +122,6 @@ public final class EquipmentGrowthGuiService {
     public void refreshLater(Inventory inventory) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (inventory.getHolder() instanceof EnhancementInventoryHolder) renderEnhancement(inventory);
-            if (inventory.getHolder() instanceof PromotionInventoryHolder) renderPromotion(inventory);
-            if (inventory.getHolder() instanceof EnchantInventoryHolder) renderEnchant(inventory);
             if (inventory.getHolder() instanceof RepairInventoryHolder) renderRepair(inventory);
         });
     }
@@ -205,8 +140,7 @@ public final class EquipmentGrowthGuiService {
     public void returnOpenInputs() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (top.getHolder() instanceof EnhancementInventoryHolder || top.getHolder() instanceof PromotionInventoryHolder
-                    || top.getHolder() instanceof EnchantInventoryHolder
+            if (top.getHolder() instanceof EnhancementInventoryHolder
                     || top.getHolder() instanceof RepairInventoryHolder) {
                 returnInputs(player, top);
                 player.closeInventory();
@@ -223,7 +157,6 @@ public final class EquipmentGrowthGuiService {
         Optional<EnhancementLevelData> next = enhancementService.getNextLevel(equipment);
         if (equipment != null && !equipment.getType().isAir() && growthPolicy != null) {
             inventory.setItem(5, icon(Material.PAPER, "Equipment policy", List.of(
-                    "Equipment grade: " + growthPolicy.grade(equipment).value(),
                     "Enhancement: " + (growthPolicy.canEnhance(equipment) ? "available" : "unavailable"),
                     "Current: +" + enhancementService.getLevel(equipment) + "/" + enhancementService.getMaximumLevel(equipment)
             )));
@@ -246,67 +179,6 @@ public final class EquipmentGrowthGuiService {
         inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
     }
 
-    private void renderPromotion(Inventory inventory) {
-        ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-        ItemStack stone = inventory.getItem(STONE_SLOT);
-        fill(inventory);
-        inventory.setItem(EQUIPMENT_SLOT, equipment);
-        inventory.setItem(STONE_SLOT, stone);
-        Optional<EquipmentPromotionService.PromotionPreview> next = promotionService.preview(equipment);
-        Player farmingPlayer = inventory.getHolder() instanceof PromotionInventoryHolder holder
-                ? Bukkit.getPlayer(holder.playerId()) : null;
-        Optional<FarmingPromotionService.FarmingPromotionPreview> farmingNext = farmingPromotionService == null
-                ? Optional.empty() : farmingPromotionService.preview(farmingPlayer, equipment);
-        if (equipment != null && !equipment.getType().isAir() && growthPolicy != null) {
-            inventory.setItem(5, icon(Material.PAPER, "Equipment policy", List.of(
-                    "Equipment grade: " + growthPolicy.grade(equipment).value(),
-                    "Promotion: " + (growthPolicy.canPromote(equipment) ? "available" : "unavailable"),
-                    "Promotion stage: " + promotionService.getStage(equipment)
-            )));
-        }
-        if (farmingNext.isPresent()) {
-            FarmingPromotionService.FarmingPromotionPreview rule = farmingNext.get();
-            inventory.setItem(4, icon(Material.BOOK, "농사 승급 정보", List.of(
-                    "다음 단계: " + rule.displayName(),
-                    "괭이 재질: " + rule.minimumTier() + " 이상",
-                    "필요 강화: +" + rule.requiredEnhancement(),
-                    "필요 유효 수확: " + rule.requiredValidHarvests(),
-                    "제출 작물: " + rule.requiredCropItemId() + " x" + rule.requiredCropAmount(),
-                    "필요 마석: " + rule.requiredMagicStoneAmount(),
-                    "성공률: 100%"
-            )));
-            inventory.setItem(EXECUTE_SLOT, icon(Material.LIME_DYE, "농사 승급 실행", List.of("코인은 사용하지 않습니다.")));
-        } else {
-            inventory.setItem(4, icon(Material.BOOK, "승급 정보", next.map(rule -> List.of(
-                "다음 단계: " + rule.displayName(),
-                "승급 요구 강화: +" + rule.requiredEnhancement(),
-                "일반 옵션: " + rule.normalCount(),
-                "특수 옵션: " + rule.specialCount(),
-                "인챈트 슬롯 해방: " + rule.enchantSlots(),
-                "필요 승급석: " + rule.stoneCost(),
-                "성공 확률: " + percent(rule.successChance())
-            )).orElse(List.of("승급 가능한 장비를 넣어주세요."))));
-            inventory.setItem(EXECUTE_SLOT, icon(Material.LIME_DYE, "승급 실행", List.of("좌클릭으로 실행합니다.")));
-        }
-        inventory.setItem(BACK_SLOT, icon(Material.ARROW, "뒤로", List.of()));
-        inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
-    }
-
-    private void renderEnchant(Inventory inventory) {
-        ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-        ItemStack book = inventory.getItem(STONE_SLOT);
-        fill(inventory);
-        inventory.setItem(EQUIPMENT_SLOT, equipment);
-        inventory.setItem(STONE_SLOT, book);
-        inventory.setItem(4, icon(Material.BOOK, "인챈트 슬롯", equipment == null || equipment.getType().isAir()
-                ? List.of("장비를 넣으면 사용 가능한 슬롯을 확인할 수 있습니다.")
-                : List.of("사용 가능 슬롯: " + enchantService.getEnchantSlotLimit(equipment),
-                "현재 장착: " + enchantService.formatEquipped(equipment))));
-        inventory.setItem(EXECUTE_SLOT, icon(Material.LIME_DYE, "인챈트 장착", List.of("좌클릭으로 장착합니다.")));
-        inventory.setItem(BACK_SLOT, icon(Material.ARROW, "뒤로", List.of()));
-        inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
-    }
-
     private void renderRepair(Inventory inventory) {
         ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
         fill(inventory);
@@ -320,9 +192,7 @@ public final class EquipmentGrowthGuiService {
         long cost = quote.cost();
         if (equipment != null && !equipment.getType().isAir()) {
             inventory.setItem(5, icon(Material.PAPER, "Equipment policy", List.of(
-                    "Equipment grade: " + (growthPolicy == null ? 0 : growthPolicy.grade(equipment).value()),
                     "Enhancement: +" + enhancementService.getLevel(equipment) + "/" + enhancementService.getMaximumLevel(equipment),
-                    "Promotion stage: " + promotionService.getStage(equipment),
                     "Missing durability: " + missing + "/" + quote.maximumDurability(),
                     "Expected cost: " + cost,
                     "Repair: " + (quote.repairable() ? "available" : quote.message())

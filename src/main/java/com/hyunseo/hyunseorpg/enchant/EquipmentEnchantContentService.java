@@ -11,7 +11,6 @@ import com.hyunseo.hyunseorpg.equipment.trigger.EquipmentEffectHandler;
 import com.hyunseo.hyunseorpg.equipment.trigger.EquipmentEffectResult;
 import com.hyunseo.hyunseorpg.equipment.trigger.TriggerContext;
 import com.hyunseo.hyunseorpg.equipment.trigger.TriggerType;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
 import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBladeService;
@@ -122,7 +121,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private final EnchantRuntimeStateService runtimeStates;
     private final EquipmentTierService tiers;
     private final RPGItemService items;
-    private final EquipmentPromotionService promotions;
     private final CooldownService cooldowns;
     private final SwordmasterBladeService swordmasterBlades;
     private final ActivityBlockRewardValidator blockRewards;
@@ -147,7 +145,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
                                           EnchantService enchants, EquipmentInstanceService equipmentInstances,
                                           EnchantRuntimeStateService runtimeStates,
                                           EquipmentTierService tiers, RPGItemService items,
-                                          EquipmentPromotionService promotions, CooldownService cooldowns,
+                                          CooldownService cooldowns,
                                           SwordmasterBladeService swordmasterBlades,
                                           ActivityBlockRewardValidator blockRewards) {
         this.plugin = plugin;
@@ -158,7 +156,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         this.runtimeStates = runtimeStates;
         this.tiers = tiers;
         this.items = items;
-        this.promotions = promotions;
         this.cooldowns = cooldowns;
         this.swordmasterBlades = swordmasterBlades;
         this.blockRewards = blockRewards;
@@ -1180,7 +1177,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
                 + " gliding=" + player.isGliding()
                 + " chest=" + (chest == null ? "null" : chest.getType())
                 + " active=" + active
-                + " slot-limit=" + (chest == null ? 0 : enchants.getEnchantSlotLimit(chest))
                 + " equipment=" + equipmentId
                 + " remaining-durability=" + remaining
                 + " hand=" + event.getHand()
@@ -1409,8 +1405,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         if (vanillaUnbreaking > 0 && ThreadLocalRandom.current().nextInt(vanillaUnbreaking + 1) > 0) {
             return true;
         }
-        double promotionChance = promotions == null ? 0.0D : clamp(promotions.getOptionValue(tool, "durability-save-chance"), 0.0D, 1.0D);
-        return promotionChance > 0.0D && roll(promotionChance);
+        return false;
     }
 
     private void addModifier(Player player, Attribute attribute, String name, double amount) {

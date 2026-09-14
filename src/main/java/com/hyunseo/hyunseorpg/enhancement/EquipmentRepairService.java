@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.enhancement;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.economy.CoinService;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrade;
 import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
 import org.bukkit.entity.Player;
@@ -17,18 +16,15 @@ public final class EquipmentRepairService {
     private final EquipmentTierService tiers;
     private final EquipmentGrowthPolicy growthPolicy;
     private final EquipmentEnhancementService enhancement;
-    private final EquipmentPromotionService promotion;
 
     public EquipmentRepairService(ConfigService config, CoinService coins, EquipmentTierService tiers,
                                   EquipmentGrowthPolicy growthPolicy,
-                                  EquipmentEnhancementService enhancement,
-                                  EquipmentPromotionService promotion) {
+                                  EquipmentEnhancementService enhancement) {
         this.config = config;
         this.coins = coins;
         this.tiers = tiers;
         this.growthPolicy = growthPolicy;
         this.enhancement = enhancement;
-        this.promotion = promotion;
     }
 
     public boolean isRepairable(ItemStack item) {
@@ -120,18 +116,10 @@ public final class EquipmentRepairService {
         double weight = finite(config.getDouble("repair.durability.weight", 0.0D), 0.0D);
         double durabilityMultiplier = Math.max(0.0D, 1.0D + weight * Math.pow(ratio, exponent));
         double total = base * durabilityMultiplier
-                * tierMultiplier(item)
-                * enhancementMultiplier(item)
-                * promotionMultiplier(item);
+                * enhancementMultiplier(item);
         if (!Double.isFinite(total) || total >= Long.MAX_VALUE) return Long.MAX_VALUE;
         long rounded = Math.max(1L, Math.round(total));
         return applyMinimum ? Math.max(minimum, rounded) : rounded;
-    }
-
-    private double tierMultiplier(ItemStack item) {
-        EquipmentGrade grade = growthPolicy.grade(item);
-        int value = grade.isSpecified() ? grade.value() : 1;
-        return positiveFinite(config.getDouble("repair.tier-multipliers.tier-" + value, 1.0D), 1.0D);
     }
 
     private double enhancementMultiplier(ItemStack item) {
@@ -139,13 +127,6 @@ public final class EquipmentRepairService {
         double progress = clamp((double) enhancement.getLevel(item) / maximum);
         double perProgress = finite(config.getDouble("repair.enhancement.multiplier-per-progress", 0.0D), 0.0D);
         return Math.max(0.0D, 1.0D + progress * perProgress);
-    }
-
-    private double promotionMultiplier(ItemStack item) {
-        String stage = promotion.getStage(item);
-        double fallback = positiveFinite(config.getDouble("repair.promotion-multipliers.default", 1.0D), 1.0D);
-        if (stage.isBlank()) return fallback;
-        return positiveFinite(config.getDouble("repair.promotion-multipliers." + stage, fallback), fallback);
     }
 
     private long safeMultiply(long left, long right) {

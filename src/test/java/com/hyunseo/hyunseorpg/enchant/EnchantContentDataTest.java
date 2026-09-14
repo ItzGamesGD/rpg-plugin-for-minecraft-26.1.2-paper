@@ -152,17 +152,7 @@ final class EnchantContentDataTest {
     }
 
     @Test
-    void gatheringPromotionPoolsExcludeCombatOnlyOptions() {
-        YamlConfiguration growth = load("equipment-growth.yml");
-        for (String profile : List.of("pickaxe", "shovel", "hoe", "axe")) {
-            Set<String> options = new LinkedHashSet<>();
-            options.addAll(growth.getStringList("promotion.profiles." + profile + ".general-option-pool"));
-            options.addAll(growth.getStringList("promotion.profiles." + profile + ".special-option-pool"));
-            assertFalse(options.contains("skill-damage"), profile);
-            assertFalse(options.contains("weapon-skill-damage"), profile);
-            assertFalse(options.contains("bleed-chance"), profile);
-        }
-    }
+
 
     private YamlConfiguration load(String resource) {
         Path path = Path.of(System.getProperty("user.dir"), "src", "main", "resources", resource);

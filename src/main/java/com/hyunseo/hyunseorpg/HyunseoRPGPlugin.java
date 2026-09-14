@@ -43,7 +43,6 @@ import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthConfigValidator;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthGuiService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentRepairService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentSupportGuiService;
 import com.hyunseo.hyunseorpg.enhancement.FutureEquipmentFeatureRegistry;
@@ -334,7 +333,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EquipmentEnhancementService equipmentEnhancementService;
     private EnhancementClassificationService enhancementClassificationService;
     private EquipmentGrowthGuiService equipmentGrowthGuiService;
-    private EquipmentPromotionService equipmentPromotionService;
     private EquipmentTierService equipmentTierService;
     private EquipmentRepairService equipmentRepairService;
     private EquipmentMetadataService equipmentMetadataService;
@@ -510,7 +508,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         });
         this.weaponItemService.setEquipmentMetadataService(equipmentMetadataService);
         this.equipmentEnhancementService = new EquipmentEnhancementService(this, itemService, enhancementRegistry);
-        this.equipmentPromotionService = new EquipmentPromotionService(this, configService, itemService, equipmentEnhancementService, equipmentTierService);
         this.specialEquipmentRegistry = new SpecialEquipmentRegistry(configService);
         this.specialEquipmentRegistry.load();
         this.equipmentGrowthPolicy = new EquipmentGrowthPolicy(
@@ -518,7 +515,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.enhancementClassificationService = new EnhancementClassificationService(
                 configService, itemService, equipmentTierService, equipmentGrowthPolicy, specialEquipmentRegistry);
         this.equipmentEnhancementService.setClassificationService(enhancementClassificationService);
-        this.equipmentPromotionService.setGrowthPolicy(equipmentGrowthPolicy);
         this.farmingHoePromotionService = new FarmingHoePromotionService(
                 this, configService, equipmentTierService);
         this.farmingHoePromotionService.load();
@@ -533,13 +529,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 enhancementRegistry, equipmentTierService, specialEquipmentRegistry);
         this.equipmentRegistry.load();
         this.specialEquipmentService = new SpecialEquipmentService(this, configService, specialEquipmentRegistry,
-                itemService, playerDataService, inventoryDeliveryService, equipmentEnhancementService,
-                equipmentPromotionService);
+                itemService, playerDataService, inventoryDeliveryService, equipmentEnhancementService);
         this.specialEquipmentService.setCraftingTransactionService(craftingTransactionService, craftingRecipeRegistry);
         this.specialEquipmentMenuService = new SpecialEquipmentMenuService(this, specialEquipmentService);
         this.equipmentRepairService = new EquipmentRepairService(configService, coinService, equipmentTierService,
-                equipmentGrowthPolicy, equipmentEnhancementService, equipmentPromotionService);
-        this.equipmentGrowthGuiService = new EquipmentGrowthGuiService(this, equipmentEnhancementService, equipmentPromotionService);
+                equipmentGrowthPolicy, equipmentEnhancementService);
+        this.equipmentGrowthGuiService = new EquipmentGrowthGuiService(this, equipmentEnhancementService);
         this.equipmentGrowthGuiService.setRepairService(equipmentRepairService);
         this.equipmentGrowthGuiService.setGrowthPolicy(equipmentGrowthPolicy);
         this.coinDisplayTask = new CoinDisplayTask(this, configService, coinService, abundancePointService);
@@ -556,7 +551,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.statModifierService = new StatModifierService();
         this.combatService = new CombatService();
         this.combatService.setEquipmentEnhancementService(equipmentEnhancementService);
-        this.combatService.setEquipmentPromotionService(equipmentPromotionService);
         this.combatService.setEquipmentTierService(equipmentTierService);
         this.combatService.setConfigService(configService);
         this.manaBossBarService = new ManaBossBarService();
@@ -581,15 +575,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.equipmentInstanceService = new EquipmentInstanceService(this);
         this.enchantRuntimeStateService = new EnchantRuntimeStateService(equipmentInstanceService);
         this.enchantService = new EnchantService(
-                this, configService, enchantRegistry, itemService, equipmentPromotionService, weaponService, equipmentTierService,
-                specialEquipmentRegistry, equipmentInstanceService);
-        this.enchantService.setGrowthPolicy(equipmentGrowthPolicy);
+                this, configService, enchantRegistry, itemService, weaponService, equipmentTierService,
+                equipmentInstanceService);
         this.toolDurabilityService = new ToolDurabilityService(
-                configService, equipmentTierService, equipmentPromotionService,
-                enchantService, hoeHarvestModifierService);
+                equipmentTierService, hoeHarvestModifierService);
         this.cropGrowthService.harvestService().setHoeHarvestServices(
                 hoeHarvestModifierService, toolDurabilityService);
-        this.equipmentGrowthGuiService.setFarmingPromotionService(farmingPromotionService);
         this.itemService.setItemNormalizer(item -> {
             itemService.normalizeFarmingItem(item);
             vanillaStackingService.normalize(item);
@@ -609,16 +600,14 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 cooldownService, equipmentInstanceService, enchantRuntimeStateService);
         this.equipmentEnchantContentService = new EquipmentEnchantContentService(this, configService, combatService,
                 enchantService, equipmentInstanceService, enchantRuntimeStateService, equipmentTierService, itemService,
-                equipmentPromotionService, cooldownService, swordmasterBladeService,
+                cooldownService, swordmasterBladeService,
                 activityBlockRewardValidator);
         this.equipmentEffectTriggerEngine.registerHandler("content", equipmentEnchantContentService);
         validateEnchantIntegrity();
-        this.equipmentGrowthGuiService.setEnchantService(enchantService);
         this.futureEquipmentFeatureRegistry = new FutureEquipmentFeatureRegistry(configService);
         this.equipmentSupportGuiService = new EquipmentSupportGuiService(
                 this, configService, itemService, equipmentTierService, equipmentGrowthPolicy,
-                equipmentInstanceService, equipmentPromotionService, enchantService, coinService,
-                shopGuiService, futureEquipmentFeatureRegistry);
+                equipmentInstanceService, enchantService, coinService, futureEquipmentFeatureRegistry);
         this.equipmentGrowthGuiService.setSupportService(equipmentSupportGuiService);
         this.skillService.setEnchantService(enchantService);
         this.skillService.setEquipmentEffectTriggerEngine(equipmentEffectTriggerEngine);
@@ -942,7 +931,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setExplorationModule(explorationModule);
 
         RPGTestCommand test = new RPGTestCommand(coinService, itemRegistry, itemService, soulboundItemService,
-                weaponItemService, equipmentEnhancementService, equipmentPromotionService, bossSessionManager,
+                weaponItemService, equipmentEnhancementService, bossSessionManager,
                 reloadService, equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
         CraftingCommand crafting = new CraftingCommand(craftingGuiService, craftingRecipeRegistry,
                 craftingLayoutRegistry, craftingTransactionService);
@@ -1413,13 +1402,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.hyunseo.hyunseorpg.economy.EconomySafetyListener(), this);
         getServer().getPluginManager().registerEvents(new EquipmentActualEffectListener(
                 configService, equipmentTierService, equipmentEnhancementService,
-                equipmentPromotionService, combatService, itemService, activityBlockRewardValidator,
-                toolDurabilityService,
+                combatService, itemService, toolDurabilityService,
                 item -> specialEquipmentService.getSpecialId(item).equals(WaterTridentListener.ID)), this);
         getServer().getPluginManager().registerEvents(new SpecialEquipmentProgressListener(playerDataService), this);
         this.specialEquipmentEffectListener = new SpecialEquipmentEffectListener(
                 configService, specialEquipmentService, itemService,
-                combatService, cooldownService, equipmentPromotionService);
+                combatService, cooldownService);
         getServer().getPluginManager().registerEvents(specialEquipmentEffectListener, this);
         this.waterTridentListener = new WaterTridentListener(
                 configService, specialEquipmentService, combatService, cooldownService);
