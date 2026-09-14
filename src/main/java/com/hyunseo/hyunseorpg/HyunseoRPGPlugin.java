@@ -35,7 +35,6 @@ import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
 import com.hyunseo.hyunseorpg.economy.CoinDisplayTask;
 import com.hyunseo.hyunseorpg.economy.CoinService;
-import com.hyunseo.hyunseorpg.enhancement.VanillaEnchantBlockListener;
 import com.hyunseo.hyunseorpg.enhancement.AnvilGrowthListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthConfigValidator;
@@ -1609,7 +1608,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(playerDiscoveryService, this);
         getServer().getPluginManager().registerEvents(dimensionVisitTracker, this);
         getServer().getPluginManager().registerEvents(naturalDiscoveryService, this);
-        getServer().getPluginManager().registerEvents(new VanillaEnchantBlockListener(configService), this);
+        // Stage 1: vanilla enchanting, anvils, trades and loot must remain authoritative.
         getServer().getPluginManager().registerEvents(new com.hyunseo.hyunseorpg.economy.EconomySafetyListener(), this);
         getServer().getPluginManager().registerEvents(new EquipmentActualEffectListener(
                 configService, equipmentTierService, equipmentEnhancementService,
