@@ -29,15 +29,11 @@ public final class AnvilGrowthListener implements Listener {
         Inventory top = event.getView().getTopInventory();
         if (top.getHolder() instanceof EquipmentGrowthMenuHolder) {
             event.setCancelled(true);
-            if (event.getRawSlot() == 15) {
-                guiService.openEnchant(player);
-                return;
-            }
             if (event.getClickedInventory() != top) return;
             if (event.getRawSlot() == 11) player.sendMessage(Component.text("강화는 바닐라 모루에서 진행합니다.", NamedTextColor.YELLOW));
             else if (event.getRawSlot() == 13) guiService.openPromotion(player);
             else if (event.getRawSlot() == 17) guiService.openRepair(player);
-            else if (event.getRawSlot() == 15) player.sendMessage(Component.text("인챈트는 다음 단계에서 구현됩니다.", NamedTextColor.YELLOW));
+            else if (event.getRawSlot() == 15) player.sendMessage(Component.text("인챈트는 인챈팅 테이블과 바닐라 모루를 사용합니다.", NamedTextColor.YELLOW));
             else if (event.getRawSlot() == 20 && guiService.getSupportService() != null) guiService.getSupportService().openReroll(player);
             else if (event.getRawSlot() == 24 && guiService.getSupportService() != null) guiService.getSupportService().openFuture(player);
             else if (event.getRawSlot() == EquipmentGrowthGuiService.CLOSE_SLOT) player.closeInventory();
@@ -60,7 +56,7 @@ public final class AnvilGrowthListener implements Listener {
         if (slot == EquipmentGrowthGuiService.EXECUTE_SLOT) {
             if (enhancement) guiService.enhance(player, top);
             else if (promotion) guiService.promote(player, top);
-            else if (enchant) guiService.enchant(player, top);
+            else if (enchant) player.sendMessage(Component.text("인챈트는 바닐라 모루에서 적용합니다.", NamedTextColor.YELLOW));
             else guiService.repair(player, top);
         } else if (slot == EquipmentGrowthGuiService.BACK_SLOT) {
             guiService.returnInputs(player, top);

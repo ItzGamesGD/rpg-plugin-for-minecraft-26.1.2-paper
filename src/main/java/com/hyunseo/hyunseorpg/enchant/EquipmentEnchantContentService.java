@@ -129,8 +129,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private final NamespacedKey projectileEnchantKey;
     private final NamespacedKey projectileOwnerKey;
     private final NamespacedKey precisionDebtKey;
-    private final NamespacedKey syncedSwiftSneakKey;
-    private final NamespacedKey originalSwiftSneakKey;
     private final Map<UUID, ItemStack> projectileSourceItems = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> projectileTasks = new ConcurrentHashMap<>();
     private final Map<UUID, Long> bowDrawStarted = new ConcurrentHashMap<>();
@@ -138,7 +136,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private final Map<UUID, ActiveState> titans = new ConcurrentHashMap<>();
     private final Set<String> recursiveBlocks = ConcurrentHashMap.newKeySet();
     private final Set<UUID> processedProtectionChains = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> processedThornChains = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> precisionLastDurabilityTick = new ConcurrentHashMap<>();
     private final Map<UUID, Long> precisionLastRecoveryTick = new ConcurrentHashMap<>();
     private final Map<UUID, PrecisionSession> precisionSessions = new ConcurrentHashMap<>();
@@ -168,8 +165,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         this.projectileEnchantKey = new NamespacedKey(plugin, "enchant_content_id");
         this.projectileOwnerKey = new NamespacedKey(plugin, "enchant_content_owner");
         this.precisionDebtKey = new NamespacedKey(plugin, "precision_flight_durability_debt");
-        this.syncedSwiftSneakKey = new NamespacedKey(plugin, "swift_sneak_vanilla_sync");
-        this.originalSwiftSneakKey = new NamespacedKey(plugin, "swift_sneak_original_level");
         this.passiveTicker = Bukkit.getScheduler().runTaskTimer(plugin, this::tickPersistentEffects, 1L, 5L);
         this.precisionTicker = Bukkit.getScheduler().runTaskTimer(plugin, this::tickPrecisionSessions, 1L, 1L);
     }
@@ -180,9 +175,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
             case "blade_chain" -> handleBladeChain(context, enchant);
             case "axe_heavy_strike" -> handleAxeHeavyStrike(context, enchant);
             case "titans_wrath" -> handleTitansWrath(context, enchant);
-            case "protection", "fire_protection", "blast_protection", "projectile_protection", "skill_protection" ->
-                    handleArmorProtection(context);
-            case "thorns" -> handleThorns(context, enchant);
+            case "skill_protection" -> handleArmorProtection(context);
             case "rolling_landing" -> handleRollingLanding(context, enchant);
             case "wind_arrow" -> handleWindArrow(context, enchant);
             case "crossbow_barrage" -> handleCrossbowBarrage(context, enchant);
@@ -308,32 +301,13 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         Player player = context.player();
         double reduction = 0.0D;
         for (ItemStack armor : player.getInventory().getArmorContents()) {
-            reduction += protectionReduction(armor, "protection");
-            if (isFireDamage(event)) reduction += protectionReduction(armor, "fire_protection");
-            if (isExplosion(event)) reduction += protectionReduction(armor, "blast_protection");
-            if (isProjectile(event)) reduction += protectionReduction(armor, "projectile_protection");
             DamageContext damage = context.damageContext();
             if (damage != null && damage.isSkillDamage()) reduction += protectionReduction(armor, "skill_protection");
         }
-        double cap = clamp(number("protection", "final-reduction-cap",
-                config.getDouble("enchant-content.protection.final-reduction-cap", 0.8D)), 0.0D, 0.95D);
+        double cap = clamp(config.getDouble("enchant-content.protection.final-reduction-cap", 0.8D), 0.0D, 0.95D);
         reduction = clamp(reduction, 0.0D, cap);
         if (reduction <= 0.0D) return EquipmentEffectResult.CONDITION_NOT_MET;
         event.setDamage(event.getDamage() * (1.0D - reduction));
-        return EquipmentEffectResult.EXECUTED;
-    }
-
-    private EquipmentEffectResult handleThorns(TriggerContext context, EnchantData enchant) {
-        if (context.triggerType() != TriggerType.DAMAGED || context.livingTarget() == null) return EquipmentEffectResult.CONDITION_NOT_MET;
-        if (!processedThornChains.add(context.chainId())) return EquipmentEffectResult.CONDITION_NOT_MET;
-        Bukkit.getScheduler().runTask(plugin, () -> processedThornChains.remove(context.chainId()));
-        int level = maxArmorLevel(context.player(), enchant.enchantId());
-        if (level <= 0 || ThreadLocalRandom.current().nextDouble() > chance(enchant.enchantId(), "chance", 0.15D)) {
-            return EquipmentEffectResult.CONDITION_NOT_MET;
-        }
-        combat.applyEnchantDamage(context.player(), findItemWith(context.player(), enchant.enchantId(), EquipmentTierService.Category.ARMOR),
-                enchant.enchantId(), DamageType.ENCHANT_SKILL, context.livingTarget(),
-                number(enchant.enchantId(), "damage-per-level", 1.0D) * level, false);
         return EquipmentEffectResult.EXECUTED;
     }
 
@@ -816,12 +790,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        applyArmorMobility(player);
-    }
-
     @EventHandler(priority = EventPriority.MONITOR)
     public void onGlide(EntityToggleGlideEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
@@ -856,17 +824,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         event.setUseItemInHand(Event.Result.DENY);
         event.setUseInteractedBlock(Event.Result.DENY);
         activatePrecisionFlight(player, chest);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onItemDamage(PlayerItemDamageEvent event) {
-        ItemStack item = event.getItem();
-        if (enchants.hasActiveEquipped(item, "unbreaking")
-                && roll(chance("unbreaking", "chance", 0.20D))) event.setCancelled(true);
-        double promotionChance = 0.0D;
-        // Promotion values are queried by the common equipment listener. The content layer intentionally
-        // only handles its own YAML-owned enchant chance here.
-        if (promotionChance > 1.0D) event.setCancelled(true);
     }
 
     @EventHandler
@@ -916,7 +873,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private void tickPersistentEffects() {
         runtimeStates.clearExpired();
         for (Player player : Bukkit.getOnlinePlayers()) {
-            applyArmorMobility(player);
             if (!isTitan(player)) sanitizeInactiveTitanScale(player, false);
         }
         tickWindDrawGauge();
@@ -1108,68 +1064,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         }
     }
 
-    private void applyArmorMobility(Player player) {
-        ItemStack helmet = player.getInventory().getHelmet();
-        ItemStack leggings = player.getInventory().getLeggings();
-        ItemStack boots = player.getInventory().getBoots();
-        if (helmet != null && enchants.hasActiveEquipped(helmet, "respiration") && player.isInWater()
-                && bool("respiration", "restore-air-to-maximum", true)) {
-            player.setRemainingAir(player.getMaximumAir());
-        }
-        if (helmet != null && enchants.hasActiveEquipped(helmet, "aqua_affinity") && player.isInWater()) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE,
-                    Math.max(1, integer("aqua_affinity", "effect-duration-ticks", 12)),
-                    amplifierForLevel("aqua_affinity", getLevel(helmet, "aqua_affinity")), false, false, false));
-        }
-        updateSwiftSneak(player, leggings);
-        if (boots == null) return;
-        Block below = player.getLocation().getBlock().getRelative(BlockFace.DOWN);
-        if (enchants.hasActiveEquipped(boots, "depth_strider") && player.isInWater()) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE,
-                    Math.max(1, integer("depth_strider", "effect-duration-ticks", 12)),
-                    amplifierForLevel("depth_strider", getLevel(boots, "depth_strider")), false, false, false));
-        }
-        if (enchants.hasActiveEquipped(boots, "soul_speed") && (below.getType() == Material.SOUL_SAND || below.getType() == Material.SOUL_SOIL)) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,
-                    Math.max(1, integer("soul_speed", "effect-duration-ticks", 12)),
-                    amplifierForLevel("soul_speed", getLevel(boots, "soul_speed")), false, false, false));
-        }
-        if (enchants.hasActiveEquipped(boots, "frost_walker") && below.getType() == Material.WATER) {
-            below.setType(Material.FROSTED_ICE, false);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (below.getType() == Material.FROSTED_ICE) below.setType(Material.WATER, false);
-            }, Math.max(1, integer("frost_walker", "ice-duration-ticks", 80)));
-        }
-    }
-
-    private void updateSwiftSneak(Player player, ItemStack leggings) {
-        if (leggings == null || leggings.getType().isAir() || leggings.getItemMeta() == null) return;
-        var meta = leggings.getItemMeta();
-        var pdc = meta.getPersistentDataContainer();
-        boolean active = enchants.hasActiveEquipped(leggings, "swift_sneak");
-        boolean synced = pdc.has(syncedSwiftSneakKey, PersistentDataType.BYTE);
-        if (active) {
-            int level = Math.max(1, Math.min(3, getLevel(leggings, "swift_sneak")));
-            if (!synced) {
-                pdc.set(originalSwiftSneakKey, PersistentDataType.INTEGER,
-                        meta.getEnchantLevel(Enchantment.SWIFT_SNEAK));
-                pdc.set(syncedSwiftSneakKey, PersistentDataType.BYTE, (byte) 1);
-            }
-            if (meta.getEnchantLevel(Enchantment.SWIFT_SNEAK) != level) {
-                meta.addEnchant(Enchantment.SWIFT_SNEAK, level, true);
-                leggings.setItemMeta(meta);
-            }
-            return;
-        }
-        if (!synced) return;
-        int original = pdc.getOrDefault(originalSwiftSneakKey, PersistentDataType.INTEGER, 0);
-        meta.removeEnchant(Enchantment.SWIFT_SNEAK);
-        if (original > 0) meta.addEnchant(Enchantment.SWIFT_SNEAK, original, true);
-        pdc.remove(syncedSwiftSneakKey);
-        pdc.remove(originalSwiftSneakKey);
-        leggings.setItemMeta(meta);
-    }
-
     private void tickPrecisionSessions() {
         long tick = plugin.getServer().getCurrentTick();
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -1239,8 +1133,8 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         int maximum = chest.getType().getMaxDurability();
         int currentDamage = damageable.getDamage();
         if (maximum - currentDamage <= 2) return false;
-        if (enchants.hasActiveEquipped(chest, "unbreaking")
-                && roll(chance("unbreaking", "chance", .20D))) return true;
+        int unbreaking = chest.getEnchantmentLevel(Enchantment.UNBREAKING);
+        if (unbreaking > 0 && ThreadLocalRandom.current().nextInt(unbreaking + 1) > 0) return true;
         damageable.setDamage(Math.min(maximum - 2, currentDamage + 1));
         int debt = damageable.getPersistentDataContainer().getOrDefault(
                 precisionDebtKey, PersistentDataType.INTEGER, 0);
@@ -1438,12 +1332,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         return null;
     }
 
-    private int maxArmorLevel(Player player, String enchantId) {
-        int maximum = 0;
-        for (ItemStack armor : player.getInventory().getArmorContents()) maximum = Math.max(maximum, getLevel(armor, enchantId));
-        return maximum;
-    }
-
     private int getLevel(ItemStack item, String enchantId) { return enchants.getEnchantLevel(item, enchantId); }
 
     private int amplifierForLevel(String enchantId, int level) {
@@ -1454,22 +1342,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private double protectionReduction(ItemStack item, String enchantId) {
         int level = getLevel(item, enchantId);
         return level <= 0 ? 0.0D : Math.max(0.0D, number(enchantId, "reduction-per-level", .04D) * level);
-    }
-
-    private boolean isFireDamage(EntityDamageEvent event) {
-        return switch (event.getCause()) {
-            case FIRE, FIRE_TICK, LAVA, HOT_FLOOR, CAMPFIRE -> true;
-            default -> false;
-        };
-    }
-
-    private boolean isExplosion(EntityDamageEvent event) {
-        return event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
-                || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION;
-    }
-
-    private boolean isProjectile(EntityDamageEvent event) {
-        return event.getCause() == EntityDamageEvent.DamageCause.PROJECTILE;
     }
 
     private boolean isHoe(ItemStack item) { return item != null && item.getType().name().endsWith("_HOE"); }
@@ -1535,10 +1407,6 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private boolean shouldPreserveManualDurability(ItemStack tool) {
         int vanillaUnbreaking = tool.getEnchantmentLevel(Enchantment.UNBREAKING);
         if (vanillaUnbreaking > 0 && ThreadLocalRandom.current().nextInt(vanillaUnbreaking + 1) > 0) {
-            return true;
-        }
-        if (enchants.hasActiveEquipped(tool, "unbreaking")
-                && roll(chance("unbreaking", "chance", 0.20D))) {
             return true;
         }
         double promotionChance = promotions == null ? 0.0D : clamp(promotions.getOptionValue(tool, "durability-save-chance"), 0.0D, 1.0D);

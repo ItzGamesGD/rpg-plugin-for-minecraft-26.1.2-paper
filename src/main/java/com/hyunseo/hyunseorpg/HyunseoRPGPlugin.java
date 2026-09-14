@@ -38,6 +38,7 @@ import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.AnvilGrowthListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementClassificationService;
 import com.hyunseo.hyunseorpg.enhancement.VanillaAnvilEnhancementListener;
+import com.hyunseo.hyunseorpg.enhancement.VanillaAnvilPolicyListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthConfigValidator;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
@@ -1368,6 +1369,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(equipmentEnchantContentService, this);
         getServer().getPluginManager().registerEvents(
                 new com.hyunseo.hyunseorpg.enchant.EnchantLoreRefreshListener(this, enchantService), this);
+        getServer().getPluginManager().registerEvents(
+                new com.hyunseo.hyunseorpg.enchant.NativeEnchantMigrationListener(enchantService), this);
         getServer().getPluginManager().registerEvents(new WeaponProficiencyListener(configService, weaponService, weaponProficiencyService), this);
         getServer().getPluginManager().registerEvents(cropGrowthService, this);
         getServer().getPluginManager().registerEvents(new ActivityCoinListener(
@@ -1438,6 +1441,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(moonlitAfterglowListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
+        getServer().getPluginManager().registerEvents(new VanillaAnvilPolicyListener(), this);
         getServer().getPluginManager().registerEvents(
                 new VanillaAnvilEnhancementListener(equipmentEnhancementService), this);
         getServer().getPluginManager().registerEvents(equipmentSupportGuiService, this);

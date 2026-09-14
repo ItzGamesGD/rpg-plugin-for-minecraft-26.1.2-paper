@@ -32,10 +32,10 @@ class NativeEnchantDefinitionsTest {
 
     @Test
     void knownLevelAndSupportedItemContractsAreStable() {
-        assertEquals(4, NativeEnchantDefinitions.BY_ID.get("protection").maxLevel());
+        assertFalse(NativeEnchantDefinitions.BY_ID.keySet().stream()
+                .anyMatch(RetiredVanillaEnchantments.IDS::contains));
         assertEquals("hyunseorpg:swords", NativeEnchantDefinitions.BY_ID.get("blade_chain").supportedItemTag());
         assertEquals("hyunseorpg:bows", NativeEnchantDefinitions.BY_ID.get("laser_arrow").supportedItemTag());
-        assertEquals("minecraft:enchantable/foot_armor", NativeEnchantDefinitions.BY_ID.get("frost_walker").supportedItemTag());
         assertEquals("hyunseorpg:axes", NativeEnchantDefinitions.BY_ID.get("axe_heavy_strike").supportedItemTag());
         assertEquals("hyunseorpg:hoes", NativeEnchantDefinitions.BY_ID.get("auto_replant").supportedItemTag());
         assertEquals("hyunseorpg:pickaxes", NativeEnchantDefinitions.BY_ID.get("auto_smelt").supportedItemTag());

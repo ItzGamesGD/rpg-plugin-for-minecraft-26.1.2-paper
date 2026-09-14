@@ -289,7 +289,7 @@ public final class EquipmentSupportGuiService implements Listener {
 
             ItemStack original = source.item().clone();
             ItemStack candidate = original.clone();
-            if (!enchants.removeEnchant(candidate, holder.selectedId())
+            if (!enchants.removeEnchantForExtraction(candidate, holder.selectedId())
                     || enchants.hasEquipped(candidate, holder.selectedId())) {
                 player.sendMessage(Component.text("선택 인챈트를 안전하게 제거할 수 없어 취소되었습니다.", NamedTextColor.RED));
                 return;

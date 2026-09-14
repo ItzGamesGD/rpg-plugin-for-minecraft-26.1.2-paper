@@ -1593,9 +1593,21 @@ public final class ConfigMigrationService {
         changed |= migrateDefinitionAlias(target, defaults, "area_mining_pickaxe", "area_excavation",
                 List.of("handler-id", "book-item-id", "executor-id", "equipment-category", "material-patterns",
                         "source-scope", "triggers", "input", "legacy-aliases"), lines);
-        changed |= migrateDefinitionAlias(target, defaults, "durability_save_pickaxe", "unbreaking",
-                List.of("handler-id", "book-item-id", "executor-id", "source-scope", "triggers", "input",
-                        "legacy-aliases"), lines);
+        if (target.isConfigurationSection("enchants.durability_save_pickaxe")) {
+            target.set("enchants.durability_save_pickaxe", null);
+            lines.add("enchants.yml: retired vanilla duplicate durability_save_pickaxe");
+            changed = true;
+        }
+        for (String retired : List.of("protection", "fire_protection", "blast_protection",
+                "projectile_protection", "thorns", "respiration", "aqua_affinity", "swift_sneak",
+                "depth_strider", "soul_speed", "frost_walker", "unbreaking")) {
+            if (target.isConfigurationSection("enchants." + retired)) {
+                target.set("enchants." + retired, null);
+                target.set("enchant-lore." + retired, null);
+                lines.add("enchants.yml: retired vanilla duplicate " + retired);
+                changed = true;
+            }
+        }
 
         if (target.isConfigurationSection("enchants.mining_bonus_drop")
                 && !"content".equalsIgnoreCase(target.getString("enchants.mining_bonus_drop.handler-id", ""))) {
@@ -2317,14 +2329,11 @@ public final class ConfigMigrationService {
     private boolean activeEnchantBook(String itemId) {
         return switch (normalize(itemId)) {
             case "enchant_book_blade_throw", "enchant_book_light_greatsword", "enchant_book_laser_arrow",
-                    "enchant_book_axe_heavy_strike", "enchant_book_titans_wrath", "enchant_book_protection",
-                    "enchant_book_fire_protection", "enchant_book_blast_protection", "enchant_book_projectile_protection",
-                    "enchant_book_skill_protection", "enchant_book_thorns", "enchant_book_rolling_landing",
-                    "enchant_book_respiration", "enchant_book_aqua_affinity", "enchant_book_swift_sneak",
-                    "enchant_book_depth_strider", "enchant_book_soul_speed", "enchant_book_frost_walker",
+                    "enchant_book_axe_heavy_strike", "enchant_book_titans_wrath",
+                    "enchant_book_skill_protection", "enchant_book_rolling_landing",
                     "enchant_book_wind_arrow", "enchant_book_fire_arrow_rain", "enchant_book_crossbow_barrage",
                     "enchant_book_treasure_finder", "enchant_book_multi_catch", "enchant_book_elytra_launch",
-                    "enchant_book_precision_flight", "enchant_book_durability_save_pickaxe",
+                    "enchant_book_precision_flight",
                     "enchant_book_mining_bonus_drop", "enchant_book_area_mining_pickaxe",
                     "enchant_book_auto_replant", "enchant_book_auto_smelt", "enchant_book_chain_logging",
                     "enchant_book_explosive_mace" -> true;

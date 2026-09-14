@@ -312,7 +312,7 @@ public final class RPGMenuService {
         switch (slot) {
             case 10 -> player.sendMessage(Component.text("강화는 바닐라 모루에 장비와 강화석을 넣어 진행합니다.", NamedTextColor.YELLOW));
             case 12 -> growth.openPromotion(player);
-            case 14 -> growth.openEnchant(player);
+            case 14 -> player.sendMessage(Component.text("인챈트는 인챈팅 테이블과 바닐라 모루를 사용합니다.", NamedTextColor.YELLOW));
             case 16 -> growth.openRepair(player);
             default -> { }
         }

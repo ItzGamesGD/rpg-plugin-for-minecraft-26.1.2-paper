@@ -65,7 +65,7 @@ final class EnchantContentDataTest {
         YamlConfiguration enchants = load("enchants.yml");
         YamlConfiguration items = load("items.yml");
         assertEquals(5, enchants.getInt("config-version"));
-        for (String id : List.of("fire_arrow_rain", "unbreaking", "mining_bonus_drop",
+        for (String id : List.of("fire_arrow_rain", "skill_protection", "mining_bonus_drop",
                 "area_excavation", "chain_logging")) {
             assertTrue(enchants.isConfigurationSection("enchants." + id), id);
         }

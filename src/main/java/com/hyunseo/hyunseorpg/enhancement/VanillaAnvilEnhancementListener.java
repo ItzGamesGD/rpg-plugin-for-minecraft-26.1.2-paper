@@ -36,7 +36,6 @@ public final class VanillaAnvilEnhancementListener implements Listener {
         enhancements.applySuccessfulEnhancement(result, next.get());
         event.getView().setRepairItemCountCost(STONE_COST);
         event.getView().setRepairCost(enhancements.getXpLevelCost(next.get().level()));
-        event.getView().setMaximumRepairCost(Integer.MAX_VALUE);
         event.setResult(result);
     }
 }

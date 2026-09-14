@@ -35,6 +35,13 @@ The cap no longer reads promotion grade/star, promotion stage, promotion options
 
 The result clone retains amount-independent item state: durability, repair cost, instance UUID, item ID, custom model data, display name, other lore, unrelated PDC, vanilla enchantments, and registered Hyunseo enchantments. `applySuccessfulEnhancement` changes only `enhancement_level`, schema metadata when needed, and the generated `강화:` lore line. Stage-1 `equipped_enchants` migration remains migration-only and is not reintroduced as authoritative storage.
 
+`VanillaAnvilPolicyListener` independently applies an unlimited maximum-repair-cost threshold on
+every anvil prepare cycle. It removes only the `Too Expensive!` output cutoff: the computed XP price,
+prior-work penalty, repair-cost escalation, survival XP requirement, supported-item rules,
+compatibility, and enchant maximum levels remain untouched. The Upgrade Stone listener therefore
+owns only its recipe, one-stone material cost, and configured XP-level price, and never changes the
+item's stored vanilla repair cost.
+
 ## LIVE VERIFICATION REQUIRED
 
 1. Open an anvil as a normal player and test vanilla rename and material/item repair.
@@ -46,6 +53,12 @@ The result clone retains amount-independent item state: durability, repair cost,
 7. Confirm damage, custom model data, name, lore, instance UUID, unrelated PDC, vanilla enchantments and Hyunseo enchantments survive.
 8. Restart and verify level and enchant persistence.
 9. Exercise normal click, shift-click, number-key, double-click, cursor replacement, drag, stacked stones, insufficient levels, creative, stale preview, repeated output and inventory close.
+10. Verify ordinary operations at costs 39, 40, 41, and 47 retain output, display the original cost,
+    reject under-level survival pickup, and succeed with sufficient levels.
+11. Verify Infinity + Mending and Protection + Fire Protection apply through a vanilla anvil, while
+    every other Protection-family pair remains incompatible.
+12. Grindstone a native Blade Chain item and confirm the enchant, runtime effect, legacy PDC, and
+    generated lore are absent afterward; save and restart the result.
 
 ## Deliberately retained
 

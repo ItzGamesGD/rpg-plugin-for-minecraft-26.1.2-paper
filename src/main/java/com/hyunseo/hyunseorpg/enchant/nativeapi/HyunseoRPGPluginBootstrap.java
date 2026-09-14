@@ -7,6 +7,7 @@ import io.papermc.paper.registry.RegistryKey;
 import io.papermc.paper.registry.TypedKey;
 import io.papermc.paper.registry.data.EnchantmentRegistryEntry;
 import io.papermc.paper.registry.event.RegistryEvents;
+import io.papermc.paper.registry.set.RegistrySet;
 import io.papermc.paper.registry.tag.TagKey;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -35,6 +36,18 @@ public final class HyunseoRPGPluginBootstrap implements PluginBootstrap {
                 throw new IllegalStateException("Unable to discover bundled HyunseoRPG datapack", exception);
             }
         });
+        // Modify exactly the two requested vanilla pairs. Filtering each entry's existing
+        // exclusive set preserves every unrelated vanilla incompatibility and max-level rule.
+        context.getLifecycleManager().registerEventHandler(RegistryEvents.ENCHANTMENT.entryAdd()
+                .newHandler(event -> {
+                    String id = event.key().key().asString();
+                    if (!VanillaEnchantmentCompatibilityPolicy.isModified(id)) return;
+                    var retained = event.builder().exclusiveWith().values().stream()
+                            .filter(key -> VanillaEnchantmentCompatibilityPolicy.retainConflict(
+                                    id, key.key().asString()))
+                            .toList();
+                    event.builder().exclusiveWith(RegistrySet.keySet(RegistryKey.ENCHANTMENT, retained));
+                }));
         context.getLifecycleManager().registerEventHandler(RegistryEvents.ENCHANTMENT.compose().newHandler(event -> {
             for (NativeEnchantDefinition definition : NativeEnchantDefinitions.ALL) {
                 TypedKey<org.bukkit.enchantments.Enchantment> key = TypedKey.create(
@@ -57,6 +70,19 @@ public final class HyunseoRPGPluginBootstrap implements PluginBootstrap {
                                 Key.key(NativeEnchantDefinitions.NAMESPACE, definition.exclusiveSetTag()))));
                     }
                 });
+            }
+            // Keep former duplicate keys only so old serialized ItemStacks can be read and migrated.
+            // Empty supported-items plus no acquisition tag membership makes them unobtainable.
+            for (String retiredId : RetiredVanillaEnchantments.IDS) {
+                TypedKey<org.bukkit.enchantments.Enchantment> key = TypedKey.create(
+                        RegistryKey.ENCHANTMENT, Key.key(NativeEnchantDefinitions.NAMESPACE, retiredId));
+                event.registry().register(key, builder -> builder
+                        .description(Component.text("Legacy " + retiredId))
+                        .supportedItems(RegistrySet.keySet(RegistryKey.ITEM, java.util.List.of()))
+                        .weight(1).maxLevel(255)
+                        .minimumCost(EnchantmentRegistryEntry.EnchantmentCost.of(1, 0))
+                        .maximumCost(EnchantmentRegistryEntry.EnchantmentCost.of(1, 0))
+                        .anvilCost(0).activeSlots(EquipmentSlotGroup.ANY));
             }
         }));
     }

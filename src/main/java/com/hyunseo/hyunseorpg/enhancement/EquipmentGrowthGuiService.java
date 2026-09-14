@@ -91,14 +91,6 @@ public final class EquipmentGrowthGuiService {
         player.openInventory(inventory);
     }
 
-    public void openEnchant(Player player) {
-        EnchantInventoryHolder holder = new EnchantInventoryHolder();
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 인챈트"));
-        holder.setInventory(inventory);
-        renderEnchant(inventory);
-        player.openInventory(inventory);
-    }
-
     public void openRepair(Player player) {
         RepairInventoryHolder holder = new RepairInventoryHolder();
         Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 수리"));
@@ -186,25 +178,6 @@ public final class EquipmentGrowthGuiService {
             player.sendMessage(Component.text("강화 성공: +" + next.get().level(), NamedTextColor.GREEN));
         } finally {
             renderEnhancement(inventory);
-            processing.remove(player.getUniqueId());
-        }
-    }
-
-    public void enchant(Player player, Inventory inventory) {
-        if (enchantService == null || !processing.add(player.getUniqueId())) return;
-        try {
-            ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-            ItemStack book = inventory.getItem(STONE_SLOT);
-            if (equipment == null || book == null || !enchantService.equip(equipment, book)) {
-                player.sendMessage(Component.text("장비 등급, 슬롯, 무기 종류 또는 인챈트 북을 확인해주세요.", NamedTextColor.RED));
-                return;
-            }
-            book.setAmount(book.getAmount() - 1);
-            if (book.getAmount() <= 0) inventory.setItem(STONE_SLOT, null);
-            inventory.setItem(EQUIPMENT_SLOT, equipment);
-            player.sendMessage(Component.text("인챈트를 장착했습니다.", NamedTextColor.GREEN));
-        } finally {
-            renderEnchant(inventory);
             processing.remove(player.getUniqueId());
         }
     }

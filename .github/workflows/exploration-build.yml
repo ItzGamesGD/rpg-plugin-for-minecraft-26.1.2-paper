@@ -31,4 +31,4 @@ jobs:
       - name: Run clean build and JUnit
         run: |
           chmod +x ./gradlew
-          ./gradlew clean test --no-daemon
+          ./gradlew clean build --no-daemon

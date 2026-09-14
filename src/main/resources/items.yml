@@ -78,19 +78,8 @@ items:
   promotion_option_reroll_ticket: { material: PAPER, display-name: "승급 옵션 초기화권", category: SUPPORT, rarity: EPIC, custom-model-data: 23602, lore: ["장비의 선택한 승급 옵션을 다시 결정합니다.", "현재 수치보다 낮아지지 않습니다."] }
   enchant_book_axe_heavy_strike: { material: ENCHANTED_BOOK, display-name: "강타 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22126, lore: ["도끼에 강타를 부여합니다."] }
   enchant_book_titans_wrath: { material: ENCHANTED_BOOK, display-name: "타이탄의 분노 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22127, lore: ["도끼에 타이탄의 분노를 부여합니다."] }
-  enchant_book_protection: { material: ENCHANTED_BOOK, display-name: "보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22130, lore: ["방어구에 보호를 부여합니다."] }
-  enchant_book_fire_protection: { material: ENCHANTED_BOOK, display-name: "화염 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22131, lore: ["방어구에 화염 보호를 부여합니다."] }
-  enchant_book_blast_protection: { material: ENCHANTED_BOOK, display-name: "폭발 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22132, lore: ["방어구에 폭발 보호를 부여합니다."] }
-  enchant_book_projectile_protection: { material: ENCHANTED_BOOK, display-name: "투사체 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22133, lore: ["방어구에 투사체 보호를 부여합니다."] }
   enchant_book_skill_protection: { material: ENCHANTED_BOOK, display-name: "기술 보호 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22134, lore: ["방어구에 기술 보호를 부여합니다."] }
-  enchant_book_thorns: { material: ENCHANTED_BOOK, display-name: "가시 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22135, lore: ["방어구에 가시를 부여합니다."] }
   enchant_book_rolling_landing: { material: ENCHANTED_BOOK, display-name: "구르기 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22136, lore: ["부츠에 구르기를 부여합니다."] }
-  enchant_book_respiration: { material: ENCHANTED_BOOK, display-name: "호흡 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22137, lore: ["투구에 호흡을 부여합니다."] }
-  enchant_book_aqua_affinity: { material: ENCHANTED_BOOK, display-name: "친수성 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22138, lore: ["투구에 친수성을 부여합니다."] }
-  enchant_book_swift_sneak: { material: ENCHANTED_BOOK, display-name: "신속한 잠행 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22139, lore: ["레깅스에 신속한 잠행을 부여합니다."] }
-  enchant_book_depth_strider: { material: ENCHANTED_BOOK, display-name: "물갈퀴 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22140, lore: ["부츠에 물갈퀴를 부여합니다."] }
-  enchant_book_soul_speed: { material: ENCHANTED_BOOK, display-name: "영혼 가속 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22141, lore: ["부츠에 영혼 가속을 부여합니다."] }
-  enchant_book_frost_walker: { material: ENCHANTED_BOOK, display-name: "얼음 걸음 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22142, lore: ["부츠에 얼음 걸음을 부여합니다."] }
   enchant_book_wind_arrow: { material: ENCHANTED_BOOK, display-name: "바람 화살 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22144, lore: ["활에 바람 화살을 부여합니다."] }
   enchant_book_crossbow_barrage: { material: ENCHANTED_BOOK, display-name: "연발 사격 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22145, lore: ["쇠뇌에 연발 사격을 부여합니다."] }
   enchant_book_fire_arrow_rain: { material: ENCHANTED_BOOK, display-name: "불화살 비 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22155, lore: ["활에 불화살 비를 부여합니다."] }
@@ -186,7 +175,6 @@ items:
     rarity: RARE
     custom-model-data: 22112
     lore: ["활 장비에 장착하여 레이저 화살을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
-  enchant_book_durability_save_pickaxe:
     material: ENCHANTED_BOOK
     display-name: "곡괭이 보존 인챈트 북"
     category: ENCHANTMENT

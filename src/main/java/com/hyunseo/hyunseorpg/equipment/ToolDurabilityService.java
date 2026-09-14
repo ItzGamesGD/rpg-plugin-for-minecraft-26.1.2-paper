@@ -68,10 +68,6 @@ public final class ToolDurabilityService {
         if (meta != null && meta.isUnbreakable()) return true;
         int unbreaking = tool.getEnchantmentLevel(Enchantment.UNBREAKING);
         if (unbreaking > 0 && ThreadLocalRandom.current().nextInt(unbreaking + 1) > 0) return true;
-        if (enchants != null && enchants.hasActiveEquipped(tool, "unbreaking")
-                && roll(clamp(config.getEnchantsDouble("enchants.unbreaking.settings.chance", 0.20D)))) {
-            return true;
-        }
         return roll(hoeModifiers.resolve(tool, null).durabilitySaveChance());
     }
 

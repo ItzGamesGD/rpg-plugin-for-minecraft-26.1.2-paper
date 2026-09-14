@@ -113,54 +113,6 @@ shops:
         sellable: false
         match-mode: CUSTOM_ID
         currency-item-id: magic_stone
-      protection_book:
-        item:
-          type: custom
-          id: enchant_book_protection
-        amount: 1
-        order: 5
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      fire_protection_book:
-        item:
-          type: custom
-          id: enchant_book_fire_protection
-        amount: 1
-        order: 6
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      blast_protection_book:
-        item:
-          type: custom
-          id: enchant_book_blast_protection
-        amount: 1
-        order: 7
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      projectile_protection_book:
-        item:
-          type: custom
-          id: enchant_book_projectile_protection
-        amount: 1
-        order: 8
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
       skill_protection_book:
         item:
           type: custom
@@ -173,96 +125,12 @@ shops:
         sellable: false
         match-mode: CUSTOM_ID
         currency-item-id: magic_stone
-      thorns_book:
-        item:
-          type: custom
-          id: enchant_book_thorns
-        amount: 1
-        order: 10
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
       rolling_landing_book:
         item:
           type: custom
           id: enchant_book_rolling_landing
         amount: 1
         order: 11
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      respiration_book:
-        item:
-          type: custom
-          id: enchant_book_respiration
-        amount: 1
-        order: 12
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      aqua_affinity_book:
-        item:
-          type: custom
-          id: enchant_book_aqua_affinity
-        amount: 1
-        order: 13
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      swift_sneak_book:
-        item:
-          type: custom
-          id: enchant_book_swift_sneak
-        amount: 1
-        order: 14
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      depth_strider_book:
-        item:
-          type: custom
-          id: enchant_book_depth_strider
-        amount: 1
-        order: 15
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      soul_speed_book:
-        item:
-          type: custom
-          id: enchant_book_soul_speed
-        amount: 1
-        order: 16
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      frost_walker_book:
-        item:
-          type: custom
-          id: enchant_book_frost_walker
-        amount: 1
-        order: 17
         buy-price: 9
         sell-price: 0
         purchasable: true
@@ -347,18 +215,6 @@ shops:
           id: enchant_book_precision_flight
         amount: 1
         order: 24
-        buy-price: 9
-        sell-price: 0
-        purchasable: true
-        sellable: false
-        match-mode: CUSTOM_ID
-        currency-item-id: magic_stone
-      durability_save_pickaxe_book:
-        item:
-          type: custom
-          id: enchant_book_durability_save_pickaxe
-        amount: 1
-        order: 25
         buy-price: 9
         sell-price: 0
         purchasable: true

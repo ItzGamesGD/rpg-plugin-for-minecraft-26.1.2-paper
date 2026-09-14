@@ -18,6 +18,7 @@ class VanillaAnvilEnhancementArchitectureTest {
         assertTrue(source.contains("setRepairItemCountCost(STONE_COST)"));
         assertTrue(source.contains("setRepairCost(enhancements.getXpLevelCost"));
         assertTrue(source.contains("ItemStack result = equipment.clone()"));
+        assertFalse(source.contains("setMaximumRepairCost"));
         assertFalse(source.contains("CoinService"));
         assertFalse(source.contains("ThreadLocalRandom"));
         assertFalse(source.contains("setLevel("));
