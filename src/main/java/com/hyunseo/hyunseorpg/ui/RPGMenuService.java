@@ -310,7 +310,7 @@ public final class RPGMenuService {
 
     public void clickGrowth(Player player, int slot) {
         switch (slot) {
-            case 10 -> growth.openEnhancement(player);
+            case 10 -> player.sendMessage(Component.text("강화는 바닐라 모루에 장비와 강화석을 넣어 진행합니다.", NamedTextColor.YELLOW));
             case 12 -> growth.openPromotion(player);
             case 14 -> growth.openEnchant(player);
             case 16 -> growth.openRepair(player);

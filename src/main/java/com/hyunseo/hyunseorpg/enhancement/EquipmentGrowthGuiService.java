@@ -1,7 +1,6 @@
 package com.hyunseo.hyunseorpg.enhancement;
 
 import com.hyunseo.hyunseorpg.enchant.EnchantService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.farming.FarmingPromotionService;
 import net.kyori.adventure.text.Component;
@@ -41,7 +40,6 @@ public final class EquipmentGrowthGuiService {
     private EquipmentGrowthPolicy growthPolicy;
     private EquipmentSupportGuiService supportService;
     private com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService;
-    private CoinService coinService;
     private FarmingPromotionService farmingPromotionService;
 
     public EquipmentGrowthGuiService(JavaPlugin plugin, EquipmentEnhancementService enhancementService,
@@ -55,7 +53,6 @@ public final class EquipmentGrowthGuiService {
     public void setRepairService(EquipmentRepairService repairService) { this.repairService = repairService; }
     public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) { this.growthPolicy = growthPolicy; }
     public void setSupportService(EquipmentSupportGuiService supportService) { this.supportService = supportService; }
-    public void setCoinService(CoinService coinService) { this.coinService = coinService; }
     public void setShopGuiService(com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService) { this.shopGuiService = shopGuiService; }
     public void setFarmingPromotionService(FarmingPromotionService service) { this.farmingPromotionService = service; }
     public EquipmentSupportGuiService getSupportService() { return supportService; }
@@ -69,7 +66,7 @@ public final class EquipmentGrowthGuiService {
         fill(inventory);
         inventory.setItem(20, icon(Material.NETHER_STAR, "승급 옵션 초기화", List.of("선택한 옵션만 다시 결정합니다.")));
         inventory.setItem(24, icon(Material.KNOWLEDGE_BOOK, "향후 확장", List.of("아직 구현되지 않은 기능 목록")));
-        inventory.setItem(11, icon(Material.ANVIL, "강화", List.of("강화석으로 장비의 기본 수치를 높입니다.")));
+        inventory.setItem(11, icon(Material.ANVIL, "강화", List.of("바닐라 모루에 장비와 강화석을 넣어 강화합니다.")));
         inventory.setItem(13, icon(Material.SMITHING_TABLE, "승급", List.of("승급석으로 등급과 성장 상한을 높입니다.")));
         inventory.setItem(15, icon(Material.ENCHANTED_BOOK, "인챈트", List.of("해방된 슬롯에 인챈트 북을 장착합니다.")));
         inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
@@ -171,45 +168,22 @@ public final class EquipmentGrowthGuiService {
         }
     }
 
+    /** Legacy menu compatibility; normal enhancement is entered through a vanilla anvil. */
     public void enhance(Player player, Inventory inventory) {
         if (!processing.add(player.getUniqueId())) return;
         try {
             ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
             ItemStack stone = inventory.getItem(STONE_SLOT);
-            if (growthPolicy != null && !growthPolicy.canEnhance(equipment)) {
-                player.sendMessage(Component.text(growthPolicy.growthRestriction(equipment), NamedTextColor.RED));
-                return;
-            }
             Optional<EnhancementLevelData> next = enhancementService.getNextLevel(equipment);
-            if (next.isEmpty()) {
-                player.sendMessage(Component.text("강화 가능한 장비가 아니거나 최대 단계입니다.", NamedTextColor.RED));
+            if (next.isEmpty() || stone == null || !enhancementService.isRequiredStone(stone)
+                    || stone.getAmount() < 1) {
+                player.sendMessage(Component.text("강화 가능한 장비와 강화석을 확인하세요.", NamedTextColor.RED));
                 return;
             }
-            EnhancementLevelData rule = next.get();
-            long coinCost = enhancementService.getCoinCost(equipment, rule);
-            if (coinService != null && coinService.getCoins(player) < coinCost) {
-                player.sendMessage(Component.text("강화 코인이 부족합니다. 필요 코인: " + coinCost, NamedTextColor.RED));
-                return;
-            }
-            if (stone == null || !enhancementService.isRequiredStone(stone) || stone.getAmount() < rule.stoneCost()) {
-                player.sendMessage(Component.text("강화석이 부족하거나 올바르지 않습니다.", NamedTextColor.RED));
-                return;
-            }
-            if (!consumeMaterial(inventory, STONE_SLOT, rule.stoneCost(), "강화석")) return;
-            if (coinService != null && !coinService.takeCoins(player, coinCost)) {
-                inventory.setItem(STONE_SLOT, stone);
-                player.sendMessage(Component.text("강화 코인 차감에 실패했습니다.", NamedTextColor.RED));
-                return;
-            }
-            double chance = enhancementService.getSuccessChance(equipment, rule);
-            if (ThreadLocalRandom.current().nextDouble() <= chance) {
-                enhancementService.applySuccessfulEnhancement(equipment, rule);
-                player.sendMessage(Component.text("강화 성공: +" + rule.level(), NamedTextColor.GREEN));
-            } else {
-                enhancementService.recordFailure(equipment);
-                player.sendMessage(Component.text("강화 실패. 단계는 유지되며 다음 성공 확률이 증가합니다.", NamedTextColor.RED));
-            }
+            if (!consumeMaterial(inventory, STONE_SLOT, 1, "강화석")) return;
+            enhancementService.applySuccessfulEnhancement(equipment, next.get());
             inventory.setItem(EQUIPMENT_SLOT, equipment);
+            player.sendMessage(Component.text("강화 성공: +" + next.get().level(), NamedTextColor.GREEN));
         } finally {
             renderEnhancement(inventory);
             processing.remove(player.getUniqueId());
@@ -285,14 +259,14 @@ public final class EquipmentGrowthGuiService {
                 "현재 강화: +" + enhancementService.getLevel(equipment),
                 "다음 강화: +" + rule.level(),
                 "필요 강화석: " + rule.stoneCost(),
-                "성공 확률: " + Math.round(enhancementService.getSuccessChance(equipment, rule) * 100.0D) + "%",
-                "실패 누적: " + enhancementService.getFailCount(equipment)
+                "필요 XP 레벨: " + enhancementService.getXpLevelCost(rule.level()),
+                "성공 확률: 100%"
         )).orElse(List.of("강화 가능한 장비를 넣어주세요."))));
         inventory.setItem(EXECUTE_SLOT, icon(Material.LIME_DYE, "강화 실행", next.map(rule -> List.of(
                 "다음 단계: +" + rule.level(),
                 "필요 강화석: " + rule.stoneCost(),
-                "현재 성공 확률: " + percent(enhancementService.getSuccessChance(equipment, rule)),
-                "실패 1회당 보정: +" + percent(enhancementService.getFailureBonus()) + "p",
+                "필요 XP 레벨: " + enhancementService.getXpLevelCost(rule.level()),
+                "성공 확률: 100%",
                 "좌클릭으로 실행합니다."
         )).orElse(List.of("강화 가능한 장비가 없습니다."))));
         inventory.setItem(BACK_SLOT, icon(Material.ARROW, "뒤로", List.of()));

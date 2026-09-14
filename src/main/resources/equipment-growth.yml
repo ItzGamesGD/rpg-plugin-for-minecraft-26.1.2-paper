@@ -1,4 +1,4 @@
-schema-version: 1
+schema-version: 2
 migration-policy: KEEP_LEVEL
 
 # Equipment family and tier limits. Axes deliberately belong to TOOL.
@@ -35,30 +35,18 @@ tiers:
 
 enhancement:
   required-stone-item-id: basic_upgrade_stone
-  max-level: 50
-  start-chance: 1.0
-  final-chance: 0.20
-  fail-bonus: 0.04
-  maximum-chance: 1.0
-  initial-cost: 5
-  # Coin is a separate universal sink from enhancement stones.
-  initial-coin-cost: 25
-  coin-cost-curve:
-    "0.166667": 25
-    "0.333333": 40
-    "0.500000": 75
-    "0.666667": 125
-    "0.833333": 200
-    "1.000000": 300
-  cost-curve:
-    "0.166667": 5
-    "0.333333": 7
-    "0.500000": 9
-    "0.666667": 14
-    "0.833333": 18
-    "1.000000": 25
+  # Stage 2 category caps are independent of promotion grade/stars.
+  max-level: 40
+  caps:
+    vanilla: 30
+    elemental: 40
+  elemental-item-ids: [burning_sword, flowing_water_sword, wind_cutting_sword, earth_special_sword, ice_special_sword, dark_energy_sword, burning_bow, wind_archers_bow, earth_heavy_bow, freezing_bow, dark_energy_bow]
+  # Costs are Minecraft experience levels; raw experience is never read or rewritten.
+  xp-level-cost:
+    default: 1
+    levels: { "1": 1, "6": 2, "11": 3, "21": 4, "31": 5 }
   axe-combat:
-    # +50 at full enhancement. This keeps axes ahead of swords per hit without
+    # +40 at full elemental enhancement. This keeps axes ahead of swords per hit without
     # making the enhancement bonus larger than the vanilla weapon itself.
     per-level: 0.10
   profiles:
@@ -89,7 +77,7 @@ enhancement:
     armor:
       target: DAMAGE_REDUCTION
       operation: ADD
-      # Four fully enhanced pieces provide 20% direct reduction before
+      # Four fully enhanced vanilla pieces provide 12% direct reduction before
       # promotion and vanilla armor are considered.
       per-level: 0.001
       materials: [LEATHER_HELMET, LEATHER_CHESTPLATE, LEATHER_LEGGINGS, LEATHER_BOOTS, CHAINMAIL_HELMET, CHAINMAIL_CHESTPLATE, CHAINMAIL_LEGGINGS, CHAINMAIL_BOOTS, IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS, GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS, DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS, NETHERITE_HELMET, NETHERITE_CHESTPLATE, NETHERITE_LEGGINGS, NETHERITE_BOOTS, TURTLE_HELMET]
@@ -105,7 +93,7 @@ enhancement:
       operation: ADD
       # With config.yml's 0.1 conversion this produces +3.25 block-break
       # speed at +50. A diamond tool reaches vanilla Efficiency V's raw
-      # speed, and a capped promotion bonus sits only slightly above it.
+      # speed at the configured cap, while promotion remains a separate legacy layer sits only slightly above it.
       per-level: 0.65
       materials: [WOODEN_PICKAXE, STONE_PICKAXE, IRON_PICKAXE, GOLDEN_PICKAXE, DIAMOND_PICKAXE, NETHERITE_PICKAXE, WOODEN_AXE, STONE_AXE, IRON_AXE, GOLDEN_AXE, DIAMOND_AXE, NETHERITE_AXE, WOODEN_SHOVEL, STONE_SHOVEL, IRON_SHOVEL, GOLDEN_SHOVEL, DIAMOND_SHOVEL, NETHERITE_SHOVEL, WOODEN_HOE, STONE_HOE, IRON_HOE, GOLDEN_HOE, DIAMOND_HOE, NETHERITE_HOE]
       custom-item-ids: [basic_axe]

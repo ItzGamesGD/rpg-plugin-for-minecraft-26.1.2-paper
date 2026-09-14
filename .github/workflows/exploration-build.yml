@@ -10,6 +10,7 @@ on:
       - "codex/exploration-*"
       - "main"
       - "codex/gateway-boss-authoritative-second-pass"
+      - "codex/refactor-custom-enchant-system-integration"
 
 jobs:
   build-and-test:

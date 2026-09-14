@@ -17,17 +17,23 @@ public final class EquipmentGrowthConfigValidator {
     public boolean validate() {
         boolean valid = true;
         int max = config.getEquipmentGrowthInt("enhancement.max-level", 0);
-        double start = config.getEquipmentGrowthDouble("enhancement.start-chance", -1.0D);
-        double end = config.getEquipmentGrowthDouble("enhancement.final-chance", -1.0D);
-        double failBonus = config.getEquipmentGrowthDouble("enhancement.fail-bonus", -1.0D);
+        int vanillaCap = config.getEquipmentGrowthInt("enhancement.caps.vanilla", 0);
+        int elementalCap = config.getEquipmentGrowthInt("enhancement.caps.elemental", 0);
         if (max <= 0) valid = error("enhancement.max-level must be positive") && valid;
-        if (start < 0.0D || start > 1.0D) valid = error("enhancement.start-chance must be between 0 and 1") && valid;
-        if (end < 0.0D || end > 1.0D) valid = error("enhancement.final-chance must be between 0 and 1") && valid;
-        if (failBonus < 0.0D) valid = error("enhancement.fail-bonus cannot be negative") && valid;
-
-        double lastCostProgress = config.getEquipmentGrowthKeys("enhancement.cost-curve").stream()
-                .mapToDouble(this::parseDouble).max().orElse(0.0D);
-        if (lastCostProgress < 0.999999D) valid = error("enhancement.cost-curve must reach progress 1.0") && valid;
+        if (vanillaCap <= 0) valid = error("enhancement.caps.vanilla must be positive") && valid;
+        if (elementalCap <= 0) valid = error("enhancement.caps.elemental must be positive") && valid;
+        if (max < Math.max(vanillaCap, elementalCap)) {
+            valid = error("enhancement.max-level must cover every category cap") && valid;
+        }
+        if (config.getEquipmentGrowthInt("enhancement.xp-level-cost.default", 0) <= 0) {
+            valid = error("enhancement.xp-level-cost.default must be positive") && valid;
+        }
+        for (String threshold : config.getEquipmentGrowthKeys("enhancement.xp-level-cost.levels")) {
+            if (parseInt(threshold) <= 0 || config.getEquipmentGrowthInt(
+                    "enhancement.xp-level-cost.levels." + threshold, 0) <= 0) {
+                valid = error("invalid enhancement XP-level cost threshold: " + threshold) && valid;
+            }
+        }
 
         int previousOrder = 0;
         for (String grade : config.getEquipmentGrowthKeys("promotion.grades").stream()
@@ -39,8 +45,8 @@ public final class EquipmentGrowthConfigValidator {
                     "promotion.grades." + grade + ".required-enhancement", legacyRequirement);
             if (order <= previousOrder) valid = error("promotion.grades order is not strictly increasing: " + grade) && valid;
             if (stars <= 0) valid = error("promotion.grades." + grade + ".stars must be positive") && valid;
-            if (requirement < 0 || requirement > max) {
-                valid = error("promotion.grades." + grade + ".required-enhancement is outside max level") && valid;
+            if (requirement < 0) {
+                valid = error("promotion.grades." + grade + ".required-enhancement cannot be negative") && valid;
             }
             previousOrder = order;
         }
@@ -85,7 +91,7 @@ public final class EquipmentGrowthConfigValidator {
         return false;
     }
 
-    private double parseDouble(String value) {
-        try { return Double.parseDouble(value); } catch (NumberFormatException ignored) { return -1.0D; }
+    private int parseInt(String value) {
+        try { return Integer.parseInt(value); } catch (NumberFormatException ignored) { return -1; }
     }
 }

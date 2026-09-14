@@ -66,13 +66,14 @@ final class EquipmentGrowthDataTest {
     }
 
     @Test
-    void normalTierDefinitionsKeepTheConfiguredFiftyLevelCeiling() {
+    void stageTwoCapsAreCategoryBasedAndIndependentOfLegacyTierCeilings() {
         YamlConfiguration growth = load();
-        assertEquals(50, growth.getInt("enhancement.max-level"));
+        assertEquals(40, growth.getInt("enhancement.max-level"));
+        assertEquals(30, growth.getInt("enhancement.caps.vanilla"));
+        assertEquals(40, growth.getInt("enhancement.caps.elemental"));
         for (String tier : Set.of("wooden", "stone", "gold", "iron", "diamond", "netherite")) {
-            assertEquals(50, growth.getInt("tiers.definitions." + tier + ".max-enhancement"), tier);
+            assertTrue(growth.getInt("tiers.definitions." + tier + ".max-enhancement") >= 30, tier);
         }
-        assertEquals(50, growth.getInt("tiers.definitions.elytra.max-enhancement"));
         assertEquals(0, growth.getInt("tiers.definitions.elytra.max-promotion-stage"));
     }
 

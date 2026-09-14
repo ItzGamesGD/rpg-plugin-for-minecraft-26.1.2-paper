@@ -1869,9 +1869,9 @@ public final class ConfigMigrationService {
         changed |= migrateGrowthProfile(target, defaults, "promotion.slot-unlocks", lines,
                 "added promotion enchant-slot unlock settings");
         changed |= normalizeEnhancementMaxLevel(target, defaults, lines);
-        changed |= normalizeEnhancementCostCurve(target, defaults, lines);
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
+        changed |= migrateStageTwoAnvilEnhancement(target, defaults, lines);
+        if (target.getInt("schema-version", 0) < 2) {
+            target.set("schema-version", 2);
             changed = true;
         }
         if (changed) mark(target, fileName, changedFiles, lines, "equipment growth profile migration staged");
@@ -1967,20 +1967,27 @@ public final class ConfigMigrationService {
         return changed;
     }
 
-    private boolean normalizeEnhancementCostCurve(FileConfiguration target, FileConfiguration defaults,
-                                                   List<String> lines) {
-        ConfigurationSection targetCurve = target.getConfigurationSection("enhancement.cost-curve");
-        ConfigurationSection defaultCurve = defaults.getConfigurationSection("enhancement.cost-curve");
-        if (targetCurve == null || defaultCurve == null) return false;
-        boolean malformed = targetCurve.getKeys(false).stream()
-                .anyMatch(key -> targetCurve.isConfigurationSection(key));
-        boolean missingFinalPoint = targetCurve.getKeys(false).stream()
-                .noneMatch(key -> Math.abs(parseDouble(key) - 1.0D) < 0.000001D);
-        if (!malformed && !missingFinalPoint) return false;
-        target.set("enhancement.cost-curve", null);
-        copyTree(target, defaults, "enhancement.cost-curve");
-        lines.add("equipment-growth.yml: normalized enhancement cost curve");
-        return true;
+    private boolean migrateStageTwoAnvilEnhancement(FileConfiguration target, FileConfiguration defaults,
+                                                     List<String> lines) {
+        boolean changed = false;
+        for (String path : List.of("enhancement.caps", "enhancement.elemental-item-ids",
+                "enhancement.xp-level-cost")) {
+            if (!target.isSet(path) && defaults.isSet(path)) {
+                if (defaults.isConfigurationSection(path)) copyTree(target, defaults, path);
+                else target.set(path, defaults.get(path));
+                changed = true;
+            }
+        }
+        for (String legacy : List.of("enhancement.start-chance", "enhancement.final-chance",
+                "enhancement.fail-bonus", "enhancement.maximum-chance", "enhancement.initial-cost",
+                "enhancement.cost-curve", "enhancement.initial-coin-cost", "enhancement.coin-cost-curve")) {
+            if (target.isSet(legacy)) {
+                target.set(legacy, null);
+                changed = true;
+            }
+        }
+        if (changed) lines.add("equipment-growth.yml: migrated enhancement to vanilla anvil XP-level policy");
+        return changed;
     }
 
     private boolean normalizeSpecialPromotionPools(FileConfiguration target, FileConfiguration defaults,

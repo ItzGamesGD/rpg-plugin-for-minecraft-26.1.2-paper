@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.enhancement;
 
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -23,26 +22,20 @@ public final class EquipmentEnhancementService {
     private final RPGItemService itemService;
     private final EnhancementRegistry registry;
     private final NamespacedKey levelKey;
-    private final NamespacedKey failCountKey;
     private final NamespacedKey schemaKey;
-    private EquipmentPromotionService promotionService;
-    private EquipmentGrowthPolicy growthPolicy;
+    private EnhancementClassificationService classification;
 
     public EquipmentEnhancementService(JavaPlugin plugin, RPGItemService itemService, EnhancementRegistry registry) {
         this.itemService = itemService;
         this.registry = registry;
         this.levelKey = new NamespacedKey(plugin, "enhancement_level");
-        this.failCountKey = new NamespacedKey(plugin, "enhancement_fail_count");
         this.schemaKey = new NamespacedKey(plugin, "equipment_schema_version");
     }
 
-    public void setPromotionService(EquipmentPromotionService promotionService) {
-        this.promotionService = promotionService;
+    public void setClassificationService(EnhancementClassificationService classification) {
+        this.classification = classification;
     }
 
-    public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) {
-        this.growthPolicy = growthPolicy;
-    }
 
     public Optional<String> getProfileId(ItemStack item) {
         if (item == null || item.getType().isAir()) return Optional.empty();
@@ -56,15 +49,11 @@ public final class EquipmentEnhancementService {
     public int getLevel(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return 0;
         Integer level = item.getItemMeta().getPersistentDataContainer().get(levelKey, PersistentDataType.INTEGER);
-        int maximum = Math.max(1, registry.getConfiguredMaximumLevel());
+        int maximum = Math.max(0, getMaximumLevel(item));
         return level == null ? 0 : Math.min(maximum, Math.max(0, level));
     }
 
-    public int getFailCount(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return 0;
-        Integer count = item.getItemMeta().getPersistentDataContainer().get(failCountKey, PersistentDataType.INTEGER);
-        return count == null ? 0 : Math.min(1000, Math.max(0, count));
-    }
+    public int getFailCount(ItemStack item) { return 0; }
 
     public int getDataSchemaVersion(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return 0;
@@ -72,26 +61,19 @@ public final class EquipmentEnhancementService {
     }
 
     public int getMaximumLevel(ItemStack item) {
-        return promotionService == null
-                ? registry.getConfiguredMaximumLevel()
-                : promotionService.getEnhancementMaxLevel(item);
+        return classification == null ? registry.getConfiguredMaximumLevel() : classification.maximumLevel(item);
     }
 
     public Optional<EnhancementLevelData> getNextLevel(ItemStack item) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return Optional.empty();
+        if (classification != null && !classification.classify(item).enhanceable()) return Optional.empty();
         return getProfileId(item).flatMap(profile -> registry.getNextLevel(profile, getLevel(item), getMaximumLevel(item)));
     }
 
-    public double getSuccessChance(ItemStack item, EnhancementLevelData nextLevel) {
-        int maximum = Math.max(1, getMaximumLevel(item));
-        return registry.getCurrentSuccessChance((double) nextLevel.level() / maximum, getFailCount(item));
-    }
+    public double getSuccessChance(ItemStack item, EnhancementLevelData nextLevel) { return 1.0D; }
 
-    public long getCoinCost(ItemStack item, EnhancementLevelData nextLevel) {
-        if (nextLevel == null) return 0L;
-        int maximum = Math.max(1, getMaximumLevel(item));
-        return Math.max(0L, registry.getCoinCost((double) nextLevel.level() / maximum));
-    }
+    public long getCoinCost(ItemStack item, EnhancementLevelData nextLevel) { return 0L; }
+
+    public int getXpLevelCost(int targetLevel) { return registry.getXpLevelCost(targetLevel); }
 
     public double getFailureBonus() {
         return registry.getFailureBonus();
@@ -102,7 +84,7 @@ public final class EquipmentEnhancementService {
     }
 
     public double getAttackBonus(ItemStack item) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return 0.0D;
+        if (classification != null && !classification.classify(item).enhanceable()) return 0.0D;
         return getProfileId(item)
                 .filter(profile -> "ATTACK_DAMAGE".equalsIgnoreCase(registry.getTarget(profile)))
                 .map(profile -> registry.getEffectValue(profile, getLevel(item)))
@@ -111,12 +93,12 @@ public final class EquipmentEnhancementService {
 
     public double getAxeAttackBonus(ItemStack item) {
         if (item == null || !item.getType().name().endsWith("_AXE")) return 0.0D;
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return 0.0D;
+        if (classification != null && !classification.classify(item).enhanceable()) return 0.0D;
         return registry.getAxeCombatEffectValue(getLevel(item));
     }
 
     public double getToolEfficiencyBonus(ItemStack item) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return 0.0D;
+        if (classification != null && !classification.classify(item).enhanceable()) return 0.0D;
         return getProfileId(item)
                 .filter(profile -> "TOOL_EFFICIENCY".equalsIgnoreCase(registry.getTarget(profile)))
                 .map(profile -> registry.getEffectValue(profile, getLevel(item)))
@@ -125,31 +107,23 @@ public final class EquipmentEnhancementService {
 
     /** Legacy armor hook retained for CombatService compatibility. */
     public double getDamageReductionBonus(ItemStack item) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return 0.0D;
+        if (classification != null && !classification.classify(item).enhanceable()) return 0.0D;
         return getProfileId(item)
                 .filter(profile -> "damage-reduction".equalsIgnoreCase(registry.getEffectType(profile)))
                 .map(profile -> registry.getEffectValue(profile, getLevel(item)))
                 .orElse(0.0D);
     }
 
-    public void recordFailure(ItemStack item) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return;
-        ItemMeta meta = item == null ? null : item.getItemMeta();
-        if (meta == null) return;
-        ensureSchema(meta, item);
-        int next = Math.min(1000, getFailCount(item) + 1);
-        meta.getPersistentDataContainer().set(failCountKey, PersistentDataType.INTEGER, next);
-        item.setItemMeta(meta);
-    }
+    /** Stage 2 is deterministic; retained only for binary/source compatibility with the dormant legacy GUI. */
+    public void recordFailure(ItemStack item) { }
 
     public void applySuccessfulEnhancement(ItemStack item, EnhancementLevelData nextLevel) {
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return;
+        if (classification != null && !classification.classify(item).enhanceable()) return;
         String profile = getProfileId(item).orElseThrow();
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
         ensureSchema(meta, item);
         meta.getPersistentDataContainer().set(levelKey, PersistentDataType.INTEGER, nextLevel.level());
-        meta.getPersistentDataContainer().set(failCountKey, PersistentDataType.INTEGER, 0);
         meta.lore(EquipmentLoreBuilder.from(meta)
                 .removePlainPrefix(LORE_PREFIX)
                 .add(Component.text(LORE_PREFIX + "+" + nextLevel.level() + " | " + registry.getEffectName(profile)
@@ -166,7 +140,7 @@ public final class EquipmentEnhancementService {
      */
     public int forceEnhancementLevel(ItemStack item, int requestedLevel) {
         if (item == null || item.getType().isAir()) return 0;
-        if (growthPolicy != null && !growthPolicy.canEnhance(item)) return getLevel(item);
+        if (classification != null && !classification.classify(item).enhanceable()) return getLevel(item);
         String profile = getProfileId(item).orElse(null);
         if (profile == null) return getLevel(item);
         int target = Math.max(0, Math.min(getMaximumLevel(item), requestedLevel));
@@ -174,7 +148,6 @@ public final class EquipmentEnhancementService {
         if (meta == null) return getLevel(item);
         ensureSchema(meta, item);
         meta.getPersistentDataContainer().set(levelKey, PersistentDataType.INTEGER, target);
-        meta.getPersistentDataContainer().set(failCountKey, PersistentDataType.INTEGER, 0);
         meta.lore(EquipmentLoreBuilder.from(meta)
                 .removePlainPrefix(LORE_PREFIX)
                 .add(Component.text(LORE_PREFIX + "+" + target + " | " + registry.getEffectName(profile)
@@ -196,8 +169,6 @@ public final class EquipmentEnhancementService {
                 meta.getPersistentDataContainer().set(levelKey, PersistentDataType.INTEGER,
                         Math.max(0, Math.min(newMaximum, oldLevel)));
             }
-            meta.getPersistentDataContainer().set(failCountKey, PersistentDataType.INTEGER,
-                    meta.getPersistentDataContainer().getOrDefault(failCountKey, PersistentDataType.INTEGER, 0));
             meta.getPersistentDataContainer().set(schemaKey, PersistentDataType.INTEGER, DATA_SCHEMA_VERSION);
         }
     }

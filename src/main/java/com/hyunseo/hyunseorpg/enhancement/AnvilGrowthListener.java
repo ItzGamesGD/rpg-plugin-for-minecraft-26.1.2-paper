@@ -34,7 +34,7 @@ public final class AnvilGrowthListener implements Listener {
                 return;
             }
             if (event.getClickedInventory() != top) return;
-            if (event.getRawSlot() == 11) guiService.openEnhancement(player);
+            if (event.getRawSlot() == 11) player.sendMessage(Component.text("강화는 바닐라 모루에서 진행합니다.", NamedTextColor.YELLOW));
             else if (event.getRawSlot() == 13) guiService.openPromotion(player);
             else if (event.getRawSlot() == 17) guiService.openRepair(player);
             else if (event.getRawSlot() == 15) player.sendMessage(Component.text("인챈트는 다음 단계에서 구현됩니다.", NamedTextColor.YELLOW));
