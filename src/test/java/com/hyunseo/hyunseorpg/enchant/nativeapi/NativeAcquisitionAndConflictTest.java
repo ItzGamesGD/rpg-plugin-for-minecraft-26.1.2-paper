@@ -3,9 +3,7 @@ package com.hyunseo.hyunseorpg.enchant.nativeapi;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,15 +38,11 @@ class NativeAcquisitionAndConflictTest {
         assertFalse(NativeEnchantDefinitions.conflicts("laser_arrow", "wind_arrow"));
     }
 
-    private Set<String> entries(String name) throws IOException { return entries("minecraft", name); }
+    private Set<String> entries(String name) throws IOException {
+        return DatapackJsonTestSupport.tagValues("minecraft", name);
+    }
+
     private Set<String> entries(String namespace, String name) throws IOException {
-        String path = "data/" + namespace + "/tags/enchantment/" + name + ".json";
-        try (var input = getClass().getClassLoader().getResourceAsStream(path)) {
-            assertNotNull(input, path);
-            String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            return NativeEnchantDefinitions.ALL.stream().map(d -> "hyunseorpg:" + d.id())
-                    .filter(key -> json.contains("\\\"" + key + "\\\""))
-                    .collect(Collectors.toSet());
-        }
+        return DatapackJsonTestSupport.tagValues(namespace, name);
     }
 }

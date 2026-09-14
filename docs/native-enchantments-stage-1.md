@@ -21,7 +21,7 @@ Acquisition is explicit and independent from enchanting weight/cost:
 - `minecraft:non_treasure`: the 21 common definitions.
 - `minecraft:treasure`: the 11 signature/active definitions.
 
-These additive (`replace: false`) native tag resources are bundled under `data/minecraft/tags/enchantment`. No structure loot listener or custom selection engine exists.
+These additive (`replace: false`) native tag resources live in the self-contained `datapack/data/...` root beside `datapack/pack.mcmeta`. During bootstrap, `LifecycleEvents.DATAPACK_DISCOVERY` resolves `/datapack` from the plugin JAR, calls `discoverPack(..., "native-enchantments")`, and sets `autoEnableOnServerStart(true)`. Paper builds the data-pack repository before the subsequent registry compose/data reload, so the item and exclusivity tags referenced by registry builders and the acquisition tags referencing the new enchantment keys participate in the same startup load. No external world datapack, structure loot listener, or custom selection engine exists.
 
 The co-applicable `wind_arrow` / `fire_arrow_rain` conflict group is also represented by `hyunseorpg:exclusive_set/bow_shift_left` and supplied to each registry builder with `exclusiveWith`. Other shared physical inputs belong to disjoint supported item sets and cannot coexist on one valid item. The legacy GUI check remains defense-in-depth.
 
@@ -41,7 +41,7 @@ Coin, Magic Stone, Upgrade Stone, Promotion, growth/enhancement/repair UI, Class
 
 ## LIVE VERIFICATION REQUIRED
 
-1. Boot Paper 26.1.2 with and without MythicMobs and confirm all commands/aliases and tab completion.
+1. Boot Paper 26.1.2 with and without MythicMobs; confirm the `HyunseoRPG/native-enchantments` pack is discovered/enabled and all commands/aliases complete.
 2. Reroll table candidates for every supported family; verify treasure entries never appear there.
 3. Reroll librarian offers and generate random enchanted loot; inspect native Hyunseo books/items.
 4. Apply a Hyunseo book with a vanilla enchant through a normal-player vanilla anvil and verify XP, repair, compatibility, and exclusivity.
