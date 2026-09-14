@@ -21,7 +21,6 @@ public record SpecialEquipmentData(
         Map<String, Integer> recipeInputs,
         int outputAmount,
         boolean finalGearMaterialAllowed,
-        boolean allowUpgrade,
         boolean allowVanillaEnchants,
         boolean allowCustomEnchants,
         boolean unbreakable,

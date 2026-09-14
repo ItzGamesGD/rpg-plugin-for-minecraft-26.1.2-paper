@@ -27,24 +27,8 @@ public final class EquipmentGrowthPolicy {
         return config.getEquipmentGrowthBoolean("equipment-registry." + itemId(item) + ".endgame", false);
     }
 
-    public boolean canEnhance(ItemStack item) {
-        return tiers.isSupported(item) && tiers.getMaxEnhancement(item) > 0
-                && !isEndgame(item) && special(item) == null;
-    }
-
-    public boolean canEnchant(ItemStack item) {
-        if (!tiers.isSupported(item) || isEndgame(item)) return false;
-        SpecialEquipmentData data = special(item);
-        return data == null || data.allowCustomEnchants();
-    }
-
     public boolean canRepair(ItemStack item) {
         return tiers.isSupported(item) && config.getBoolean("repair.enabled", true);
-    }
-
-    public String growthRestriction(ItemStack item) {
-        return isEndgame(item) ? "Endgame equipment cannot be enhanced."
-                : "Equipment cannot be enhanced.";
     }
 
     public String itemId(ItemStack item) {

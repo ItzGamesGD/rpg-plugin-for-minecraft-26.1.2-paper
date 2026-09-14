@@ -30,7 +30,6 @@ public final class ConfigService {
     private FileConfiguration questsConfig;
     private FileConfiguration skillsConfig;
     private FileConfiguration weaponsConfig;
-    private FileConfiguration equipmentOptionsConfig;
     private FileConfiguration itemsConfig;
     private FileConfiguration shopsConfig;
     private FileConfiguration equipmentGrowthConfig;
@@ -88,7 +87,6 @@ public final class ConfigService {
         // Lifestyle professions were removed from the active runtime. The field and
         // accessors remain as a compatibility facade for legacy source only; the
         // live professions.yml file is migrated to archive/legacy instead of loaded.
-        this.equipmentOptionsConfig = loadManagedConfig("equipment-options.yml");
         this.itemsConfig = loadManagedConfig("items.yml");
         this.shopsConfig = loadManagedConfig("shops.yml");
         this.equipmentGrowthConfig = loadManagedConfig("equipment-growth.yml");
@@ -552,21 +550,13 @@ public final class ConfigService {
         this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
     }
 
-    public Set<String> getEquipmentOptionsKeys(String path) {
-        return getKeys(equipmentOptionsConfig, path);
-    }
 
-    public ConfigurationSection getEquipmentOptionsSection(String path) {
-        return equipmentOptionsConfig.getConfigurationSection(path);
-    }
 
-    public String getEquipmentOptionsString(String path, String defaultValue) {
-        return equipmentOptionsConfig.getString(path, defaultValue);
-    }
 
-    public double getEquipmentOptionsDouble(String path, double defaultValue) {
-        return equipmentOptionsConfig.getDouble(path, defaultValue);
-    }
+
+
+
+
 
     public Set<String> getItemsKeys(String path) {
         return getKeys(itemsConfig, path);

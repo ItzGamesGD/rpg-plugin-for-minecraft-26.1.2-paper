@@ -49,7 +49,7 @@ public final class ConfigMigrationService {
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
             "items.yml", "shops.yml", "crafting.yml", "equipment-growth.yml",
-            "equipment-options.yml", "equipment-inputs.yml", "enchants.yml",
+            "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "bosses.yml", "hunting-grounds.yml",
             "progression-loop.yml", "quests.yml", "worlds.yml", "special-equipment.yml", "equipment-support.yml"
     );
@@ -1802,8 +1802,8 @@ public final class ConfigMigrationService {
                 growth = target.createSection(root + ".growth");
                 changed = true;
             }
-            if (!Boolean.FALSE.equals(growth.get("enhancement-enabled"))) {
-                growth.set("enhancement-enabled", false);
+            if (growth.isSet("enhancement-enabled")) {
+                growth.set("enhancement-enabled", null);
                 changed = true;
             }
             if (growth.isSet("promotion-enabled")) {
@@ -1868,7 +1868,6 @@ public final class ConfigMigrationService {
             lines.add("equipment-growth.yml: removed retired equipment promotion configuration");
             changed = true;
         }
-        changed |= normalizeEnhancementMaxLevel(target, defaults, lines);
         changed |= migrateStageTwoAnvilEnhancement(target, defaults, lines);
         if (target.getInt("schema-version", 0) < 2) {
             target.set("schema-version", 2);
@@ -1904,30 +1903,6 @@ public final class ConfigMigrationService {
     }
 
 
-
-    private boolean normalizeEnhancementMaxLevel(FileConfiguration target, FileConfiguration defaults,
-                                                  List<String> lines) {
-        int canonical = Math.max(1, defaults.getInt("enhancement.max-level", 50));
-        boolean changed = false;
-        if (target.getInt("enhancement.max-level", canonical) != canonical) {
-            target.set("enhancement.max-level", canonical);
-            lines.add("equipment-growth.yml: normalized enhancement.max-level -> " + canonical);
-            changed = true;
-        }
-        ConfigurationSection definitions = defaults.getConfigurationSection("tiers.definitions");
-        if (definitions != null) {
-            for (String tier : definitions.getKeys(false)) {
-                String path = "tiers.definitions." + tier + ".max-enhancement";
-                int expected = defaults.getInt(path, canonical);
-                if (target.getInt(path, expected) != expected) {
-                    target.set(path, expected);
-                    lines.add("equipment-growth.yml: normalized " + path + " -> " + expected);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
 
     private boolean migrateStageTwoAnvilEnhancement(FileConfiguration target, FileConfiguration defaults,
                                                      List<String> lines) {

@@ -3,16 +3,6 @@ migration-policy: KEEP_LEVEL
 
 # Equipment family and tier limits. Axes deliberately belong to TOOL.
 tiers:
-  definitions:
-    wooden: { max-enhancement: 50 }
-    stone: { max-enhancement: 50 }
-    gold: { max-enhancement: 50 }
-    iron: { max-enhancement: 50 }
-    diamond: { max-enhancement: 50 }
-    netherite: { max-enhancement: 50 }
-    custom_rare: { max-enhancement: 50 }
-    custom_legendary: { max-enhancement: 50 }
-    elytra: { max-enhancement: 50 }
   custom-item-tiers:
     basic_sword: iron
     basic_bow: iron
@@ -90,9 +80,7 @@ enhancement:
     tool:
       target: TOOL_EFFICIENCY
       operation: ADD
-      # With config.yml's 0.1 conversion this produces +3.25 block-break
-      # speed at +50. A diamond tool reaches vanilla Efficiency V's raw
-      # speed at the configured cap, at the configured cap.
+      # Tool growth uses the same category cap as every other enhancement profile.
       per-level: 0.65
       materials: [WOODEN_PICKAXE, STONE_PICKAXE, IRON_PICKAXE, GOLDEN_PICKAXE, DIAMOND_PICKAXE, NETHERITE_PICKAXE, WOODEN_AXE, STONE_AXE, IRON_AXE, GOLDEN_AXE, DIAMOND_AXE, NETHERITE_AXE, WOODEN_SHOVEL, STONE_SHOVEL, IRON_SHOVEL, GOLDEN_SHOVEL, DIAMOND_SHOVEL, NETHERITE_SHOVEL, WOODEN_HOE, STONE_HOE, IRON_HOE, GOLDEN_HOE, DIAMOND_HOE, NETHERITE_HOE]
       custom-item-ids: [basic_axe]

@@ -37,10 +37,8 @@ public final class AnvilGrowthListener implements Listener {
             else if (event.getRawSlot() == EquipmentGrowthGuiService.CLOSE_SLOT) player.closeInventory();
             return;
         }
-        boolean enhancement = top.getHolder() instanceof EnhancementInventoryHolder;
-        boolean enchant = top.getHolder() instanceof EnchantInventoryHolder;
         boolean repair = top.getHolder() instanceof RepairInventoryHolder;
-        if (!enhancement && !enchant && !repair) return;
+        if (!repair) return;
         if (unsafe(event.getClick()) || event.isShiftClick()) { event.setCancelled(true); return; }
         if (event.getClickedInventory() != top) return;
         int slot = event.getRawSlot();
@@ -51,9 +49,7 @@ public final class AnvilGrowthListener implements Listener {
         if (guiService.isInputSlot(slot)) { guiService.refreshLater(top); return; }
         event.setCancelled(true);
         if (slot == EquipmentGrowthGuiService.EXECUTE_SLOT) {
-            if (enhancement) guiService.enhance(player, top);
-            else if (enchant) player.sendMessage(Component.text("인챈트는 바닐라 모루에서 적용합니다.", NamedTextColor.YELLOW));
-            else guiService.repair(player, top);
+            guiService.repair(player, top);
         } else if (slot == EquipmentGrowthGuiService.BACK_SLOT) {
             guiService.returnInputs(player, top);
             guiService.openMain(player);
@@ -63,16 +59,14 @@ public final class AnvilGrowthListener implements Listener {
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
         Inventory top = event.getView().getTopInventory();
-        if (!(top.getHolder() instanceof EnhancementInventoryHolder) && !(top.getHolder() instanceof EnchantInventoryHolder)
-                && !(top.getHolder() instanceof RepairInventoryHolder)) return;
+        if (!(top.getHolder() instanceof RepairInventoryHolder)) return;
         if (event.getRawSlots().stream().anyMatch(slot -> slot < top.getSize() && !guiService.isInputSlot(slot))) event.setCancelled(true);
     }
 
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
-        if (event.getPlayer() instanceof Player player && (event.getInventory().getHolder() instanceof EnhancementInventoryHolder
-                || event.getInventory().getHolder() instanceof EnchantInventoryHolder
-                || event.getInventory().getHolder() instanceof RepairInventoryHolder)) {
+        if (event.getPlayer() instanceof Player player
+                && event.getInventory().getHolder() instanceof RepairInventoryHolder) {
             guiService.returnInputs(player, event.getInventory());
         }
     }

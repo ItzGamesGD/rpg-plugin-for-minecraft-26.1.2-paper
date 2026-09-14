@@ -19,8 +19,12 @@ Native vanilla and `hyunseorpg:*` enchantments remain ItemStack enchantments. Pr
 - Promotion sections in equipment growth/support/special-equipment configuration and their validators/migrations.
 - Promotion bonuses in combat, tools, durability, repair, and special-equipment calculations.
 - Promotion-based special-equipment requirements and custom-enchant slot metadata.
+- The dormant custom enhancement inventory and its direct item-mutation transaction; the vanilla anvil listener is now the only normal enhancement authority.
+- The unused `equipment-options.yml` registry/service/config surface and obsolete tier-specific `max-enhancement: 50` ceiling.
 
 Existing item PDC is not destructively rewritten: obsolete grade/star/option/slot fields are ignored. Equipment identity, enhancement level, durability, native enchantments, unrelated PDC, and special-equipment identity are preserved.
+
+`EnhancementClassificationService` is the sole enhancement-capability authority. The configured elemental IDs resolve to `ELEMENTAL` and max +40 even when their definitions are hosted by the special-equipment registry; dedicated weapons resolve to `SPECIAL`/`ENDGAME` and max 0. Special-equipment lore is derived from this same calculated maximum rather than a second `growth.enhancement-enabled` boolean.
 
 ## Live verification
 

@@ -63,7 +63,7 @@ public final class EnhancementRegistry {
     }
 
     public int getConfiguredMaximumLevel() {
-        return Math.max(1, configService.getEquipmentGrowthInt("enhancement.max-level", 50));
+        return Math.max(1, configService.getEquipmentGrowthInt("enhancement.max-level", 40));
     }
 
     public double getEffectValue(String profileId, int level) {
@@ -98,9 +98,6 @@ public final class EnhancementRegistry {
     /** Stage-2 compatibility methods: anvil enhancement is deterministic and coin-free. */
     public double getBaseSuccessChance(double normalizedProgress) { return 1.0D; }
     public double getCurrentSuccessChance(double normalizedProgress, int failCount) { return 1.0D; }
-    public double getFailureBonus() { return 0.0D; }
-    public int getCoinCost(double normalizedProgress) { return 0; }
-
     public String getRequiredStoneItemId() {
         return normalize(configService.getEquipmentGrowthString("enhancement.required-stone-item-id", "basic_upgrade_stone"));
     }

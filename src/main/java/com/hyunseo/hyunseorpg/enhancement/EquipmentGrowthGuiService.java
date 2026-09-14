@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.enhancement;
 
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -14,7 +13,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,7 +30,6 @@ public final class EquipmentGrowthGuiService {
     private final EquipmentEnhancementService enhancementService;
     private final Set<UUID> processing = ConcurrentHashMap.newKeySet();
     private EquipmentRepairService repairService;
-    private EquipmentGrowthPolicy growthPolicy;
     private EquipmentSupportGuiService supportService;
     private com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService;
 
@@ -42,7 +39,6 @@ public final class EquipmentGrowthGuiService {
     }
 
     public void setRepairService(EquipmentRepairService repairService) { this.repairService = repairService; }
-    public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) { this.growthPolicy = growthPolicy; }
     public void setSupportService(EquipmentSupportGuiService supportService) { this.supportService = supportService; }
     public void setShopGuiService(com.hyunseo.hyunseorpg.shop.ShopGuiService shopGuiService) { this.shopGuiService = shopGuiService; }
     public EquipmentSupportGuiService getSupportService() { return supportService; }
@@ -62,13 +58,6 @@ public final class EquipmentGrowthGuiService {
         player.openInventory(inventory);
     }
 
-    public void openEnhancement(Player player) {
-        EnhancementInventoryHolder holder = new EnhancementInventoryHolder();
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("장비 강화"));
-        holder.setInventory(inventory);
-        renderEnhancement(inventory);
-        player.openInventory(inventory);
-    }
 
     public void openRepair(Player player) {
         RepairInventoryHolder holder = new RepairInventoryHolder();
@@ -97,31 +86,8 @@ public final class EquipmentGrowthGuiService {
         }
     }
 
-    /** Legacy menu compatibility; normal enhancement is entered through a vanilla anvil. */
-    public void enhance(Player player, Inventory inventory) {
-        if (!processing.add(player.getUniqueId())) return;
-        try {
-            ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-            ItemStack stone = inventory.getItem(STONE_SLOT);
-            Optional<EnhancementLevelData> next = enhancementService.getNextLevel(equipment);
-            if (next.isEmpty() || stone == null || !enhancementService.isRequiredStone(stone)
-                    || stone.getAmount() < 1) {
-                player.sendMessage(Component.text("강화 가능한 장비와 강화석을 확인하세요.", NamedTextColor.RED));
-                return;
-            }
-            if (!consumeMaterial(inventory, STONE_SLOT, 1, "강화석")) return;
-            enhancementService.applySuccessfulEnhancement(equipment, next.get());
-            inventory.setItem(EQUIPMENT_SLOT, equipment);
-            player.sendMessage(Component.text("강화 성공: +" + next.get().level(), NamedTextColor.GREEN));
-        } finally {
-            renderEnhancement(inventory);
-            processing.remove(player.getUniqueId());
-        }
-    }
-
     public void refreshLater(Inventory inventory) {
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (inventory.getHolder() instanceof EnhancementInventoryHolder) renderEnhancement(inventory);
             if (inventory.getHolder() instanceof RepairInventoryHolder) renderRepair(inventory);
         });
     }
@@ -140,44 +106,13 @@ public final class EquipmentGrowthGuiService {
     public void returnOpenInputs() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (top.getHolder() instanceof EnhancementInventoryHolder
-                    || top.getHolder() instanceof RepairInventoryHolder) {
+            if (top.getHolder() instanceof RepairInventoryHolder) {
                 returnInputs(player, top);
                 player.closeInventory();
             }
         }
     }
 
-    private void renderEnhancement(Inventory inventory) {
-        ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
-        ItemStack stone = inventory.getItem(STONE_SLOT);
-        fill(inventory);
-        inventory.setItem(EQUIPMENT_SLOT, equipment);
-        inventory.setItem(STONE_SLOT, stone);
-        Optional<EnhancementLevelData> next = enhancementService.getNextLevel(equipment);
-        if (equipment != null && !equipment.getType().isAir() && growthPolicy != null) {
-            inventory.setItem(5, icon(Material.PAPER, "Equipment policy", List.of(
-                    "Enhancement: " + (growthPolicy.canEnhance(equipment) ? "available" : "unavailable"),
-                    "Current: +" + enhancementService.getLevel(equipment) + "/" + enhancementService.getMaximumLevel(equipment)
-            )));
-        }
-        inventory.setItem(4, icon(Material.BOOK, "강화 정보", next.map(rule -> List.of(
-                "현재 강화: +" + enhancementService.getLevel(equipment),
-                "다음 강화: +" + rule.level(),
-                "필요 강화석: " + rule.stoneCost(),
-                "필요 XP 레벨: " + enhancementService.getXpLevelCost(rule.level()),
-                "성공 확률: 100%"
-        )).orElse(List.of("강화 가능한 장비를 넣어주세요."))));
-        inventory.setItem(EXECUTE_SLOT, icon(Material.LIME_DYE, "강화 실행", next.map(rule -> List.of(
-                "다음 단계: +" + rule.level(),
-                "필요 강화석: " + rule.stoneCost(),
-                "필요 XP 레벨: " + enhancementService.getXpLevelCost(rule.level()),
-                "성공 확률: 100%",
-                "좌클릭으로 실행합니다."
-        )).orElse(List.of("강화 가능한 장비가 없습니다."))));
-        inventory.setItem(BACK_SLOT, icon(Material.ARROW, "뒤로", List.of()));
-        inventory.setItem(CLOSE_SLOT, icon(Material.BARRIER, "닫기", List.of()));
-    }
 
     private void renderRepair(Inventory inventory) {
         ItemStack equipment = inventory.getItem(EQUIPMENT_SLOT);
@@ -222,28 +157,6 @@ public final class EquipmentGrowthGuiService {
         return item;
     }
 
-    private boolean consumeMaterial(Inventory inventory, int slot, int amount, String materialName) {
-        if (amount <= 0) {
-            inventory.getViewers().forEach(viewer -> viewer.sendMessage(Component.text(
-                    materialName + " 비용 설정을 읽지 못했습니다. 관리자에게 설정을 확인해달라고 요청해주세요.", NamedTextColor.RED)));
-            return false;
-        }
-        ItemStack current = inventory.getItem(slot);
-        if (current == null || current.getAmount() < amount) {
-            return false;
-        }
-        int remaining = current.getAmount() - amount;
-        if (remaining <= 0) {
-            inventory.setItem(slot, null);
-        } else {
-            ItemStack updated = current.clone();
-            updated.setAmount(remaining);
-            inventory.setItem(slot, updated);
-        }
-        return true;
-    }
 
-    private String percent(double value) {
-        return String.format(java.util.Locale.ROOT, "%.1f%%", value * 100.0D);
-    }
+
 }

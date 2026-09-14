@@ -53,8 +53,6 @@ public final class EquipmentEnhancementService {
         return level == null ? 0 : Math.min(maximum, Math.max(0, level));
     }
 
-    public int getFailCount(ItemStack item) { return 0; }
-
     public int getDataSchemaVersion(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return 0;
         return item.getItemMeta().getPersistentDataContainer().getOrDefault(schemaKey, PersistentDataType.INTEGER, 0);
@@ -69,15 +67,7 @@ public final class EquipmentEnhancementService {
         return getProfileId(item).flatMap(profile -> registry.getNextLevel(profile, getLevel(item), getMaximumLevel(item)));
     }
 
-    public double getSuccessChance(ItemStack item, EnhancementLevelData nextLevel) { return 1.0D; }
-
-    public long getCoinCost(ItemStack item, EnhancementLevelData nextLevel) { return 0L; }
-
     public int getXpLevelCost(int targetLevel) { return registry.getXpLevelCost(targetLevel); }
-
-    public double getFailureBonus() {
-        return registry.getFailureBonus();
-    }
 
     public boolean isRequiredStone(ItemStack item) {
         return itemService.isItem(item, registry.getRequiredStoneItemId());
@@ -113,9 +103,6 @@ public final class EquipmentEnhancementService {
                 .map(profile -> registry.getEffectValue(profile, getLevel(item)))
                 .orElse(0.0D);
     }
-
-    /** Stage 2 is deterministic; retained only for binary/source compatibility with the dormant legacy GUI. */
-    public void recordFailure(ItemStack item) { }
 
     public void applySuccessfulEnhancement(ItemStack item, EnhancementLevelData nextLevel) {
         if (classification != null && !classification.classify(item).enhanceable()) return;

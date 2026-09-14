@@ -38,7 +38,7 @@ final class StructureSafetyDataTest {
         assertTrue(items != null && !items.getKeys(false).isEmpty());
         for (String id : items.getKeys(false)) {
             String root = "special-equipment.items." + id + ".growth";
-            assertFalse(special.getBoolean(root + ".enhancement-enabled", true), id);
+            assertFalse(special.isSet(root + ".enhancement-enabled"), id);
             assertFalse(special.isSet(root + ".promotion-enabled"), id);
             assertTrue(special.getBoolean(root + ".unbreakable", false), id);
             assertFalse(special.isConfigurationSection("special-equipment.items." + id + ".promotion"), id);

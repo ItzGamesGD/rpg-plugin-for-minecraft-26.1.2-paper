@@ -37,6 +37,7 @@ final class EquipmentPromotionRemovalArchitectureTest {
         assertFalse(crafting.contains("basic_promotion_stone"));
         assertFalse(crafting.contains("promotion_option_reroll_ticket"));
         assertFalse(support.contains("promotion-option-reroll:"));
+        assertFalse(Files.exists(ROOT.resolve("src/main/resources/equipment-options.yml")));
     }
 
     @Test
@@ -47,6 +48,34 @@ final class EquipmentPromotionRemovalArchitectureTest {
         assertTrue(growth.contains("required-stone-item-id: basic_upgrade_stone"));
         assertTrue(Files.exists(ROOT.resolve("src/main/resources/datapack/pack.mcmeta")));
         assertTrue(Files.exists(ROOT.resolve("src/main/java/com/hyunseo/hyunseorpg/enchant/nativeapi/HyunseoRPGPluginBootstrap.java")));
+    }
+
+    @Test
+    void hiddenCustomEnhancementTransactionIsRemoved() throws IOException {
+        Path enhancement = ROOT.resolve("src/main/java/com/hyunseo/hyunseorpg/enhancement");
+        assertFalse(Files.exists(enhancement.resolve("EnhancementInventoryHolder.java")));
+        assertFalse(Files.exists(ROOT.resolve(
+                "src/main/java/com/hyunseo/hyunseorpgenhancement/EnchantInventoryHolder.java")));
+        String gui = Files.readString(enhancement.resolve("EquipmentGrowthGuiService.java"));
+        String listener = Files.readString(enhancement.resolve("AnvilGrowthListener.java"));
+        assertFalse(gui.contains("openEnhancement("));
+        assertFalse(gui.contains("applySuccessfulEnhancement("));
+        assertFalse(listener.contains("guiService.enhance("));
+
+        Path sourceRoot = ROOT.resolve("src/main/java");
+        try (var sources = Files.walk(sourceRoot)) {
+            List<Path> unauthorized = sources.filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.endsWith("EquipmentEnhancementService.java"))
+                    .filter(path -> !path.endsWith("VanillaAnvilEnhancementListener.java"))
+                    .filter(path -> {
+                        try {
+                            return Files.readString(path).contains("applySuccessfulEnhancement(");
+                        } catch (IOException exception) {
+                            throw new IllegalStateException(exception);
+                        }
+                    }).toList();
+            assertTrue(unauthorized.isEmpty(), "alternate enhancement writers: " + unauthorized);
+        }
     }
 
     private String resource(String name) throws IOException {

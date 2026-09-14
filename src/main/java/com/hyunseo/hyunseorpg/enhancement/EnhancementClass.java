@@ -1,6 +1,6 @@
 package com.hyunseo.hyunseorpg.enhancement;
 
-/** Ordinary anvil-enhancement boundary; promotion and dedicated weapon growth are separate systems. */
+/** Canonical vanilla-anvil enhancement capability boundary. */
 public enum EnhancementClass {
     VANILLA(true, "enhancement.caps.vanilla", 30),
     ELEMENTAL(true, "enhancement.caps.elemental", 40),

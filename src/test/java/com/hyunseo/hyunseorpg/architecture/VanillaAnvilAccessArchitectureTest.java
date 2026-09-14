@@ -15,6 +15,7 @@ class VanillaAnvilAccessArchitectureTest {
         assertFalse(source.contains("setUseInteractedBlock"));
         assertTrue(source.contains("InventoryClickEvent"));
         assertTrue(source.contains("EquipmentGrowthMenuHolder"));
-        assertTrue(source.contains("EnhancementInventoryHolder"));
+        assertFalse(source.contains("EnhancementInventoryHolder"));
+        assertFalse(source.contains("guiService.enhance("));
     }
 }

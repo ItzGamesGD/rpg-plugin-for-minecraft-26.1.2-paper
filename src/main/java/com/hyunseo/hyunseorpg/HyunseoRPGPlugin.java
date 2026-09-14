@@ -54,8 +54,6 @@ import com.hyunseo.hyunseorpg.enchant.EnchantRuntimeStateService;
 import com.hyunseo.hyunseorpg.enchant.EquipmentEnchantContentService;
 import com.hyunseo.hyunseorpg.equipment.trigger.EquipmentEffectTriggerEngine;
 import com.hyunseo.hyunseorpg.equipment.trigger.EquipmentEffectTriggerListener;
-import com.hyunseo.hyunseorpg.equipment.EquipmentOptionRegistry;
-import com.hyunseo.hyunseorpg.equipment.EquipmentOptionService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.equipment.EquipmentActualEffectListener;
@@ -327,8 +325,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private CropQualityService cropQualityService;
     private HoeHarvestModifierService hoeHarvestModifierService;
     private ToolDurabilityService toolDurabilityService;
-    private EquipmentOptionRegistry equipmentOptionRegistry;
-    private EquipmentOptionService equipmentOptionService;
     private EnhancementRegistry enhancementRegistry;
     private EquipmentEnhancementService equipmentEnhancementService;
     private EnhancementClassificationService enhancementClassificationService;
@@ -453,9 +449,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         } catch (SQLException exception) {
             throw new IllegalStateException("광부 설치 광석 저장소를 초기화할 수 없습니다.", exception);
         }
-        this.equipmentOptionRegistry = new EquipmentOptionRegistry(configService);
-        this.equipmentOptionRegistry.load();
-        this.equipmentOptionService = new EquipmentOptionService(this, configService, equipmentOptionRegistry);
         this.coinService = new CoinService(playerDataService);
         this.pendingRewardService = new PendingRewardService(this, coinService);
         this.inventoryDeliveryService.setPendingRewardService(pendingRewardService);
@@ -536,7 +529,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 equipmentGrowthPolicy, equipmentEnhancementService);
         this.equipmentGrowthGuiService = new EquipmentGrowthGuiService(this, equipmentEnhancementService);
         this.equipmentGrowthGuiService.setRepairService(equipmentRepairService);
-        this.equipmentGrowthGuiService.setGrowthPolicy(equipmentGrowthPolicy);
         this.coinDisplayTask = new CoinDisplayTask(this, configService, coinService, abundancePointService);
         this.shopRegistry = new ShopRegistry(configService, itemService, getLogger());
         this.shopRegistry.load();

@@ -1,6 +1,0 @@
-# Data-only first stage. Options are persisted on equipment PDC now; effect
-# application is connected to CombatService and StatService in a later project.
-settings:
-  default-option-slots: 3
-
-options: {}

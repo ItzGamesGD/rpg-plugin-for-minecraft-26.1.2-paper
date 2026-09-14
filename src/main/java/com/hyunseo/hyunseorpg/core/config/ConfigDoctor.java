@@ -40,7 +40,7 @@ public final class ConfigDoctor {
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
             "items.yml", "shops.yml", "crafting.yml", "equipment-growth.yml",
-            "equipment-options.yml", "equipment-inputs.yml", "enchants.yml",
+            "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "bosses.yml",
             "progression-loop.yml", "quests.yml", "special-equipment.yml", "equipment-support.yml"
             , "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",

@@ -123,9 +123,10 @@ public final class SpecialEquipmentService {
                     "hyunseorpg_moonlit_afterglow_speed", attackSpeed - 1.6D,
                     AttributeModifier.Operation.ADD_NUMBER, EquipmentSlot.HAND));
         }
+        int enhancementCap = enhancement.getMaximumLevel(item);
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta)
                 .add(Component.text("Special equipment: " + data.element(), NamedTextColor.LIGHT_PURPLE))
-                .add(Component.text("Enhancement: unavailable", NamedTextColor.GRAY))
+                .add(Component.text(enhancementCapabilityText(enhancementCap), NamedTextColor.GRAY))
                 .add(Component.text("Custom enchantment: " + (data.allowCustomEnchants() ? "available" : "unavailable"), NamedTextColor.AQUA))
                 .add(Component.text("Final equipment material: " + (data.finalGearMaterialAllowed() ? "allowed" : "not allowed"), NamedTextColor.GRAY));
         data.abilities().values().forEach(ability -> lore
@@ -137,6 +138,12 @@ public final class SpecialEquipmentService {
         item.setItemMeta(meta);
         ensureRuntimeComponents(item);
         return item;
+    }
+
+    static String enhancementCapabilityText(int maximumLevel) {
+        return maximumLevel > 0
+                ? "Enhancement: available (max +" + maximumLevel + ")"
+                : "Enhancement: unavailable";
     }
 
     /** Normalizes legacy identities and use components on both new and pre-existing special items. */

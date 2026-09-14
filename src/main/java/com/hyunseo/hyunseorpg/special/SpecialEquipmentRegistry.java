@@ -49,7 +49,6 @@ public final class SpecialEquipmentRegistry {
                     readIntMap(crafting == null ? null : crafting.getConfigurationSection("inputs")),
                     crafting == null ? 1 : crafting.getInt("amount", 1),
                     section.getBoolean("final-gear-material-allowed", false),
-                    growth != null && growth.getBoolean("enhancement-enabled", false),
                     growth == null || growth.getBoolean("allow-vanilla-enchants", false),
                     allowCustomEnchants,
                     growth != null && growth.getBoolean("unbreakable", true),

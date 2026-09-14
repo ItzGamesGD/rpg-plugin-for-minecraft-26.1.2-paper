@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,9 +51,7 @@ final class EquipmentGrowthDataTest {
         assertEquals(40, growth.getInt("enhancement.max-level"));
         assertEquals(30, growth.getInt("enhancement.caps.vanilla"));
         assertEquals(40, growth.getInt("enhancement.caps.elemental"));
-        for (String tier : Set.of("wooden", "stone", "gold", "iron", "diamond", "netherite")) {
-            assertTrue(growth.getInt("tiers.definitions." + tier + ".max-enhancement") >= 30, tier);
-        }
+        assertFalse(growth.isConfigurationSection("tiers.definitions"));
     }
 
 
