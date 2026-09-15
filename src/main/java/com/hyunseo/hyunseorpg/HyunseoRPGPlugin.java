@@ -458,12 +458,24 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 mobService, expService, mobDropService,
                 mythicMobIntegrationService);
 
+        this.explorationModule = new ExplorationModule(this,
+                BukkitExplorationPorts.compose(
+                        this,
+                        ExistingHyunseoRpgAdapters.mobPort(mobService),
+                        ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
+                        ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
+                null);
+
         this.gatewayPrototypeService = new GatewayPrototypeService(this, configService);
 
         configureReloadService();
+        reloadService.register("exploration", explorationModule::reload);
 
         registerCommandsSafe();
         registerListeners();
+        if (!explorationModule.start()) {
+            getLogger().severe("Exploration module failed to start; keeping it disabled for this boot.");
+        }
         loadCurrentlyOnlinePlayers();
         cropGrowthService.start();
         playerDataService.startAutosave();
@@ -522,6 +534,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (monsterBehaviorService != null) {
             monsterBehaviorService.stop();
+        }
+        if (explorationModule != null) {
+            explorationModule.stop();
         }
         if (playerDataService != null) {
             playerDataService.stopAutosave();
@@ -635,6 +650,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setPotionFactory(potionFactory);
         give.setSpecialEquipmentService(specialEquipmentService);
         give.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
+        give.setExplorationModule(explorationModule);
 
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
                 weaponItemService, equipmentEnhancementService,
@@ -852,7 +868,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         farmingStatTokenService.load();
         favorService.load();
         boolean deliveriesOk = deliveryRegistry.load();
-        configService.reloadQuestsConfig();
         itemRegistry.load();
         cropQualityService.load();
         equipmentRegistry.load();
@@ -869,7 +884,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         mobSpawnZoneRegistry.load();
         configService.reloadGatewayBossConfig();
         mobDropRegistry.load();
-        questRegistry.load();
         java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
         boolean effectsOk = effectService.validateReload();
         boolean potionsOk = effectsOk && potionRegistry.reload();

@@ -105,7 +105,6 @@ items:
   elite_zombie_core: { material: ECHO_SHARD, display-name: "엘리트 좀비 코어", category: MATERIAL, custom-model-data: 22002 }
   forest_fang: { material: BONE, display-name: "숲 늑대 송곳니", category: MATERIAL, custom-model-data: 22003 }
   guard_bone: { material: BONE, display-name: "경비병의 뼈", category: MATERIAL, custom-model-data: 22004 }
-  skeleton_king_sigil: { material: PAPER, display-name: "스켈레톤 킹 인장", category: QUEST, rarity: EPIC, custom-model-data: 22005 }
   basic_upgrade_stone: { material: AMETHYST_SHARD, display-name: "기본 강화석", category: ENHANCEMENT, custom-model-data: 22100 }
   enchant_book_blade_throw:
     material: ENCHANTED_BOOK

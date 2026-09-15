@@ -5,7 +5,6 @@ public enum RequirementType {
     ITEM,
     MOB_KILL,
     BOSS_KILL,
-    QUEST_COMPLETE,
     WORLD_VISIT,
     WORLD_CLEAR,
     PROGRESSION_FLAG

@@ -720,14 +720,6 @@ drop-tables:
         chance: 0.3
         min-amount: 1
         max-amount: 2
-  skeleton_king:
-    entries:
-      - item-id: skeleton_king_sigil
-        material: PAPER
-        display-name: Skeleton King Sigil
-        chance: 1.0
-        min-amount: 1
-        max-amount: 1
 mob-definitions:
   forest_wolf:
     display-name: Forest Wolf

@@ -26,7 +26,6 @@ public final class RequirementChecker {
         PlayerRPGData data = playerDataService.getOrLoad(player);
         return switch (requirement.type()) {
             case LEVEL -> data.getBaseLevel() >= requirement.amount();
-            case QUEST_COMPLETE -> data.hasCompletedQuest(requirement.target());
             case WORLD_VISIT -> data.hasVisitedWorld(requirement.target());
             case WORLD_CLEAR -> data.hasClearedWorld(requirement.target());
             case PROGRESSION_FLAG -> data.hasProgressionFlag(requirement.target());

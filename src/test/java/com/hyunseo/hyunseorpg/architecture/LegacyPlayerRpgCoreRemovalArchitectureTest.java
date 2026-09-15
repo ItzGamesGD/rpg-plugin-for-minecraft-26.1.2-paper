@@ -60,6 +60,19 @@ class LegacyPlayerRpgCoreRemovalArchitectureTest {
     }
 
     @Test
+    void questRuntimeIsAbsentWhileWorldExplorationRemainsWired() throws IOException {
+        String plugin = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/HyunseoRPGPlugin.java"));
+        for (String removed : List.of("QuestRegistry", "QuestService", "AutoQuestService",
+                "QuestProgressListener", "reloadQuestsConfig", "questRegistry")) {
+            assertFalse(plugin.contains(removed));
+        }
+        assertTrue(plugin.contains("new ExplorationModule("));
+        assertTrue(plugin.contains("explorationModule::reload"));
+        assertTrue(plugin.contains("explorationModule.start()"));
+        assertTrue(plugin.contains("explorationModule.stop()"));
+    }
+
+    @Test
     void rpgLevelDataAndPersistenceRemainActive() throws IOException {
         String data = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/player/PlayerRPGData.java"));
         String repository = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/player/YamlPlayerDataRepository.java"));
