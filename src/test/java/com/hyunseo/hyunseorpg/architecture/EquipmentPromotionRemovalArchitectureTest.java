@@ -22,6 +22,8 @@ final class EquipmentPromotionRemovalArchitectureTest {
         String plugin = Files.readString(ROOT.resolve("src/main/java/com/hyunseo/hyunseorpg/HyunseoRPGPlugin.java"));
         assertFalse(plugin.contains("EquipmentPromotionService"));
         assertFalse(plugin.contains("PromotionInventoryHolder"));
+        assertFalse(plugin.contains("equipmentOptionRegistry"));
+        assertFalse(plugin.contains("EquipmentOptionRegistry"));
     }
 
     @Test

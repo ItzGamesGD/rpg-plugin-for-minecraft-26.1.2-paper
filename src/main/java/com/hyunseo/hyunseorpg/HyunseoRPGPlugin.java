@@ -1220,7 +1220,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         itemRegistry.load();
         cropQualityService.load();
         equipmentRegistry.load();
-        equipmentOptionRegistry.load();
         enchantRegistry.load();
         configService.reloadSpecialEquipmentConfig();
         specialEquipmentRegistry.load();
