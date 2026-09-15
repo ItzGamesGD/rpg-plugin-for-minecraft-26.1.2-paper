@@ -13,7 +13,6 @@ mobs:
     level: 1
     category: starter
     exp-reward: 5
-    class-exp-reward: 0
     boss: false
     elite: false
     drops:
@@ -28,7 +27,6 @@ mobs:
     level: 1
     category: starter
     exp-reward: 6
-    class-exp-reward: 0
     boss: false
     elite: false
     drops:
@@ -49,7 +47,6 @@ mobs:
     boss: false
     tags: [frost, ranged]
     exp-reward: 24
-    class-exp-reward: 8
     stats:
       max-health: 40.0
       attack-damage: 3.0
@@ -103,7 +100,6 @@ mobs:
     boss: false
     tags: [elite, ranged]
     exp-reward: 40
-    class-exp-reward: 12
     stats:
       max-health: 60.0
       attack-damage: 5.0
@@ -146,7 +142,6 @@ mobs:
     boss: false
     tags: [elite, melee]
     exp-reward: 48
-    class-exp-reward: 14
     stats:
       max-health: 70.0
       attack-damage: 7.0

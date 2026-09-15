@@ -14,6 +14,7 @@ import com.hyunseo.hyunseorpg.equipment.trigger.TriggerType;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
 import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBladeService;
+import com.hyunseo.hyunseorpg.skill.bowmaster.BowmasterSkillService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.attribute.Attribute;
@@ -123,6 +124,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     private final RPGItemService items;
     private final CooldownService cooldowns;
     private final SwordmasterBladeService swordmasterBlades;
+    private final BowmasterSkillService bowAbilities;
     private final ActivityBlockRewardValidator blockRewards;
     private final NamespacedKey projectileEnchantKey;
     private final NamespacedKey projectileOwnerKey;
@@ -147,6 +149,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
                                           EquipmentTierService tiers, RPGItemService items,
                                           CooldownService cooldowns,
                                           SwordmasterBladeService swordmasterBlades,
+                                          BowmasterSkillService bowAbilities,
                                           ActivityBlockRewardValidator blockRewards) {
         this.plugin = plugin;
         this.config = config;
@@ -158,6 +161,7 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         this.items = items;
         this.cooldowns = cooldowns;
         this.swordmasterBlades = swordmasterBlades;
+        this.bowAbilities = bowAbilities;
         this.blockRewards = blockRewards;
         this.projectileEnchantKey = new NamespacedKey(plugin, "enchant_content_id");
         this.projectileOwnerKey = new NamespacedKey(plugin, "enchant_content_owner");
@@ -170,6 +174,9 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
     public EquipmentEffectResult handle(TriggerContext context, EnchantData enchant) {
         return switch (enchant.enchantId()) {
             case "blade_chain" -> handleBladeChain(context, enchant);
+            case "light_greatsword" -> handleLightGreatsword(context, enchant);
+            case "laser_arrow" -> handleLaserArrow(context, enchant);
+            case "fire_arrow_rain" -> handleFireArrowRain(context, enchant);
             case "axe_heavy_strike" -> handleAxeHeavyStrike(context, enchant);
             case "titans_wrath" -> handleTitansWrath(context, enchant);
             case "skill_protection" -> handleArmorProtection(context);
@@ -224,6 +231,33 @@ public final class EquipmentEnchantContentService implements EquipmentEffectHand
         if (!swordmasterBlades.canCastBladeThrow(player, level)) return EquipmentEffectResult.CONDITION_NOT_MET;
         swordmasterBlades.castBladeThrow(player, level);
         return EquipmentEffectResult.EXECUTED;
+    }
+
+    private EquipmentEffectResult handleLightGreatsword(TriggerContext context, EnchantData enchant) {
+        if (context.triggerType() != TriggerType.INPUT || context.triggeringItem() == null) {
+            return EquipmentEffectResult.CONDITION_NOT_MET;
+        }
+        swordmasterBlades.castLightGreatsword(context.player(),
+                Math.max(1, getLevel(context.triggeringItem(), enchant.enchantId())));
+        return EquipmentEffectResult.EXECUTED;
+    }
+
+    private EquipmentEffectResult handleLaserArrow(TriggerContext context, EnchantData enchant) {
+        if (context.triggerType() != TriggerType.INPUT || context.triggeringItem() == null) {
+            return EquipmentEffectResult.CONDITION_NOT_MET;
+        }
+        bowAbilities.castLaserArrow(context.player(),
+                Math.max(1, getLevel(context.triggeringItem(), enchant.enchantId())));
+        return EquipmentEffectResult.EXECUTED;
+    }
+
+    private EquipmentEffectResult handleFireArrowRain(TriggerContext context, EnchantData enchant) {
+        if (context.triggerType() != TriggerType.INPUT || context.triggeringItem() == null) {
+            return EquipmentEffectResult.CONDITION_NOT_MET;
+        }
+        int level = Math.max(1, getLevel(context.triggeringItem(), enchant.enchantId()));
+        return bowAbilities.castArrowRain(context.player(), level)
+                ? EquipmentEffectResult.EXECUTED : EquipmentEffectResult.CONDITION_NOT_MET;
     }
 
     private EquipmentEffectResult handleAxeHeavyStrike(TriggerContext context, EnchantData enchant) {

@@ -36,9 +36,6 @@ final class CraftingCanonicalRecipeStructureTest {
     }
 
     @Test
-
-
-    @Test
     void onionProcessingTraceMatchesCanonicalRecipeContract() {
         YamlConfiguration crafting = load("crafting.yml");
         assertEquals("materials", crafting.getString("crafting-recipes.process_onion_normal.category"));

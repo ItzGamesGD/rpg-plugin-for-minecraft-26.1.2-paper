@@ -2,6 +2,8 @@ package com.hyunseo.hyunseorpg.skill;
 
 import com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
+import com.hyunseo.hyunseorpg.equipment.trigger.EquipmentEffectTriggerEngine;
+import com.hyunseo.hyunseorpg.enchant.EnchantService;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -31,7 +33,8 @@ public final class SkillInputListener implements Listener {
     private static final long SUPPRESS_LEFT_AFTER_DROP_MILLIS = 180L;
 
     private final JavaPlugin plugin;
-    private final SkillService skillService;
+    private final EquipmentEffectTriggerEngine equipmentEffects;
+    private final EnchantService enchantService;
     private final EquipmentInstanceService equipmentInstances;
     private final PaperAlchemyCombatAdapter alchemyCombat;
     private final Predicate<ItemStack> dedicatedInputOwner;
@@ -41,10 +44,12 @@ public final class SkillInputListener implements Listener {
     private final java.util.Set<UUID> sneakingPlayers = new java.util.HashSet<>();
     private final Map<UUID, Boolean> groundedByPlayer = new HashMap<>();
 
-    public SkillInputListener(JavaPlugin plugin, SkillService skillService, EquipmentInstanceService equipmentInstances,
+    public SkillInputListener(JavaPlugin plugin, EquipmentEffectTriggerEngine equipmentEffects,
+                              EnchantService enchantService, EquipmentInstanceService equipmentInstances,
                               PaperAlchemyCombatAdapter alchemyCombat, Predicate<ItemStack> dedicatedInputOwner) {
         this.plugin = plugin;
-        this.skillService = skillService;
+        this.equipmentEffects = equipmentEffects;
+        this.enchantService = enchantService;
         this.equipmentInstances = equipmentInstances;
         this.alchemyCombat = alchemyCombat;
         this.dedicatedInputOwner = dedicatedInputOwner == null ? item -> false : dedicatedInputOwner;
@@ -53,16 +58,11 @@ public final class SkillInputListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onSwapHandItems(PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
-        // Shift+F belongs to the integrated menu and must never be consumed by combat inputs.
         if (player.isSneaking()) return;
         if (dedicatedInputOwner.test(player.getInventory().getItemInMainHand())) return;
 
         SkillInputResult result = processInputResult(player, SkillInputType.OFFHAND_QUICK, null);
-        if (!result.accepted() && !skillService.shouldCancelVanillaActionForInput(player, SkillInputType.OFFHAND_QUICK)) {
-            return;
-        }
-        if (result.cancelVanillaAction()
-                || skillService.shouldCancelVanillaActionForInput(player, SkillInputType.OFFHAND_QUICK)) {
+        if (result.cancelVanillaAction()) {
             event.setCancelled(true);
         }
     }
@@ -109,8 +109,7 @@ public final class SkillInputListener implements Listener {
         }
 
         SkillInputType inputType = leftClickInput(player);
-        if (skillService.shouldCancelVanillaActionForInput(player, inputType)) {
-            processInput(player, inputType);
+        if (processInput(player, inputType)) {
             event.setCancelled(true);
         }
     }
@@ -163,7 +162,7 @@ public final class SkillInputListener implements Listener {
 
     private boolean isProtectedWeapon(ItemStack item) {
         if (plugin.getConfig().getBoolean("item-drop-protection.enabled", true)
-                && skillService.isInputEquipment(item)) return true;
+                && enchantService.hasInputBinding(item)) return true;
         if (!plugin.getConfig().getBoolean("item-drop-protection.protect-tools", false)) return false;
         if (item == null || item.getType().isAir()) return false;
         return switch (item.getType()) {
@@ -205,7 +204,6 @@ public final class SkillInputListener implements Listener {
         if (!player.isSneaking() || !wasGrounded || !rising) {
             return;
         }
-        if (!skillService.shouldCancelVanillaActionForInput(player, SkillInputType.SHIFT_JUMP)) return;
         processInput(player, SkillInputType.SHIFT_JUMP);
     }
 
@@ -241,17 +239,10 @@ public final class SkillInputListener implements Listener {
         }
 
         if (isDuplicateInput(player, inputType, triggeringItem)) {
-            return SkillInputResult.accepted(skillService.shouldCancelVanillaActionForInput(player, inputType));
+            return SkillInputResult.accepted(enchantService.hasInputBinding(ownedInput));
         }
 
-        SkillInputResult result = triggeringItem == null
-                ? skillService.handleInput(player, inputType)
-                : skillService.handleInput(player, inputType, triggeringItem);
-        long suppressLeftMillis = skillService.getPostInputLeftSuppressMillis(player, inputType);
-        if (suppressLeftMillis > 0L) {
-            suppressLeftInputUntilByPlayer.put(player.getUniqueId(), System.currentTimeMillis() + suppressLeftMillis);
-        }
-        return result;
+        return equipmentEffects.triggerInput(player, inputType, ownedInput);
     }
 
     private SkillInputType leftClickInput(Player player) {

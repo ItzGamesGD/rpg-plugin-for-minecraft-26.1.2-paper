@@ -1,32 +1,14 @@
 base-level:
   max-level: 100
-  stat-points-per-level: 1
   sync-vanilla-exp-bar: true
-  # Balance pending: keep the existing curve until playtest timing is measured.
+  # RPG Level is intentionally retained in Phase 5; its curve is unchanged.
   required-exp-multiplier: 1.0
 
-class-level:
-  max-level: 100
-  skill-points-per-level: 1
-  class-stat-points-per-level: 1
-
 # If a level is listed here, this exact value is used.
-# Otherwise ExpTable uses a Minecraft-like scaling formula:
-# level <= 16: 2 * level + 7
-# level <= 31: 5 * level - 38
-# level >= 32: 9 * level - 158
+# Otherwise ExpTable uses the existing Minecraft-like scaling formula.
 base-exp-required:
   1: 9
   2: 11
   3: 13
   4: 15
   5: 17
-
-# If a level is listed here, this exact value is used.
-# Otherwise class exp uses: 20 + currentLevel * 10
-class-exp-required:
-  1: 30
-  2: 40
-  3: 50
-  4: 60
-  5: 70

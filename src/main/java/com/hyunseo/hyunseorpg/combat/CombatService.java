@@ -1,7 +1,5 @@
 package com.hyunseo.hyunseorpg.combat;
 
-import com.hyunseo.hyunseorpg.stat.StatService;
-import com.hyunseo.hyunseorpg.stat.StatType;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
@@ -12,14 +10,9 @@ import org.bukkit.inventory.ItemStack;
 public final class CombatService {
     private final ThreadLocal<Boolean> internalDamage = ThreadLocal.withInitial(() -> false);
     private final ThreadLocal<DamageContext> activeDamageContext = new ThreadLocal<>();
-    private StatService statService;
     private EquipmentEnhancementService equipmentEnhancementService;
     private EquipmentTierService equipmentTierService;
     private ConfigService configService;
-
-    public void setStatService(StatService statService) {
-        this.statService = statService;
-    }
 
     public void setEquipmentEnhancementService(EquipmentEnhancementService equipmentEnhancementService) {
         this.equipmentEnhancementService = equipmentEnhancementService;
@@ -102,15 +95,6 @@ public final class CombatService {
                                         boolean includeAttackerAttackStat, boolean legacySkillMultiplier) {
         Player attacker = context.sourcePlayer();
         double finalDamage = context.baseDamage();
-        if (statService != null) {
-            if (includeAttackerAttackStat) {
-                finalDamage += statService.getEffectiveStat(attacker, StatType.ATTACK);
-            }
-            if (target instanceof Player targetPlayer) {
-                double reduction = Math.min(0.9D, statService.getEffectiveStat(targetPlayer, StatType.DAMAGE_REDUCTION));
-                finalDamage *= Math.max(0.0D, 1.0D - reduction);
-            }
-        }
         if (target instanceof Player targetPlayer && equipmentEnhancementService != null) {
             double equipmentReduction = 0.0D;
             for (org.bukkit.inventory.ItemStack armor : targetPlayer.getInventory().getArmorContents()) {

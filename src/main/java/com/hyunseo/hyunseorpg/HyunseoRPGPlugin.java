@@ -1,22 +1,12 @@
 package com.hyunseo.hyunseorpg;
 
-import com.hyunseo.hyunseorpg.classsystem.ClassStatRegistry;
-import com.hyunseo.hyunseorpg.classsystem.ClassStatService;
-import com.hyunseo.hyunseorpg.classsystem.ClassService;
-import com.hyunseo.hyunseorpg.classsystem.ClassWeaponService;
-import com.hyunseo.hyunseorpg.command.ClassResetCommand;
-import com.hyunseo.hyunseorpg.command.ClassSelectCommand;
 import com.hyunseo.hyunseorpg.command.RPGGiveCommand;
 import com.hyunseo.hyunseorpg.command.RPGTestCommand;
 import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
 import com.hyunseo.hyunseorpg.rpgtest.gateway.GatewayPrototypeService;
-import com.hyunseo.hyunseorpg.command.WeaponProficiencyCommand;
-import com.hyunseo.hyunseorpg.command.RPGCooldownCommand;
 import com.hyunseo.hyunseorpg.command.RPGLevelAdminCommand;
 import com.hyunseo.hyunseorpg.command.RPGMobCommand;
 import com.hyunseo.hyunseorpg.command.RPGQuestCommand;
-import com.hyunseo.hyunseorpg.command.RPGStatAdminCommand;
-import com.hyunseo.hyunseorpg.command.RPGStatBalanceCommand;
 import com.hyunseo.hyunseorpg.command.SpecialEquipmentCommand;
 import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigDoctor;
@@ -47,10 +37,6 @@ import com.hyunseo.hyunseorpg.exp.ExpService;
 import com.hyunseo.hyunseorpg.exp.ExpTable;
 import com.hyunseo.hyunseorpg.exp.LevelPlayerListener;
 import com.hyunseo.hyunseorpg.exp.LevelService;
-import com.hyunseo.hyunseorpg.mana.ManaBossBarService;
-import com.hyunseo.hyunseorpg.mana.ManaPlayerListener;
-import com.hyunseo.hyunseorpg.mana.ManaRegenTask;
-import com.hyunseo.hyunseorpg.mana.ManaService;
 import com.hyunseo.hyunseorpg.item.RPGItemRegistry;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
@@ -150,12 +136,7 @@ import com.hyunseo.hyunseorpg.crafting.SoulboundItemService;
 import com.hyunseo.hyunseorpg.skill.CooldownCleanupListener;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
 import com.hyunseo.hyunseorpg.skill.SkillInputListener;
-import com.hyunseo.hyunseorpg.skill.SkillRegistry;
-import com.hyunseo.hyunseorpg.skill.SkillStatService;
-import com.hyunseo.hyunseorpg.skill.SkillService;
 import com.hyunseo.hyunseorpg.skill.bowmaster.BowmasterSkillService;
-import com.hyunseo.hyunseorpg.skill.lancer.LancerSkillService;
-import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBasicAttackListener;
 import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBladeService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentEffectListener;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentProgressListener;
@@ -168,12 +149,6 @@ import com.hyunseo.hyunseorpg.special.thanatos.ThanatosMaceListener;
 import com.hyunseo.hyunseorpg.special.thunder.ThunderAxeListener;
 import com.hyunseo.hyunseorpg.special.solaris.SolarisListener;
 import com.hyunseo.hyunseorpg.special.moonlit.MoonlitAfterglowListener;
-import com.hyunseo.hyunseorpg.stat.StatCalculator;
-import com.hyunseo.hyunseorpg.stat.StatModifierCleanupListener;
-import com.hyunseo.hyunseorpg.stat.StatModifierService;
-import com.hyunseo.hyunseorpg.stat.StatService;
-import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyListener;
-import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyService;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
 import com.hyunseo.hyunseorpg.weapon.WeaponItemService;
 import org.bukkit.command.CommandExecutor;
@@ -190,7 +165,6 @@ import java.sql.SQLException;
 public final class HyunseoRPGPlugin extends JavaPlugin {
     private ConfigService configService;
     private WeaponService weaponService;
-    private WeaponProficiencyService weaponProficiencyService;
     private WeaponItemService weaponItemService;
     private RPGItemRegistry itemRegistry;
     private RPGItemService itemService;
@@ -200,10 +174,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private PlayerDiscoveryService playerDiscoveryService;
     private ContentAvailabilityService contentAvailabilityService;
     private RPGReloadService reloadService;
-    private ClassWeaponService classWeaponService;
-    private ClassService classService;
-    private ClassStatRegistry classStatRegistry;
-    private ClassStatService classStatService;
     private PlayerDataRepository playerDataRepository;
     private PlayerDataCache playerDataCache;
     private PlayerDataService playerDataService;
@@ -212,20 +182,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private QuestRegistry questRegistry;
     private QuestService questService;
     private AutoQuestService autoQuestService;
-    private ManaBossBarService manaBossBarService;
-    private ManaService manaService;
-    private ManaRegenTask manaRegenTask;
-    private StatCalculator statCalculator;
-    private StatModifierService statModifierService;
-    private StatService statService;
-    private SkillStatService skillStatService;
     private CombatService combatService;
     private CooldownService cooldownService;
-    private SkillRegistry skillRegistry;
     private SwordmasterBladeService swordmasterBladeService;
-    private BowmasterSkillService bowmasterSkillService;
-    private LancerSkillService lancerSkillService;
-    private SkillService skillService;
     private ExpTable expTable;
     private LevelService levelService;
     private ExpService expService;
@@ -354,7 +313,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.naturalDiscoveryService = new NaturalDiscoveryService(this, configService, playerDataService, itemService);
         this.inventoryDeliveryService.setDeliveryObserver(naturalDiscoveryService::discoverDeliveredItem);
         this.weaponService = new WeaponService(this);
-        this.weaponProficiencyService = new WeaponProficiencyService(configService, playerDataService);
         this.weaponItemService = new WeaponItemService(configService, weaponService, itemService);
         this.soulboundItemService = new SoulboundItemService(this, itemService);
         this.craftingRecipeRegistry = new CraftingRecipeRegistry(configService, itemService);
@@ -437,28 +395,14 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.specialEquipmentService.setCraftingTransactionService(craftingTransactionService, craftingRecipeRegistry);
         this.requirementChecker = new RequirementChecker(playerDataService);
         this.dimensionVisitTracker = new DimensionVisitTracker(playerDataService);
-        this.statCalculator = new StatCalculator(configService);
-        this.statModifierService = new StatModifierService();
         this.combatService = new CombatService();
         this.combatService.setEquipmentEnhancementService(equipmentEnhancementService);
         this.combatService.setEquipmentTierService(equipmentTierService);
         this.combatService.setConfigService(configService);
-        this.manaBossBarService = new ManaBossBarService();
-        this.manaService = new ManaService(configService, playerDataService, manaBossBarService, statCalculator, statModifierService);
-        this.statService = new StatService(playerDataService, statCalculator, statModifierService, manaService);
-        this.combatService.setStatService(statService);
-        this.classStatRegistry = new ClassStatRegistry(configService);
-        this.classStatRegistry.load();
-        this.classStatService = new ClassStatService(playerDataService, classStatRegistry);
-        this.skillRegistry = new SkillRegistry(configService);
-        this.skillRegistry.load();
-        this.swordmasterBladeService = new SwordmasterBladeService(this, configService, combatService, classStatService);
-        this.bowmasterSkillService = new BowmasterSkillService(this, configService, weaponService, combatService, classStatService);
-        this.lancerSkillService = new LancerSkillService(this, configService, combatService, classStatService);
-        this.skillStatService = new SkillStatService(configService, playerDataService, skillRegistry, weaponProficiencyService);
+        this.swordmasterBladeService = new SwordmasterBladeService(this, configService, combatService);
+        this.bowmasterSkillService = new BowmasterSkillService(this, configService, weaponService, combatService);
         this.cooldownService = new CooldownService(configService.getSpecialEquipmentBoolean(
                 "special-equipment.testing.disable-cooldowns", false));
-        this.skillService = new SkillService(configService, playerDataService, weaponService, weaponProficiencyService, manaService, cooldownService, combatService, skillRegistry, swordmasterBladeService, bowmasterSkillService, lancerSkillService);
         this.enchantRegistry = new EnchantRegistry(configService);
         this.enchantRegistry.load();
         this.equipmentInstanceService = new EquipmentInstanceService(this);
@@ -489,12 +433,10 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 cooldownService, equipmentInstanceService, enchantRuntimeStateService);
         this.equipmentEnchantContentService = new EquipmentEnchantContentService(this, configService, combatService,
                 enchantService, equipmentInstanceService, enchantRuntimeStateService, equipmentTierService, itemService,
-                cooldownService, swordmasterBladeService,
+                cooldownService, swordmasterBladeService, bowmasterSkillService,
                 activityBlockRewardValidator);
         this.equipmentEffectTriggerEngine.registerHandler("content", equipmentEnchantContentService);
         validateEnchantIntegrity();
-        this.skillService.setEnchantService(enchantService);
-        this.skillService.setEquipmentEffectTriggerEngine(equipmentEffectTriggerEngine);
         this.expTable = new ExpTable(configService);
         this.levelService = new LevelService(playerDataService, expTable);
         this.expService = new ExpService(levelService);
@@ -540,7 +482,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.questService = new QuestService(playerDataService, questRegistry, requirementChecker, expService);
         this.autoQuestService = new AutoQuestService(configService, playerDataService, itemService,
                 expService, contentAvailabilityService);
-        this.manaRegenTask = new ManaRegenTask(this, configService, manaService);
 
         this.explorationModule = new ExplorationModule(this,
                 BukkitExplorationPorts.compose(
@@ -562,7 +503,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         loadCurrentlyOnlinePlayers();
         cropGrowthService.start();
         playerDataService.startAutosave();
-        manaRegenTask.start();
         swordmasterBladeService.start();
         zombieVariantService.start();
         mythicCustomMobService.start();
@@ -593,18 +533,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (equipmentEnchantContentService != null) {
             equipmentEnchantContentService.shutdown();
         }
-        if (manaRegenTask != null) {
-            manaRegenTask.cancel();
-        }
         if (effectService != null) effectService.shutdown();
         if (cropGrowthService != null) {
             cropGrowthService.shutdown();
-        }
-        if (manaBossBarService != null) {
-            manaBossBarService.removeAll();
-        }
-        if (statModifierService != null) {
-            statModifierService.clearAll();
         }
         if (cooldownService != null) {
             cooldownService.clearAll();
@@ -614,9 +545,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (bowmasterSkillService != null) {
             bowmasterSkillService.clearAll();
-        }
-        if (lancerSkillService != null) {
-            lancerSkillService.clearAll();
         }
         if (zombieVariantService != null) {
             zombieVariantService.cancelAll();
@@ -646,14 +574,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     public ConfigService getConfigService() {
         return configService;
-    }
-
-    public ClassWeaponService getClassWeaponService() {
-        return classWeaponService;
-    }
-
-    public ClassService getClassService() {
-        return classService;
     }
 
     public PlayerDataRepository getPlayerDataRepository() {
@@ -722,14 +642,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     }
 
 
-    public ManaService getManaService() {
-        return manaService;
-    }
-
-    public StatService getStatService() {
-        return statService;
-    }
-
     public LevelService getLevelService() {
         return levelService;
     }
@@ -740,10 +652,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     public CooldownService getCooldownService() {
         return cooldownService;
-    }
-
-    public SkillService getSkillService() {
-        return skillService;
     }
 
     public MobService getMobService() {
@@ -771,11 +679,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
                 weaponItemService, equipmentEnhancementService,
                 reloadService, equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
-        WeaponProficiencyCommand weaponInfo = new WeaponProficiencyCommand(weaponProficiencyService);
-        RPGStatAdminCommand stat = new RPGStatAdminCommand(statService, manaService);
-        RPGStatBalanceCommand balance = new RPGStatBalanceCommand(configService);
         RPGLevelAdminCommand level = new RPGLevelAdminCommand(playerDataService, expService, levelService);
-        RPGCooldownCommand cooldown = new RPGCooldownCommand(configService, cooldownService);
         RPGMobCommand mob = new RPGMobCommand(configService, mobService, mobLevelScalingService,
                 mythicCustomMobService, monsterBehaviorService);
         RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService,
@@ -786,11 +690,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             Commands commands = event.registrar();
             registerPaperCommand(commands, "rpg", give, give);
             registerPaperCommand(commands, "rpgtest", test, test);
-            registerPaperCommand(commands, "weaponinfo", weaponInfo, weaponInfo);
-            registerPaperCommand(commands, "rpgstat", stat, stat);
-            registerPaperCommand(commands, "rpgstatbalance", balance, balance);
             registerPaperCommand(commands, "rpglevel", level, level);
-            registerPaperCommand(commands, "rpgcooldown", cooldown, cooldown);
             registerPaperCommand(commands, "rpgmob", mob, mob);
             registerPaperCommand(commands, "rpgquest", quest, quest);
             registerPaperCommand(commands, "specialequipment", special, special);
@@ -1012,8 +912,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         configService.reloadSpecialEquipmentConfig();
         specialEquipmentRegistry.load();
         equipmentRegistry.load();
-        skillRegistry.load();
-        classStatRegistry.load();
         mobAbilityRegistry.load();
         mobRegistry.load();
         configService.reloadMonsterSpawnsConfig();
@@ -1096,7 +994,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     }
 
     private void registerListeners() {
-        getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService, statService), this);
+        getServer().getPluginManager().registerEvents(new PlayerDataListener(playerDataService), this);
         getServer().getPluginManager().registerEvents(gatewayPrototypeService, this);
         getServer().getPluginManager().registerEvents(effectService, this);
         getServer().getPluginManager().registerEvents(effectMovementLockService, this);
@@ -1105,11 +1003,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(specialCatalystExecutionService, this);
         getServer().getPluginManager().registerEvents(
                 new com.hyunseo.hyunseorpg.alchemy.AlchemyVanillaBypassListener(this, alchemyAuditLog), this);
-        getServer().getPluginManager().registerEvents(new ManaPlayerListener(this, manaService, manaBossBarService), this);
-        getServer().getPluginManager().registerEvents(new StatModifierCleanupListener(statModifierService), this);
         getServer().getPluginManager().registerEvents(new CooldownCleanupListener(cooldownService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
-                this, skillService, equipmentInstanceService, alchemyCombatAdapter,
+                this, equipmentEffectTriggerEngine, enchantService, equipmentInstanceService, alchemyCombatAdapter,
                 item -> DedicatedWeaponIds.owns(specialEquipmentService.getSpecialId(item))), this);
         getServer().getPluginManager().registerEvents(new EquipmentEffectTriggerListener(
                 equipmentEffectTriggerEngine, combatService, equipmentInstanceService), this);
@@ -1118,15 +1014,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 new com.hyunseo.hyunseorpg.enchant.EnchantLoreRefreshListener(this, enchantService), this);
         getServer().getPluginManager().registerEvents(
                 new com.hyunseo.hyunseorpg.enchant.NativeEnchantMigrationListener(enchantService), this);
-        getServer().getPluginManager().registerEvents(new WeaponProficiencyListener(configService, weaponService, weaponProficiencyService), this);
         getServer().getPluginManager().registerEvents(cropGrowthService, this);
         getServer().getPluginManager().registerEvents(new MiningActivityListener(
                 miningActivityService, activityBlockRepository), this);
         getServer().getPluginManager().registerEvents(new FarmingStatTokenListener(farmingStatTokenService), this);
         getServer().getPluginManager().registerEvents(vanillaStackingService, this);
         getServer().getPluginManager().registerEvents(soulboundItemService, this);
-        getServer().getPluginManager().registerEvents(bowmasterSkillService, this);
-        getServer().getPluginManager().registerEvents(new SwordmasterBasicAttackListener(configService, playerDataService, weaponService, combatService), this);
         getServer().getPluginManager().registerEvents(new LevelPlayerListener(this, levelService), this);
         getServer().getPluginManager().registerEvents(new MobSpawnListener(
                 mobService, mobLevelScalingService, zombieVariantService), this);
@@ -1182,8 +1075,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private void loadCurrentlyOnlinePlayers() {
         for (Player player : getServer().getOnlinePlayers()) {
             playerDataService.loadPlayer(player);
-            statService.refreshPlayerStats(player);
-            manaService.refresh(player);
             levelService.refreshVanillaExpBar(player);
         }
     }

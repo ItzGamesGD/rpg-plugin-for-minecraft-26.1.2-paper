@@ -24,11 +24,12 @@ enchants:
     display-name: "빛의 대검"
     book-item-id: enchant_book_light_greatsword
     executor-id: light_greatsword
-    handler-id: skill
+    handler-id: content
     weapon-type: SWORD
     source-scope: MAIN_HAND
     input-conflict-group: sword-shift-right
     priority: 100
+    cooldown-seconds: 60.0
     triggers:
       - { type: INPUT, input: SHIFT_RIGHT_CLICK, phase: CONFIRMED }
 
@@ -36,11 +37,12 @@ enchants:
     display-name: "레이저 화살"
     book-item-id: enchant_book_laser_arrow
     executor-id: laser_arrow
-    handler-id: skill
+    handler-id: content
     weapon-type: BOW
     source-scope: MAIN_HAND
     input-conflict-group: bow-left
     priority: 100
+    cooldown-seconds: 20.0
     triggers:
       - { type: INPUT, input: LEFT_CLICK, phase: CONFIRMED }
 
@@ -131,11 +133,12 @@ enchants:
     display-name: "불화살 비"
     book-item-id: enchant_book_fire_arrow_rain
     executor-id: arrow_rain
-    handler-id: skill
+    handler-id: content
     weapon-type: BOW
     source-scope: MAIN_HAND
     input-conflict-group: bow-shift-left
     priority: 110
+    cooldown-seconds: 60.0
     triggers:
       - { type: INPUT, input: SHIFT_LEFT_CLICK, phase: CONFIRMED }
 

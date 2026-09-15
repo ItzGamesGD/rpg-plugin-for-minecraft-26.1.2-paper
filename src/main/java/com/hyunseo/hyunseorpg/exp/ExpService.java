@@ -13,7 +13,4 @@ public final class ExpService {
         return levelService.addBaseExp(player, amount);
     }
 
-    public ClassLevelUpResult giveClassExp(Player player, long amount) {
-        return levelService.addClassExp(player, amount);
-    }
 }

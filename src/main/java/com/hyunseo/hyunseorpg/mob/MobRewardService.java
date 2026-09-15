@@ -25,9 +25,7 @@ public final class MobRewardService {
 
     public void rewardMythic(Player player, LivingEntity defeated, MythicMobData data) {
         long exp = data.expReward();
-        long classExp = data.classExpReward();
         if (exp > 0L) expService.giveBaseExp(player, exp);
-        if (classExp > 0L) expService.giveClassExp(player, classExp);
         if (mythicService != null) mythicService.dropRewards(player, data);
         player.sendMessage(Component.text(
                 "MythicMobs 처치: " + data.displayName() + " (" + data.mobId() + ")"
@@ -51,16 +49,10 @@ public final class MobRewardService {
             return;
         }
 
-        long classExp = mobService.getClassExpReward(defeated);
-        if (classExp > 0L) {
-            expService.giveClassExp(player, classExp);
-        }
-
         player.sendMessage(Component.text(
                 "RPG 몹 처치: ID=" + mobService.getMobId(defeated)
                         + ", 레벨=" + mobService.getMobTagService().getMobLevel(defeated)
-                        + ", 기본 경험치=" + baseExp
-                        + ", 전문화 경험치=" + classExp,
+                        + ", 기본 경험치=" + baseExp,
                 NamedTextColor.GRAY
         ));
     }

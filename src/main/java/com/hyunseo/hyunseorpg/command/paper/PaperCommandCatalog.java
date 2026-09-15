@@ -9,11 +9,7 @@ public final class PaperCommandCatalog {
     public static final List<PaperCommandSpec> ALL = List.of(
             c("rpg", "HyunseoRPG utility command"),
             c("rpgtest", "Operator-only testing utilities"),
-            c("weaponinfo", "Inspect weapon proficiency", List.of("weaponlevel")),
-            c("rpgstat", "Admin stat command", List.of("statadmin")),
-            c("rpgstatbalance", "Stat balance command", List.of("statbalance")),
             c("rpglevel", "Admin level command", List.of("leveladmin")),
-            c("rpgcooldown", "Admin cooldown command", List.of("cooldownadmin")),
             c("rpgmob", "RPG mob management command"),
             c("rpgquest", "RPG quest command", List.of("quest")),
             c("specialequipment", "Special equipment administration")

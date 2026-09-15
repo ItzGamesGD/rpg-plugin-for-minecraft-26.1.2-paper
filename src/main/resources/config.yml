@@ -5,24 +5,12 @@ persistence:
   max-dirty-players-per-batch: 50
   retry-on-failure: true
 
-class-weapons:
-  command-enabled: true
-
-economy:
-
-mana:
-  regen-interval-ticks: 20
-  base-regen-per-second: 1.0
-  stat-max-mana-bonus: 10.0
-  stat-regen-bonus-per-second: 0.5
-
 enhancement:
   block-vanilla-enchanting: true
 
 resource-pack:
   enabled: false
   custom-model-data-ranges:
-    class-weapons: "20001-20999"
     skill-visuals: "21001-21999"
     mob-visuals: "22001-22999"
   skill-models:

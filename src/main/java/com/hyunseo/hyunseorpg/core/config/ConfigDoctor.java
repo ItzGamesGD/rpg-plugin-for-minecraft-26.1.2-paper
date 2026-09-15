@@ -38,7 +38,7 @@ public final class ConfigDoctor {
             "hoe_enhancement.yml", "hoe_promotion.yml", "deliveries.yml", "favor.yml",
             "essence.yml", "stat_tokens.yml");
     private static final List<String> MANAGED_FILES = List.of(
-            "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
+            "config.yml", "exp.yml", "weapons.yml",
             "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml",
@@ -467,14 +467,12 @@ private void checkQuests(List<String> lines, int[] counts) {
         }
         int total = 0;
         int missingSchema = 0;
-        int legacy = 0;
         File[] files = directory.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
         if (files != null) {
             for (File file : files) {
                 total++;
                 FileConfiguration data = YamlConfiguration.loadConfiguration(file);
                 if (!data.isSet("schema-version")) missingSchema++;
-                if (data.isSet("weaponProficiencyLevels") || data.isSet("weaponProficiencyExp")) legacy++;
                 if (data.isSet("selectedProfession") || data.isSet("unlockedWorlds") || data.isSet("clearedWorlds")) {
                     warning(lines, counts, "players/" + file.getName() + ": deprecated profession/world-lock fields remain readable but are excluded from new saves");
                 }
@@ -488,7 +486,6 @@ private void checkQuests(List<String> lines, int[] counts) {
             }
         }
         if (missingSchema > 0) warning(lines, counts, "players: " + missingSchema + "/" + total + " files missing schema-version");
-        if (legacy > 0) warning(lines, counts, "players: " + legacy + "/" + total + " files contain legacy flat proficiency fields");
         info(lines, counts, "players: " + total + " player files inspected");
     }
 

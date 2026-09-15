@@ -172,10 +172,6 @@ public final class QuestService {
     private void applyReward(Player player, PlayerRPGData data, QuestReward reward) {
         switch (reward.type()) {
             case BASE_EXP -> expService.giveBaseExp(player, reward.amount());
-            case CLASS_EXP -> expService.giveClassExp(player, reward.amount());
-            case STAT_POINTS -> data.setStatPoints(data.getStatPoints() + (int) reward.amount());
-            case SKILL_POINTS -> data.setSkillPoints(data.getSkillPoints() + (int) reward.amount());
-            case CLASS_STAT_POINTS -> data.setClassStatPoints(data.getClassStatPoints() + (int) reward.amount());
             case PROGRESSION_FLAG, WORLD_UNLOCK, NEXT_QUEST -> data.addProgressionFlag(reward.target());
             case ITEM -> {
                 // Item rewards will be connected after the custom item service is expanded.

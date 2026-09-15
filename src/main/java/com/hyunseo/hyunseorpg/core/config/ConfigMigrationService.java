@@ -47,7 +47,7 @@ public final class ConfigMigrationService {
                     List.of("도끼에 연쇄 벌목을 부여합니다."))
     );
     private static final List<String> MANAGED_FILES = List.of(
-            "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
+            "config.yml", "exp.yml", "weapons.yml",
             "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "hunting-grounds.yml",
@@ -127,7 +127,7 @@ public final class ConfigMigrationService {
             if (archiveLegacy && !normalized.equals("all")) {
                 migrateItems(lines, changedFiles);
                 migrateLegacyProfessionRecipes(lines, changedFiles);
-                    }
+            }
             if (!List.of("configs", "items", "mobs", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
@@ -1958,7 +1958,6 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
                 changed = true;
             }
             changed |= migrateFarmingProfile(data, file.getName(), lines);
-            changed |= migrateFlatProficiencies(data, file.getName(), lines);
             for (String path : DEPRECATED_PLAYER_PATHS) {
                 if (data.isSet(path)) {
                     data.set(path, null);
@@ -2002,37 +2001,6 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
         return changed;
     }
 
-    private boolean migrateFlatProficiencies(FileConfiguration data, String fileName, List<String> lines) {
-        ConfigurationSection levels = data.getConfigurationSection("weaponProficiencyLevels");
-        ConfigurationSection experience = data.getConfigurationSection("weaponProficiencyExp");
-        if (levels == null && experience == null) return false;
-        boolean changed = false;
-        if (levels != null) {
-            for (String id : levels.getKeys(false)) {
-                String path = "weaponProficiencies." + normalize(id) + ".level";
-                if (!data.isSet(path)) {
-                    data.set(path, Math.max(1, levels.getInt(id, 1)));
-                    changed = true;
-                }
-            }
-        }
-        if (experience != null) {
-            for (String id : experience.getKeys(false)) {
-                String path = "weaponProficiencies." + normalize(id) + ".exp";
-                if (!data.isSet(path)) {
-                    data.set(path, Math.max(0L, experience.getLong(id, 0L)));
-                    changed = true;
-                }
-            }
-        }
-        if (levels != null || experience != null) {
-            data.set("weaponProficiencyLevels", null);
-            data.set("weaponProficiencyExp", null);
-            lines.add("players/" + fileName + ": migrated flat proficiency fields to weaponProficiencies");
-            changed = true;
-        }
-        return changed;
-    }
 
     private final Map<File, FileConfiguration> pending = new java.util.LinkedHashMap<>();
 

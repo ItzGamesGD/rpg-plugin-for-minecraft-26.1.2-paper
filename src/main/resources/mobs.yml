@@ -36,7 +36,6 @@ defaults:
 reward:
   normal-base-exp: 1
   rpg-base-exp: 5
-  rpg-class-exp: 3
 
 level-scaling:
   enabled: true
@@ -141,7 +140,6 @@ custom-mobs:
     hp: 58.0
     damage: 5.0
     exp: 54
-    class-exp: 16
     drop-table: earth_common
     region: overworld
     tags: [rpg_mob, elite, shield]
@@ -175,7 +173,6 @@ custom-mobs:
     hp: 48.0
     damage: 3.0
     exp: 58
-    class-exp: 18
     drop-table: earth_common
     region: overworld
     tags: [rpg_mob, elite, swamp, caster]
@@ -211,7 +208,6 @@ custom-mobs:
     hp: 34.0
     damage: 4.0
     exp: 12
-    class-exp: 4
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider]
@@ -235,7 +231,6 @@ custom-mobs:
     hp: 26.0
     damage: 3.0
     exp: 9
-    class-exp: 3
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider]
@@ -249,7 +244,6 @@ custom-mobs:
     hp: 30.0
     damage: 4.5
     exp: 13
-    class-exp: 4
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider]
@@ -273,7 +267,6 @@ custom-mobs:
     hp: 36.0
     damage: 3.5
     exp: 20
-    class-exp: 6
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider, heavy]
@@ -297,7 +290,6 @@ custom-mobs:
     hp: 42.0
     damage: 4.0
     exp: 24
-    class-exp: 8
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider, heavy, caster]
@@ -314,7 +306,6 @@ custom-mobs:
     hp: 90.0
     damage: 7.0
     exp: 40
-    class-exp: 12
     drop-table: ""
     region: overworld
     tags: [rpg_mob, outpost, raider, heavy]
@@ -329,7 +320,6 @@ custom-mobs:
     hp: 40.0
     damage: 3.0
     exp: 24
-    class-exp: 8
     drop-table: ice_common
     region: cold
     tags: [rpg_mob, mythic, custom, frost, ranged]
@@ -377,7 +367,6 @@ custom-mobs:
     hp: 60.0
     damage: 5.0
     exp: 40
-    class-exp: 12
     drop-table: wind_common
     tags: [rpg_mob, mythic, custom, elite, ranged]
     elite: true
@@ -398,7 +387,6 @@ custom-mobs:
     hp: 70.0
     damage: 7.0
     exp: 48
-    class-exp: 14
     drop-table: water_common
     tags: [rpg_mob, mythic, custom, elite, melee]
     elite: true
@@ -418,7 +406,6 @@ custom-mobs:
     hp: 140.0
     damage: 12.0
     exp: 60
-    class-exp: 18
     drop-table: earth_common
     region: overworld
     tags: [rpg_mob, giant, earth, melee]
@@ -457,7 +444,6 @@ custom-mobs:
     hp: 65.0
     damage: 8.0
     exp: 45
-    class-exp: 14
     drop-table: fire_common
     region: nether
     tags: [rpg_mob, fire, melee]
@@ -471,7 +457,6 @@ custom-mobs:
     hp: 90.0
     damage: 7.0
     exp: 35
-    class-exp: 10
     drop-table: soul_common
     region: overworld
     tags: [rpg_mob, earth, undead, melee]
@@ -495,7 +480,6 @@ custom-mobs:
     hp: 36.0
     damage: 12.0
     exp: 45
-    class-exp: 13
     drop-table: fire_common
     region: overworld
     tags: [rpg_mob, fire, explosive]
@@ -518,7 +502,6 @@ custom-mobs:
     hp: 50.0
     damage: 5.0
     exp: 50
-    class-exp: 15
     drop-table: soul_common
     region: overworld
     tags: [rpg_mob, wind, ranged]
@@ -545,7 +528,6 @@ custom-mobs:
     hp: 48.0
     damage: 8.0
     exp: 40
-    class-exp: 12
     drop-table: soul_common
     region: overworld
     tags: [rpg_mob, earth, undead, melee]
@@ -572,7 +554,6 @@ custom-mobs:
     hp: 34.0
     damage: 3.0
     exp: 42
-    class-exp: 12
     drop-table: soul_common
     region: overworld
     tags: [rpg_mob, wind, ranged]
@@ -596,7 +577,6 @@ custom-mobs:
     hp: 60.0
     damage: 14.0
     exp: 65
-    class-exp: 20
     drop-table: fire_common
     region: overworld
     tags: [rpg_mob, fire, explosive, elite]
@@ -756,7 +736,6 @@ mob-definitions:
     hp: 40.0
     damage: 6.0
     exp: 15
-    class-exp: 6
     drop-table: forest_wolf
     region: forest
     boss: false
@@ -773,7 +752,6 @@ mob-definitions:
     hp: 20.0
     damage: 3.0
     exp: 5
-    class-exp: 3
     drop-table: zombie_basic
     region: overworld
     boss: false
@@ -790,7 +768,6 @@ mob-definitions:
     hp: 60.0
     damage: 6.0
     exp: 30
-    class-exp: 15
     drop-table: elite_zombie
     region: overworld
     boss: false
@@ -810,7 +787,6 @@ mob-definitions:
     hp: 28.0
     damage: 4.0
     exp: 12
-    class-exp: 6
     drop-table: skeleton_guard
     region: overworld
     boss: false
@@ -828,7 +804,6 @@ mob-definitions:
     hp: 200.0
     damage: 10.0
     exp: 100
-    class-exp: 50
     drop-table: skeleton_king
     region: boss
     boss: true

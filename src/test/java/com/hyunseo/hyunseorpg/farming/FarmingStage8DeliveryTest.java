@@ -88,9 +88,6 @@ class FarmingStage8DeliveryTest {
     }
 
     @Test
-
-
-    @Test
     void deliveryDefinitionWeightProvidesConfigurableTypeSelection() {
         DeliveryDefinition disabled = new DeliveryDefinition(
                 "disabled", DeliveryProvider.FARMER, "Disabled", List.of("crop_corn"),

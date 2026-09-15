@@ -23,12 +23,9 @@ import java.util.Set;
 
 public final class ConfigService {
     private final JavaPlugin plugin;
-    private FileConfiguration statsConfig;
     private FileConfiguration expConfig;
     private FileConfiguration mobsConfig;
-    private FileConfiguration classesConfig;
     private FileConfiguration questsConfig;
-    private FileConfiguration skillsConfig;
     private FileConfiguration weaponsConfig;
     private FileConfiguration itemsConfig;
     private FileConfiguration equipmentGrowthConfig;
@@ -72,12 +69,9 @@ public final class ConfigService {
             plugin.saveDefaultConfig();
         }
         plugin.reloadConfig();
-        this.statsConfig = loadManagedConfig("stats.yml");
         this.expConfig = loadManagedConfig("exp.yml");
         this.mobsConfig = loadManagedConfig("mobs.yml");
-        this.classesConfig = loadManagedConfig("classes.yml");
         this.questsConfig = loadManagedConfig("quests.yml");
-        this.skillsConfig = loadManagedConfig("skills.yml");
         this.weaponsConfig = loadManagedConfig("weapons.yml");
         // Lifestyle professions were removed from the active runtime. The field and
         // accessors remain as a compatibility facade for legacy source only; the
@@ -147,13 +141,7 @@ public final class ConfigService {
         return plugin;
     }
 
-    public int getStatsInt(String path, int defaultValue) {
-        return statsConfig.getInt(path, defaultValue);
-    }
 
-    public double getStatsDouble(String path, double defaultValue) {
-        return statsConfig.getDouble(path, defaultValue);
-    }
 
     public int getExpInt(String path, int defaultValue) {
         return expConfig.getInt(path, defaultValue);
@@ -183,38 +171,12 @@ public final class ConfigService {
         return mobsConfig.getBoolean(path, defaultValue);
     }
 
-    public int getClassesInt(String path, int defaultValue) {
-        return classesConfig.getInt(path, defaultValue);
-    }
 
-    public double getClassesDouble(String path, double defaultValue) {
-        return classesConfig.getDouble(path, defaultValue);
-    }
 
-    public String getClassesString(String path, String defaultValue) {
-        return classesConfig.getString(path, defaultValue);
-    }
 
-    public Set<String> getClassesKeys(String path) {
-        ConfigurationSection section = classesConfig.getConfigurationSection(path);
-        return section == null ? Set.of() : section.getKeys(false);
-    }
 
-    public ConfigurationSection getClassesSection(String path) {
-        return classesConfig.getConfigurationSection(path);
-    }
 
-    public void setStatsValue(String path, Object value) {
-        statsConfig.set(path, value);
-    }
 
-    public void saveStatsConfig() {
-        try {
-            statsConfig.save(new File(plugin.getDataFolder(), "stats.yml"));
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save stats.yml", exception);
-        }
-    }
 
     public String getMobsString(String path, String defaultValue) {
         return mobsConfig.getString(path, defaultValue);
@@ -361,25 +323,10 @@ public final class ConfigService {
         return questsConfig.getConfigurationSection(path);
     }
 
-    public Set<String> getSkillsKeys(String path) {
-        return getKeys(skillsConfig, path);
-    }
 
-    public ConfigurationSection getSkillsSection(String path) {
-        return skillsConfig.getConfigurationSection(path);
-    }
 
-    public String getSkillsString(String path, String defaultValue) {
-        return skillsConfig.getString(path, defaultValue);
-    }
 
-    public int getSkillsInt(String path, int defaultValue) {
-        return skillsConfig.getInt(path, defaultValue);
-    }
 
-    public double getSkillsDouble(String path, double defaultValue) {
-        return skillsConfig.getDouble(path, defaultValue);
-    }
 
     public Set<String> getWeaponsKeys(String path) {
         return getKeys(weaponsConfig, path);

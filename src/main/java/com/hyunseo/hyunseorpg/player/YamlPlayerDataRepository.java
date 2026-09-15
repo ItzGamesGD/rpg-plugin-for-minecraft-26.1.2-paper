@@ -1,12 +1,9 @@
 package com.hyunseo.hyunseorpg.player;
 
-import com.hyunseo.hyunseorpg.classsystem.RPGClass;
 import com.hyunseo.hyunseorpg.farming.FarmingStage;
 import com.hyunseo.hyunseorpg.farming.CropQuality;
 import com.hyunseo.hyunseorpg.farming.DeliveryStatus;
 import com.hyunseo.hyunseorpg.farming.FarmingDeliveryState;
-import com.hyunseo.hyunseorpg.stat.StatType;
-import com.hyunseo.hyunseorpg.weapon.WeaponType;
 import com.hyunseo.hyunseorpg.quest.AutoQuestData;
 import com.hyunseo.hyunseorpg.quest.AutoQuestObjectiveData;
 import com.hyunseo.hyunseorpg.quest.AutoQuestStatus;
@@ -52,32 +49,16 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
             throw new IOException("Player data UUID mismatch in " + playerFile.getName());
         }
 
-        readSelectedClass(yaml, data);
-        data.setSelectedProfession(yaml.getString("selectedProfession"));
         // Older/manual test files may use 0 as an uninitialized level. PlayerRPGData
         // treats level 1 as the minimum valid RPG level, so migrate such values here.
         int storedBaseLevel = yaml.getInt("baseLevel", data.getBaseLevel());
         data.setBaseLevel(Math.max(1, storedBaseLevel));
         data.setBaseExp(yaml.getLong("baseExp", data.getBaseExp()));
-        data.setStatPoints(yaml.getInt("statPoints", data.getStatPoints()));
-        int storedClassLevel = yaml.getInt("classLevel", data.getClassLevel());
-        data.setClassLevel(Math.max(1, storedClassLevel));
-        data.setClassExp(yaml.getLong("classExp", data.getClassExp()));
-        data.setSkillPoints(yaml.getInt("skillPoints", data.getSkillPoints()));
-        data.setClassStatPoints(yaml.getInt("classStatPoints", data.getClassStatPoints()));
-        data.setCurrentMana(yaml.getDouble("currentMana", data.getCurrentMana()));
         data.setMinerHasteSeconds(yaml.getLong("minerHasteSeconds", data.getMinerHasteSeconds()));
         data.setFirstWitherClear(yaml.getBoolean("bossProgress.firstWitherClear", false));
         data.setFirstEnderDragonClear(yaml.getBoolean("bossProgress.firstEnderDragonClear", false));
         data.setWitherClearCount(yaml.getInt("bossProgress.witherClearCount", 0));
         data.setEnderDragonClearCount(yaml.getInt("bossProgress.enderDragonClearCount", 0));
-        readStats(yaml, data);
-        readStatLevels(yaml, data);
-        readIntegerMap(yaml, "skillStatLevels", data::setSkillStatLevel);
-        readIntegerMap(yaml, "classStatLevels", data::setClassStatLevel);
-        readStringSet(yaml, "unlockedSkills", data::unlockSkill);
-        readIntegerMap(yaml, "skillLevels", data::setSkillLevel);
-        readWeaponProficiencies(yaml, data);
         readStringSet(yaml, "progressionFlags", data::addProgressionFlag);
         readStringSet(yaml, "visitedWorlds", value -> {
             String dimension = canonicalDimension(value);
@@ -113,35 +94,14 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("schema-version", 4);
         yaml.set("uuid", data.getUuid().toString());
-        yaml.set("selectedClass", data.getSelectedClass() == null ? null : data.getSelectedClass().id());
         yaml.set("baseLevel", data.getBaseLevel());
         yaml.set("baseExp", data.getBaseExp());
-        yaml.set("statPoints", data.getStatPoints());
-        yaml.set("classLevel", data.getClassLevel());
-        yaml.set("classExp", data.getClassExp());
-        yaml.set("skillPoints", data.getSkillPoints());
-        yaml.set("classStatPoints", data.getClassStatPoints());
-        yaml.set("currentMana", data.getCurrentMana());
         yaml.set("minerHasteSeconds", data.getMinerHasteSeconds());
         yaml.set("bossProgress.firstWitherClear", data.hasFirstWitherClear());
         yaml.set("bossProgress.firstEnderDragonClear", data.hasFirstEnderDragonClear());
         yaml.set("bossProgress.witherClearCount", data.getWitherClearCount());
         yaml.set("bossProgress.enderDragonClearCount", data.getEnderDragonClearCount());
 
-        for (StatType statType : StatType.values()) {
-            yaml.set("stats." + statType.name(), data.getStat(statType));
-            yaml.set("statLevels." + statType.name(), data.getStatLevel(statType));
-        }
-
-        data.getSkillStatLevels().forEach((skillStatId, level) -> yaml.set("skillStatLevels." + skillStatId, level));
-        data.getClassStatLevels().forEach((classStatId, level) -> yaml.set("classStatLevels." + classStatId, level));
-        yaml.set("unlockedSkills", data.getUnlockedSkills().stream().sorted().toList());
-        data.getSkillLevels().forEach((skillId, level) -> yaml.set("skillLevels." + skillId, level));
-        for (WeaponType weaponType : WeaponType.values()) {
-            String weaponTypeId = weaponType.id();
-            yaml.set("weaponProficiencies." + weaponTypeId + ".level", data.getWeaponProficiencyLevel(weaponTypeId));
-            yaml.set("weaponProficiencies." + weaponTypeId + ".exp", data.getWeaponProficiencyExp(weaponTypeId));
-        }
         yaml.set("progressionFlags", data.getProgressionFlags().stream().sorted().toList());
         yaml.set("visitedWorlds", data.getVisitedWorlds().stream()
                 .filter(this::isCanonicalDimension)
@@ -234,49 +194,8 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         return getPlayerFile(Objects.requireNonNull(uuid, "uuid")).exists();
     }
 
-    private void readSelectedClass(YamlConfiguration yaml, PlayerRPGData data) {
-        String classId = yaml.getString("selectedClass");
-        if (classId == null || classId.isBlank()) {
-            return;
-        }
 
-        RPGClass.fromInput(classId).ifPresentOrElse(
-                data::setSelectedClass,
-                () -> plugin.getLogger().warning("Ignoring unknown RPG class in player data: " + classId)
-        );
-    }
 
-    private void readStats(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection statsSection = yaml.getConfigurationSection("stats");
-        if (statsSection == null) {
-            return;
-        }
-
-        for (String key : statsSection.getKeys(false)) {
-            try {
-                StatType statType = StatType.valueOf(key.toUpperCase(Locale.ROOT));
-                data.setStat(statType, statsSection.getDouble(key, 0.0D));
-            } catch (IllegalArgumentException exception) {
-                plugin.getLogger().log(Level.WARNING, "Ignoring unknown stat in player data: " + key, exception);
-            }
-        }
-    }
-
-    private void readStatLevels(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection statLevelsSection = yaml.getConfigurationSection("statLevels");
-        if (statLevelsSection == null) {
-            return;
-        }
-
-        for (String key : statLevelsSection.getKeys(false)) {
-            try {
-                StatType statType = StatType.valueOf(key.toUpperCase(Locale.ROOT));
-                data.setStatLevel(statType, statLevelsSection.getInt(key, 0));
-            } catch (IllegalArgumentException exception) {
-                plugin.getLogger().log(Level.WARNING, "Ignoring unknown stat level in player data: " + key, exception);
-            }
-        }
-    }
 
     private void readStringSet(YamlConfiguration yaml, String path, StringValueConsumer consumer) {
         for (String value : yaml.getStringList(path)) {
@@ -308,19 +227,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         }
     }
 
-    private void readWeaponProficiencies(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection section = yaml.getConfigurationSection("weaponProficiencies");
-        if (section != null) {
-            for (String weaponTypeId : section.getKeys(false)) {
-                data.setWeaponProficiencyLevel(weaponTypeId, section.getInt(weaponTypeId + ".level", 1));
-                data.setWeaponProficiencyExp(weaponTypeId, section.getLong(weaponTypeId + ".exp", 0L));
-            }
-            return;
-        }
-        // One-time compatibility read for previous player YAML files.
-        readIntegerMap(yaml, "weaponProficiencyLevels", data::setWeaponProficiencyLevel);
-        readLongMap(yaml, "weaponProficiencyExp", data::setWeaponProficiencyExp);
-    }
 
     private void readStringMap(YamlConfiguration yaml, String path, StringStringConsumer consumer) {
         ConfigurationSection section = yaml.getConfigurationSection(path);
