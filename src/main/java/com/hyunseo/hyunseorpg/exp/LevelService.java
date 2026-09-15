@@ -21,14 +21,13 @@ public final class LevelService {
             data.setBaseExp(data.getBaseExp() - required); data.setBaseLevel(data.getBaseLevel() + 1); gained++;
         }
         if (data.getBaseLevel() >= expTable.getMaxBaseLevel()) data.setBaseExp(0L);
-        playerDataService.savePlayer(player); refreshVanillaExpBar(player);
+        playerDataService.savePlayer(player);
         LevelUpResult result = new LevelUpResult(old, data.getBaseLevel(), gained, 0, data.getBaseExp(), getRequiredExpForNextLevel(data));
         if (result.leveledUp()) player.sendMessage(Component.text("RPG 레벨이 Lv." + result.newLevel() + "이 되었습니다.", NamedTextColor.GREEN));
         return result;
     }
-    public void setBaseLevel(Player player, int level) { PlayerRPGData d=playerDataService.getOrLoad(player); d.setBaseLevel(Math.max(1,Math.min(level,expTable.getMaxBaseLevel()))); d.setBaseExp(0); playerDataService.savePlayer(player); refreshVanillaExpBar(player); }
-    public void setBaseExp(Player player, long exp) { PlayerRPGData d=playerDataService.getOrLoad(player); d.setBaseExp(Math.max(0,exp)); playerDataService.savePlayer(player); refreshVanillaExpBar(player); }
-    public void refreshVanillaExpBar(Player player) { if (!expTable.shouldSyncVanillaExpBar()) return; PlayerRPGData d=playerDataService.getOrLoad(player); player.setLevel(d.getBaseLevel()); long r=getRequiredExpForNextLevel(d); player.setExp(r<=0?1F:Math.max(0F,Math.min(1F,(float)d.getBaseExp()/r))); }
+    public void setBaseLevel(Player player, int level) { PlayerRPGData d=playerDataService.getOrLoad(player); d.setBaseLevel(Math.max(1,Math.min(level,expTable.getMaxBaseLevel()))); d.setBaseExp(0); playerDataService.savePlayer(player); }
+    public void setBaseExp(Player player, long exp) { PlayerRPGData d=playerDataService.getOrLoad(player); d.setBaseExp(Math.max(0,exp)); playerDataService.savePlayer(player); }
     public long getRequiredExpForNextLevel(PlayerRPGData data) { return data.getBaseLevel()>=expTable.getMaxBaseLevel()?0:expTable.getRequiredExpForNextBaseLevel(data.getBaseLevel()); }
     public int getMaxBaseLevel() { return expTable.getMaxBaseLevel(); }
 }

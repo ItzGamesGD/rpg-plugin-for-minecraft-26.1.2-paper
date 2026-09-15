@@ -34,10 +34,6 @@ public final class ExpTable {
 
 
 
-    public boolean shouldSyncVanillaExpBar() {
-        return configService.getExpBoolean("base-level.sync-vanilla-exp-bar", true);
-    }
-
     private long scaled(long value) {
         double multiplier = configService.getExpDouble("base-level.required-exp-multiplier", 1.0D);
         if (!Double.isFinite(multiplier) || multiplier <= 0.0D) multiplier = 1.0D;

@@ -62,7 +62,6 @@ class CustomGuiRemovalArchitectureTest {
         assertEquals(Set.of(
                 "com/hyunseo/hyunseorpg/alchemy/AlchemyVanillaBypassListener.java",
                 "com/hyunseo/hyunseorpg/crafting/SoulboundItemService.java",
-                "com/hyunseo/hyunseorpg/enhancement/VanillaEnchantBlockListener.java",
                 "com/hyunseo/hyunseorpg/equipment/EquipmentActualEffectListener.java",
                 "com/hyunseo/hyunseorpg/exploration/listener/ExplorationChestLootListener.java",
                 "com/hyunseo/hyunseorpg/item/VanillaStackingService.java",

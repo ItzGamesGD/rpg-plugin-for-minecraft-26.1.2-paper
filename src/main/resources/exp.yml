@@ -1,6 +1,5 @@
 base-level:
   max-level: 100
-  sync-vanilla-exp-bar: true
   # RPG Level is intentionally retained in Phase 5; its curve is unchanged.
   required-exp-multiplier: 1.0
 

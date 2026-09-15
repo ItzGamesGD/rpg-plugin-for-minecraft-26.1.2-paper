@@ -35,7 +35,6 @@ import com.hyunseo.hyunseorpg.equipment.EquipmentMetadataService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentRegistry;
 import com.hyunseo.hyunseorpg.exp.ExpService;
 import com.hyunseo.hyunseorpg.exp.ExpTable;
-import com.hyunseo.hyunseorpg.exp.LevelPlayerListener;
 import com.hyunseo.hyunseorpg.exp.LevelService;
 import com.hyunseo.hyunseorpg.item.RPGItemRegistry;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
@@ -185,6 +184,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private CombatService combatService;
     private CooldownService cooldownService;
     private SwordmasterBladeService swordmasterBladeService;
+    private BowmasterSkillService bowmasterSkillService;
     private ExpTable expTable;
     private LevelService levelService;
     private ExpService expService;
@@ -783,10 +783,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             cropQualityService.load();
             return craftingRecipeRegistry.load();
         });
-        reloadService.register("skills", () -> {
-            skillRegistry.load();
-            return true;
-        });
         reloadService.register("mobs", () -> {
             configService.reloadMobsConfig();
             mobAbilityRegistry.load();
@@ -1020,7 +1016,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FarmingStatTokenListener(farmingStatTokenService), this);
         getServer().getPluginManager().registerEvents(vanillaStackingService, this);
         getServer().getPluginManager().registerEvents(soulboundItemService, this);
-        getServer().getPluginManager().registerEvents(new LevelPlayerListener(this, levelService), this);
         getServer().getPluginManager().registerEvents(new MobSpawnListener(
                 mobService, mobLevelScalingService, zombieVariantService), this);
         getServer().getPluginManager().registerEvents(
@@ -1075,7 +1070,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private void loadCurrentlyOnlinePlayers() {
         for (Player player : getServer().getOnlinePlayers()) {
             playerDataService.loadPlayer(player);
-            levelService.refreshVanillaExpBar(player);
         }
     }
 

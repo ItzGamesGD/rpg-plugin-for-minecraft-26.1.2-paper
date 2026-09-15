@@ -5,9 +5,6 @@ persistence:
   max-dirty-players-per-batch: 50
   retry-on-failure: true
 
-enhancement:
-  block-vanilla-enchanting: true
-
 resource-pack:
   enabled: false
   custom-model-data-ranges:
@@ -113,62 +110,9 @@ bowmaster:
     ceiling-search-up-blocks: 14
     invalid-point-retries: 5
 
-lancer:
-  spear-throw:
-    enabled: true
-    speed: 2.5
-    lifetime-ticks: 60
-    damage: 12.5
-    hitbox-radius: 1.0
-  charge:
-    enabled: true
-    distance: 10.0
-    duration-ticks: 8
-    damage: 10.0
-    hitbox-radius: 1.4
-  spear-breakthrough:
-    enabled: true
-    pre-delay-ticks: 20
-    spear-count: 10
-    spear-speed: 2.0
-    spear-damage: 5.0
-    charge-damage: 10.0
-
-skill-input:
-  enabled: true
-  legacy-class-skills: false
-  debug-messages: true
-  cooldown-messages: true
-
 enchant-runtime-debug:
   enabled: false
-  cancel-vanilla-action: true
-  wizard-basic-fire-damage: 2.0
-  cooldowns:
-    swordmaster:
-      offhand-quick: 1.0
-      right-click: 20.0
-      drop-key: 60.0
-    bowmaster:
-      offhand-quick: 10.0
-      left-click: 20.0
-      shift-left-click: 60.0
-    lancer:
-      offhand-quick: 3.0
-      right-click: 6.0
-      drop-key: 60.0
-    assassin:
-      offhand-quick: 10.0
-      right-click: 30.0
-    wizard:
-      left-click: 0.5
-      offhand-quick: 3.0
-      right-click: 8.0
-      shift-left-click: 15.0
 
-# Drop protection is deliberately restricted to Shift+Drop. Normal Drop remains
-# available for enchantment skills that use DROP_KEY. Tools can be protected later
-# without changing the listener by enabling protect-tools.
 item-drop-protection:
   enabled: true
   require-shift: true
@@ -206,16 +150,6 @@ equipment-effects:
   damage-indicator-radius: 0.65
   damage-indicator-min-height: 1.0
   damage-indicator-max-height: 1.7
-
-vanilla-enchants:
-  enabled: false
-  block-enchanting-table: true
-  block-anvil-enchants: true
-  strip-loot-enchants: true
-  strip-mob-drop-enchants: true
-  strip-fishing-enchants: true
-  block-villager-enchanted-trades: true
-  sanitize-custom-equipment: true
 
 # Only simple vanilla items in the code allow-list can use this policy.
 # HyunseoRPG items, PDC-tagged items, equipment, durability items, and containers
