@@ -600,7 +600,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (cropGrowthService != null) {
             cropGrowthService.shutdown();
         }
-        if (deliveryGuiService != null) deliveryGuiService.returnOpenInputs();
         if (manaBossBarService != null) {
             manaBossBarService.removeAll();
         }
@@ -1175,7 +1174,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.moonlitAfterglowListener = new MoonlitAfterglowListener(configService, specialEquipmentService,
                 combatService, cooldownService);
         getServer().getPluginManager().registerEvents(moonlitAfterglowListener, this);
-        getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
         getServer().getPluginManager().registerEvents(new VanillaAnvilPolicyListener(), this);
         getServer().getPluginManager().registerEvents(
                 new VanillaAnvilEnhancementListener(equipmentEnhancementService), this);

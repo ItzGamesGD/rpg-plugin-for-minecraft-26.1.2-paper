@@ -26,7 +26,7 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("/specialequipment <list|info|give|unlock|soul|craft|debug>", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/specialequipment <list|info|give|unlock|soul|debug>", NamedTextColor.YELLOW));
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
@@ -37,7 +37,6 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
         if (action.equals("info")) return info(sender, args);
         if (action.equals("give")) return give(sender, args);
         if (action.equals("unlock")) return unlock(sender, args);
-        if (action.equals("craft")) return craft(sender, args);
         if (action.equals("soul")) return soul(sender, args);
         if (action.equals("debug")) return debug(sender, args);
         sender.sendMessage(Component.text("Unknown special equipment action.", NamedTextColor.RED));
@@ -100,19 +99,6 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
         return true;
     }
 
-    private boolean craft(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This action requires a player.", NamedTextColor.RED));
-            return true;
-        }
-        if (args.length < 2) {
-            player.sendMessage(Component.text("/specialequipment craft <equipmentId>", NamedTextColor.YELLOW));
-            return true;
-        }
-        service.craft(player, args[1]);
-        return true;
-    }
-
     private boolean soul(CommandSender sender, String[] args) {
         if (!sender.hasPermission("hyunseorpg.special.admin")) return denied(sender);
         if (args.length < 4) {
@@ -165,8 +151,8 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return prefix(List.of("menu", "list", "info", "give", "unlock", "soul", "craft", "debug"), args[0]);
-        if (args.length == 2 && (args[0].equalsIgnoreCase("info") || args[0].equalsIgnoreCase("craft"))) {
+        if (args.length == 1) return prefix(List.of("list", "info", "give", "unlock", "soul", "debug"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
             return prefix(service.registry().getAll().stream().map(SpecialEquipmentData::id).toList(), args[1]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("unlock"))) return onlinePlayers(args[1]);

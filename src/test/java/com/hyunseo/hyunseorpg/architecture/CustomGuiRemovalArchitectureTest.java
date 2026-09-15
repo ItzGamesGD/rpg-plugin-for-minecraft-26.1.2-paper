@@ -37,6 +37,20 @@ class CustomGuiRemovalArchitectureTest {
     }
 
     @Test
+    void deletedGuiWiringAndSpecialEquipmentCraftEscapeHatchAreAbsent() throws IOException {
+        String plugin = Files.readString(JAVA.resolve("com/hyunseo/hyunseorpg/HyunseoRPGPlugin.java"));
+        assertFalse(plugin.contains("deliveryGuiService"));
+        assertFalse(plugin.contains("specialEquipmentMenuService"));
+
+        String command = Files.readString(JAVA.resolve(
+                "com/hyunseo/hyunseorpg/command/SpecialEquipmentCommand.java"));
+        assertFalse(command.contains("action.equals(\"craft\")"));
+        assertFalse(command.contains("service.craft("));
+        assertFalse(command.contains("\"menu\""));
+        assertFalse(command.contains("\"craft\""));
+    }
+
+    @Test
     void remainingInventoryEventsOnlyObserveVanillaInventoryState() throws IOException {
         Set<String> actual;
         try (var files = Files.walk(JAVA)) {
