@@ -25,7 +25,6 @@ public final class ConfigService {
     private final JavaPlugin plugin;
     private FileConfiguration expConfig;
     private FileConfiguration mobsConfig;
-    private FileConfiguration questsConfig;
     private FileConfiguration weaponsConfig;
     private FileConfiguration itemsConfig;
     private FileConfiguration equipmentGrowthConfig;
@@ -71,7 +70,6 @@ public final class ConfigService {
         plugin.reloadConfig();
         this.expConfig = loadManagedConfig("exp.yml");
         this.mobsConfig = loadManagedConfig("mobs.yml");
-        this.questsConfig = loadManagedConfig("quests.yml");
         this.weaponsConfig = loadManagedConfig("weapons.yml");
         // Lifestyle professions were removed from the active runtime. The field and
         // accessors remain as a compatibility facade for legacy source only; the
@@ -288,40 +286,13 @@ public final class ConfigService {
         return gatewayBossConfig.getDouble(path, defaultValue);
     }
 
-    public Set<String> getQuestsKeys(String path) {
-        if (questsConfig.getConfigurationSection(path) == null) {
-            return Set.of();
-        }
-        return questsConfig.getConfigurationSection(path).getKeys(false);
-    }
 
-    public boolean getQuestsBoolean(String path, boolean defaultValue) {
-        return questsConfig.getBoolean(path, defaultValue);
-    }
 
-    public int getQuestsInt(String path, int defaultValue) {
-        return questsConfig.getInt(path, defaultValue);
-    }
 
-    public long getQuestsLong(String path, long defaultValue) {
-        return questsConfig.getLong(path, defaultValue);
-    }
 
-    public String getQuestsString(String path, String defaultValue) {
-        return questsConfig.getString(path, defaultValue);
-    }
 
-    public List<String> getQuestsStringList(String path) {
-        return questsConfig.getStringList(path);
-    }
 
-    public void reloadQuestsConfig() {
-        this.questsConfig = loadManagedConfig("quests.yml");
-    }
 
-    public ConfigurationSection getQuestsSection(String path) {
-        return questsConfig.getConfigurationSection(path);
-    }
 
 
 

@@ -113,27 +113,21 @@ items:
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22110
-    lore: ["검 장비에 장착하여 검 투척을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 검 투척을 사용합니다."]
   enchant_book_light_greatsword:
     material: ENCHANTED_BOOK
     display-name: "빛의 대검 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22111
-    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다."]
   enchant_book_laser_arrow:
     material: ENCHANTED_BOOK
     display-name: "레이저 화살 인챈트 북"
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22112
-    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
-    material: ENCHANTED_BOOK
-    display-name: "곡괭이 보존 인챈트 북"
-    category: ENCHANTMENT
-    rarity: RARE
-    custom-model-data: 22120
-    lore: ["곡괭이의 내구도 감소를 완화하는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
+    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다."]
   enchant_book_mining_bonus_drop:
     material: ENCHANTED_BOOK
     display-name: "광맥 추가 채굴 인챈트 북"

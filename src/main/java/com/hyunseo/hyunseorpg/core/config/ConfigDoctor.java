@@ -42,7 +42,7 @@ public final class ConfigDoctor {
             "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml",
-            "quests.yml", "special-equipment.yml"
+            "special-equipment.yml"
             , "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml"
@@ -94,7 +94,6 @@ public final class ConfigDoctor {
             checkPlayers(lines, counts);
         }
         if (section.isBlank() || section.equals("all") || section.equals("quests")) {
-            checkQuests(lines, counts);
         }
         if (section.isBlank() || section.equals("all") || section.equals("stacking")
                 || section.equals("vanilla-stacking")) {
@@ -292,51 +291,6 @@ public final class ConfigDoctor {
             checkRecipeList(crafting.getStringList("craft2.recipes"), recipeIds, "craft2.recipes", lines, counts);
         }
         info(lines, counts, "recipes: " + recipeIds.size() + " canonical crafting recipes inspected");
-    }
-
-private void checkQuests(List<String> lines, int[] counts) {
-        FileConfiguration quests = load("quests.yml", lines, counts);
-        if (quests == null) return;
-        ConfigurationSection auto = quests.getConfigurationSection("auto");
-        if (auto == null) {
-            warning(lines, counts, "quests.yml: automatic quest section is missing");
-            return;
-        }
-        int maxActive = quests.getInt("auto.max-active", 0);
-        if (maxActive < 1) error(lines, counts, "quests.yml:auto.max-active must be at least 1");
-        if (quests.getLong("auto.time-limit-seconds", 0L) <= 0L) error(lines, counts, "quests.yml:auto.time-limit-seconds must be positive");
-        int huntWeight = quests.getInt("auto.types.hunt.weight", -1);
-        int itemWeight = quests.getInt("auto.types.item-delivery.weight", -1);
-        if (huntWeight < 0 || itemWeight < 0 || huntWeight + itemWeight <= 0) {
-            error(lines, counts, "quests.yml:auto.types weights must contain a positive total");
-        }
-        checkQuestRange(quests, "auto.types.hunt.amount-per-target", lines, counts);
-        checkQuestRange(quests, "auto.types.item-delivery.amount", lines, counts);
-        checkQuestRange(quests, "auto.types.hunt.target-count", lines, counts);
-        for (String key : List.of("after-accept-seconds", "after-complete-seconds", "after-fail-seconds", "after-abandon-seconds")) {
-            if (quests.getLong("auto.cooldown." + key, -1L) < 0L) error(lines, counts, "quests.yml:auto.cooldown." + key + " is negative");
-        }
-        for (String raw : quests.getStringList("auto.eligibility.vanilla-mobs")) {
-            try { EntityType.valueOf(raw.trim().toUpperCase(Locale.ROOT)); }
-            catch (IllegalArgumentException exception) { error(lines, counts, "quests.yml:auto.eligibility.vanilla-mobs has unknown entity " + raw); }
-        }
-        for (String raw : quests.getStringList("auto.eligibility.vanilla-items")) {
-            if (Material.matchMaterial(raw.trim().toUpperCase(Locale.ROOT)) == null) {
-                error(lines, counts, "quests.yml:auto.eligibility.vanilla-items has unknown material " + raw);
-            }
-        }
-        FileConfiguration items = load("items.yml", lines, counts);
-        Set<String> itemIds = items == null ? Set.of() : itemIds(items);
-        for (String id : quests.getStringList("auto.eligibility.items.custom-item-ids")) {
-            if (!itemIds.contains(normalize(id))) error(lines, counts, "quests.yml:auto custom item candidate is missing: " + id);
-        }
-        info(lines, counts, "quests.yml: automatic quest candidate policy inspected");
-    }
-
-    private void checkQuestRange(FileConfiguration config, String path, List<String> lines, int[] counts) {
-        int min = config.getInt(path + ".min", -1);
-        int max = config.getInt(path + ".max", -1);
-        if (min < 1 || max < min) error(lines, counts, "quests.yml:" + path + " has invalid min/max values");
     }
 
     private void checkVanillaStacking(List<String> lines, int[] counts) {

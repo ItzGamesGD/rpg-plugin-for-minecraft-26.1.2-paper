@@ -51,7 +51,7 @@ public final class ConfigMigrationService {
             "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "hunting-grounds.yml",
-            "quests.yml", "worlds.yml", "special-equipment.yml"
+            "worlds.yml", "special-equipment.yml"
     );
     private static final List<String> FARMING_FILES = List.of(
             "farming/crops.yml", "farming/growth.yml", "farming/harvest.yml",
@@ -173,7 +173,6 @@ public final class ConfigMigrationService {
         migrateEnchants(lines, changedFiles);
         migrateSpecialEquipment(lines, changedFiles);
         migrateEquipmentGrowth(lines, changedFiles);
-        migrateQuests(lines, changedFiles);
         migrateLegacyProfessionRecipes(lines, changedFiles);
         migrateCraftingAmounts(lines, changedFiles);
         migrateVanillaStacking(lines, changedFiles);
@@ -1071,45 +1070,6 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
             copyTree(target, defaults, "vanilla-stacking");
             mark(target, fileName, changedFiles, lines, "added vanilla-stacking settings");
         }
-    }
-
-    private void migrateQuests(List<String> lines, List<File> changedFiles) {
-        String fileName = "quests.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        boolean changed = false;
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
-            changed = true;
-        }
-        if (!target.isConfigurationSection("auto") && defaults.isConfigurationSection("auto")) {
-            copyTree(target, defaults, "auto");
-            lines.add("quests.yml: added automatic quest settings");
-            changed = true;
-        }
-        if (target.isConfigurationSection("auto") && defaults.isConfigurationSection("auto")) {
-            for (String path : List.of("auto.generation", "auto.eligibility", "auto.exclusions", "auto.rewards")) {
-                if (!target.isConfigurationSection(path) && defaults.isConfigurationSection(path)) {
-                    copyTree(target, defaults, path);
-                    lines.add("quests.yml: added " + path + " settings");
-                    changed = true;
-                }
-            }
-            if (!target.isConfigurationSection("auto.types") && defaults.isConfigurationSection("auto.types")) {
-                target.set("auto.legacy-types", target.getStringList("auto.types"));
-                target.set("auto.types", null);
-                copyTree(target, defaults, "auto.types");
-                lines.add("quests.yml: migrated legacy auto.types list to weighted type settings");
-                changed = true;
-            }
-        }
-        if (target.getInt("schema-version", 0) < 2) {
-            target.set("schema-version", 2);
-            lines.add("quests.yml: schema-version -> 2");
-            changed = true;
-        }
-        if (changed) mark(target, fileName, changedFiles, lines, "quest migration staged");
     }
 
     private void describeLegacyArchive(List<String> lines) {

@@ -45,6 +45,17 @@ final class EnchantContentDataTest {
     }
 
     @Test
+    void delegatedNativeEnchantAbilitiesDeclareTheirRuntimeContract() {
+        YamlConfiguration enchants = load("enchants.yml");
+        assertEquals("swordmaster.light-greatsword", enchants.getString("enchants.light_greatsword.settings.delegated-runtime"));
+        assertEquals("bowmaster.laser-arrow", enchants.getString("enchants.laser_arrow.settings.delegated-runtime"));
+        assertEquals("bowmaster.arrow-rain", enchants.getString("enchants.fire_arrow_rain.settings.delegated-runtime"));
+        for (String id : List.of("light_greatsword", "laser_arrow", "fire_arrow_rain")) {
+            assertEquals("native-item-enchantment", enchants.getString("enchants." + id + ".settings.level-source"));
+        }
+    }
+
+    @Test
     void retiredEnchantDefinitionsAreNotRegistered() {
         YamlConfiguration enchants = load("enchants.yml");
         for (String retired : List.of(

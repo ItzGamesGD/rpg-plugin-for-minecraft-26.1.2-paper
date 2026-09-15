@@ -6,7 +6,6 @@ import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
 import com.hyunseo.hyunseorpg.rpgtest.gateway.GatewayPrototypeService;
 import com.hyunseo.hyunseorpg.command.RPGLevelAdminCommand;
 import com.hyunseo.hyunseorpg.command.RPGMobCommand;
-import com.hyunseo.hyunseorpg.command.RPGQuestCommand;
 import com.hyunseo.hyunseorpg.command.SpecialEquipmentCommand;
 import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigDoctor;
@@ -70,14 +69,6 @@ import com.hyunseo.hyunseorpg.player.YamlPlayerDataRepository;
 import com.hyunseo.hyunseorpg.progression.RequirementChecker;
 import com.hyunseo.hyunseorpg.progression.NaturalDiscoveryService;
 import com.hyunseo.hyunseorpg.progression.DimensionVisitTracker;
-import com.hyunseo.hyunseorpg.quest.QuestProgressListener;
-import com.hyunseo.hyunseorpg.quest.QuestRegistry;
-import com.hyunseo.hyunseorpg.quest.QuestService;
-import com.hyunseo.hyunseorpg.quest.AutoQuestService;
-import com.hyunseo.hyunseorpg.quest.availability.ContentAvailabilityService;
-import com.hyunseo.hyunseorpg.quest.availability.ItemObtainabilityService;
-import com.hyunseo.hyunseorpg.quest.availability.MonsterEligibilityService;
-import com.hyunseo.hyunseorpg.quest.availability.PlayerDiscoveryService;
 import com.hyunseo.hyunseorpg.activity.ActivityBlockRepository;
 import com.hyunseo.hyunseorpg.activity.ActivityBlockRewardValidator;
 import com.hyunseo.hyunseorpg.farming.CropBlockAdapter;
@@ -170,17 +161,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private InventoryDeliveryService inventoryDeliveryService;
     private PendingRewardService pendingRewardService;
     private NaturalDiscoveryService naturalDiscoveryService;
-    private PlayerDiscoveryService playerDiscoveryService;
-    private ContentAvailabilityService contentAvailabilityService;
     private RPGReloadService reloadService;
     private PlayerDataRepository playerDataRepository;
     private PlayerDataCache playerDataCache;
     private PlayerDataService playerDataService;
     private RequirementChecker requirementChecker;
     private DimensionVisitTracker dimensionVisitTracker;
-    private QuestRegistry questRegistry;
-    private QuestService questService;
-    private AutoQuestService autoQuestService;
     private CombatService combatService;
     private CooldownService cooldownService;
     private SwordmasterBladeService swordmasterBladeService;
@@ -466,40 +452,18 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 mobService, mobRegistry);
         this.mobDropRegistry = new MobDropRegistry(this, configService);
         this.mobDropRegistry.load();
-        this.playerDiscoveryService = new PlayerDiscoveryService(playerDataService, mobTagService);
-        MonsterEligibilityService monsterEligibilityService = new MonsterEligibilityService(
-                configService, playerDataService, mobRegistry, monsterSpawnRegistry, playerDiscoveryService);
-        ItemObtainabilityService itemObtainabilityService = new ItemObtainabilityService(
-                configService, itemRegistry, itemService, craftingRecipeRegistry, mobDropRegistry, playerDataService);
-        this.contentAvailabilityService = new ContentAvailabilityService(monsterEligibilityService, itemObtainabilityService);
         this.mobDropService = new MobDropService(this, mobService, mobDropRegistry, itemService, inventoryDeliveryService,
                 elementalFragmentPolicy);
         this.mobRewardService = new MobRewardService(
                 mobService, expService, mobDropService,
                 mythicMobIntegrationService);
-        this.questRegistry = new QuestRegistry(this, configService);
-        this.questRegistry.load();
-        this.questService = new QuestService(playerDataService, questRegistry, requirementChecker, expService);
-        this.autoQuestService = new AutoQuestService(configService, playerDataService, itemService,
-                expService, contentAvailabilityService);
 
-        this.explorationModule = new ExplorationModule(this,
-                BukkitExplorationPorts.compose(
-                        this,
-                        ExistingHyunseoRpgAdapters.mobPort(mobService),
-                        ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
-                        ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
-                null);
         this.gatewayPrototypeService = new GatewayPrototypeService(this, configService);
 
         configureReloadService();
-        reloadService.register("exploration", explorationModule::reload);
 
         registerCommandsSafe();
         registerListeners();
-        if (!explorationModule.start()) {
-            getLogger().severe("Exploration module failed to start; keeping it disabled for this boot.");
-        }
         loadCurrentlyOnlinePlayers();
         cropGrowthService.start();
         playerDataService.startAutosave();
@@ -558,9 +522,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (monsterBehaviorService != null) {
             monsterBehaviorService.stop();
-        }
-        if (explorationModule != null) {
-            explorationModule.stop();
         }
         if (playerDataService != null) {
             playerDataService.stopAutosave();
@@ -674,7 +635,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setPotionFactory(potionFactory);
         give.setSpecialEquipmentService(specialEquipmentService);
         give.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
-        give.setExplorationModule(explorationModule);
 
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
                 weaponItemService, equipmentEnhancementService,
@@ -682,8 +642,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         RPGLevelAdminCommand level = new RPGLevelAdminCommand(playerDataService, expService, levelService);
         RPGMobCommand mob = new RPGMobCommand(configService, mobService, mobLevelScalingService,
                 mythicCustomMobService, monsterBehaviorService);
-        RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService,
-                contentAvailabilityService, playerDiscoveryService);
         SpecialEquipmentCommand special = new SpecialEquipmentCommand(specialEquipmentService);
 
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
@@ -692,7 +650,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             registerPaperCommand(commands, "rpgtest", test, test);
             registerPaperCommand(commands, "rpglevel", level, level);
             registerPaperCommand(commands, "rpgmob", mob, mob);
-            registerPaperCommand(commands, "rpgquest", quest, quest);
             registerPaperCommand(commands, "specialequipment", special, special);
         });
     }
@@ -739,11 +696,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             if (specialEquipmentRegistry.getAll().isEmpty()) return false;
             return craftingRecipeRegistry.load()
                     && !specialEquipmentRegistry.getAll().isEmpty();
-        });
-        reloadService.register("quests", () -> {
-            configService.reloadQuestsConfig();
-            questRegistry.load();
-            return true;
         });
         reloadService.registerDetailed("items", () -> {
             configService.reloadItemsConfig();
@@ -1030,8 +982,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 configService, mobService, itemService, inventoryDeliveryService, elementalFragmentPolicy), this);
         getServer().getPluginManager().registerEvents(new CustomItemVanillaActionBlockListener(itemService), this);
         getServer().getPluginManager().registerEvents(mythicCustomMobService, this);
-        getServer().getPluginManager().registerEvents(new QuestProgressListener(questService, autoQuestService), this);
-        getServer().getPluginManager().registerEvents(playerDiscoveryService, this);
         getServer().getPluginManager().registerEvents(dimensionVisitTracker, this);
         getServer().getPluginManager().registerEvents(naturalDiscoveryService, this);
         // Stage 1: vanilla enchanting, anvils, trades and loot must remain authoritative.

@@ -32,6 +32,9 @@ enchants:
     cooldown-seconds: 60.0
     triggers:
       - { type: INPUT, input: SHIFT_RIGHT_CLICK, phase: CONFIRMED }
+    settings:
+      delegated-runtime: swordmaster.light-greatsword
+      level-source: native-item-enchantment
 
   laser_arrow:
     display-name: "레이저 화살"
@@ -45,6 +48,9 @@ enchants:
     cooldown-seconds: 20.0
     triggers:
       - { type: INPUT, input: LEFT_CLICK, phase: CONFIRMED }
+    settings:
+      delegated-runtime: bowmaster.laser-arrow
+      level-source: native-item-enchantment
 
   axe_heavy_strike:
     display-name: "강타"
@@ -141,6 +147,9 @@ enchants:
     cooldown-seconds: 60.0
     triggers:
       - { type: INPUT, input: SHIFT_LEFT_CLICK, phase: CONFIRMED }
+    settings:
+      delegated-runtime: bowmaster.arrow-rain
+      level-source: native-item-enchantment
 
   crossbow_barrage:
     display-name: "쇠뇌 연발"

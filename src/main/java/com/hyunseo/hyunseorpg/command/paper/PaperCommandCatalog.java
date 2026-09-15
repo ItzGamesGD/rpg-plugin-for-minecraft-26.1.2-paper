@@ -11,7 +11,6 @@ public final class PaperCommandCatalog {
             c("rpgtest", "Operator-only testing utilities"),
             c("rpglevel", "Admin level command", List.of("leveladmin")),
             c("rpgmob", "RPG mob management command"),
-            c("rpgquest", "RPG quest command", List.of("quest")),
             c("specialequipment", "Special equipment administration")
     );
     public static final Map<String, PaperCommandSpec> BY_NAME = ALL.stream()
