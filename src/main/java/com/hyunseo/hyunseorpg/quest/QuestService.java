@@ -173,7 +173,6 @@ public final class QuestService {
         switch (reward.type()) {
             case BASE_EXP -> expService.giveBaseExp(player, reward.amount());
             case CLASS_EXP -> expService.giveClassExp(player, reward.amount());
-            case COINS -> { /* Legacy saves/configs remain readable; retired currency rewards are ignored. */ }
             case STAT_POINTS -> data.setStatPoints(data.getStatPoints() + (int) reward.amount());
             case SKILL_POINTS -> data.setSkillPoints(data.getSkillPoints() + (int) reward.amount());
             case CLASS_STAT_POINTS -> data.setClassStatPoints(data.getClassStatPoints() + (int) reward.amount());

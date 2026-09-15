@@ -12,7 +12,6 @@ import com.hyunseo.hyunseorpg.quest.availability.MonsterEligibilityContext;
 import com.hyunseo.hyunseorpg.quest.availability.MonsterEligibilityResult;
 import com.hyunseo.hyunseorpg.quest.availability.PlayerDiscoveryService;
 import com.hyunseo.hyunseorpg.quest.availability.QuestTargetCandidate;
-import com.hyunseo.hyunseorpg.ui.RPGMenuService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -26,27 +25,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-/** /quest is a GUI entry point; retained text subcommands serve accessibility and administration. */
+/** Text command for the quest subsystem; it does not route through the removed RPG menu shell. */
 public final class RPGQuestCommand implements CommandExecutor, TabCompleter {
     private final QuestService questService;
     private final AutoQuestService autoQuestService;
-    private final RPGMenuService menu;
     private final ContentAvailabilityService availability;
     private final PlayerDiscoveryService discovery;
 
     public RPGQuestCommand(QuestService questService) {
-        this(questService, null, null, null, null);
+        this(questService, null, null, null);
     }
 
     public RPGQuestCommand(QuestService questService, AutoQuestService autoQuestService) {
-        this(questService, autoQuestService, null, null, null);
+        this(questService, autoQuestService, null, null);
     }
 
-    public RPGQuestCommand(QuestService questService, AutoQuestService autoQuestService, RPGMenuService menu,
+    public RPGQuestCommand(QuestService questService, AutoQuestService autoQuestService,
                            ContentAvailabilityService availability, PlayerDiscoveryService discovery) {
         this.questService = questService;
         this.autoQuestService = autoQuestService;
-        this.menu = menu;
         this.availability = availability;
         this.discovery = discovery;
     }
@@ -243,11 +240,17 @@ public final class RPGQuestCommand implements CommandExecutor, TabCompleter {
     }
 
     private void openGui(Player player) {
-        if (menu != null) menu.openQuests(player);
+        if (autoQuestService == null) return;
+        List<AutoQuestData> active = autoQuestService.getQuests(player);
+        player.sendMessage(Component.text("활성 퀘스트: " + active.size(), NamedTextColor.GOLD));
+        for (AutoQuestData quest : active) {
+            player.sendMessage(Component.text("[" + quest.slot() + "] " + quest.displayName()
+                    + " " + autoQuestService.displayedProgress(player, quest) + "/" + quest.amount(), NamedTextColor.GRAY));
+        }
     }
 
     private void sendHelp(Player player, String label) {
-        player.sendMessage(Component.text("/" + label + " - 퀘스트 메뉴 열기", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("/" + label + " - 활성 퀘스트 표시", NamedTextColor.YELLOW));
         player.sendMessage(Component.text("/" + label + " accept | complete <slot> | abandon <slot>", NamedTextColor.YELLOW));
         player.sendMessage(Component.text("/" + label + " start|info|claim|cancel <questId>", NamedTextColor.YELLOW));
     }

@@ -57,11 +57,9 @@ final class EquipmentPromotionRemovalArchitectureTest {
         assertFalse(Files.exists(enhancement.resolve("EnhancementInventoryHolder.java")));
         assertFalse(Files.exists(ROOT.resolve(
                 "src/main/java/com/hyunseo/hyunseorpgenhancement/EnchantInventoryHolder.java")));
-        String gui = Files.readString(enhancement.resolve("EquipmentGrowthGuiService.java"));
-        String listener = Files.readString(enhancement.resolve("AnvilGrowthListener.java"));
-        assertFalse(gui.contains("openEnhancement("));
-        assertFalse(gui.contains("applySuccessfulEnhancement("));
-        assertFalse(listener.contains("guiService.enhance("));
+        assertFalse(Files.exists(enhancement.resolve("EquipmentGrowthGuiService.java")));
+        assertFalse(Files.exists(enhancement.resolve("EquipmentGrowthMenuHolder.java")));
+        assertFalse(Files.exists(enhancement.resolve("AnvilGrowthListener.java")));
 
         Path sourceRoot = ROOT.resolve("src/main/java");
         try (var sources = Files.walk(sourceRoot)) {

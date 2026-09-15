@@ -11,7 +11,7 @@ items:
   potion_bleed: { material: POTION, display-name: "출혈 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_vulnerability: { material: POTION, display-name: "취약 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_necrosis: { material: POTION, display-name: "괴사 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
-  abundance_essence: { material: AMETHYST_SHARD, display-name: "풍요의 정수", category: FARMING_ESSENCE, rarity: LEGENDARY, tags: [farming-essence, "farming:abundance_essence", non-sellable, alchemy-catalyst], lore: ["후반 농사 합성 재료입니다.", "상점에 판매할 수 없습니다."] }
+  abundance_essence: { material: AMETHYST_SHARD, display-name: "풍요의 정수", category: FARMING_ESSENCE, rarity: LEGENDARY, tags: [farming-essence, "farming:abundance_essence", non-sellable, alchemy-catalyst], lore: ["후반 농사 합성 재료입니다.", "후속 제작에 사용하는 실제 아이템입니다."] }
   vitality_stat_token: { material: HEART_OF_THE_SEA, display-name: "생명의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
   satiety_stat_token: { material: COOKIE, display-name: "포만의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
   abundance_stat_token: { material: SUNFLOWER, display-name: "풍요의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
@@ -107,30 +107,6 @@ items:
   guard_bone: { material: BONE, display-name: "경비병의 뼈", category: MATERIAL, custom-model-data: 22004 }
   skeleton_king_sigil: { material: PAPER, display-name: "스켈레톤 킹 인장", category: QUEST, rarity: EPIC, custom-model-data: 22005 }
   basic_upgrade_stone: { material: AMETHYST_SHARD, display-name: "기본 강화석", category: ENHANCEMENT, custom-model-data: 22100 }
-  wither_core:
-    material: NETHER_STAR
-    display-name: "위더의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24001
-  wither_fragment:
-    material: NETHER_STAR
-    display-name: "위더 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24002
-  dragon_core:
-    material: DRAGON_BREATH
-    display-name: "드래곤의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24003
-  dragon_fragment:
-    material: DRAGON_BREATH
-    display-name: "드래곤 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24004
   enchant_book_blade_throw:
     material: ENCHANTED_BOOK
     display-name: "검 투척 인챈트 북"
@@ -157,21 +133,21 @@ items:
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22120
-    lore: ["곡괭이의 내구도 감소를 완화하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["곡괭이의 내구도 감소를 완화하는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   enchant_book_mining_bonus_drop:
     material: ENCHANTED_BOOK
     display-name: "광맥 추가 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22121
-    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   enchant_book_area_mining_pickaxe:
     material: ENCHANTED_BOOK
     display-name: "광역 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22122
-    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   fire_sword: { material: GOLDEN_SWORD, display-name: "불타는 검", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23401, lore: ["불 원소의 기본 장비"] }
   fire_bow: { material: BOW, display-name: "불타는 활", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23402, lore: ["불 원소의 기본 장비"] }
   fireball: { material: FIRE_CHARGE, display-name: "파이어볼", category: ELEMENTAL_CONSUMABLE, custom-model-data: 23403, lore: ["불 원소 소비 아이템"] }

@@ -36,7 +36,6 @@ public final class ConfigService {
     private FileConfiguration equipmentInputsConfig;
     private FileConfiguration craftingConfig;
     private FileConfiguration mythicMobsConfig;
-    private FileConfiguration bossesConfig;
     private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
     private FileConfiguration specialEquipmentConfig;
@@ -90,7 +89,6 @@ public final class ConfigService {
         this.equipmentInputsConfig = loadManagedConfig("equipment-inputs.yml");
         this.craftingConfig = loadManagedConfig("crafting.yml");
         this.mythicMobsConfig = loadManagedConfig("mythic-mobs.yml");
-        this.bossesConfig = loadManagedConfig("bosses.yml");
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
@@ -313,37 +311,7 @@ public final class ConfigService {
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
     }
 
-    public boolean getBossesBoolean(String path, boolean defaultValue) {
-        return bossesConfig.getBoolean(path, defaultValue);
-    }
-
-    public int getBossesInt(String path, int defaultValue) {
-        return bossesConfig.getInt(path, defaultValue);
-    }
-
-    public long getBossesLong(String path, long defaultValue) {
-        return bossesConfig.getLong(path, defaultValue);
-    }
-
-    public double getBossesDouble(String path, double defaultValue) {
-        return bossesConfig.getDouble(path, defaultValue);
-    }
-
-    public String getBossesString(String path, String defaultValue) {
-        return bossesConfig.getString(path, defaultValue);
-    }
-
-    public ConfigurationSection getBossesSection(String path) {
-        return bossesConfig.getConfigurationSection(path);
-    }
-
-    public java.util.Set<String> getBossesKeys(String path) {
-        ConfigurationSection section = getBossesSection(path);
-        return section == null ? java.util.Set.of() : section.getKeys(false);
-    }
-
-    public void reloadBossesConfig() {
-        this.bossesConfig = loadManagedConfig("bosses.yml");
+    public void reloadGatewayBossConfig() {
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
     }
 
@@ -1175,41 +1143,6 @@ public final class ConfigService {
             plugin.getLogger().info("Removed disabled custom mob entries from " + resourceName + ".");
         } catch (IOException exception) {
             plugin.getLogger().log(Level.WARNING, "Failed to remove disabled custom mob entries from " + resourceName, exception);
-        }
-    }
-
-    private void migrateBossRewards(FileConfiguration configuration) {
-        ConfigurationSection sessions = configuration.getConfigurationSection("boss-sessions");
-        if (sessions == null) return;
-        boolean changed = false;
-        for (String bossId : sessions.getKeys(false)) {
-            ConfigurationSection boss = sessions.getConfigurationSection(bossId);
-            if (boss == null) continue;
-            ConfigurationSection rewards = boss.getConfigurationSection("rewards");
-            ConfigurationSection first = boss.getConfigurationSection("first-clear-rewards");
-            if (rewards == null && first != null) {
-                copySection(configuration, first, "boss-sessions." + bossId + ".rewards");
-                changed = true;
-            }
-            if (boss.isSet("first-clear-rewards")) {
-                boss.set("first-clear-rewards", null);
-                changed = true;
-            }
-            if (boss.isSet("repeat-rewards")) {
-                boss.set("repeat-rewards", null);
-                changed = true;
-            }
-            if (!boss.isSet("respawn-cooldown-seconds")) {
-                boss.set("respawn-cooldown-seconds", bossId.equalsIgnoreCase("ender-dragon") ? 1800 : 900);
-                changed = true;
-            }
-        }
-        if (!changed) return;
-        try {
-            configuration.save(new File(plugin.getDataFolder(), "bosses.yml"));
-            plugin.getLogger().info("Migrated boss rewards to fixed rewards and added respawn cooldown settings.");
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to migrate bosses.yml", exception);
         }
     }
 

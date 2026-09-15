@@ -9,7 +9,6 @@ import com.hyunseo.hyunseorpg.core.config.ConfigMigrationService;
 import com.hyunseo.hyunseorpg.crafting.SoulboundItemService;
 import com.hyunseo.hyunseorpg.weapon.WeaponItemService;
 import com.hyunseo.hyunseorpg.weapon.WeaponType;
-import com.hyunseo.hyunseorpg.ui.RPGMenuService;
 import com.hyunseo.hyunseorpg.mob.variant.ZombieVariant;
 import com.hyunseo.hyunseorpg.mob.variant.ZombieVariantService;
 import com.hyunseo.hyunseorpg.farming.FarmingProfile;
@@ -74,7 +73,6 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private final SoulboundItemService soulboundItemService;
     private final RPGReloadService reloadService;
     private final WeaponItemService weaponItemService;
-    private final RPGMenuService menuService;
     private final ZombieVariantService zombieVariantService;
     private ConfigDoctor configDoctor;
     private ConfigMigrationService configMigrationService;
@@ -101,37 +99,14 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private AlchemyAuditLog alchemyAuditLog;
     private ExplorationModule explorationModule;
 
-    public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService, SoulboundItemService soulboundItemService) {
-        this(itemRegistry, itemService, soulboundItemService, null, null, null);
-    }
-
-    public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService,
-                          SoulboundItemService soulboundItemService, RPGReloadService reloadService) {
-        this(itemRegistry, itemService, soulboundItemService, reloadService, null, null);
-    }
-
     public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService,
                           SoulboundItemService soulboundItemService, RPGReloadService reloadService,
-                          WeaponItemService weaponItemService) {
-        this(itemRegistry, itemService, soulboundItemService, reloadService, weaponItemService, null, null);
-    }
-
-    public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService,
-                          SoulboundItemService soulboundItemService, RPGReloadService reloadService,
-                          WeaponItemService weaponItemService, RPGMenuService menuService) {
-        this(itemRegistry, itemService, soulboundItemService, reloadService, weaponItemService, menuService, null);
-    }
-
-    public RPGGiveCommand(RPGItemRegistry itemRegistry, RPGItemService itemService,
-                          SoulboundItemService soulboundItemService, RPGReloadService reloadService,
-                          WeaponItemService weaponItemService, RPGMenuService menuService,
-                          ZombieVariantService zombieVariantService) {
+                          WeaponItemService weaponItemService, ZombieVariantService zombieVariantService) {
         this.itemRegistry = itemRegistry;
         this.itemService = itemService;
         this.soulboundItemService = soulboundItemService;
         this.reloadService = reloadService;
         this.weaponItemService = weaponItemService;
-        this.menuService = menuService;
         this.zombieVariantService = zombieVariantService;
     }
 
@@ -212,8 +187,9 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 0 && sender instanceof Player player && menuService != null) {
-            menuService.openMain(player);
+        if (args.length == 0) {
+            sender.sendMessage(Component.text("사용법: /" + label
+                    + " <give <itemId> [amount]|pending [claim]|reload [항목]|farming|alchemy>", NamedTextColor.YELLOW));
             return true;
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("farming")) {

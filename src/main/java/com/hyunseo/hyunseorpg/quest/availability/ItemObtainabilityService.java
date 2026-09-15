@@ -101,13 +101,12 @@ public final class ItemObtainabilityService {
             if (category.contains("ENHANCEMENT") || category.contains("ENCHANTMENT") || category.contains("PROMOTION")) {
                 return deny(AvailabilityReason.UPGRADE_MATERIAL, item, sources, "growth material");
             }
-            if (category.contains("TICKET")) return deny(AvailabilityReason.SHOP_TICKET, item, sources, "shop ticket");
             if (category.contains("SPECIAL") || category.contains("CONSUMABLE") || category.contains("BUFF")) {
                 return deny(AvailabilityReason.SPECIAL_LOOT, item, sources, "special item category");
             }
             if (category.contains("QUEST")) return deny(AvailabilityReason.QUEST_REWARD_ONLY, item, sources, "quest category");
         }
-        if (sources.isEmpty()) return deny(AvailabilityReason.NO_ACQUISITION_SOURCE, item, Set.of(AcquisitionSource.NONE), "no active recipe, drop, or shop source");
+        if (sources.isEmpty()) return deny(AvailabilityReason.NO_ACQUISITION_SOURCE, item, Set.of(AcquisitionSource.NONE), "no active recipe or drop source");
         boolean explicitlyAllowed = Boolean.TRUE.equals(override) || configuredCustomCandidates().stream()
                 .anyMatch(value -> value.equalsIgnoreCase(id));
         if (context == ItemObtainabilityContext.QUEST_TARGET && !explicitlyAllowed) {

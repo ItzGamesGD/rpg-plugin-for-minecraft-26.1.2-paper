@@ -3,7 +3,6 @@ package com.hyunseo.hyunseorpg.quest;
 public enum QuestRewardType {
     BASE_EXP,
     CLASS_EXP,
-    COINS,
     STAT_POINTS,
     SKILL_POINTS,
     CLASS_STAT_POINTS,

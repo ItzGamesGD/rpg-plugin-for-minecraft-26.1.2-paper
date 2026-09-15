@@ -1,7 +1,5 @@
 package com.hyunseo.hyunseorpg.command;
 
-import com.hyunseo.hyunseorpg.boss.BossSessionManager;
-import com.hyunseo.hyunseorpg.boss.BossType;
 import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentData;
@@ -40,7 +38,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private final EquipmentEnhancementService enhancement;
     private final EquipmentMetadataService equipmentMetadata;
     private final EquipmentRegistry equipmentRegistry;
-    private final BossSessionManager bosses;
     private final RPGReloadService reload;
     private final GatewayPrototypeService gatewayPrototype;
     private final ThousandEyesController thousandEyes;
@@ -48,7 +45,7 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     public RPGTestCommand(RPGItemRegistry itemRegistry, RPGItemService items,
                           SoulboundItemService soulbound, WeaponItemService weapons,
                           EquipmentEnhancementService enhancement,
-                          BossSessionManager bosses, RPGReloadService reload,
+                          RPGReloadService reload,
                           EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry,
                           GatewayPrototypeService gatewayPrototype, ThousandEyesController thousandEyes) {
         this.itemRegistry = itemRegistry;
@@ -58,7 +55,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         this.enhancement = enhancement;
         this.equipmentMetadata = equipmentMetadata;
         this.equipmentRegistry = equipmentRegistry;
-        this.bosses = bosses;
         this.reload = reload;
         this.gatewayPrototype = gatewayPrototype;
         this.thousandEyes = thousandEyes;
@@ -72,7 +68,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
             case "give", "item" -> give(sender, args, label);
             case "hand", "inspect" -> inspect(sender, args);
             case "maxhand", "maxgrowth" -> maxHand(sender, args);
-            case "boss" -> boss(sender, args, label);
             case "gateway" -> gateway(sender, args, label);
             case "basic-swarm" -> basicSwarm(sender, args, label);
             case "orbital-core" -> orbitalCore(sender, args);
@@ -219,21 +214,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
                 + ", enhancement=+" + finalEnhancement);
     }
 
-    private void boss(CommandSender sender, String[] args, String label) {
-        if (args.length < 3) { sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]"); return; }
-        BossType type = BossType.fromInput(args[2]).orElse(null);
-        if (type == null) { sender.sendMessage("보스 종류는 wither 또는 dragon입니다."); return; }
-        Player target = args.length > 3 ? Bukkit.getPlayerExact(args[3]) : sender instanceof Player player ? player : null;
-        if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
-        switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "start" -> sender.sendMessage("보스 세션 시작: " + bosses.startTest(target, type));
-            case "end" -> sender.sendMessage("보스 세션 종료: " + bosses.endFor(target, type));
-            case "complete" -> sender.sendMessage("보스 강제 완료: " + bosses.forceComplete(target, type));
-            case "status" -> sender.sendMessage(type.configId() + ": " + bosses.status(type));
-            default -> sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
-        }
-    }
-
     private ItemStack createItem(String rawId) {
         ItemStack item = items.create(rawId, 1).orElse(null);
         if (item != null) return item;
@@ -246,17 +226,16 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private void usage(CommandSender sender, String label) {
         sender.sendMessage("/" + label + " give <player> <itemId> [amount]");
         sender.sendMessage("/" + label + " maxhand [player]");
-        sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
         sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|weapon-ai|cancel> [type] [debug]");
         sender.sendMessage("/" + label + " basic-swarm <random|pattern <name> [count]>");
         sender.sendMessage("/" + label + " orbital-core [1-4|cancel]");
         sender.sendMessage("/" + label + " thousand-eyes <spawn|remove|central-laser|gateway-burst|scatter-lasers|path-dash> [seed]");
-        sender.sendMessage("/" + label + " reload [all|bosses|recipes|mobs]");
+        sender.sendMessage("/" + label + " reload [all|gateway-boss|recipes|mobs]");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("give", "hand", "inspect", "maxhand", "maxgrowth", "boss", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
+        if (args.length == 1) return filter(List.of("give", "hand", "inspect", "maxhand", "maxgrowth", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
         if (args.length == 2 && args[0].equalsIgnoreCase("orbital-core")) return filter(List.of("1", "2", "3", "4", "cancel"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("gateway")) return filter(List.of("boss", "cycle", "payload", "reflection", "placement", "pairing", "weapon-ai", "cancel"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("gateway") && args[1].equalsIgnoreCase("payload")) return filter(java.util.Arrays.stream(GatewayPayloadType.values()).map(Enum::name).toList(), args[2]);
@@ -264,9 +243,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("basic-swarm")) return filter(List.of("random", "pattern"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("basic-swarm") && args[1].equalsIgnoreCase("pattern")) return filter(java.util.Arrays.stream(BasicWeaponPattern.values()).map(Enum::name).toList(), args[2]);
         if (args.length == 2 && args[0].equalsIgnoreCase("thousand-eyes")) return filter(List.of("spawn", "remove", "central-laser", "gateway-burst", "scatter-lasers", "path-dash"), args[1]);
-        if (args.length == 2 && args[0].equalsIgnoreCase("boss")) return filter(List.of("start", "end", "complete", "status"), args[1]);
-        if (args.length == 3 && args[0].equalsIgnoreCase("boss")) return filter(List.of("wither", "dragon"), args[2]);
-        if (args.length == 4 && args[0].equalsIgnoreCase("boss")) return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[3]);
         if (args.length == 2 && args[0].equalsIgnoreCase("reload")) return filter(List.of(reload.ids()), args[1]);
         if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("hand")
                 || args[0].equalsIgnoreCase("inspect") || args[0].equalsIgnoreCase("maxhand")

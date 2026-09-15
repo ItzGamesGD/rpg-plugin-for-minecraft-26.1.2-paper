@@ -4,7 +4,6 @@ public enum RequirementType {
     LEVEL,
     CLASS_LEVEL,
     CLASS,
-    COINS,
     STAT,
     SKILL_STAT,
     CLASS_STAT,

@@ -65,7 +65,7 @@ public final class RPGItemRegistry {
             }
             if (isLegacyProfessionDefinition(id, category, path)) {
                 // Old PDC items remain harmlessly readable by RPGItemService, but
-                // no new registry entry, recipe, shop product, or reward is created.
+                // no new registry entry, recipe, or reward is created.
                 configService.getPlugin().getLogger().warning(
                         "Ignoring legacy profession item definition: " + id);
                 continue;

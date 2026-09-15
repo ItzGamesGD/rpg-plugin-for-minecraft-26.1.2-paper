@@ -14,6 +14,10 @@ public final class VanillaAnvilEnhancementListener implements Listener {
 
     private final EquipmentEnhancementService enhancements;
 
+    public static int stoneCost() {
+        return STONE_COST;
+    }
+
     public VanillaAnvilEnhancementListener(EquipmentEnhancementService enhancements) {
         this.enhancements = enhancements;
     }

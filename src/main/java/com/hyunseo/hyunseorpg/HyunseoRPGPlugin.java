@@ -4,8 +4,6 @@ import com.hyunseo.hyunseorpg.classsystem.ClassStatRegistry;
 import com.hyunseo.hyunseorpg.classsystem.ClassStatService;
 import com.hyunseo.hyunseorpg.classsystem.ClassService;
 import com.hyunseo.hyunseorpg.classsystem.ClassWeaponService;
-import com.hyunseo.hyunseorpg.boss.BossSessionManager;
-import com.hyunseo.hyunseorpg.boss.BossSummonProtectionListener;
 import com.hyunseo.hyunseorpg.command.ClassResetCommand;
 import com.hyunseo.hyunseorpg.command.ClassSelectCommand;
 import com.hyunseo.hyunseorpg.command.ClassStatGuiCommand;
@@ -29,14 +27,12 @@ import com.hyunseo.hyunseorpg.core.config.ConfigDoctor;
 import com.hyunseo.hyunseorpg.core.config.ConfigMigrationService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
-import com.hyunseo.hyunseorpg.enhancement.AnvilGrowthListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementClassificationService;
 import com.hyunseo.hyunseorpg.enhancement.VanillaAnvilEnhancementListener;
 import com.hyunseo.hyunseorpg.enhancement.VanillaAnvilPolicyListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthConfigValidator;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthGuiService;
 import com.hyunseo.hyunseorpg.equipment.HoeHarvestModifierService;
 import com.hyunseo.hyunseorpg.equipment.ToolDurabilityService;
 import com.hyunseo.hyunseorpg.enchant.EnchantRegistry;
@@ -195,8 +191,6 @@ import com.hyunseo.hyunseorpg.stat.StatModifierService;
 import com.hyunseo.hyunseorpg.stat.StatService;
 import com.hyunseo.hyunseorpg.ui.StatGuiListener;
 import com.hyunseo.hyunseorpg.ui.StatGuiService;
-import com.hyunseo.hyunseorpg.ui.RPGMenuListener;
-import com.hyunseo.hyunseorpg.ui.RPGMenuService;
 import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyListener;
 import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyService;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
@@ -234,8 +228,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private PlayerDataService playerDataService;
     private RequirementChecker requirementChecker;
     private DimensionVisitTracker dimensionVisitTracker;
-    private BossSessionManager bossSessionManager;
-    private RPGMenuService rpgMenuService;
     private QuestRegistry questRegistry;
     private QuestService questService;
     private AutoQuestService autoQuestService;
@@ -303,7 +295,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EnhancementRegistry enhancementRegistry;
     private EquipmentEnhancementService equipmentEnhancementService;
     private EnhancementClassificationService enhancementClassificationService;
-    private EquipmentGrowthGuiService equipmentGrowthGuiService;
     private EquipmentTierService equipmentTierService;
     private EquipmentMetadataService equipmentMetadataService;
     private EquipmentRegistry equipmentRegistry;
@@ -578,9 +569,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.mythicCustomMobService = new MythicCustomMobService(
                 this, configService, mythicMobRegistry, mythicMobIntegrationService,
                 mobService, mobRegistry);
-        this.bossSessionManager = new BossSessionManager(
-                this, configService, itemService, inventoryDeliveryService, playerDataService,
-                pendingRewardService);
         this.mobDropRegistry = new MobDropRegistry(this, configService);
         this.mobDropRegistry.load();
         this.playerDiscoveryService = new PlayerDiscoveryService(playerDataService, mobTagService);
@@ -600,20 +588,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.autoQuestService = new AutoQuestService(configService, playerDataService, itemService,
                 expService, contentAvailabilityService);
         this.manaRegenTask = new ManaRegenTask(this, configService, manaService);
-        this.rpgMenuService = new RPGMenuService(
-                this, equipmentGrowthGuiService, statGuiService, bossSessionManager,
-                craftingGuiService, itemService, craftingRecipeRegistry, craftingTransactionService,
-                soulboundItemService, questService, autoQuestService);
         this.alchemyCatalystGui = new AlchemyCatalystGuiService(this, catalystApplicationService,
                 catalystRegistry, inventoryDeliveryService, itemService);
         this.alchemyGuiController = new AlchemyGuiControllerService(configService, craftingGuiService);
         this.farmingHubGuiService = new FarmingHubGuiService(
                 craftingGuiService, deliveryGuiService, farmingProfileService);
-        this.farmingHubGuiService.setMainMenuOpener(rpgMenuService::openMain);
-        this.rpgMenuService.setFarmingHubGuiService(farmingHubGuiService);
-        this.alchemyGuiController.setMainMenuOpener(rpgMenuService::openMain);
         this.alchemyGuiController.setCatalystOpener(player -> alchemyCatalystGui.open(player, alchemyGuiController::openInventory));
-        this.rpgMenuService.setAlchemyGuiController(alchemyGuiController);
 
         this.explorationModule = new ExplorationModule(this,
                 BukkitExplorationPorts.compose(
@@ -638,7 +618,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         manaRegenTask.start();
         swordmasterBladeService.start();
         zombieVariantService.start();
-        bossSessionManager.start();
         mythicCustomMobService.start();
         monsterSpawnService.start();
         monsterBehaviorService.start();
@@ -697,9 +676,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (zombieVariantService != null) {
             zombieVariantService.cancelAll();
-        }
-        if (bossSessionManager != null) {
-            bossSessionManager.stop();
         }
         if (pendingRewardService != null) pendingRewardService.save();
         if (mythicCustomMobService != null) {
@@ -835,7 +811,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private void registerCommandsSafe() {
         RPGGiveCommand give = new RPGGiveCommand(
                 itemRegistry, itemService, soulboundItemService, reloadService, weaponItemService,
-                rpgMenuService, zombieVariantService);
+                zombieVariantService);
         give.setMaintenanceServices(new ConfigDoctor(this), new ConfigMigrationService(this));
         give.setPendingRewardService(pendingRewardService);
         give.setFarmingServices(farmingProfileService, farmingPromotionService, playerDataService);
@@ -854,7 +830,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setExplorationModule(explorationModule);
 
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
-                weaponItemService, equipmentEnhancementService, bossSessionManager,
+                weaponItemService, equipmentEnhancementService,
                 reloadService, equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
         CraftingCommand crafting = new CraftingCommand(craftingGuiService, craftingRecipeRegistry,
                 craftingLayoutRegistry, craftingTransactionService);
@@ -865,7 +841,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         RPGCooldownCommand cooldown = new RPGCooldownCommand(configService, cooldownService);
         RPGMobCommand mob = new RPGMobCommand(configService, mobService, mobLevelScalingService,
                 mythicCustomMobService, monsterBehaviorService);
-        RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService, rpgMenuService,
+        RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService,
                 contentAvailabilityService, playerDiscoveryService);
         SpecialEquipmentCommand special = new SpecialEquipmentCommand(specialEquipmentService, specialEquipmentMenuService);
         EffectCommand effects = new EffectCommand(effectListGuiService);
@@ -919,21 +895,11 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             if (valid) equipmentRegistry.load();
             return valid;
         });
-        reloadService.register("promotion", () -> {
-            configService.reloadEquipmentGrowthConfig();
-            boolean valid = new EquipmentGrowthConfigValidator(configService).validate();
-            if (valid) equipmentRegistry.load();
-            return valid;
-        });
         reloadService.register("equipment", () -> {
             configService.reloadEquipmentGrowthConfig();
             boolean valid = new EquipmentGrowthConfigValidator(configService).validate();
             if (valid) equipmentRegistry.load();
             return valid;
-        });
-        reloadService.register("repair", () -> true);
-        reloadService.register("equipment-support", () -> {
-            return true;
         });
         reloadService.register("special-equipment", () -> {
             configService.reloadSpecialEquipmentConfig();
@@ -955,24 +921,20 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             equipmentRegistry.load();
             return RPGReloadService.ReloadOutcome.pass("items");
         });
-        reloadService.register("vanilla-enchants", () -> true);
         reloadService.register("enchant", () -> {
             configService.reloadEnchantsConfig();
             enchantRegistry.load();
             refreshOnlineEnchantLore();
             return true;
         });
-        reloadService.register("bosses", () -> {
-            configService.reloadBossesConfig();
+        reloadService.register("gateway-boss", () -> {
+            configService.reloadGatewayBossConfig();
             return true;
         });
         reloadService.register("drops", () -> {
             configService.reloadMobsConfig();
             mobRegistry.load();
             mobDropRegistry.load();
-            return true;
-        });
-        reloadService.register("shops", () -> {
             return true;
         });
         reloadService.registerDetailed("crafting", () -> {
@@ -1144,7 +1106,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         configService.reloadMythicMobsConfig();
         mythicMobRegistry.load();
         mobSpawnZoneRegistry.load();
-        configService.reloadBossesConfig();
+        configService.reloadGatewayBossConfig();
         mobDropRegistry.load();
         questRegistry.load();
         java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
@@ -1246,7 +1208,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ManaPlayerListener(this, manaService, manaBossBarService), this);
         getServer().getPluginManager().registerEvents(new StatModifierCleanupListener(statModifierService), this);
         getServer().getPluginManager().registerEvents(new CooldownCleanupListener(cooldownService), this);
-        getServer().getPluginManager().registerEvents(new RPGMenuListener(rpgMenuService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, skillService, equipmentInstanceService, alchemyCombatAdapter,
                 item -> DedicatedWeaponIds.owns(specialEquipmentService.getSpecialId(item))), this);
@@ -1284,8 +1245,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VanillaMobFragmentDropListener(
                 configService, mobService, itemService, inventoryDeliveryService, elementalFragmentPolicy), this);
         getServer().getPluginManager().registerEvents(new CustomItemVanillaActionBlockListener(itemService), this);
-        getServer().getPluginManager().registerEvents(bossSessionManager, this);
-        getServer().getPluginManager().registerEvents(new BossSummonProtectionListener(bossSessionManager), this);
         getServer().getPluginManager().registerEvents(mythicCustomMobService, this);
         getServer().getPluginManager().registerEvents(new QuestProgressListener(questService, autoQuestService), this);
         getServer().getPluginManager().registerEvents(playerDiscoveryService, this);
@@ -1320,7 +1279,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 combatService, cooldownService);
         getServer().getPluginManager().registerEvents(moonlitAfterglowListener, this);
         getServer().getPluginManager().registerEvents(specialEquipmentMenuService, this);
-        getServer().getPluginManager().registerEvents(new AnvilGrowthListener(this, equipmentGrowthGuiService), this);
         getServer().getPluginManager().registerEvents(new VanillaAnvilPolicyListener(), this);
         getServer().getPluginManager().registerEvents(
                 new VanillaAnvilEnhancementListener(equipmentEnhancementService), this);

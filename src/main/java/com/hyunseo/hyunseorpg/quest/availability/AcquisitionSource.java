@@ -7,7 +7,6 @@ public enum AcquisitionSource {
     VANILLA_MOB_DROP,
     BOSS_DROP,
     QUEST_REWARD,
-    SHOP,
     WORLD_LOOT,
     ADMIN_ONLY,
     LEGACY_ONLY,

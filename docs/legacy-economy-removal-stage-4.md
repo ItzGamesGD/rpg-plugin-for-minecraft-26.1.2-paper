@@ -1,24 +1,32 @@
-# Stage 4: Minecraft-native economy
+# Stage 4: Minecraft-native gameplay authority
 
-Base: `b746a936fd5c601e65bfd03956efb8a42a0eff33` (Stage 1–3 authoritative HEAD).
+Stage 4 removes the legacy economy, progression navigation shell, and ordinary vanilla-boss transaction layer while preserving the Stage 1–3 enchantment and enhancement architecture.
 
-## Dependency disposition
+## Removed authority
 
-- **Removed:** Coin balance/service/display, activity currency rewards, Magic Stone and both legacy fragment currencies, currency shops, extraction/repair currency transactions, and their commands/configuration.
-- **Retained:** the Upgrade Stone as a physical `ItemStack`, vanilla-anvil XP costs, useful elemental and boss crafting materials, native enchant acquisition, and all Stage 1–3 special-equipment behavior.
-- **Deferred:** quest, farming, delivery, alchemy, and the main RPG navigation shell remain for their dedicated cleanup stages. Their legacy serialized coin fields are read only as ignored compatibility data and never awarded or saved anew.
-- **Minecraft replacement:** Upgrade Stones are crafted from configurable recipe data using Diamond, Redstone, and Lapis Lazuli. Bosses award Minecraft experience and configurable physical Upgrade Stones/useful cores.
+- Coin balances, services, commands, displays, activity rewards, and persistence writes.
+- Magic Stone, currency fragments, conversion recipes, currency shops, extraction tickets, and custom currency repair.
+- The RPG main-menu, equipment-growth inventory, enchant-support inventory, ordinary boss menu, and their holders/listeners/navigation wiring.
+- Wither and Ender Dragon sessions, contribution tracking, cooldown/summon restrictions, custom settlement, offline reward queues, and common boss reward configuration.
 
-Ordinary mining, farming, fishing, hunting, logging, and husbandry no longer produce plugin currency or generic progression fragments. Vanilla drops remain authoritative.
+Vanilla Wither and Ender Dragon death events, drops, and experience are no longer changed or reimplemented by HyunseoRPG. Gateway Boss and other genuinely custom event content remain independent.
+
+## Retained authority
+
+- The Upgrade Stone is a physical `ItemStack` crafted from one Diamond, four Redstone, and four Lapis Lazuli.
+- The vanilla anvil is the only ordinary enhancement transaction and consumes exactly one Upgrade Stone plus the configured Minecraft XP-level cost.
+- Native enchant registration and Minecraft enchanting, trading, loot, anvil, tooltip, and grindstone behavior remain authoritative.
+- Farming and alchemy interfaces remain only where they are required by their genuinely custom gameplay. Quest access remains available through text commands rather than the removed hub.
+- `PendingRewardService` remains an item-only, exactly-once delivery boundary for exploration and other physical custom rewards.
 
 ## Live verification checklist
 
-1. Log in with old player data and restart without errors.
-2. Confirm old coin/fragment values have no gameplay effect.
-3. Verify mining, logging, farming, fishing, and mob kills award no plugin currency.
-4. Kill each boss and verify XP, Upgrade Stone, and useful core drops.
+1. Kill vanilla Wither and Ender Dragon and confirm unmodified vanilla drops and XP.
+2. Confirm no custom boss bar/session, cooldown, participation gate, settlement message, or mailbox reward occurs.
+3. Confirm `/rpg` displays direct command help and no legacy hub opens.
+4. Verify farming and alchemy direct commands still open their required interfaces.
 5. Craft an Upgrade Stone from vanilla resources.
 6. Enhance once in a vanilla anvil and verify one stone and the configured XP-level cost are consumed.
-7. Verify enchanting-table, librarian, loot-book, and vanilla-anvil custom enchant acquisition.
-8. Verify dedicated special weapons and Gateway Boss behavior.
-9. Confirm no currency-only shop or menu entry is reachable.
+7. Verify enchanting-table, librarian, loot-book, vanilla-anvil, and grindstone custom-enchant behavior.
+8. Verify dedicated special weapons, Gateway Boss, and exploration exactly-once rewards.
+9. Restart with old player data and confirm ignored legacy fields do not cause errors.

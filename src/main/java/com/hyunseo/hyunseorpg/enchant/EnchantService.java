@@ -96,7 +96,7 @@ public final class EnchantService {
             if (custom.size() == 1) return Optional.of(custom.getFirst());
             if (custom.size() > 1) return Optional.empty();
         }
-        // Temporary compatibility path for old shop/crafting books.
+        // Temporary compatibility path for old generated books.
         return registry.getAll().stream().filter(data -> itemService.isItem(book, data.bookItemId())).findFirst();
     }
 
