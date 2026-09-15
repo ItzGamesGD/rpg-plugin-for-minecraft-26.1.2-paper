@@ -61,7 +61,7 @@ public final class ConfigMigrationService {
     private static final List<String> ALCHEMY_FILES = List.of(
             "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
-            "alchemy/catalysts.yml", "alchemy/gui.yml");
+            "alchemy/catalysts.yml");
     private static final List<String> EXPLORATION_FILES = List.of("exploration/structures.yml");
     private static final List<String> OFFICIAL_EXPLORATION_MOB_IDS = List.of(
             "golden_bulwark", "mire_shaman", "shield_raider", "crossbow_raider",
@@ -273,7 +273,6 @@ public final class ConfigMigrationService {
             if (fileName.equals("alchemy/potions.yml") && copyMissingTree(target, defaults, "potions")) changed = true;
             if (fileName.equals("alchemy/recipes.yml") && copyMissingTree(target, defaults, "recipes")) changed = true;
             if (fileName.equals("alchemy/catalysts.yml") && copyMissingTree(target, defaults, "catalysts")) changed = true;
-            if (fileName.equals("alchemy/gui.yml") && copyMissingTree(target, defaults, "gui")) changed = true;
             if (fileName.equals("alchemy/effects.yml")
                     && target.getInt("effects.effect_shock.baseline.tick-interval", 0) == 80) {
                 target.set("effects.effect_shock.baseline.tick-interval", 320);
@@ -603,7 +602,6 @@ public final class ConfigMigrationService {
         activateEntries("alchemy/effects.yml", "effects", effects, "status", "IMPLEMENTED_RUNTIME", lines, changedFiles);
         activateEntries("alchemy/potions.yml", "potions", potions, "enabled", true, lines, changedFiles);
         activateEntries("alchemy/recipes.yml", "recipes", potions, "enabled", true, lines, changedFiles);
-        activateEntries("alchemy/gui.yml", "", List.of(), "enabled", true, lines, changedFiles);
         List<String> catalysts = List.of("redstone", "glowstone_dust", "gunpowder", "dragon_breath",
                 "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge");
         activateEntries("alchemy/catalysts.yml", "catalysts", catalysts, "enabled", true, lines, changedFiles);
@@ -735,25 +733,6 @@ public final class ConfigMigrationService {
             }
         }
 
-
-        FileConfiguration crafting = loadLive("crafting.yml");
-        FileConfiguration craftingDefaults = loadResource("crafting.yml");
-        if (crafting != null && craftingDefaults != null) {
-            boolean changed = false;
-            for (String category : List.of("materials", "equipment", "special", "consumables")) {
-                String path = "crafting.menu-categories." + category + ".display-name";
-                String display = craftingDefaults.getString(path, "");
-                if (!display.isBlank() && !display.equals(crafting.getString(path, ""))) {
-                    crafting.set(path, display);
-                    changed = true;
-                }
-            }
-            if (changed) {
-                lines.add("crafting.yml: localized canonical crafting category names");
-                mark(crafting, "crafting.yml", changedFiles, lines, "crafting localization staged");
-            }
-        }
-
         FileConfiguration quality = loadLive("farming/quality.yml");
         FileConfiguration qualityDefaults = loadResource("farming/quality.yml");
         if (quality != null && qualityDefaults != null) {
@@ -849,20 +828,12 @@ public final class ConfigMigrationService {
         }
     }
 
-    /**
-     * Adds only bundled farming processing recipes and their saved layout
-     * positions. Existing operator recipes, slots, and category lists win.
-     */
+    /** Adds only bundled farming processing recipes to the canonical recipe registry. */
     private void migrateFarmingCrafting(List<String> lines, List<File> changedFiles) {
         String fileName = "crafting.yml";
         FileConfiguration target = loadLive(fileName);
         FileConfiguration defaults = loadResource(fileName);
         if (target == null || defaults == null) return;
-
-        if (copyMissingTree(target, defaults, "crafting.menu-categories")) {
-            lines.add(fileName + ": added missing data-driven crafting menu categories");
-            mark(target, fileName, changedFiles, lines, "crafting category definitions staged");
-        }
 
         ConfigurationSection defaultRecipes = defaults.getConfigurationSection("crafting-recipes");
         if (defaultRecipes == null) return;
@@ -935,23 +906,6 @@ public final class ConfigMigrationService {
                     "abundance essence point recipe staged");
         }
 
-        ConfigurationSection defaultLayout = defaults.getConfigurationSection("crafting.layout");
-        if (defaultLayout == null) return;
-        for (String rawCategory : defaultLayout.getKeys(false)) {
-            ConfigurationSection category = defaultLayout.getConfigurationSection(rawCategory);
-            if (category == null) continue;
-            String categoryId = normalize(rawCategory);
-            for (String rawRecipeId : category.getKeys(false)) {
-                String recipeId = normalize(rawRecipeId);
-                if (!farmingRecipeIds.contains(recipeId)) continue;
-                String targetPath = "crafting.layout." + categoryId + "." + rawRecipeId;
-                if (target.isSet(targetPath)) continue;
-                target.set(targetPath, category.get(rawRecipeId));
-                lines.add(fileName + ": added farming layout entry " + categoryId + "/" + recipeId);
-                mark(target, fileName, changedFiles, lines, "farming layout staged");
-            }
-        }
-
         List<String> categories = target.getStringList("crafting.categories.materials");
         boolean categoryListChanged = false;
         for (String id : farmingRecipeIds) {
@@ -965,74 +919,10 @@ public final class ConfigMigrationService {
             lines.add(fileName + ": added farming processing recipes to materials category fallback");
             mark(target, fileName, changedFiles, lines, "farming category fallback staged");
         }
-        migrateMissingCraftingLayouts(target, defaults, lines, changedFiles);
     }
 
     /** Restores missing bundled positions without moving or rewriting operator placements. */
-    private void migrateMissingCraftingLayouts(FileConfiguration target, FileConfiguration defaults,
-                                               List<String> lines, List<File> changedFiles) {
-        ConfigurationSection defaultLayout = defaults.getConfigurationSection("crafting.layout");
-        ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
-        if (defaultLayout == null || recipes == null) return;
-
-        Set<String> placedRecipes = new HashSet<>();
-        ConfigurationSection currentLayout = target.getConfigurationSection("crafting.layout");
-        if (currentLayout != null) {
-            for (String category : currentLayout.getKeys(false)) {
-                ConfigurationSection entries = currentLayout.getConfigurationSection(category);
-                if (entries != null) {
-                    for (String recipeId : entries.getKeys(false)) placedRecipes.add(normalize(recipeId));
-                }
-            }
-        }
-
-        boolean changed = false;
-        for (String rawCategory : defaultLayout.getKeys(false)) {
-            ConfigurationSection defaultsForCategory = defaultLayout.getConfigurationSection(rawCategory);
-            if (defaultsForCategory == null) continue;
-            String category = normalize(rawCategory);
-            Set<Integer> occupied = occupiedSlots(target, category);
-            for (String rawRecipeId : defaultsForCategory.getKeys(false)) {
-                String recipeId = normalize(rawRecipeId);
-                ConfigurationSection recipe = recipes.getConfigurationSection(rawRecipeId);
-                if (recipe == null || !recipe.getBoolean("enabled", true) || placedRecipes.contains(recipeId)) continue;
-                Object rawPosition = defaultsForCategory.get(rawRecipeId);
-                int position = rawPosition instanceof Number number && number.intValue() >= 0
-                        ? number.intValue() : (occupied.stream().max(Integer::compareTo).orElse(-1) + 1);
-                while (occupied.contains(position)) position++;
-                target.set("crafting.layout." + category + "." + rawRecipeId, position);
-                occupied.add(position);
-                placedRecipes.add(recipeId);
-                changed = true;
-                lines.add("crafting.yml: restored missing canonical layout entry "
-                        + category + "/" + recipeId + " at slot " + position);
-
-                String listPath = "crafting.categories." + category;
-                if (target.isSet(listPath)) {
-                    List<String> categoryRecipes = new ArrayList<>(target.getStringList(listPath));
-                    if (categoryRecipes.stream().noneMatch(value -> normalize(value).equals(recipeId))) {
-                        categoryRecipes.add(recipeId);
-                        target.set(listPath, categoryRecipes);
-                    }
-                }
-            }
-        }
-        if (changed) mark(target, "crafting.yml", changedFiles, lines,
-                "missing active crafting layout entries restored");
-    }
-
-    private Set<Integer> occupiedSlots(FileConfiguration target, String category) {
-        Set<Integer> occupied = new HashSet<>();
-        ConfigurationSection entries = target.getConfigurationSection("crafting.layout." + category);
-        if (entries == null) return occupied;
-        for (String recipeId : entries.getKeys(false)) {
-            Object raw = entries.get(recipeId);
-            if (raw instanceof Number number && number.intValue() >= 0) occupied.add(number.intValue());
-        }
-        return occupied;
-    }
-
-    private void migrateFarmingItemReferences(List<String> lines, List<File> changedFiles) {
+private void migrateFarmingItemReferences(List<String> lines, List<File> changedFiles) {
         FileConfiguration items = loadLive("items.yml");
         FileConfiguration defaults = loadResource("items.yml");
         FileConfiguration crops = loadLive("farming/crops.yml");
@@ -1366,18 +1256,6 @@ public final class ConfigMigrationService {
                 target.set(path, values);
                 lines.add("crafting.yml: removed retired special recipes from " + path);
                 changed = true;
-            }
-        }
-        ConfigurationSection layout = target.getConfigurationSection("crafting.layout");
-        if (layout != null) {
-            for (String category : layout.getKeys(false)) {
-                ConfigurationSection slots = layout.getConfigurationSection(category);
-                if (slots == null) continue;
-                for (String rawId : new ArrayList<>(slots.getKeys(false))) {
-                    if (!RETIRED_SPECIAL_ITEM_IDS.contains(normalize(rawId))) continue;
-                    slots.set(rawId, null);
-                    changed = true;
-                }
             }
         }
         if (changed) mark(target, "crafting.yml", changedFiles, lines, "retired special recipes removed");
@@ -1883,12 +1761,6 @@ public final class ConfigMigrationService {
                 }
             }
         }
-        if (!target.isConfigurationSection("crafting.layout")
-                && defaults != null && defaults.isConfigurationSection("crafting.layout")) {
-            copyTree(target, defaults, "crafting.layout");
-            lines.add("crafting.yml: added canonical crafting.layout");
-            changed = true;
-        }
         if (target.getInt("schema-version", 0) < 2) {
             target.set("schema-version", 2);
             lines.add("crafting.yml: schema-version -> 2");
@@ -2002,20 +1874,6 @@ public final class ConfigMigrationService {
                 target.set(listPath, recipeList);
                 lines.add("crafting.yml: removed inactive profession recipes from " + listPath);
                 changed = true;
-            }
-        }
-        ConfigurationSection layouts = target.getConfigurationSection("crafting.layout");
-        if (layouts != null) {
-            for (String category : layouts.getKeys(false)) {
-                ConfigurationSection layout = layouts.getConfigurationSection(category);
-                if (layout == null) continue;
-                for (String recipe : new ArrayList<>(layout.getKeys(false))) {
-                    if (!removedRecipeIds.contains(normalize(recipe))) continue;
-                    layout.set(recipe, null);
-                    lines.add("crafting.yml: removed inactive profession layout entry "
-                            + category + "." + recipe);
-                    changed = true;
-                }
             }
         }
         if (!target.isSet("schema-version")) {

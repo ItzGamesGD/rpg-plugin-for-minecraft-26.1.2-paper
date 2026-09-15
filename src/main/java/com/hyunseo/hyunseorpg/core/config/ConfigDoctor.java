@@ -45,7 +45,7 @@ public final class ConfigDoctor {
             "quests.yml", "special-equipment.yml"
             , "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
-            "alchemy/catalysts.yml", "alchemy/gui.yml"
+            "alchemy/catalysts.yml"
     );
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
             "burning_sword", "flowing_water_sword", "wind_cutting_sword", "earth_special_sword",
@@ -290,57 +290,11 @@ public final class ConfigDoctor {
             checkRecipeList(crafting.getStringList("crafting.categories.materials"), recipeIds, "crafting.categories.materials", lines, counts);
             checkRecipeList(crafting.getStringList("crafting.categories.equipment"), recipeIds, "crafting.categories.equipment", lines, counts);
             checkRecipeList(crafting.getStringList("craft2.recipes"), recipeIds, "craft2.recipes", lines, counts);
-            checkCraftingLayout(crafting, recipeIds, lines, counts);
         }
         info(lines, counts, "recipes: " + recipeIds.size() + " canonical crafting recipes inspected");
     }
 
-    private void checkCraftingLayout(FileConfiguration crafting, Set<String> recipeIds,
-                                     List<String> lines, int[] counts) {
-        ConfigurationSection layout = crafting.getConfigurationSection("crafting.layout");
-        if (layout == null) {
-            warning(lines, counts, "crafting.yml: canonical crafting.layout is missing; run /rpg migrate configs");
-            return;
-        }
-        FileConfiguration special = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "special-equipment.yml"));
-        Set<String> known = new HashSet<>(recipeIds);
-        ConfigurationSection specialItems = special.getConfigurationSection("special-equipment.items");
-        if (specialItems != null) {
-            for (String id : specialItems.getKeys(false)) {
-                if (special.getBoolean("special-equipment.items." + id + ".enabled", true)
-                        && special.getBoolean("special-equipment.items." + id + ".crafting.enabled", true)) {
-                    known.add("special_" + normalize(id));
-                }
-            }
-        }
-        Set<String> placed = new HashSet<>();
-        for (String category : layout.getKeys(false)) {
-            ConfigurationSection entries = layout.getConfigurationSection(category);
-            if (entries == null) {
-                error(lines, counts, "crafting.layout." + category + ": expected recipe positions");
-                continue;
-            }
-            Set<Integer> slots = new HashSet<>();
-            for (String recipeId : entries.getKeys(false)) {
-                String path = "crafting.layout." + category + "." + recipeId;
-                String normalized = normalize(recipeId);
-                if (!known.contains(normalized)) error(lines, counts, path + ": unknown recipe");
-                if (!placed.add(normalized)) error(lines, counts, path + ": recipe is placed more than once");
-                Object rawPosition = entries.get(recipeId);
-                if (!(rawPosition instanceof Number number) || number.doubleValue() != number.intValue()
-                        || number.intValue() < 0) {
-                    error(lines, counts, path + ": position must be a non-negative integer");
-                } else if (!slots.add(number.intValue())) {
-                    error(lines, counts, path + ": duplicate content slot " + number.intValue());
-                }
-            }
-        }
-        for (String recipeId : recipeIds) {
-            if (!placed.contains(recipeId)) warning(lines, counts, "crafting.layout: active recipe is not placed '" + recipeId + "'");
-        }
-    }
-
-    private void checkQuests(List<String> lines, int[] counts) {
+private void checkQuests(List<String> lines, int[] counts) {
         FileConfiguration quests = load("quests.yml", lines, counts);
         if (quests == null) return;
         ConfigurationSection auto = quests.getConfigurationSection("auto");

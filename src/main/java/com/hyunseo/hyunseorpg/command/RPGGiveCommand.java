@@ -18,19 +18,15 @@ import com.hyunseo.hyunseorpg.farming.FarmingStage;
 import com.hyunseo.hyunseorpg.farming.FarmingStatTokenService;
 import com.hyunseo.hyunseorpg.farming.CropGrowthService;
 import com.hyunseo.hyunseorpg.farming.CropQuality;
-import com.hyunseo.hyunseorpg.farming.DeliveryGuiService;
 import com.hyunseo.hyunseorpg.farming.DeliveryProvider;
-import com.hyunseo.hyunseorpg.farming.FarmingHubGuiService;
 import com.hyunseo.hyunseorpg.farming.DeliveryService;
 import com.hyunseo.hyunseorpg.farming.CropQualityService;
 import com.hyunseo.hyunseorpg.alchemy.ActiveEffectInstance;
 import com.hyunseo.hyunseorpg.alchemy.EffectContext;
 import com.hyunseo.hyunseorpg.alchemy.EffectService;
-import com.hyunseo.hyunseorpg.alchemy.EffectListGuiService;
 import com.hyunseo.hyunseorpg.alchemy.EffectSourceType;
 import com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog;
 import com.hyunseo.hyunseorpg.alchemy.catalyst.BoundedSpecialCatalystExecutionService;
-import com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiControllerService;
 import com.hyunseo.hyunseorpg.alchemy.potion.PaperPotionPdcContract;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionFactory;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionDefinition;
@@ -82,20 +78,16 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
     private PlayerDataService playerDataService;
     private FarmingStatTokenService farmingTokens;
     private CropGrowthService cropGrowthService;
-    private DeliveryGuiService deliveryGuiService;
-    private FarmingHubGuiService farmingHubGuiService;
     private DeliveryService deliveryService;
     private CropQualityService cropQualityService;
     private Consumer<Inventory> inventoryNormalizer = inventory -> { };
     private Consumer<String> farmingAuditLogger = ignored -> { };
     private EffectService effectService;
-    private EffectListGuiService effectListGuiService;
     private PotionRegistry potionRegistry;
     private PaperPotionPdcContract potionPdc;
     private PotionFactory potionFactory;
     private SpecialEquipmentService specialEquipmentService;
     private BoundedSpecialCatalystExecutionService specialCatalystExecutions;
-    private AlchemyGuiControllerService alchemyGuiController;
     private AlchemyAuditLog alchemyAuditLog;
     private ExplorationModule explorationModule;
 
@@ -142,30 +134,16 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         this.farmingAuditLogger = farmingAuditLogger == null ? ignored -> { } : farmingAuditLogger;
     }
 
-    public void setDeliveryGuiService(DeliveryGuiService deliveryGuiService) {
-        this.deliveryGuiService = deliveryGuiService;
-    }
-
-    public void setFarmingHubGuiService(FarmingHubGuiService farmingHubGuiService) {
-        this.farmingHubGuiService = farmingHubGuiService;
-    }
-
     public void setEffectService(EffectService effectService) {
         this.effectService = effectService;
     }
 
-    public void setEffectListGuiService(EffectListGuiService service) {
-        this.effectListGuiService = service;
-    }
-
     public void setAlchemyServices(PotionRegistry potionRegistry, PaperPotionPdcContract potionPdc,
                                    BoundedSpecialCatalystExecutionService specialCatalystExecutions,
-                                   AlchemyGuiControllerService alchemyGuiController,
                                    AlchemyAuditLog alchemyAuditLog) {
         this.potionRegistry = potionRegistry;
         this.potionPdc = potionPdc;
         this.specialCatalystExecutions = specialCatalystExecutions;
-        this.alchemyGuiController = alchemyGuiController;
         this.alchemyAuditLog = alchemyAuditLog;
     }
 
@@ -194,11 +172,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 1 && args[0].equalsIgnoreCase("farming")) {
             if (args.length == 1) {
-                if (sender instanceof Player player && farmingHubGuiService != null) {
-                    farmingHubGuiService.open(player);
-                } else {
-                    sender.sendMessage("농사 메뉴는 플레이어만 사용할 수 있습니다.");
-                }
+                sender.sendMessage("농사 기능은 작물, 농기구 및 월드 상호작용을 통해 이용합니다.");
                 return true;
             }
             handleFarming(sender, args);
@@ -478,93 +452,13 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                 + " lastEnd=" + (snapshot.lastEndReason() == null ? "NONE" : snapshot.lastEndReason());
     }
 
-    private void handleFarmingLegacy(CommandSender sender, String[] args) {
-        if (args.length >= 2 && args[1].equalsIgnoreCase("delivery")) {
-            if (!(sender instanceof Player player) || deliveryGuiService == null) {
-                sender.sendMessage("배달 GUI는 플레이어만 사용할 수 있습니다.");
-                return;
-            }
-            DeliveryProvider provider = args.length >= 3
-                    ? DeliveryProvider.fromInput(args[2]).orElse(null)
-                    : DeliveryProvider.FARMER;
-            if (provider == null || provider == DeliveryProvider.ESTATE_RESERVED) {
-                player.sendMessage("현재 이용 가능한 배달 제공자는 farmer, alchemist입니다.");
-                return;
-            }
-            deliveryGuiService.open(player, provider);
-            return;
-        }
-        if (!sender.hasPermission("hyunseorpg.admin")) {
-            sender.sendMessage("관리자 권한이 필요합니다.");
-            return;
-        }
-        if (farmingProfiles == null || playerDataService == null) {
-            sender.sendMessage("농사 운영 서비스가 준비되지 않았습니다.");
-            return;
-        }
-        if (args.length < 3) {
-            sender.sendMessage("사용법: /rpg farming <status|unlock|lock|setstage|recalculate|reloadplayer> <player> [value]");
-            return;
-        }
-        OfflinePlayer target = resolveOfflinePlayer(args[2]);
-        if (target == null) {
-            sender.sendMessage("플레이어를 찾을 수 없습니다: " + args[2]);
-            return;
-        }
-        String action = args[1].toLowerCase(Locale.ROOT);
-        UUID uuid = target.getUniqueId();
-        switch (action) {
-            case "status" -> farmingStatus(sender, target, uuid);
-            case "unlock" -> {
-                if (args.length < 4) { sender.sendMessage("작물 ID를 입력하세요."); return; }
-                farmingMutation(sender, farmingProfiles.unlockCrop(uuid, args[3]), "작물 해금", args[3]);
-            }
-            case "lock" -> {
-                if (args.length < 4) { sender.sendMessage("작물 ID를 입력하세요."); return; }
-                farmingMutation(sender, farmingProfiles.lockCrop(uuid, args[3]), "작물 잠금", args[3]);
-            }
-            case "setstage" -> {
-                if (args.length < 4) { sender.sendMessage("단계를 입력하세요: 기본, 숙련, 능숙, 상급, 전문"); return; }
-                FarmingStage stage = FarmingStage.fromInput(args[3]).orElse(null);
-                if (stage == null) { sender.sendMessage("알 수 없는 농사 단계입니다: " + args[3]); return; }
-                sender.sendMessage(farmingProfiles.setStage(uuid, stage)
-                        ? "농사 단계 변경 완료: " + stage.displayName()
-                        : "농사 단계 저장에 실패했습니다.");
-            }
-            case "recalculate" -> sender.sendMessage(farmingProfiles.recalculateUnlocks(uuid)
-                    ? "농사 단계 기준 누락 해금 보충 완료"
-                    : "농사 프로필 저장에 실패했습니다.");
-            case "reloadplayer" -> {
-                PlayerDataService.ReloadResult result = playerDataService.reloadPlayerIfClean(uuid);
-                sender.sendMessage(switch (result) {
-                    case RELOADED -> "플레이어 농사 프로필을 디스크에서 다시 읽었습니다.";
-                    case DIRTY -> "저장되지 않은 메모리 변경이 있어 재로드하지 않았습니다. 먼저 정상 저장을 진행하세요.";
-                    case FAILED -> "플레이어 데이터 재로드에 실패했습니다. 서버 로그를 확인하세요.";
-                    case INVALID -> "플레이어 UUID가 올바르지 않습니다.";
-                });
-            }
-            default -> sender.sendMessage("알 수 없는 농사 명령입니다: " + action);
-        }
-    }
-
     private void handleFarming(CommandSender sender, String[] args) {
         if (args.length >= 2 && args[1].equalsIgnoreCase("delivery")) {
             if (args.length >= 3 && Set.of("reroll", "expire", "complete").contains(args[2].toLowerCase(Locale.ROOT))) {
                 handleDeliveryAdmin(sender, args);
                 return;
             }
-            if (!(sender instanceof Player player) || deliveryGuiService == null) {
-                sender.sendMessage("배달 GUI는 플레이어만 사용할 수 있습니다.");
-                return;
-            }
-            DeliveryProvider provider = args.length >= 3
-                    ? DeliveryProvider.fromInput(args[2]).orElse(null)
-                    : DeliveryProvider.FARMER;
-            if (provider == null || provider == DeliveryProvider.ESTATE_RESERVED) {
-                sender.sendMessage("사용 가능한 배달 제공자: 농부, 연금술사");
-                return;
-            }
-            deliveryGuiService.open(player, provider);
+            sender.sendMessage("배달 인벤토리 UI는 제거되었습니다. 월드 기반 전달 지점이 구현될 때까지 제출 기능을 사용할 수 없습니다.");
             return;
         }
         if (!sender.hasPermission("hyunseorpg.admin")) {
@@ -1089,10 +983,8 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
         if (action.equals("clearjobs")) {
             if (specialCatalystExecutions != null) specialCatalystExecutions.cancelAll(
                     com.hyunseo.hyunseorpg.alchemy.catalyst.SpecialCatalystExecution.CancelReason.ADMIN_CANCEL);
-            if (alchemyGuiController != null) alchemyGuiController.closeAll(
-                    com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiController.CloseReason.SERVER_SHUTDOWN);
             if (alchemyAuditLog != null) alchemyAuditLog.admin("clearjobs", sender instanceof Player p ? p.getUniqueId() : null, "all");
-            sender.sendMessage("양조 작업과 GUI 세션을 정리했습니다.");
+            sender.sendMessage("진행 중인 양조 작업을 정리했습니다.");
             return;
         }
         if (action.equals("give")) {
@@ -1157,11 +1049,15 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("플레이어만 사용할 수 있습니다.");
                 return;
             }
-            if (effectListGuiService == null) {
-                sender.sendMessage("상태효과 목록 GUI가 준비되지 않았습니다.");
-                return;
+            List<ActiveEffectInstance> active = effectService == null
+                    ? List.of() : effectService.getActive(player.getUniqueId());
+            if (active.isEmpty()) {
+                sender.sendMessage("활성 상태효과가 없습니다.");
+            } else {
+                sender.sendMessage("활성 상태효과 (" + active.size() + "): ");
+                active.forEach(instance -> sender.sendMessage("- " + instance.definition().displayName()
+                        + " x" + instance.stacks()));
             }
-            effectListGuiService.open(player);
             return;
         }
         if (!sender.hasPermission("hyunseorpg.admin")) {

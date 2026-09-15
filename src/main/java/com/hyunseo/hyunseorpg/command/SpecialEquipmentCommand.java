@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.command;
 
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentData;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentMenuService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -20,25 +19,17 @@ import java.util.Locale;
 /** Admin and test entry point for the YAML-defined special equipment system. */
 public final class SpecialEquipmentCommand implements CommandExecutor, TabCompleter {
     private final SpecialEquipmentService service;
-    private final SpecialEquipmentMenuService menu;
-
-    public SpecialEquipmentCommand(SpecialEquipmentService service, SpecialEquipmentMenuService menu) {
+    public SpecialEquipmentCommand(SpecialEquipmentService service) {
         this.service = service;
-        this.menu = menu;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("/specialequipment <menu|list|info|give|unlock|soul|craft|debug>", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/specialequipment <list|info|give|unlock|soul|craft|debug>", NamedTextColor.YELLOW));
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
-        if (action.equals("menu")) {
-            if (sender instanceof Player player) menu.open(player);
-            else sender.sendMessage(Component.text("This action requires a player.", NamedTextColor.RED));
-            return true;
-        }
         if (action.equals("list")) {
             sender.sendMessage(Component.text("Special equipment: " + service.registry().getAll().stream().map(SpecialEquipmentData::id).toList(), NamedTextColor.AQUA));
             return true;

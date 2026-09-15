@@ -88,14 +88,7 @@ class FarmingStage8DeliveryTest {
     }
 
     @Test
-    void submissionConsumesExactlyRequiredAmountAndReturnsOnlyRemainingStacks() {
-        assertArrayEquals(new int[] {0, 2, 1},
-                DeliveryGuiService.remainingAmounts(new int[] {2, 2, 1}, 2));
-        assertArrayEquals(new int[] {0, 0, 0},
-                DeliveryGuiService.remainingAmounts(new int[] {2, 2, 1}, 5));
-        assertArrayEquals(new int[] {2, 2, 1},
-                DeliveryGuiService.remainingAmounts(new int[] {2, 2, 1}, 0));
-    }
+
 
     @Test
     void deliveryDefinitionWeightProvidesConfigurableTypeSelection() {

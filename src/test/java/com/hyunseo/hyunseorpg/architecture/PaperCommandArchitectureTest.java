@@ -15,8 +15,8 @@ class PaperCommandArchitectureTest {
     void productionPluginDoesNotUseJavaPluginGetCommandAndCatalogIsComplete() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/hyunseo/hyunseorpg/HyunseoRPGPlugin.java"));
         assertFalse(source.contains("getCommand("));
-        Set<String> expected = Set.of("rpg", "effectlist", "rpgtest", "crafting", "weaponinfo", "rpgstat",
-                "rpgstatbalance", "stats", "skillstats", "weaponstats", "rpglevel", "rpgcooldown",
+        Set<String> expected = Set.of("rpg", "rpgtest", "weaponinfo", "rpgstat",
+                "rpgstatbalance", "rpglevel", "rpgcooldown",
                 "rpgmob", "rpgquest", "specialequipment");
         assertEquals(expected, PaperCommandCatalog.ALL.stream().map(spec -> spec.name()).collect(Collectors.toSet()));
         String descriptor = Files.readString(Path.of("src/main/resources/paper-plugin.yml"));

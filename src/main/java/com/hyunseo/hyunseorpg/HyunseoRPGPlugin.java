@@ -6,8 +6,6 @@ import com.hyunseo.hyunseorpg.classsystem.ClassService;
 import com.hyunseo.hyunseorpg.classsystem.ClassWeaponService;
 import com.hyunseo.hyunseorpg.command.ClassResetCommand;
 import com.hyunseo.hyunseorpg.command.ClassSelectCommand;
-import com.hyunseo.hyunseorpg.command.ClassStatGuiCommand;
-import com.hyunseo.hyunseorpg.command.CraftingCommand;
 import com.hyunseo.hyunseorpg.command.RPGGiveCommand;
 import com.hyunseo.hyunseorpg.command.RPGTestCommand;
 import com.hyunseo.hyunseorpg.prototype.thousandeyes.ThousandEyesController;
@@ -19,8 +17,6 @@ import com.hyunseo.hyunseorpg.command.RPGMobCommand;
 import com.hyunseo.hyunseorpg.command.RPGQuestCommand;
 import com.hyunseo.hyunseorpg.command.RPGStatAdminCommand;
 import com.hyunseo.hyunseorpg.command.RPGStatBalanceCommand;
-import com.hyunseo.hyunseorpg.command.SkillStatGuiCommand;
-import com.hyunseo.hyunseorpg.command.StatGuiCommand;
 import com.hyunseo.hyunseorpg.command.SpecialEquipmentCommand;
 import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigDoctor;
@@ -112,12 +108,8 @@ import com.hyunseo.hyunseorpg.farming.FarmingHoePromotionService;
 import com.hyunseo.hyunseorpg.farming.DeliveryRegistry;
 import com.hyunseo.hyunseorpg.farming.DeliveryService;
 import com.hyunseo.hyunseorpg.farming.DeliveryDataService;
-import com.hyunseo.hyunseorpg.farming.DeliveryItemValidator;
-import com.hyunseo.hyunseorpg.farming.DeliveryRewardCalculator;
-import com.hyunseo.hyunseorpg.farming.DeliveryGuiService;
 import com.hyunseo.hyunseorpg.farming.AbundancePointService;
 import com.hyunseo.hyunseorpg.farming.FavorService;
-import com.hyunseo.hyunseorpg.farming.FarmingHubGuiService;
 import com.hyunseo.hyunseorpg.farming.FarmingEssenceService;
 import com.hyunseo.hyunseorpg.farming.FarmingItemBridge;
 import com.hyunseo.hyunseorpg.farming.FarmingStatTokenService;
@@ -131,17 +123,12 @@ import com.hyunseo.hyunseorpg.alchemy.CorrosionEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.FrostbiteEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.NecrosisEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.ProductionEffectListener;
-import com.hyunseo.hyunseorpg.alchemy.EffectListGuiService;
-import com.hyunseo.hyunseorpg.command.EffectCommand;
 import com.hyunseo.hyunseorpg.alchemy.ShockEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VampirismEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.VulnerabilityEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.catalyst.BoundedSpecialCatalystExecutionService;
-import com.hyunseo.hyunseorpg.alchemy.catalyst.CatalystApplicationService;
 import com.hyunseo.hyunseorpg.alchemy.catalyst.YamlCatalystRegistry;
 import com.hyunseo.hyunseorpg.alchemy.catalyst.YamlSpecialCatalystRegistry;
-import com.hyunseo.hyunseorpg.alchemy.gui.AlchemyCatalystGuiService;
-import com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiControllerService;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionRegistry;
 import com.hyunseo.hyunseorpg.alchemy.potion.PotionFactory;
 import com.hyunseo.hyunseorpg.alchemy.potion.PaperPotionPdcContract;
@@ -156,9 +143,6 @@ import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
 import com.hyunseo.hyunseorpg.exploration.integration.BukkitExplorationPorts;
 import com.hyunseo.hyunseorpg.activity.MiningActivityListener;
 import com.hyunseo.hyunseorpg.activity.MiningActivityService;
-import com.hyunseo.hyunseorpg.crafting.CraftingService;
-import com.hyunseo.hyunseorpg.crafting.CraftingGuiService;
-import com.hyunseo.hyunseorpg.crafting.CraftingLayoutRegistry;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
 import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
@@ -174,7 +158,6 @@ import com.hyunseo.hyunseorpg.skill.lancer.LancerSkillService;
 import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBasicAttackListener;
 import com.hyunseo.hyunseorpg.skill.swordmaster.SwordmasterBladeService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentEffectListener;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentMenuService;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentProgressListener;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
@@ -189,8 +172,6 @@ import com.hyunseo.hyunseorpg.stat.StatCalculator;
 import com.hyunseo.hyunseorpg.stat.StatModifierCleanupListener;
 import com.hyunseo.hyunseorpg.stat.StatModifierService;
 import com.hyunseo.hyunseorpg.stat.StatService;
-import com.hyunseo.hyunseorpg.ui.StatGuiListener;
-import com.hyunseo.hyunseorpg.ui.StatGuiService;
 import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyListener;
 import com.hyunseo.hyunseorpg.weapon.WeaponProficiencyService;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
@@ -238,7 +219,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private StatModifierService statModifierService;
     private StatService statService;
     private SkillStatService skillStatService;
-    private StatGuiService statGuiService;
     private CombatService combatService;
     private CooldownService cooldownService;
     private SkillRegistry skillRegistry;
@@ -266,10 +246,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private MythicMobRegistry mythicMobRegistry;
     private MythicMobIntegrationService mythicMobIntegrationService;
     private MythicCustomMobService mythicCustomMobService;
-    private CraftingService craftingService;
-    private CraftingGuiService craftingGuiService;
     private CraftingRecipeRegistry craftingRecipeRegistry;
-    private CraftingLayoutRegistry craftingLayoutRegistry;
     private CraftingTransactionService craftingTransactionService;
     private VanillaStackingService vanillaStackingService;
     private ActivityBlockRepository activityBlockRepository;
@@ -282,10 +259,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private FarmingHoePromotionService farmingHoePromotionService;
     private DeliveryRegistry deliveryRegistry;
     private DeliveryService deliveryService;
-    private DeliveryGuiService deliveryGuiService;
     private AbundancePointService abundancePointService;
     private FavorService favorService;
-    private FarmingHubGuiService farmingHubGuiService;
     private FarmingEssenceService farmingEssenceService;
     private FarmingItemBridge farmingItemBridge;
     private FarmingStatTokenService farmingStatTokenService;
@@ -301,7 +276,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EquipmentGrowthPolicy equipmentGrowthPolicy;
     private SpecialEquipmentRegistry specialEquipmentRegistry;
     private SpecialEquipmentService specialEquipmentService;
-    private SpecialEquipmentMenuService specialEquipmentMenuService;
     private EnchantRegistry enchantRegistry;
     private EnchantService enchantService;
     private EquipmentInstanceService equipmentInstanceService;
@@ -319,7 +293,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private EffectService effectService;
     private com.hyunseo.hyunseorpg.alchemy.EffectMovementLockService effectMovementLockService;
     private ProductionEffectListener productionEffectListener;
-    private EffectListGuiService effectListGuiService;
     private com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter alchemyCombatAdapter;
     private PotionRegistry potionRegistry;
     private PaperPotionPdcContract potionPdc;
@@ -329,9 +302,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private YamlCatalystRegistry catalystRegistry;
     private YamlSpecialCatalystRegistry specialCatalystRegistry;
     private BoundedSpecialCatalystExecutionService specialCatalystExecutionService;
-    private CatalystApplicationService catalystApplicationService;
-    private AlchemyCatalystGuiService alchemyCatalystGui;
-    private AlchemyGuiControllerService alchemyGuiController;
     private com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog alchemyAuditLog;
     private ExplorationModule explorationModule;
     private GatewayPrototypeService gatewayPrototypeService;
@@ -345,7 +315,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.configService.loadDefaults();
         new EquipmentGrowthConfigValidator(configService).validate();
         this.effectService = new EffectService(this, configService);
-        this.effectListGuiService = new EffectListGuiService(this, effectService);
         this.alchemyCombatAdapter = new com.hyunseo.hyunseorpg.alchemy.PaperAlchemyCombatAdapter(effectService);
         registerProductionEffectHandlers();
         if (!effectService.load()) {
@@ -374,8 +343,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.potionUseListener = new PaperPotionUseListener(this, potionPdc,
                 new PaperPotionUseService(potionRegistry, potionPdc, effectService, itemService, 1,
                         catalystRegistry, specialCatalystExecutionService), specialCatalystExecutionService);
-        this.catalystApplicationService = new CatalystApplicationService(
-                potionRegistry, potionPdc, catalystRegistry, itemService, 1);
         this.alchemyAuditLog = new com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog(this);
         this.cropQualityService = new CropQualityService(configService, itemService);
         this.cropQualityService.load();
@@ -394,17 +361,10 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (!this.craftingRecipeRegistry.load()) {
             getLogger().warning("Unable to load canonical crafting recipes; continuing with the last valid snapshot.");
         }
-        this.craftingLayoutRegistry = new CraftingLayoutRegistry(configService);
-        if (!this.craftingLayoutRegistry.reload(craftingRecipeRegistry)) {
-            getLogger().warning("Unable to load canonical crafting layout; continuing with the last valid snapshot.");
-        }
         this.craftingTransactionService = new CraftingTransactionService(craftingRecipeRegistry, itemService,
                 soulboundItemService, vanillaStackingService, naturalDiscoveryService::discoverDeliveredItem);
         this.craftingTransactionService.setDynamicOutputResolver((player, recipe) ->
                 potionFactory.create(recipe.outputId(), recipe.outputAmount()));
-        this.craftingService = new CraftingService(craftingTransactionService);
-        this.craftingGuiService = new CraftingGuiService(this, itemService, craftingRecipeRegistry,
-                craftingLayoutRegistry, craftingTransactionService);
         try {
             this.activityBlockRepository = new ActivityBlockRepository(this);
             this.activityBlockRewardValidator = new ActivityBlockRewardValidator(
@@ -433,10 +393,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.favorService.load();
         this.deliveryService = new DeliveryService(
                 new DeliveryDataService(playerDataService, abundancePointService), deliveryRegistry);
-        this.deliveryGuiService = new DeliveryGuiService(this, deliveryService,
-                new DeliveryItemValidator(itemService, cropQualityService),
-                new DeliveryRewardCalculator(cropQualityService, configService, favorService),
-                inventoryDeliveryService, itemService, farmingProfileService);
         CropIndex cropIndex = new CropIndex();
         CropStorage cropStorage = new YamlChunkCropStorage(this);
         CropBlockAdapter cropBlockAdapter = new VanillaCropBlockAdapter();
@@ -467,7 +423,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.farmingHoePromotionService = new FarmingHoePromotionService(
                 this, configService, equipmentTierService);
         this.farmingHoePromotionService.load();
-        this.deliveryGuiService.setHoePromotionService(farmingHoePromotionService);
         this.cropGrowthService.harvestService().setHoePromotionService(farmingHoePromotionService);
         this.hoeHarvestModifierService = new HoeHarvestModifierService(
                 configService, equipmentTierService, equipmentEnhancementService);
@@ -480,7 +435,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.specialEquipmentService = new SpecialEquipmentService(this, configService, specialEquipmentRegistry,
                 itemService, playerDataService, inventoryDeliveryService, equipmentEnhancementService);
         this.specialEquipmentService.setCraftingTransactionService(craftingTransactionService, craftingRecipeRegistry);
-        this.specialEquipmentMenuService = new SpecialEquipmentMenuService(this, specialEquipmentService);
         this.requirementChecker = new RequirementChecker(playerDataService);
         this.dimensionVisitTracker = new DimensionVisitTracker(playerDataService);
         this.statCalculator = new StatCalculator(configService);
@@ -502,7 +456,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.bowmasterSkillService = new BowmasterSkillService(this, configService, weaponService, combatService, classStatService);
         this.lancerSkillService = new LancerSkillService(this, configService, combatService, classStatService);
         this.skillStatService = new SkillStatService(configService, playerDataService, skillRegistry, weaponProficiencyService);
-        this.statGuiService = new StatGuiService(this, statService, skillStatService, classStatService);
         this.cooldownService = new CooldownService(configService.getSpecialEquipmentBoolean(
                 "special-equipment.testing.disable-cooldowns", false));
         this.skillService = new SkillService(configService, playerDataService, weaponService, weaponProficiencyService, manaService, cooldownService, combatService, skillRegistry, swordmasterBladeService, bowmasterSkillService, lancerSkillService);
@@ -588,12 +541,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.autoQuestService = new AutoQuestService(configService, playerDataService, itemService,
                 expService, contentAvailabilityService);
         this.manaRegenTask = new ManaRegenTask(this, configService, manaService);
-        this.alchemyCatalystGui = new AlchemyCatalystGuiService(this, catalystApplicationService,
-                catalystRegistry, inventoryDeliveryService, itemService);
-        this.alchemyGuiController = new AlchemyGuiControllerService(configService, craftingGuiService);
-        this.farmingHubGuiService = new FarmingHubGuiService(
-                craftingGuiService, deliveryGuiService, farmingProfileService);
-        this.alchemyGuiController.setCatalystOpener(player -> alchemyCatalystGui.open(player, alchemyGuiController::openInventory));
 
         this.explorationModule = new ExplorationModule(this,
                 BukkitExplorationPorts.compose(
@@ -629,8 +576,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (alchemyGuiController != null) alchemyGuiController.closeAll(com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiController.CloseReason.SERVER_SHUTDOWN);
-        if (alchemyCatalystGui != null) alchemyCatalystGui.closeAll();
         if (specialCatalystExecutionService != null) specialCatalystExecutionService.cancelAll(
                 com.hyunseo.hyunseorpg.alchemy.catalyst.SpecialCatalystExecution.CancelReason.SERVER_RESTART);
         if (effectMovementLockService != null) effectMovementLockService.clearAll();
@@ -749,7 +694,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     public YamlCatalystRegistry getCatalystRegistry() { return catalystRegistry; }
     public YamlSpecialCatalystRegistry getSpecialCatalystRegistry() { return specialCatalystRegistry; }
     public BoundedSpecialCatalystExecutionService getSpecialCatalystExecutionService() { return specialCatalystExecutionService; }
-    public CatalystApplicationService getCatalystApplicationService() { return catalystApplicationService; }
 
     private boolean canAccessCraftingRecipe(Player player, CraftingRecipeData recipe) {
         if (recipe.farmingType().equalsIgnoreCase("essence")) {
@@ -818,12 +762,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setFarmingOperations(farmingStatTokenService, cropGrowthService);
         give.setFarmingDiagnostics(deliveryService, cropQualityService);
         give.setFarmingAuditLogger(message -> getLogger().info("[FarmingAdmin] " + message));
-        give.setDeliveryGuiService(deliveryGuiService);
-        give.setFarmingHubGuiService(farmingHubGuiService);
         give.setEffectService(effectService);
-        give.setEffectListGuiService(effectListGuiService);
-        give.setAlchemyServices(potionRegistry, potionPdc, specialCatalystExecutionService,
-                alchemyGuiController, alchemyAuditLog);
+        give.setAlchemyServices(potionRegistry, potionPdc, specialCatalystExecutionService, alchemyAuditLog);
         give.setPotionFactory(potionFactory);
         give.setSpecialEquipmentService(specialEquipmentService);
         give.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
@@ -832,8 +772,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
                 weaponItemService, equipmentEnhancementService,
                 reloadService, equipmentMetadataService, equipmentRegistry, gatewayPrototypeService, thousandEyesController);
-        CraftingCommand crafting = new CraftingCommand(craftingGuiService, craftingRecipeRegistry,
-                craftingLayoutRegistry, craftingTransactionService);
         WeaponProficiencyCommand weaponInfo = new WeaponProficiencyCommand(weaponProficiencyService);
         RPGStatAdminCommand stat = new RPGStatAdminCommand(statService, manaService);
         RPGStatBalanceCommand balance = new RPGStatBalanceCommand(configService);
@@ -843,21 +781,15 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 mythicCustomMobService, monsterBehaviorService);
         RPGQuestCommand quest = new RPGQuestCommand(questService, autoQuestService,
                 contentAvailabilityService, playerDiscoveryService);
-        SpecialEquipmentCommand special = new SpecialEquipmentCommand(specialEquipmentService, specialEquipmentMenuService);
-        EffectCommand effects = new EffectCommand(effectListGuiService);
+        SpecialEquipmentCommand special = new SpecialEquipmentCommand(specialEquipmentService);
 
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands commands = event.registrar();
             registerPaperCommand(commands, "rpg", give, give);
-            registerPaperCommand(commands, "effectlist", effects, effects);
             registerPaperCommand(commands, "rpgtest", test, test);
-            registerPaperCommand(commands, "crafting", crafting, crafting);
             registerPaperCommand(commands, "weaponinfo", weaponInfo, weaponInfo);
             registerPaperCommand(commands, "rpgstat", stat, stat);
             registerPaperCommand(commands, "rpgstatbalance", balance, balance);
-            registerPaperCommand(commands, "stats", new StatGuiCommand(statGuiService), null);
-            registerPaperCommand(commands, "skillstats", new SkillStatGuiCommand(statGuiService), null);
-            registerPaperCommand(commands, "weaponstats", new ClassStatGuiCommand(statGuiService), null);
             registerPaperCommand(commands, "rpglevel", level, level);
             registerPaperCommand(commands, "rpgcooldown", cooldown, cooldown);
             registerPaperCommand(commands, "rpgmob", mob, mob);
@@ -906,9 +838,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             specialEquipmentRegistry.load();
             equipmentRegistry.load();
             if (specialEquipmentRegistry.getAll().isEmpty()) return false;
-            if (!craftingRecipeRegistry.load()) return false;
-            if (!craftingLayoutRegistry.reload(craftingRecipeRegistry)) return false;
-            return !specialEquipmentRegistry.getAll().isEmpty();
+            return craftingRecipeRegistry.load()
+                    && !specialEquipmentRegistry.getAll().isEmpty();
         });
         reloadService.register("quests", () -> {
             configService.reloadQuestsConfig();
@@ -945,20 +876,13 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 return new RPGReloadService.ReloadOutcome(false, java.util.List.of(
                         RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors()))));
             }
-            if (!craftingLayoutRegistry.reload(craftingRecipeRegistry)) {
-                return new RPGReloadService.ReloadOutcome(false, java.util.List.of(
-                        RPGReloadService.ReloadDetail.fail("crafting-layout", String.join("; ", craftingLayoutRegistry.lastErrors()))));
-            }
-            return new RPGReloadService.ReloadOutcome(true, java.util.List.of(
-                    RPGReloadService.ReloadDetail.pass("crafting-recipes"),
-                    RPGReloadService.ReloadDetail.pass("crafting-layout")));
+            return RPGReloadService.ReloadOutcome.pass("crafting-recipes");
         });
         reloadService.register("recipes", () -> {
             configService.reloadCraftingConfig();
             configService.reloadFarmingQualityConfig();
             cropQualityService.load();
-            return craftingRecipeRegistry.load()
-                    && craftingLayoutRegistry.reload(craftingRecipeRegistry);
+            return craftingRecipeRegistry.load();
         });
         reloadService.register("skills", () -> {
             skillRegistry.load();
@@ -1002,7 +926,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             boolean deliveriesOk = deliveryRegistry.load();
             boolean farmingOk = cropGrowthService.reload();
             boolean recipesOk = craftingRecipeRegistry.load();
-            boolean layoutOk = recipesOk && craftingLayoutRegistry.reload(craftingRecipeRegistry);
             java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
             details.add(farmingOk
                     ? RPGReloadService.ReloadDetail.pass("farming")
@@ -1013,12 +936,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             details.add(recipesOk
                     ? RPGReloadService.ReloadDetail.pass("crafting-recipes")
                     : RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors())));
-            details.add(!recipesOk
-                    ? RPGReloadService.ReloadDetail.skip("crafting-layout", "SKIPPED due to recipe dependency failure")
-                    : layoutOk
-                        ? RPGReloadService.ReloadDetail.pass("crafting-layout")
-                        : RPGReloadService.ReloadDetail.fail("crafting-layout", String.join("; ", craftingLayoutRegistry.lastErrors())));
-            return new RPGReloadService.ReloadOutcome(farmingOk && deliveriesOk && recipesOk && layoutOk, details);
+            return new RPGReloadService.ReloadOutcome(farmingOk && deliveriesOk && recipesOk, details);
         });
         reloadService.registerDetailed("effects", () -> {
             configService.reloadAlchemyEffectsConfigs();
@@ -1057,8 +975,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         if (success) {
             effectService.commitReload();
             specialCatalystExecutionService.cancelAll(com.hyunseo.hyunseorpg.alchemy.catalyst.SpecialCatalystExecution.CancelReason.SERVER_RESTART);
-            alchemyGuiController.closeAll(com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiController.CloseReason.REPLACED);
-            alchemyCatalystGui.closeAll();
             alchemyAuditLog.admin("reload", null, "alchemy registries committed; stale jobs cleared");
         }
         return new RPGReloadService.ReloadOutcome(success, details);
@@ -1141,36 +1057,24 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         details.add(recipesOk
                 ? RPGReloadService.ReloadDetail.pass("crafting-recipes")
                 : RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors())));
-        boolean layoutOk = recipesOk && craftingLayoutRegistry.reload(craftingRecipeRegistry);
-        details.add(!recipesOk
-                ? RPGReloadService.ReloadDetail.skip("crafting-layout", "SKIPPED due to dependency failure")
-                : layoutOk
-                    ? RPGReloadService.ReloadDetail.pass("crafting-layout")
-                    : RPGReloadService.ReloadDetail.fail("crafting-layout", String.join("; ", craftingLayoutRegistry.lastErrors())));
         if (!effectsOk || !potionsOk || !alchemyRecipesOk || !catalystsOk
-                || !specialCatalystsOk || !farmingOk || !deliveriesOk || !recipesOk || !layoutOk) {
+                || !specialCatalystsOk || !farmingOk || !deliveriesOk || !recipesOk) {
             return new RPGReloadService.ReloadOutcome(false, details);
         }
         effectService.commitReload();
         specialCatalystExecutionService.cancelAll(com.hyunseo.hyunseorpg.alchemy.catalyst.SpecialCatalystExecution.CancelReason.SERVER_RESTART);
-        alchemyGuiController.closeAll(com.hyunseo.hyunseorpg.alchemy.gui.AlchemyGuiController.CloseReason.REPLACED);
-        alchemyCatalystGui.closeAll();
         alchemyAuditLog.admin("reload-all", null, "alchemy registries committed; stale jobs cleared");
         return new RPGReloadService.ReloadOutcome(true, details);
     }
 
     private java.util.List<RPGReloadService.ReloadDetail> reloadDetailsFromDoctor(ConfigDoctor.DoctorReport report) {
         java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
-        for (String group : java.util.List.of("items", "farming", "effects", "crafting-recipes", "crafting-layout")) {
+        for (String group : java.util.List.of("items", "farming", "effects", "crafting-recipes")) {
             java.util.List<String> errors = report.lines().stream()
                     .filter(line -> line.startsWith("ERROR") && (line.contains(group)
-                            || (group.equals("crafting-recipes") && line.contains("crafting.yml"))
-                            || (group.equals("crafting-layout") && line.contains("layout"))))
+                            || (group.equals("crafting-recipes") && line.contains("crafting.yml"))))
                     .toList();
-            if (group.equals("crafting-layout") && details.stream()
-                    .anyMatch(detail -> detail.id().equals("crafting-recipes") && detail.status().equals("FAIL"))) {
-                details.add(RPGReloadService.ReloadDetail.skip(group, "SKIPPED due to dependency failure"));
-            } else if (errors.isEmpty()) {
+            if (errors.isEmpty()) {
                 details.add(RPGReloadService.ReloadDetail.pass(group));
             } else {
                 details.add(new RPGReloadService.ReloadDetail(group, "FAIL", errors));
@@ -1198,10 +1102,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(effectService, this);
         getServer().getPluginManager().registerEvents(effectMovementLockService, this);
         getServer().getPluginManager().registerEvents(productionEffectListener, this);
-        getServer().getPluginManager().registerEvents(effectListGuiService, this);
         getServer().getPluginManager().registerEvents(potionUseListener, this);
-        getServer().getPluginManager().registerEvents(alchemyGuiController, this);
-        getServer().getPluginManager().registerEvents(alchemyCatalystGui, this);
         getServer().getPluginManager().registerEvents(specialCatalystExecutionService, this);
         getServer().getPluginManager().registerEvents(
                 new com.hyunseo.hyunseorpg.alchemy.AlchemyVanillaBypassListener(this, alchemyAuditLog), this);
@@ -1222,15 +1123,11 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(cropGrowthService, this);
         getServer().getPluginManager().registerEvents(new MiningActivityListener(
                 miningActivityService, activityBlockRepository), this);
-        getServer().getPluginManager().registerEvents(craftingGuiService, this);
-        getServer().getPluginManager().registerEvents(deliveryGuiService, this);
-        getServer().getPluginManager().registerEvents(farmingHubGuiService, this);
         getServer().getPluginManager().registerEvents(new FarmingStatTokenListener(farmingStatTokenService), this);
         getServer().getPluginManager().registerEvents(vanillaStackingService, this);
         getServer().getPluginManager().registerEvents(soulboundItemService, this);
         getServer().getPluginManager().registerEvents(bowmasterSkillService, this);
         getServer().getPluginManager().registerEvents(new SwordmasterBasicAttackListener(configService, playerDataService, weaponService, combatService), this);
-        getServer().getPluginManager().registerEvents(new StatGuiListener(this, statGuiService, statService, skillStatService, classStatService), this);
         getServer().getPluginManager().registerEvents(new LevelPlayerListener(this, levelService), this);
         getServer().getPluginManager().registerEvents(new MobSpawnListener(
                 mobService, mobLevelScalingService, zombieVariantService), this);

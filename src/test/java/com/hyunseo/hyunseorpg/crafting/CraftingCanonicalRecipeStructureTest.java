@@ -36,27 +36,14 @@ final class CraftingCanonicalRecipeStructureTest {
     }
 
     @Test
-    void fourProcessingRecipesArePlacedInTheCanonicalLayout() {
-        YamlConfiguration crafting = load("crafting.yml");
-        ConfigurationSection recipes = crafting.getConfigurationSection("crafting-recipes");
-        ConfigurationSection layout = crafting.getConfigurationSection("crafting.layout.materials");
-        assertNotNull(recipes);
-        assertNotNull(layout);
-        for (String recipeId : PROCESSING) {
-            assertCanonicalRecipe(crafting, recipeId);
-            assertTrue(layout.isSet(recipeId), "Missing materials layout entry: " + recipeId);
-            assertEquals("processing", crafting.getString(
-                    "crafting-recipes." + recipeId + ".farming-type"));
-        }
-    }
+
 
     @Test
-    void onionProcessingTraceMatchesCanonicalLayoutContract() {
+    void onionProcessingTraceMatchesCanonicalRecipeContract() {
         YamlConfiguration crafting = load("crafting.yml");
         assertEquals("materials", crafting.getString("crafting-recipes.process_onion_normal.category"));
         assertEquals("processed_onion_concentrate_normal",
                 crafting.getString("crafting-recipes.process_onion_normal.output.item-id"));
-        assertEquals(29, crafting.getInt("crafting.layout.materials.process_onion_normal"));
         assertEquals(20, crafting.getInt("crafting-recipes.process_onion_normal.inputs.crop_onion"));
     }
 

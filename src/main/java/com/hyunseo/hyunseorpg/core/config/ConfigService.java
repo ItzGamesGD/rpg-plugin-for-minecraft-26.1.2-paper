@@ -59,7 +59,6 @@ public final class ConfigService {
     private FileConfiguration alchemyPotionsConfig;
     private FileConfiguration alchemyRecipesConfig;
     private FileConfiguration alchemyCatalystsConfig;
-    private FileConfiguration alchemyGuiConfig;
 
     public ConfigService(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -112,7 +111,6 @@ public final class ConfigService {
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
-        this.alchemyGuiConfig = loadManagedConfig("alchemy/gui.yml");
         // Existing server files are authoritative. Missing defaults are handled by
         // the explicit /rpg migrate command, never during ordinary startup/reload.
     }
@@ -427,52 +425,12 @@ public final class ConfigService {
         return getKeys(craftingConfig, path);
     }
 
-    public void setCraftingValue(String path, Object value) {
-        craftingConfig.set(path, value);
-    }
 
-    public boolean saveCraftingConfig() {
-        try {
-            craftingConfig.save(new File(plugin.getDataFolder(), "crafting.yml"));
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to save crafting.yml", exception);
-            return false;
-        }
-    }
+
+
 
     /** Writes a validated layout atomically without mutating the live configuration on failure. */
-    public boolean replaceCraftingLayout(Map<String, Map<String, Integer>> layouts) {
-        File target = new File(plugin.getDataFolder(), "crafting.yml");
-        File temporary = new File(plugin.getDataFolder(), "crafting.yml.tmp");
-        YamlConfiguration candidate = YamlConfiguration.loadConfiguration(target);
-        candidate.set("crafting.layout", null);
-        for (Map.Entry<String, Map<String, Integer>> category : layouts.entrySet()) {
-            String root = "crafting.layout." + category.getKey();
-            for (Map.Entry<String, Integer> entry : category.getValue().entrySet()) {
-                candidate.set(root + "." + entry.getKey(), entry.getValue());
-            }
-        }
-        try {
-            candidate.save(temporary);
-            try {
-                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException exception) {
-                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            this.craftingConfig = candidate;
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to atomically save crafting.yml", exception);
-            if (temporary.exists() && !temporary.delete()) {
-                plugin.getLogger().fine("Unable to remove temporary crafting config: " + temporary);
-            }
-            return false;
-        }
-    }
-
-    public void reloadCraftingConfig() {
+public void reloadCraftingConfig() {
         this.craftingConfig = loadManagedConfig("crafting.yml");
     }
 
@@ -895,7 +853,6 @@ public final class ConfigService {
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
-        this.alchemyGuiConfig = loadManagedConfig("alchemy/gui.yml");
     }
 
     public ConfigurationSection getAlchemyAbundanceSection(String path) { return alchemyAbundanceConfig.getConfigurationSection(path); }
@@ -947,8 +904,6 @@ public final class ConfigService {
         return canonicalMaterial;
     }
 
-    public ConfigurationSection getAlchemyGuiSection(String path) { return alchemyGuiConfig.getConfigurationSection(path); }
-    public boolean getAlchemyGuiBoolean(String path, boolean fallback) { return alchemyGuiConfig.getBoolean(path, fallback); }
 
     public double getFarmingHoeEnhancementDouble(String path, double defaultValue) {
         return farmingHoeEnhancementConfig.getDouble(path, defaultValue);
