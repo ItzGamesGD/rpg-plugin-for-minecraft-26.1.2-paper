@@ -23,12 +23,10 @@ class RetiredVanillaEnchantmentsTest {
         }
         String yaml = Files.readString(Path.of("src/main/resources/enchants.yml"));
         String items = Files.readString(Path.of("src/main/resources/items.yml"));
-        String shops = Files.readString(Path.of("src/main/resources/shops.yml"));
         for (String id : RetiredVanillaEnchantments.IDS) {
             assertFalse(yaml.contains("  " + id + ":"), id);
             String book = id.equals("unbreaking") ? "enchant_book_durability_save_pickaxe" : "enchant_book_" + id;
             assertFalse(items.contains(book), book);
-            assertFalse(shops.contains(book), book);
             for (String tag : List.of("in_enchanting_table", "tradeable", "on_random_loot", "treasure", "non_treasure")) {
                 assertFalse(DatapackJsonTestSupport.tagValues("minecraft", tag).contains("hyunseorpg:" + id), id + " in " + tag);
             }

@@ -65,7 +65,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         data.setClassExp(yaml.getLong("classExp", data.getClassExp()));
         data.setSkillPoints(yaml.getInt("skillPoints", data.getSkillPoints()));
         data.setClassStatPoints(yaml.getInt("classStatPoints", data.getClassStatPoints()));
-        data.setCoins(yaml.getLong("coins", data.getCoins()));
         data.setCurrentMana(yaml.getDouble("currentMana", data.getCurrentMana()));
         data.setMinerHasteSeconds(yaml.getLong("minerHasteSeconds", data.getMinerHasteSeconds()));
         data.setFirstWitherClear(yaml.getBoolean("bossProgress.firstWitherClear", false));
@@ -122,7 +121,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         yaml.set("classExp", data.getClassExp());
         yaml.set("skillPoints", data.getSkillPoints());
         yaml.set("classStatPoints", data.getClassStatPoints());
-        yaml.set("coins", data.getCoins());
         yaml.set("currentMana", data.getCurrentMana());
         yaml.set("minerHasteSeconds", data.getMinerHasteSeconds());
         yaml.set("bossProgress.firstWitherClear", data.hasFirstWitherClear());
@@ -173,7 +171,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
             yaml.set(root + ".progress", quest.progress());
             yaml.set(root + ".created-at", quest.createdAt());
             yaml.set(root + ".expires-at", quest.expiresAt());
-            yaml.set(root + ".reward-coins", quest.rewardCoins());
             yaml.set(root + ".reward-exp", quest.rewardExp());
             yaml.set(root + ".difficulty", quest.difficulty());
             yaml.set(root + ".status", quest.status().name());
@@ -356,12 +353,12 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
                             section.getString("target", ""), section.getString("display-name", ""),
                             section.getInt("amount", 1), section.getInt("progress", 0),
                             section.getLong("created-at", 0L), section.getLong("expires-at", 0L),
-                            section.getLong("reward-coins", 0L), section.getLong("reward-exp", 0L),
+                            0L, section.getLong("reward-exp", 0L),
                             section.getInt("difficulty", 1), status));
                 } else {
                     data.setAutoQuest(new AutoQuestData(slot, section.getString("id", "auto-" + slot), type,
                             objectives, section.getString("display-name", ""), section.getLong("created-at", 0L),
-                            section.getLong("expires-at", 0L), section.getLong("reward-coins", 0L),
+                            section.getLong("expires-at", 0L), 0L,
                             section.getLong("reward-exp", 0L), status));
                 }
             } catch (IllegalArgumentException exception) {

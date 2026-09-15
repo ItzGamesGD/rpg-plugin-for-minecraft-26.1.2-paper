@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class RPGMenuHolder implements InventoryHolder {
-    public enum View { MAIN, SHOP_LIST, BOSS, GROWTH, QUESTS, ENCHANT_SUPPORT }
+    public enum View { MAIN, BOSS, GROWTH, QUESTS, ENCHANT_SUPPORT }
 
     private final View view;
     private final Map<Integer, String> actions = new HashMap<>();

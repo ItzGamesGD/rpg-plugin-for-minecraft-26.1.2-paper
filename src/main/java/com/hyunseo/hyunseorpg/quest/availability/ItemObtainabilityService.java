@@ -10,9 +10,6 @@ import com.hyunseo.hyunseorpg.mob.drop.MobDropEntry;
 import com.hyunseo.hyunseorpg.mob.drop.MobDropRegistry;
 import com.hyunseo.hyunseorpg.mob.drop.MobDropTable;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
-import com.hyunseo.hyunseorpg.shop.ShopData;
-import com.hyunseo.hyunseorpg.shop.ShopItemData;
-import com.hyunseo.hyunseorpg.shop.ShopRegistry;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
@@ -29,18 +26,16 @@ public final class ItemObtainabilityService {
     private final RPGItemService itemService;
     private final CraftingRecipeRegistry recipes;
     private final MobDropRegistry drops;
-    private final ShopRegistry shops;
     private final PlayerDataService playerData;
 
     public ItemObtainabilityService(ConfigService config, RPGItemRegistry items, RPGItemService itemService,
-                                    CraftingRecipeRegistry recipes, MobDropRegistry drops, ShopRegistry shops,
+                                    CraftingRecipeRegistry recipes, MobDropRegistry drops,
                                     PlayerDataService playerData) {
         this.config = config;
         this.items = items;
         this.itemService = itemService;
         this.recipes = recipes;
         this.drops = drops;
-        this.shops = shops;
         this.playerData = playerData;
     }
 
@@ -146,14 +141,6 @@ public final class ItemObtainabilityService {
         for (MobDropTable table : drops.getAll()) {
             for (MobDropEntry entry : table.entries()) {
                 if (entry.itemId().equalsIgnoreCase(itemId)) sources.add(AcquisitionSource.CUSTOM_MOB_DROP);
-            }
-        }
-        for (ShopData shop : shops.getAll()) {
-            for (ShopItemData product : shop.items()) {
-                if (!product.purchasable()) continue;
-                if (itemService.getItemId(product.template()).filter(itemId::equalsIgnoreCase).isPresent()) {
-                    sources.add(AcquisitionSource.SHOP);
-                }
             }
         }
         return Set.copyOf(sources);

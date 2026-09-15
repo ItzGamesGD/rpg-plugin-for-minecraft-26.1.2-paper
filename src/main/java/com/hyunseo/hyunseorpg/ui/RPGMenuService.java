@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.ui;
 
 import com.hyunseo.hyunseorpg.boss.BossSessionManager;
 import com.hyunseo.hyunseorpg.boss.BossType;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthGuiService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
@@ -15,8 +14,6 @@ import com.hyunseo.hyunseorpg.quest.AutoQuestData;
 import com.hyunseo.hyunseorpg.quest.AutoQuestService;
 import com.hyunseo.hyunseorpg.quest.QuestData;
 import com.hyunseo.hyunseorpg.quest.QuestService;
-import com.hyunseo.hyunseorpg.shop.ShopData;
-import com.hyunseo.hyunseorpg.shop.ShopGuiService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -34,16 +31,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Single navigation surface for crafting, shops, growth and bosses. */
+/** Legacy navigation shell for systems awaiting their dedicated cleanup stages. */
 public final class RPGMenuService {
     public static final String MAIN_MENU_CRAFTING_LABEL = "제작";
     private final JavaPlugin plugin;
-    private final ShopGuiService shops;
     private final EquipmentGrowthGuiService growth;
     private final StatGuiService stats;
     private final BossSessionManager bosses;
     private final CraftingGuiService craftingGuiService;
-    private final CoinService coins;
     private final RPGItemService items;
     private final CraftingRecipeRegistry recipes;
     private final CraftingTransactionService craftingTransactions;
@@ -54,18 +49,16 @@ public final class RPGMenuService {
     private AlchemyGuiControllerService alchemyGuiController;
     private final Map<String, Long> abandonConfirmations = new ConcurrentHashMap<>();
 
-    public RPGMenuService(JavaPlugin plugin, ShopGuiService shops, EquipmentGrowthGuiService growth,
+    public RPGMenuService(JavaPlugin plugin, EquipmentGrowthGuiService growth,
                           StatGuiService stats, BossSessionManager bosses, CraftingGuiService craftingGuiService,
-                          CoinService coins, RPGItemService items, CraftingRecipeRegistry recipes,
+                          RPGItemService items, CraftingRecipeRegistry recipes,
                           CraftingTransactionService craftingTransactions, SoulboundItemService soulbound,
                           QuestService quests, AutoQuestService autoQuests) {
         this.plugin = plugin;
-        this.shops = shops;
         this.growth = growth;
         this.stats = stats;
         this.bosses = bosses;
         this.craftingGuiService = craftingGuiService;
-        this.coins = coins;
         this.items = items;
         this.recipes = recipes;
         this.craftingTransactions = craftingTransactions;
@@ -86,7 +79,6 @@ public final class RPGMenuService {
         RPGMenuHolder holder = new RPGMenuHolder(RPGMenuHolder.View.MAIN);
         Inventory inventory = create(holder, "HyunseoRPG 메뉴");
         inventory.setItem(13, icon(Material.CRAFTING_TABLE, MAIN_MENU_CRAFTING_LABEL, List.of("재료와 장비 제작")));
-        inventory.setItem(15, icon(Material.EMERALD, "상점", List.of("등록된 상점 목록")));
         inventory.setItem(17, icon(Material.WHEAT, "농사", List.of("가공, 요리, 배달 의뢰, 농사 정보")));
         inventory.setItem(19, icon(Material.BREWING_STAND, "양조", List.of(
                 alchemyGuiController != null && alchemyGuiController.enabled()
@@ -95,8 +87,6 @@ public final class RPGMenuService {
         inventory.setItem(31, icon(Material.BOOK, "퀘스트", List.of("자동 의뢰와 진행도 확인", "클릭: 의뢰 목록 열기")));
         inventory.setItem(33, icon(Material.ANVIL, "장비 성장", List.of("강화, 승급, 인챈트, 수리")));
         inventory.setItem(35, icon(Material.BOOK, "스탯", List.of("스탯 투자 메뉴")));
-        inventory.setItem(27, icon(Material.ENCHANTED_BOOK, "인챈트 강화", List.of("인챈트 강화와 추출 메뉴")));
-        inventory.setItem(4, icon(Material.PAPER, "현재 상태", List.of("보유 코인: " + coins.getCoins(player))));
         inventory.setItem(49, icon(Material.BARRIER, "닫기", List.of()));
         player.openInventory(inventory);
     }
@@ -123,24 +113,6 @@ public final class RPGMenuService {
         if (category.equals("material")) category = "materials";
         if (category.equals("equipment")) category = "equipment";
         craftingGuiService.openCategory(player, category, 0);
-    }
-
-    public void openShopList(Player player) {
-        RPGMenuHolder holder = new RPGMenuHolder(RPGMenuHolder.View.SHOP_LIST);
-        Inventory inventory = create(holder, "상점");
-        int slot = 11;
-        for (ShopData shop : shops.getShops()) {
-            if (slot >= 44) break;
-            inventory.setItem(slot, icon(Material.EMERALD, shop.title(), List.of("ID: " + shop.shopId())));
-            holder.actions().put(slot, shop.shopId());
-            slot++;
-        }
-        inventory.setItem(49, icon(Material.ARROW, "뒤로", List.of()));
-        player.openInventory(inventory);
-    }
-
-    public void clickShop(Player player, String shopId) {
-        if (!shops.openShop(player, shopId)) player.sendMessage(Component.text("상점을 찾을 수 없습니다.", NamedTextColor.RED));
     }
 
     public void openBoss(Player player) {
@@ -176,8 +148,7 @@ public final class RPGMenuService {
         Inventory inventory = create(holder, "장비 성장");
         inventory.setItem(10, icon(Material.ANVIL, "강화", List.of("기본 능력치 성장")));
         inventory.setItem(12, icon(Material.SMITHING_TABLE, "승급", List.of("성장 단계와 상한 해방")));
-        inventory.setItem(14, icon(Material.ENCHANTED_BOOK, "인챈트", List.of("마석과 인챈트 북 사용")));
-        inventory.setItem(16, icon(Material.IRON_INGOT, "수리", List.of("코인으로 내구도 회복")));
+        inventory.setItem(14, icon(Material.ENCHANTED_BOOK, "인챈트", List.of("Minecraft 인챈트 시스템 사용")));
         inventory.setItem(49, icon(Material.ARROW, "뒤로", List.of()));
         player.openInventory(inventory);
     }
@@ -185,7 +156,6 @@ public final class RPGMenuService {
     public void clickMain(Player player, int slot) {
         switch (slot) {
             case 13 -> craftingGuiService.open(player);
-            case 15 -> openShopList(player);
             case 17 -> {
                 if (farmingHubGuiService != null) farmingHubGuiService.open(player);
                 else player.sendMessage(Component.text("농사 메뉴를 사용할 수 없습니다.", NamedTextColor.RED));
@@ -199,8 +169,6 @@ public final class RPGMenuService {
             case 31 -> openQuests(player);
             case 33 -> openGrowth(player);
             case 35 -> stats.openStatGui(player);
-            case 27 -> openEnchantSupport(player);
-            case 4 -> player.sendMessage(Component.text("보유 코인: " + coins.getCoins(player), NamedTextColor.GOLD));
             case 49 -> player.closeInventory();
             default -> { }
         }
@@ -223,7 +191,7 @@ public final class RPGMenuService {
             if (displayed != null) {
                 List<String> details = new ArrayList<>(autoQuests.progressLines(player, quest));
                 details.add("남은 시간: " + formatSeconds(Math.max(0L, (quest.expiresAt() - System.currentTimeMillis() + 999L) / 1000L)));
-                details.add("보상: " + quest.rewardCoins() + " 코인 / " + quest.rewardExp() + " RPG 경험치");
+                details.add("보상: " + quest.rewardExp() + " RPG 경험치");
                 details.add("Shift + 우클릭: 포기");
                 addLore(displayed, details);
             }
@@ -313,20 +281,12 @@ public final class RPGMenuService {
             case 10 -> player.sendMessage(Component.text("강화는 바닐라 모루에 장비와 강화석을 넣어 진행합니다.", NamedTextColor.YELLOW));
             case 12 -> player.sendMessage(Component.text("승급 시스템은 제거되었습니다.", NamedTextColor.YELLOW));
             case 14 -> player.sendMessage(Component.text("인챈트는 인챈팅 테이블과 바닐라 모루를 사용합니다.", NamedTextColor.YELLOW));
-            case 16 -> growth.openRepair(player);
             default -> { }
         }
     }
 
     public void clickEnchantSupport(Player player, int slot) {
-        switch (slot) {
-            case 11 -> player.sendMessage(Component.text("인챈트 강화는 아직 구현되지 않았습니다. 재화와 아이템은 소비되지 않았습니다.", NamedTextColor.YELLOW));
-            case 15 -> {
-                if (growth.getSupportService() != null) growth.getSupportService().openExtraction(player);
-                else player.sendMessage(Component.text("인챈트 추출 메뉴를 사용할 수 없습니다.", NamedTextColor.RED));
-            }
-            default -> { }
-        }
+        player.sendMessage(Component.text("인챈트는 Minecraft 기본 작업대를 사용합니다.", NamedTextColor.YELLOW));
     }
 
     public void back(Player player) { openMain(player); }

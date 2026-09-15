@@ -3,7 +3,6 @@ package com.hyunseo.hyunseorpg.command;
 import com.hyunseo.hyunseorpg.boss.BossSessionManager;
 import com.hyunseo.hyunseorpg.boss.BossType;
 import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentData;
 import com.hyunseo.hyunseorpg.equipment.EquipmentDefinition;
@@ -34,7 +33,6 @@ import java.util.Random;
 
 public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private static final String PERMISSION = "hyunseorpg.admin.test";
-    private final CoinService coins;
     private final RPGItemRegistry itemRegistry;
     private final RPGItemService items;
     private final SoulboundItemService soulbound;
@@ -47,13 +45,12 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private final GatewayPrototypeService gatewayPrototype;
     private final ThousandEyesController thousandEyes;
 
-    public RPGTestCommand(CoinService coins, RPGItemRegistry itemRegistry, RPGItemService items,
+    public RPGTestCommand(RPGItemRegistry itemRegistry, RPGItemService items,
                           SoulboundItemService soulbound, WeaponItemService weapons,
                           EquipmentEnhancementService enhancement,
                           BossSessionManager bosses, RPGReloadService reload,
                           EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry,
                           GatewayPrototypeService gatewayPrototype, ThousandEyesController thousandEyes) {
-        this.coins = coins;
         this.itemRegistry = itemRegistry;
         this.items = items;
         this.soulbound = soulbound;
@@ -73,8 +70,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) { usage(sender, label); return true; }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "give", "item" -> give(sender, args, label);
-            case "coins" -> adjustCoins(sender, args, false, label);
-            case "setcoins" -> adjustCoins(sender, args, true, label);
             case "hand", "inspect" -> inspect(sender, args);
             case "maxhand", "maxgrowth" -> maxHand(sender, args);
             case "boss" -> boss(sender, args, label);
@@ -190,17 +185,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(target.getName() + "에게 " + args[2] + " x" + amount + " 지급 완료");
     }
 
-    private void adjustCoins(CommandSender sender, String[] args, boolean set, String label) {
-        if (args.length < 3) { sender.sendMessage("/" + label + " " + (set ? "setcoins" : "coins") + " <player> <amount>"); return; }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        try {
-            long amount = Long.parseLong(args[2]);
-            if (target == null || amount < 0) throw new NumberFormatException();
-            if (set) coins.setCoins(target, amount); else coins.addCoins(target, amount);
-            sender.sendMessage("코인 처리 완료: " + coins.getCoins(target));
-        } catch (NumberFormatException exception) { sender.sendMessage("플레이어 또는 수량이 올바르지 않습니다."); }
-    }
-
     private void inspect(CommandSender sender, String[] args) {
         Player target = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player player ? player : null;
         if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
@@ -261,7 +245,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
 
     private void usage(CommandSender sender, String label) {
         sender.sendMessage("/" + label + " give <player> <itemId> [amount]");
-        sender.sendMessage("/" + label + " coins|setcoins <player> <amount>");
         sender.sendMessage("/" + label + " maxhand [player]");
         sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
         sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|weapon-ai|cancel> [type] [debug]");
@@ -273,7 +256,7 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "boss", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
+        if (args.length == 1) return filter(List.of("give", "hand", "inspect", "maxhand", "maxgrowth", "boss", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
         if (args.length == 2 && args[0].equalsIgnoreCase("orbital-core")) return filter(List.of("1", "2", "3", "4", "cancel"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("gateway")) return filter(List.of("boss", "cycle", "payload", "reflection", "placement", "pairing", "weapon-ai", "cancel"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("gateway") && args[1].equalsIgnoreCase("payload")) return filter(java.util.Arrays.stream(GatewayPayloadType.values()).map(Enum::name).toList(), args[2]);

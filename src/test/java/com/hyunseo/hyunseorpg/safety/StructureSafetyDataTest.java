@@ -20,10 +20,8 @@ final class StructureSafetyDataTest {
 
     @Test
     void buildingRewardsAndLegacyRecipesAreNotActive() {
-        YamlConfiguration progression = load("progression-loop.yml");
         YamlConfiguration crafting = load("crafting.yml");
 
-        assertFalse(progression.isConfigurationSection("activity-coins.activities.BUILDING"));
         assertFalse(crafting.getBoolean("craft2.enabled", false));
         for (String recipe : RETIRED_RECIPES) {
             assertFalse(crafting.isConfigurationSection("crafting-recipes." + recipe), recipe);
@@ -46,10 +44,10 @@ final class StructureSafetyDataTest {
     }
 
     @Test
-    void canonicalFragmentIsUsedByMobDrops() {
+    void legacyCurrencyFragmentsAreAbsentFromMobDrops() {
         String mythic = read("mythic-mobs.yml");
         assertFalse(mythic.contains("item-id: upgrade_stone_fragment"));
-        assertTrue(mythic.contains("item-id: basic_upgrade_fragment"));
+        assertFalse(mythic.contains("item-id: basic_upgrade_fragment"));
     }
 
     private YamlConfiguration load(String name) {

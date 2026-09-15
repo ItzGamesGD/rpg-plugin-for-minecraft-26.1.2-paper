@@ -67,7 +67,6 @@ public final class FarmingPromotionService {
                 Math.max(0L, config.getFarmingProgressionLong(path + ".required-valid-harvests", 0L)),
                 normalized(config.getFarmingProgressionString(path + ".required-crop-item-id", "")),
                 Math.max(0, config.getFarmingProgressionInt(path + ".required-crop-amount", 0)),
-                Math.max(0, config.getFarmingProgressionInt(path + ".required-magic-stone-amount", 0)),
                 unlock,
                 profile.stage(),
                 profile.totalValidHarvests(),
@@ -87,34 +86,23 @@ public final class FarmingPromotionService {
                 Math.max(0L, config.getFarmingProgressionLong(path + ".required-valid-harvests", 0L)),
                 normalized(config.getFarmingProgressionString(path + ".required-crop-item-id", "")),
                 Math.max(0, config.getFarmingProgressionInt(path + ".required-crop-amount", 0)),
-                Math.max(0, config.getFarmingProgressionInt(path + ".required-magic-stone-amount", 0)),
                 normalized(config.getFarmingProgressionString(path + ".unlock-crop", ""))
         ));
     }
 
     public FarmingPromotionResult promote(Player player, ItemStack hoe) {
-        return promote(player, hoe, null);
-    }
-
-    public FarmingPromotionResult promote(Player player, ItemStack hoe, ItemStack offeredMagicStone) {
         InventorySnapshot safetySnapshot = player == null ? null : InventorySnapshot.capture(player.getInventory());
-        int offeredStoneAmount = offeredMagicStone == null ? 0 : offeredMagicStone.getAmount();
         try {
-            return promoteInternal(player, hoe, offeredMagicStone);
+            return promoteInternal(player, hoe);
         } catch (RuntimeException exception) {
             if (safetySnapshot != null) safetySnapshot.restore(player.getInventory());
-            if (offeredMagicStone != null) offeredMagicStone.setAmount(offeredStoneAmount);
-            if (plugin != null) {
-                plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                        "Farming promotion exception: player="
-                                + (player == null ? "null" : player.getUniqueId())
-                                + ", hoe=" + describeItem(hoe), exception);
-            }
-            return FarmingPromotionResult.failure("\uB18D\uC0AC \uC2B9\uAE09 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uC7AC\uB8CC\uB294 \uCC28\uAC10\uD558\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.");
+            if (plugin != null) plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                    "Farming promotion exception", exception);
+            return FarmingPromotionResult.failure("농사 승급 처리 중 오류가 발생했습니다. 재료는 차감하지 않았습니다.");
         }
     }
 
-    private FarmingPromotionResult promoteInternal(Player player, ItemStack hoe, ItemStack offeredMagicStone) {
+    private FarmingPromotionResult promoteInternal(Player player, ItemStack hoe) {
         FarmingPromotionPreview preview = preview(player, hoe).orElse(null);
         if (preview == null) return FarmingPromotionResult.failure("\uB18D\uC0AC \uC2B9\uAE09 \uB300\uC0C1 \uAD2D\uC774\uAC00 \uC544\uB2D9\uB2C8\uB2E4.");
         String tierFailure = tierFailure(preview);
@@ -125,24 +113,13 @@ public final class FarmingPromotionService {
         if (preview.currentHarvests() < preview.requiredValidHarvests()) {
             return FarmingPromotionResult.failure("\uC720\uD6A8 \uC218\uD655\uB7C9\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4. \uD544\uC694: " + preview.requiredValidHarvests());
         }
-        boolean offeredStoneValid = offeredMagicStone != null
-                && items.isItem(offeredMagicStone, magicStoneId())
-                && offeredMagicStone.getAmount() >= preview.requiredMagicStoneAmount();
-        if (!has(player, preview.requiredCropItemId(), preview.requiredCropAmount())
-                || (!offeredStoneValid && !has(player, magicStoneId(), preview.requiredMagicStoneAmount()))) {
-            return FarmingPromotionResult.failure("\uC791\uBB3C \uB610\uB294 \uB9C8\uC11D\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4.");
+        if (!has(player, preview.requiredCropItemId(), preview.requiredCropAmount())) {
+            return FarmingPromotionResult.failure("작물이 부족합니다.");
         }
 
         InventorySnapshot snapshot = InventorySnapshot.capture(player.getInventory());
-        int originalStoneAmount = offeredMagicStone == null ? 0 : offeredMagicStone.getAmount();
         ItemStack originalHoe = hoe == null ? null : hoe.clone();
         if (!remove(player, preview.requiredCropItemId(), preview.requiredCropAmount())) {
-            snapshot.restore(player.getInventory());
-            return FarmingPromotionResult.failure("\uC2B9\uAE09 \uC7AC\uB8CC \uCC28\uAC10\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
-        }
-        if (offeredStoneValid) {
-            offeredMagicStone.setAmount(originalStoneAmount - preview.requiredMagicStoneAmount());
-        } else if (!remove(player, magicStoneId(), preview.requiredMagicStoneAmount())) {
             snapshot.restore(player.getInventory());
             return FarmingPromotionResult.failure("\uC2B9\uAE09 \uC7AC\uB8CC \uCC28\uAC10\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
@@ -151,7 +128,6 @@ public final class FarmingPromotionService {
                 || hoePromotion.setTierStar(hoe, currentHoeTier + 1, 0);
         if (!hoePromotionApplied) {
             snapshot.restore(player.getInventory());
-            if (offeredStoneValid) offeredMagicStone.setAmount(originalStoneAmount);
             restoreItem(hoe, originalHoe);
             return FarmingPromotionResult.failure("\uB18D\uC0AC \uB370\uC774\uD130 \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD574 \uC2B9\uAE09\uC744 \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.");
         }
@@ -204,9 +180,6 @@ public final class FarmingPromotionService {
         return FarmingStage.values()[currentTier + 1];
     }
 
-    private String magicStoneId() {
-        return config.getEquipmentGrowthString("promotion.magic-stone-item-id", "magic_stone");
-    }
 
     private boolean has(Player player, String id, int amount) {
         return amount <= 0 || (!id.isBlank() && count(player, id) >= amount);
@@ -254,14 +227,14 @@ public final class FarmingPromotionService {
     public record FarmingPromotionPreview(FarmingStage nextStage, String displayName,
                                           String minimumTier, int requiredEnhancement,
                                           long requiredValidHarvests, String requiredCropItemId,
-                                          int requiredCropAmount, int requiredMagicStoneAmount,
+                                          int requiredCropAmount,
                                           String unlockCrop, FarmingStage currentStage,
                                           long currentHarvests, int currentEnhancement,
                                           String currentTier) { }
 
     public record PromotionRule(FarmingStage nextStage, String minimumTier, int requiredEnhancement,
                                 long requiredValidHarvests, String requiredCropItemId,
-                                int requiredCropAmount, int requiredMagicStoneAmount,
+                                int requiredCropAmount,
                                 String unlockCrop) { }
 
     public record FarmingPromotionResult(boolean success, String message,

@@ -17,7 +17,7 @@ class PaperCommandArchitectureTest {
         assertFalse(source.contains("getCommand("));
         Set<String> expected = Set.of("rpg", "effectlist", "rpgtest", "crafting", "weaponinfo", "rpgstat",
                 "rpgstatbalance", "stats", "skillstats", "weaponstats", "rpglevel", "rpgcooldown",
-                "rpgmob", "rpgquest", "shop", "shopadmin", "specialequipment");
+                "rpgmob", "rpgquest", "specialequipment");
         assertEquals(expected, PaperCommandCatalog.ALL.stream().map(spec -> spec.name()).collect(Collectors.toSet()));
         String descriptor = Files.readString(Path.of("src/main/resources/paper-plugin.yml"));
         assertFalse(descriptor.contains("\ncommands:"), "Paper commands must use LifecycleEvents.COMMANDS");

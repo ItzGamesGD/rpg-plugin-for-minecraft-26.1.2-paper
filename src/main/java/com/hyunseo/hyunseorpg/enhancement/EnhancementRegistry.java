@@ -95,7 +95,7 @@ public final class EnhancementRegistry {
         return configService.getEquipmentGrowthString("enhancement.profiles." + profileId + ".target", "");
     }
 
-    /** Stage-2 compatibility methods: anvil enhancement is deterministic and coin-free. */
+    /** Stage-2 compatibility methods: anvil enhancement is deterministic and XP-based. */
     public double getBaseSuccessChance(double normalizedProgress) { return 1.0D; }
     public double getCurrentSuccessChance(double normalizedProgress, int failCount) { return 1.0D; }
     public String getRequiredStoneItemId() {

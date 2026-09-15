@@ -31,18 +31,18 @@ import java.util.Set;
 /** Read-only diagnostics for live HyunseoRPG data files. */
 public final class ConfigDoctor {
     private static final Set<String> VALID_SECTIONS = Set.of(
-            "all", "configs", "items", "recipes", "shops", "equipment", "mobs", "players",
-            "progression", "quests", "stacking", "vanilla-stacking", "enchants", "menu", "menus", "farming", "alchemy", "effects", "reload");
+            "all", "configs", "items", "recipes", "equipment", "mobs", "players",
+            "quests", "stacking", "vanilla-stacking", "enchants", "menu", "menus", "farming", "alchemy", "effects", "reload");
     private static final List<String> FARMING_FILES = List.of(
             "crops.yml", "growth.yml", "harvest.yml", "progression.yml", "quality.yml", "processing.yml",
             "hoe_enhancement.yml", "hoe_promotion.yml", "deliveries.yml", "favor.yml",
             "essence.yml", "stat_tokens.yml");
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
-            "items.yml", "shops.yml", "crafting.yml", "equipment-growth.yml",
+            "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "bosses.yml",
-            "progression-loop.yml", "quests.yml", "special-equipment.yml", "equipment-support.yml"
+            "quests.yml", "special-equipment.yml"
             , "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml", "alchemy/gui.yml"
@@ -84,9 +84,6 @@ public final class ConfigDoctor {
         if (section.isBlank() || section.equals("all") || section.equals("recipes")) {
             checkRecipes(lines, counts);
         }
-        if (section.isBlank() || section.equals("all") || section.equals("shops")) {
-            checkShops(lines, counts);
-        }
         if (section.isBlank() || section.equals("all") || section.equals("equipment")) {
             checkEquipment(lines, counts);
         }
@@ -95,9 +92,6 @@ public final class ConfigDoctor {
         }
         if (section.isBlank() || section.equals("all") || section.equals("players")) {
             checkPlayers(lines, counts);
-        }
-        if (section.isBlank() || section.equals("all") || section.equals("progression")) {
-            checkProgression(lines, counts);
         }
         if (section.isBlank() || section.equals("all") || section.equals("quests")) {
             checkQuests(lines, counts);
@@ -532,7 +526,7 @@ public final class ConfigDoctor {
                 }
                 String currency = normalize(shops.getString(root + ".currency-item-id", ""));
                 if (currency.equals("coin")) {
-                    info(lines, counts, root + ".currency-item-id: legacy CoinService alias; migration normalizes it to blank");
+                    info(lines, counts, root + ".currency-item-id: retired coin alias; migration normalizes it to blank");
                 } else if (!currency.isBlank() && !itemIds.contains(currency)) {
                     error(lines, counts, root + ".currency-item-id: item is not defined in items.yml ('" + currency + "')");
                 }
@@ -554,7 +548,6 @@ public final class ConfigDoctor {
             info(lines, counts, "equipment-growth.yml: canonical enhancement/promotion sections present");
         }
         checkGrowthCoverage(growth, lines, counts);
-        checkEquipmentSupport(lines, counts);
         File legacy = new File(plugin.getDataFolder(), "enhancements.yml");
         if (legacy.isFile()) {
             warning(lines, counts, "enhancements.yml: legacy file remains in live config root; run /rpg migrate legacy --apply");
@@ -718,19 +711,6 @@ public final class ConfigDoctor {
                 }
             }
         }
-        FileConfiguration farmingShops = load("shops.yml", lines, counts);
-        if (farmingShops == null || !farmingShops.isConfigurationSection("shops.farming.items")) {
-            error(lines, counts, "shops.yml: farming seed shop is missing");
-        } else {
-            for (String crop : List.of("corn", "onion", "chili", "garlic")) {
-                String path = "shops.farming.items.seed_" + crop;
-                if (!farmingShops.isConfigurationSection(path)
-                        || !farmingShops.getBoolean(path + ".purchasable", false)
-                        || !crop.equalsIgnoreCase(farmingShops.getString(path + ".required-farming-crop", ""))) {
-                    error(lines, counts, "shops.yml: missing gated seed product seed_" + crop);
-                }
-            }
-        }
         FileConfiguration harvest = configs.get("harvest.yml");
         if (harvest == null || harvest.getLong("direct.abundance-points", 0L) < 1L) {
             error(lines, counts, "farming/harvest.yml: direct.abundance-points must be positive; run migrate farming --apply");
@@ -818,11 +798,6 @@ public final class ConfigDoctor {
             }
             info(lines, counts, "farming/hoe_promotion.yml: item-local fixed tier/star passives; player stage remains profile data");
         }
-        FileConfiguration shops = load("shops.yml", lines, counts);
-        if (shops == null || !shops.isConfigurationSection("shops.farming")) {
-            warning(lines, counts, "shops.yml: farming shop section is missing");
-        }
-        if (shops != null) compareResourceContract("shops.yml", shops, lines, counts, Set.of("shops"));
         FileConfiguration deliveries = configs.get("deliveries.yml");
         if (deliveries == null || !deliveries.isConfigurationSection("definitions")) {
             error(lines, counts, "farming/deliveries.yml: missing definitions section");
@@ -1073,7 +1048,6 @@ public final class ConfigDoctor {
         lines.add("[Reload readiness]");
         int groups = 0;
         groups += reloadGroup("items", lines, counts, this::checkItems);
-        groups += reloadGroup("progression-loop", lines, counts, this::checkProgression);
         groups += reloadGroup("farming", lines, counts, this::checkFarming);
         groups += reloadGroup("effects", lines, counts, this::checkAlchemy);
         int beforeRecipes = counts[2];

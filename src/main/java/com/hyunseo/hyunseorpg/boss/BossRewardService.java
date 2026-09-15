@@ -1,7 +1,6 @@
 package com.hyunseo.hyunseorpg.boss;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
 import com.hyunseo.hyunseorpg.item.PendingRewardService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
@@ -23,16 +22,14 @@ public final class BossRewardService {
     private final ConfigService config;
     private final RPGItemService itemService;
     private final InventoryDeliveryService delivery;
-    private final CoinService coins;
     private final PlayerDataService playerData;
     private final PendingRewardService pendingRewards;
 
     public BossRewardService(ConfigService config, RPGItemService itemService, InventoryDeliveryService delivery,
-                             CoinService coins, PlayerDataService playerData, PendingRewardService pendingRewards) {
+                             PlayerDataService playerData, PendingRewardService pendingRewards) {
         this.config = config;
         this.itemService = itemService;
         this.delivery = delivery;
-        this.coins = coins;
         this.playerData = playerData;
         this.pendingRewards = pendingRewards;
     }
@@ -49,8 +46,7 @@ public final class BossRewardService {
         double threshold = Math.max(0.0D, Math.min(1.0D,
                 config.getBossesDouble(root + ".progress-min-contribution-ratio",
                         config.getBossesDouble("boss-sessions." + type.configId() + ".progress-min-contribution-ratio", 0.05D))));
-        long totalCoins = config.getBossesLong(root + ".coins", 0L);
-        Map<UUID, Long> coinShares = RewardAllocation.allocate(totalCoins, scores);
+        int experience = Math.max(0, config.getBossesInt(root + ".experience", 0));
         ConfigurationSection items = config.getBossesSection(root + ".items");
         Map<String, Integer> itemTotals = readItemTotals(items);
         for (Map.Entry<UUID, Double> entry : scores.entrySet()) {
@@ -58,13 +54,11 @@ public final class BossRewardService {
             double ratio = entry.getValue() / totalScore;
             if (!(ratio > 0.0D)) continue;
             Player player = Bukkit.getPlayer(uuid);
-            long coinShare = coinShares.getOrDefault(uuid, 0L);
             if (player != null && player.isOnline()) {
-                if (coinShare > 0L) coins.addCoins(player, coinShare);
+                if (experience > 0) player.giveExp(experience);
                 giveItems(player, itemTotals, scores);
-                player.sendMessage(Component.text(type.configId() + " 보상: 코인 +" + coinShare, NamedTextColor.GOLD));
+                player.sendMessage(Component.text(type.configId() + " 보상을 획득했습니다.", NamedTextColor.GOLD));
             } else {
-                if (coinShare > 0L && pendingRewards != null) pendingRewards.queueCoins(uuid, coinShare, "boss:" + type.configId());
                 queueItems(uuid, itemTotals, scores);
             }
             if (ratio + 1.0E-9D >= threshold) recordProgress(uuid, type, player);

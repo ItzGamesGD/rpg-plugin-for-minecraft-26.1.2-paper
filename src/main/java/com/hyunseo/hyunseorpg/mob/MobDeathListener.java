@@ -53,7 +53,7 @@ public final class MobDeathListener implements Listener {
                 }
                 Bukkit.getPluginManager().callEvent(new RPGMobKillEvent(
                         killer, defeated, mythicData.mobId(), mythicData.level(), mythicData.boss(), mythicData.elite(),
-                        mythicData.expReward(), mythicData.classExpReward(), mythicData.coinReward(), null,
+                        mythicData.expReward(), mythicData.classExpReward(), null,
                         MonsterKillContext.mythic(defeated, mythicData.mobId(), mythicData.level(),
                                 mythicData.boss(), mythicData.elite())));
                 mobRewardService.rewardMythic(killer, defeated, mythicData);
@@ -76,7 +76,6 @@ public final class MobDeathListener implements Listener {
                     mobService.isEliteMob(defeated),
                     mobService.getBaseExpReward(defeated),
                     mobService.getClassExpReward(defeated),
-                    mobService.getCoinReward(defeated),
                     mobService.getMobData(defeated).orElse(null),
                     MonsterKillContext.from(defeated, mobService)
             ));

@@ -21,8 +21,7 @@ import java.util.function.Consumer;
 
 /** PDC item identity is authoritative; Material is only the visual base. */
 public final class RPGItemService {
-    private static final Map<String, String> LEGACY_ITEM_ALIASES = Map.of(
-            "upgrade_stone_fragment", "basic_upgrade_fragment");
+    private static final Map<String, String> LEGACY_ITEM_ALIASES = Map.of();
     private static final Set<String> RETIRED_SPECIAL_ITEM_IDS = Set.of(
             "fire_sword", "fire_bow", "water_sword", "wind_sword", "wind_bow",
             "earth_sword", "earth_bow", "earth_mace", "ice_sword", "ice_bow",

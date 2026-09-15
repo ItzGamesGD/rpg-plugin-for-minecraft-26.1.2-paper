@@ -4,7 +4,7 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.Set;
 
-/** Shared validity predicate for item-input and player-currency recipes. */
+/** Shared validity predicate for item-input and deferred farming-point recipes. */
 public final class CraftingRecipeRequirements {
     private CraftingRecipeRequirements() {
     }
@@ -16,7 +16,7 @@ public final class CraftingRecipeRequirements {
     public static String invalidReason(boolean hasItemInputs, long requiredAbundancePoints) {
         return isValid(hasItemInputs, requiredAbundancePoints)
                 ? ""
-                : "no inputs or player currency requirement";
+                : "no inputs or farming-point requirement";
     }
 
     /** Returns recipe input keys without requiring an inputs section to exist. */

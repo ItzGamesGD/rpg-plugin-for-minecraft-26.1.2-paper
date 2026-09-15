@@ -9,9 +9,6 @@ class-weapons:
   command-enabled: true
 
 economy:
-  coin-display:
-    enabled: true
-    interval-ticks: 40
 
 mana:
   regen-interval-ticks: 20
@@ -191,7 +188,6 @@ item-drop-protection:
 
 repair:
   enabled: true
-  currency: COIN
   # The legacy per-durability formula remains the neutral baseline. The
   # following factors are deliberately configurable and default to neutral.
   base-cost: 0

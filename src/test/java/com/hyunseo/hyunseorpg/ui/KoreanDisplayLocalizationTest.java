@@ -37,7 +37,6 @@ class KoreanDisplayLocalizationTest {
     @Test
     void bundledFarmingPresentationAndMenuTitleAreKorean() {
         YamlConfiguration items = load("items.yml");
-        YamlConfiguration shops = load("shops.yml");
         YamlConfiguration crafting = load("crafting.yml");
         for (String id : FARMING_IDS) {
             assertFalse(containsEnglish(items.getString("items." + id + ".display-name", "")), id);
@@ -45,7 +44,6 @@ class KoreanDisplayLocalizationTest {
                 assertFalse(containsEnglish(line), id + " lore=" + line);
             }
         }
-        assertEquals("\uB18D\uC0AC", shops.getString("shops.farming.title"));
         assertEquals("\uC7AC\uB8CC", crafting.getString("crafting.menu-categories.materials.display-name"));
     }
 

@@ -37,14 +37,8 @@ crafting-recipes:
     inputs: { earth_heart: 1, earth_fragment: 1 }
     output: { item-id: earth_blessing, amount: 1 }
   basic_upgrade_stone:
-    inputs: { basic_upgrade_fragment: 10 }
+    inputs: { vanilla:DIAMOND: 1, vanilla:REDSTONE: 4, vanilla:LAPIS_LAZULI: 4 }
     output: { item-id: basic_upgrade_stone, amount: 1 }
-  magic_stone_from_fragments:
-    inputs: { magic_stone_fragment: 9 }
-    output: { item-id: magic_stone, amount: 1 }
-  enchant_extraction_ticket:
-    inputs: { magic_stone: 4 }
-    output: { item-id: enchant_extraction_ticket, amount: 1 }
   abundance_essence:
     category: materials
     farming-type: essence
@@ -223,8 +217,6 @@ legacy-craft2:
     - poseidon_breath
     - earth_blessing
     - basic_upgrade_stone
-    - magic_stone_from_fragments
-
 # The editor writes crafting.layout and keeps these lists as a readable fallback.
 crafting:
   # Main-menu category definitions are data-driven. A new category can be
@@ -247,8 +239,6 @@ crafting:
       - poseidon_breath
       - earth_blessing
       - basic_upgrade_stone
-      - magic_stone_from_fragments
-      - enchant_extraction_ticket
       - abundance_essence
     equipment:
        - poseidon_spear
@@ -266,8 +256,6 @@ crafting:
       poseidon_breath: 11
       earth_blessing: 12
       basic_upgrade_stone: 18
-      magic_stone_from_fragments: 19
-      enchant_extraction_ticket: 21
       abundance_essence: 44
       process_corn_normal: 24
       process_corn_basic: 25

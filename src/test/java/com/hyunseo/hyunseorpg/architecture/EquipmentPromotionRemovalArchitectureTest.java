@@ -31,14 +31,13 @@ final class EquipmentPromotionRemovalArchitectureTest {
         String growth = resource("equipment-growth.yml");
         String items = resource("items.yml");
         String crafting = resource("crafting.yml");
-        String support = resource("equipment-support.yml");
         assertFalse(growth.contains("\npromotion:"));
         assertFalse(growth.contains("max-promotion-stage"));
         assertFalse(items.contains("basic_promotion_stone:"));
         assertFalse(items.contains("promotion_option_reroll_ticket:"));
         assertFalse(crafting.contains("basic_promotion_stone"));
         assertFalse(crafting.contains("promotion_option_reroll_ticket"));
-        assertFalse(support.contains("promotion-option-reroll:"));
+        assertFalse(Files.exists(ROOT.resolve("src/main/resources/equipment-support.yml")));
         assertFalse(Files.exists(ROOT.resolve("src/main/resources/equipment-options.yml")));
     }
 

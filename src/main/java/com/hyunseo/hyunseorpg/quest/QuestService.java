@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.quest;
 
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.exp.ExpService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
 import com.hyunseo.hyunseorpg.player.PlayerRPGData;
@@ -17,20 +16,17 @@ public final class QuestService {
     private final PlayerDataService playerDataService;
     private final QuestRegistry questRegistry;
     private final RequirementChecker requirementChecker;
-    private final CoinService coinService;
     private final ExpService expService;
 
     public QuestService(
             PlayerDataService playerDataService,
             QuestRegistry questRegistry,
             RequirementChecker requirementChecker,
-            CoinService coinService,
             ExpService expService
     ) {
         this.playerDataService = playerDataService;
         this.questRegistry = questRegistry;
         this.requirementChecker = requirementChecker;
-        this.coinService = coinService;
         this.expService = expService;
     }
 
@@ -177,7 +173,7 @@ public final class QuestService {
         switch (reward.type()) {
             case BASE_EXP -> expService.giveBaseExp(player, reward.amount());
             case CLASS_EXP -> expService.giveClassExp(player, reward.amount());
-            case COINS -> coinService.addCoins(player, reward.amount());
+            case COINS -> { /* Legacy saves/configs remain readable; retired currency rewards are ignored. */ }
             case STAT_POINTS -> data.setStatPoints(data.getStatPoints() + (int) reward.amount());
             case SKILL_POINTS -> data.setSkillPoints(data.getSkillPoints() + (int) reward.amount());
             case CLASS_STAT_POINTS -> data.setClassStatPoints(data.getClassStatPoints() + (int) reward.amount());

@@ -22,12 +22,6 @@ permissions:
   hyunseorpg.quest:
     description: Allows quest commands
     default: true
-  hyunseorpg.shop.use:
-    description: Allows shop use
-    default: true
-  hyunseorpg.shop.admin:
-    description: Allows shop editing
-    default: op
   hyunseorpg.crafting.admin:
     description: Allows crafting menu editing
     default: op

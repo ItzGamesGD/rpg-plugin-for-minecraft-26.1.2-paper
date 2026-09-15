@@ -48,10 +48,10 @@ public final class ConfigMigrationService {
     );
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
-            "items.yml", "shops.yml", "crafting.yml", "equipment-growth.yml",
+            "items.yml", "crafting.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "bosses.yml", "hunting-grounds.yml",
-            "progression-loop.yml", "quests.yml", "worlds.yml", "special-equipment.yml", "equipment-support.yml"
+            "quests.yml", "worlds.yml", "special-equipment.yml", "equipment-support.yml"
     );
     private static final List<String> FARMING_FILES = List.of(
             "farming/crops.yml", "farming/growth.yml", "farming/harvest.yml",
@@ -127,8 +127,7 @@ public final class ConfigMigrationService {
             if (archiveLegacy && !normalized.equals("all")) {
                 migrateItems(lines, changedFiles);
                 migrateLegacyProfessionRecipes(lines, changedFiles);
-                migrateLegacyProfessionShops(lines, changedFiles);
-            }
+                    }
             if (!List.of("configs", "items", "mobs", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
@@ -173,15 +172,10 @@ public final class ConfigMigrationService {
         migrateItems(lines, changedFiles);
         migrateEnchants(lines, changedFiles);
         migrateSpecialEquipment(lines, changedFiles);
-        migrateEquipmentSupport(lines, changedFiles);
         migrateEquipmentGrowth(lines, changedFiles);
-        migrateProgression(lines, changedFiles);
         migrateQuests(lines, changedFiles);
         migrateLegacyProfessionRecipes(lines, changedFiles);
-        migrateLegacyProfessionShops(lines, changedFiles);
             migrateCraftingAmounts(lines, changedFiles);
-            migrateShopAmounts(lines, changedFiles);
-            migrateEconomyAndEnchantPolicy(lines, changedFiles);
             migrateVanillaStacking(lines, changedFiles);
         migrateBossElementalAndPersistence(lines, changedFiles);
         migrateLegacyItemReferences(lines, changedFiles);
@@ -1398,7 +1392,7 @@ public final class ConfigMigrationService {
     }
 
     private void migrateLegacyItemReferences(List<String> lines, List<File> changedFiles) {
-        Map<String, String> aliases = Map.of("upgrade_stone_fragment", "basic_upgrade_fragment");
+        Map<String, String> aliases = Map.of();
         for (String fileName : List.of("mythic-mobs.yml", "mobs.yml", "crafting.yml", "progression-loop.yml",
                 "shops.yml", "equipment-growth.yml", "enchants.yml", "equipment-support.yml")) {
             FileConfiguration target = loadLive(fileName);
@@ -2158,7 +2152,7 @@ public final class ConfigMigrationService {
                         String itemId = normalize(shops.getString(root + ".item.id", ""));
                         if (normalize(shops.getString(root + ".currency-item-id", "")).equals("coin")) {
                             changed |= setIfDifferent(shops, root + ".currency-item-id", "");
-                            lines.add("shops.yml: normalized CoinService currency representation at " + root);
+                            lines.add("shops.yml: normalized legacy coin representation at " + root);
                         }
                         if (itemId.startsWith("enchant_book_")) {
                             boolean active = activeEnchantBook(itemId);

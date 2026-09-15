@@ -47,9 +47,6 @@ public final class RPGMenuListener implements Listener {
         }
         if (holder.view() == RPGMenuHolder.View.MAIN) {
             menuService.clickMain(player, slot);
-        } else if (holder.view() == RPGMenuHolder.View.SHOP_LIST) {
-            String shopId = holder.actions().get(slot);
-            if (shopId != null && event.isLeftClick()) menuService.clickShop(player, shopId);
         } else if (holder.view() == RPGMenuHolder.View.GROWTH) {
             if (event.isLeftClick()) menuService.clickGrowth(player, slot);
         } else if (holder.view() == RPGMenuHolder.View.ENCHANT_SUPPORT) {

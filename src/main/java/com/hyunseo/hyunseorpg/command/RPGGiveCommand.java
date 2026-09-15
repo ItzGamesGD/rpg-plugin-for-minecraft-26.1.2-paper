@@ -951,7 +951,7 @@ public final class RPGGiveCommand implements CommandExecutor, TabCompleter {
                         + " 필요 강화=+" + rule.requiredEnhancement()
                         + " 필요 유효 수확량=" + rule.requiredValidHarvests());
                 sender.sendMessage("필요 작물=" + KoreanDisplay.itemId(rule.requiredCropItemId(), itemService) + " x" + rule.requiredCropAmount()
-                        + " 마석=" + rule.requiredMagicStoneAmount()
+
                         + " 다음 해금=" + KoreanDisplay.crop(rule.unlockCrop()));
             }, () -> sender.sendMessage("다음 단계=없음"));
         }

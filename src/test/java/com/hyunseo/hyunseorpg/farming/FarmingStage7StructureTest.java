@@ -75,34 +75,6 @@ class FarmingStage7StructureTest {
     }
 
     @Test
-    void processedProductsAreSellableAndDoNotUseCookingTags() {
-        YamlConfiguration shops = load("shops.yml");
-        YamlConfiguration items = load("items.yml");
-        for (String crop : CROPS) {
-            for (String quality : QUALITIES) {
-                String id = "processed_" + processedName(crop) + "_" + quality;
-                assertTrue(shops.isConfigurationSection("shops.farming.items." + id), id);
-                assertTrue(shops.getBoolean("shops.farming.items." + id + ".sellable"));
-                assertTrue(items.getStringList("items." + id + ".tags").contains("farming-processed"));
-                assertFalse(items.getStringList("items." + id + ".tags").stream()
-                        .anyMatch(tag -> tag.toLowerCase(Locale.ROOT).contains("cooking")));
-            }
-        }
-    }
-
-    @Test
-    void farmingSeedsArePurchasableOnlyThroughTheGatedFarmingShop() {
-        YamlConfiguration shops = load("shops.yml");
-        for (String crop : CROPS) {
-            String path = "shops.farming.items.seed_" + crop;
-            assertTrue(shops.isConfigurationSection(path), path);
-            assertTrue(shops.getBoolean(path + ".purchasable"));
-            assertEquals(crop, shops.getString(path + ".required-farming-crop"));
-            assertFalse(shops.getBoolean(path + ".sellable"));
-        }
-    }
-
-    @Test
     void processingContractKeepsCraftingYamlAsTheSingleExecutionSource() {
         YamlConfiguration processing = load("farming/processing.yml");
         assertEquals("crafting.yml", processing.getString("authoritative-source"));

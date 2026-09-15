@@ -4,7 +4,6 @@ import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
 import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;

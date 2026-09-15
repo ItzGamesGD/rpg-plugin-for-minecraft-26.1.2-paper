@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.quest;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.core.event.RPGMobKillEvent;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.exp.ExpService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
@@ -34,17 +33,15 @@ public final class AutoQuestService {
     private final ConfigService config;
     private final PlayerDataService playerData;
     private final RPGItemService itemService;
-    private final CoinService coins;
     private final ExpService exp;
     private final ContentAvailabilityService availability;
     private final Set<UUID> processing = new HashSet<>();
 
     public AutoQuestService(ConfigService config, PlayerDataService playerData, RPGItemService itemService,
-                            CoinService coins, ExpService exp, ContentAvailabilityService availability) {
+                            ExpService exp, ContentAvailabilityService availability) {
         this.config = config;
         this.playerData = playerData;
         this.itemService = itemService;
-        this.coins = coins;
         this.exp = exp;
         this.availability = availability;
     }
@@ -148,7 +145,6 @@ public final class AutoQuestService {
             if (quest.type() == AutoQuestType.ITEM_DELIVERY && !planFulfillsObjectives(plan, quest)) return false;
             if (!planStillValid(player, quest, plan)) return false;
             applyRemovalPlan(player, plan);
-            if (quest.rewardCoins() > 0L) coins.addCoins(player, quest.rewardCoins());
             if (quest.rewardExp() > 0L) exp.giveBaseExp(player, quest.rewardExp());
             quest.setStatus(AutoQuestStatus.COMPLETED);
             data.removeAutoQuest(slot);
@@ -282,20 +278,17 @@ public final class AutoQuestService {
         long now = System.currentTimeMillis();
         long limit = Math.max(1L, config.getQuestsLong("auto.time-limit-seconds", 1800L));
         long expires = now + limit * 1000L;
-        long baseCoins = Math.max(0L, config.getQuestsLong("auto.rewards.coin.base", 25L));
-        long coinsPerAmount = Math.max(0L, config.getQuestsLong("auto.rewards.coin.per-required", 2L));
         long baseExp = Math.max(0L, config.getQuestsLong("auto.rewards.rpg-exp.base", 20L));
         long expPerAmount = Math.max(0L, config.getQuestsLong("auto.rewards.rpg-exp.per-required", 1L));
         List<AutoQuestObjectiveData> objectives = candidates.stream().map(candidate -> new AutoQuestObjectiveData(
                 candidate.source(), candidate.id(), candidate.displayName(), selectRequiredAmount(type), 0, candidate.difficulty())).toList();
         long totalAmount = objectives.stream().mapToLong(AutoQuestObjectiveData::amount).sum();
         long difficulty = objectives.stream().mapToLong(AutoQuestObjectiveData::difficulty).sum();
-        long rewardCoins = baseCoins + coinsPerAmount * totalAmount + Math.max(0L, difficulty - objectives.size()) * 2L;
         long rewardExp = baseExp + expPerAmount * totalAmount + Math.max(0L, difficulty - objectives.size());
         String name = type == AutoQuestType.HUNT
                 ? "사냥 의뢰" + (objectives.size() > 1 ? " (" + objectives.size() + "종)" : "") : "아이템 납품";
         return new AutoQuestData(slot, "auto-" + slot + "-" + now, type, objectives, name,
-                now, expires, rewardCoins, rewardExp, AutoQuestStatus.ACTIVE);
+                now, expires, 0L, rewardExp, AutoQuestStatus.ACTIVE);
     }
 
     private boolean stillDefined(AutoQuestData quest) {

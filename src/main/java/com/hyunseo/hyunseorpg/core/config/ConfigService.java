@@ -31,18 +31,15 @@ public final class ConfigService {
     private FileConfiguration skillsConfig;
     private FileConfiguration weaponsConfig;
     private FileConfiguration itemsConfig;
-    private FileConfiguration shopsConfig;
     private FileConfiguration equipmentGrowthConfig;
     private FileConfiguration enchantsConfig;
     private FileConfiguration equipmentInputsConfig;
     private FileConfiguration craftingConfig;
-    private FileConfiguration progressionLoopConfig;
     private FileConfiguration mythicMobsConfig;
     private FileConfiguration bossesConfig;
     private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
     private FileConfiguration specialEquipmentConfig;
-    private FileConfiguration equipmentSupportConfig;
     private FileConfiguration farmingCropsConfig;
     private FileConfiguration farmingGrowthConfig;
     private FileConfiguration farmingHarvestConfig;
@@ -88,18 +85,15 @@ public final class ConfigService {
         // accessors remain as a compatibility facade for legacy source only; the
         // live professions.yml file is migrated to archive/legacy instead of loaded.
         this.itemsConfig = loadManagedConfig("items.yml");
-        this.shopsConfig = loadManagedConfig("shops.yml");
         this.equipmentGrowthConfig = loadManagedConfig("equipment-growth.yml");
         this.enchantsConfig = loadManagedConfig("enchants.yml");
         this.equipmentInputsConfig = loadManagedConfig("equipment-inputs.yml");
         this.craftingConfig = loadManagedConfig("crafting.yml");
-        this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
         this.mythicMobsConfig = loadManagedConfig("mythic-mobs.yml");
         this.bossesConfig = loadManagedConfig("bosses.yml");
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
-        this.equipmentSupportConfig = loadManagedConfig("equipment-support.yml");
         this.farmingCropsConfig = loadManagedConfig("farming/crops.yml");
         this.farmingGrowthConfig = loadManagedConfig("farming/growth.yml");
         this.farmingHarvestConfig = loadManagedConfig("farming/harvest.yml");
@@ -514,48 +508,6 @@ public final class ConfigService {
         this.craftingConfig = loadManagedConfig("crafting.yml");
     }
 
-    public Set<String> getProgressionLoopKeys(String path) {
-        return getKeys(progressionLoopConfig, path);
-    }
-
-    public ConfigurationSection getProgressionLoopSection(String path) {
-        return progressionLoopConfig.getConfigurationSection(path);
-    }
-
-    public String getProgressionLoopString(String path, String defaultValue) {
-        return progressionLoopConfig.getString(path, defaultValue);
-    }
-
-    public int getProgressionLoopInt(String path, int defaultValue) {
-        return progressionLoopConfig.getInt(path, defaultValue);
-    }
-
-    public long getProgressionLoopLong(String path, long defaultValue) {
-        return progressionLoopConfig.getLong(path, defaultValue);
-    }
-
-    public double getProgressionLoopDouble(String path, double defaultValue) {
-        return progressionLoopConfig.getDouble(path, defaultValue);
-    }
-
-    public boolean getProgressionLoopBoolean(String path, boolean defaultValue) {
-        return progressionLoopConfig.getBoolean(path, defaultValue);
-    }
-
-    public List<String> getProgressionLoopStringList(String path) {
-        return progressionLoopConfig.getStringList(path);
-    }
-
-    public void reloadProgressionLoopConfig() {
-        this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
-    }
-
-
-
-
-
-
-
 
 
     public Set<String> getItemsKeys(String path) {
@@ -580,56 +532,6 @@ public final class ConfigService {
 
     public double getItemsDouble(String path, double defaultValue) {
         return itemsConfig.getDouble(path, defaultValue);
-    }
-
-    public Set<String> getShopsKeys(String path) {
-        return getKeys(shopsConfig, path);
-    }
-
-    public ConfigurationSection getShopsSection(String path) {
-        return shopsConfig.getConfigurationSection(path);
-    }
-
-    public String getShopsString(String path, String defaultValue) {
-        return shopsConfig.getString(path, defaultValue);
-    }
-
-    public long getShopsLong(String path, long defaultValue) {
-        return shopsConfig.getLong(path, defaultValue);
-    }
-
-    public boolean getShopsBoolean(String path, boolean defaultValue) {
-        return shopsConfig.getBoolean(path, defaultValue);
-    }
-
-    public ItemStack getShopsItemStack(String path) {
-        ItemStack itemStack = shopsConfig.getItemStack(path);
-        return itemStack == null ? null : itemStack.clone();
-    }
-
-    public void setShopsValue(String path, Object value) {
-        shopsConfig.set(path, value);
-    }
-
-    public boolean saveShopsConfig() {
-        File targetFile = new File(plugin.getDataFolder(), "shops.yml");
-        File temporaryFile = new File(plugin.getDataFolder(), "shops.yml.tmp");
-        try {
-            shopsConfig.save(temporaryFile);
-            try {
-                Files.move(temporaryFile.toPath(), targetFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException ignored) {
-                Files.move(temporaryFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save shops.yml", exception);
-            return false;
-        }
-    }
-
-    public void reloadShopsConfig() {
-        this.shopsConfig = loadManagedConfig("shops.yml");
     }
 
     public Set<String> getEquipmentGrowthKeys(String path) {
@@ -698,42 +600,6 @@ public final class ConfigService {
 
     public void reloadSpecialEquipmentConfig() {
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
-    }
-
-    public Set<String> getEquipmentSupportKeys(String path) {
-        return getKeys(equipmentSupportConfig, path);
-    }
-
-    public ConfigurationSection getEquipmentSupportSection(String path) {
-        return equipmentSupportConfig.getConfigurationSection(path);
-    }
-
-    public String getEquipmentSupportString(String path, String defaultValue) {
-        return equipmentSupportConfig.getString(path, defaultValue);
-    }
-
-    public int getEquipmentSupportInt(String path, int defaultValue) {
-        return equipmentSupportConfig.getInt(path, defaultValue);
-    }
-
-    public long getEquipmentSupportLong(String path, long defaultValue) {
-        return equipmentSupportConfig.getLong(path, defaultValue);
-    }
-
-    public double getEquipmentSupportDouble(String path, double defaultValue) {
-        return equipmentSupportConfig.getDouble(path, defaultValue);
-    }
-
-    public boolean getEquipmentSupportBoolean(String path, boolean defaultValue) {
-        return equipmentSupportConfig.getBoolean(path, defaultValue);
-    }
-
-    public List<String> getEquipmentSupportStringList(String path) {
-        return equipmentSupportConfig.getStringList(path);
-    }
-
-    public void reloadEquipmentSupportConfig() {
-        this.equipmentSupportConfig = loadManagedConfig("equipment-support.yml");
     }
 
     public ConfigurationSection getFarmingCropsSection(String path) {

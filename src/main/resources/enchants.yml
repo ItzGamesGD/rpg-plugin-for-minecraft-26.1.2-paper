@@ -249,7 +249,6 @@ enchants:
     settings:
       chance: 0.15
       rewards:
-        magic_stone_fragment: 1
 
   multi_catch:
     display-name: "다중 낚시"

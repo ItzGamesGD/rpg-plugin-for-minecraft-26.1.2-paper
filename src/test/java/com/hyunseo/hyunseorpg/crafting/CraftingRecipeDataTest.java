@@ -13,10 +13,10 @@ final class CraftingRecipeDataTest {
     @Test
     void canonicalRecipeNormalizesIdsAndPreservesCategory() {
         CraftingRecipeData data = new CraftingRecipeData(" Fire_Core ", true, CraftingCategory.MATERIALS,
-                List.of(new CraftingRecipeData.Ingredient("vanilla:iron_ingot", 2)), " Magic_Stone ", 1);
+                List.of(new CraftingRecipeData.Ingredient("vanilla:iron_ingot", 2)), " Basic_Upgrade_Stone ", 1);
 
         assertEquals("fire_core", data.id());
-        assertEquals("magic_stone", data.outputId());
+        assertEquals("basic_upgrade_stone", data.outputId());
         assertEquals("materials", data.categoryId());
         assertTrue(data.ingredients().getFirst().vanilla());
     }

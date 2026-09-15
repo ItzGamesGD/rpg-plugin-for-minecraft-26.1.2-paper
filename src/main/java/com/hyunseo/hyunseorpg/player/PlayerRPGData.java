@@ -27,7 +27,6 @@ public final class PlayerRPGData {
     private long classExp;
     private int skillPoints;
     private int classStatPoints;
-    private long coins;
     private double currentMana;
     private long minerHasteSeconds;
     private boolean firstWitherClear;
@@ -80,7 +79,6 @@ public final class PlayerRPGData {
         this.classExp = 0L;
         this.skillPoints = 0;
         this.classStatPoints = 0;
-        this.coins = 0L;
         this.currentMana = 0.0D;
         this.minerHasteSeconds = 0L;
         this.firstWitherClear = false;
@@ -204,13 +202,6 @@ public final class PlayerRPGData {
         this.classStatPoints = requireNonNegative(classStatPoints, "classStatPoints");
     }
 
-    public long getCoins() {
-        return coins;
-    }
-
-    public void setCoins(long coins) {
-        this.coins = requireNonNegative(coins, "coins");
-    }
 
     public double getCurrentMana() {
         return currentMana;

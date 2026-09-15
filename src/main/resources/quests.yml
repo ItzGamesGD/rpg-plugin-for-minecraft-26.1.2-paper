@@ -14,8 +14,6 @@ quests:
     rewards:
       - type: BASE_EXP
         amount: 20
-      - type: COINS
-        amount: 10
       - type: PROGRESSION_FLAG
         target: quest_zombie_first_hunt_done
         amount: 1
@@ -48,9 +46,6 @@ auto:
     after-fail-seconds: 600
     after-abandon-seconds: 600
   rewards:
-    coin:
-      base: 25
-      per-required: 2
     rpg-exp:
       base: 20
       per-required: 1

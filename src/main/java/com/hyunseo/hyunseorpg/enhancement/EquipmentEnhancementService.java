@@ -122,7 +122,7 @@ public final class EquipmentEnhancementService {
 
     /**
      * Admin/test helper for live verification. It uses the same lore and PDC
-     * write path as a normal successful enhancement, but skips material, coin,
+     * write path as a normal successful enhancement, but skips material,
      * and chance checks.
      */
     public int forceEnhancementLevel(ItemStack item, int requestedLevel) {

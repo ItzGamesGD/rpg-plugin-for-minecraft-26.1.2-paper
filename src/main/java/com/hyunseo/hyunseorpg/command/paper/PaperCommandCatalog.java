@@ -21,8 +21,6 @@ public final class PaperCommandCatalog {
             c("rpgcooldown", "Admin cooldown command", List.of("cooldownadmin")),
             c("rpgmob", "RPG mob management command"),
             c("rpgquest", "RPG quest command", List.of("quest")),
-            c("shop", "Open shop"),
-            c("shopadmin", "Shop administration"),
             c("specialequipment", "Special equipment administration")
     );
     public static final Map<String, PaperCommandSpec> BY_NAME = ALL.stream()

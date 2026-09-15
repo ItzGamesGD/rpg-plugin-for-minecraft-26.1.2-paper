@@ -4,7 +4,6 @@ import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
 import com.hyunseo.hyunseorpg.item.PendingRewardService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -51,12 +50,12 @@ public final class BossSessionManager implements Listener {
     private BukkitTask ticker;
 
     public BossSessionManager(JavaPlugin plugin, ConfigService config, RPGItemService itemService,
-                              InventoryDeliveryService delivery, CoinService coins, PlayerDataService playerData,
+                              InventoryDeliveryService delivery, PlayerDataService playerData,
                               PendingRewardService pendingRewards) {
         this.plugin = plugin;
         this.config = config;
         this.cooldownFile = new File(plugin.getDataFolder(), "boss-cooldowns.yml");
-        this.rewardService = new BossRewardService(config, itemService, delivery, coins, playerData, pendingRewards);
+        this.rewardService = new BossRewardService(config, itemService, delivery, playerData, pendingRewards);
     }
 
     public void start() {
@@ -277,10 +276,7 @@ public final class BossSessionManager implements Listener {
         String root = "boss-sessions." + bossId;
         long duration = configuredDuration(bossId);
         long radius = Math.round(config.getBossesDouble(root + ".participation-radius", 80.0D));
-        long coins = config.getBossesLong(root + ".rewards.coins",
-                config.getBossesLong(root + ".first-clear-rewards.coins", 0L));
-        return List.of("제한 시간: " + duration + "초", "참여 반경: " + radius + "블록",
-                "고정 보상 코인: " + coins);
+        return List.of("제한 시간: " + duration + "초", "참여 반경: " + radius + "블록");
     }
 
     public List<String> menuLore(BossType type) {
@@ -291,10 +287,7 @@ public final class BossSessionManager implements Listener {
         lore.add("제한 시간: " + duration + "초");
         lore.add("참여 반경: " + radius + "블록");
         lore.add("제한 시간 안에 처치한 참여자만 보상");
-        long fixedCoins = config.getBossesLong(root + ".rewards.coins",
-                config.getBossesLong(root + ".first-clear-rewards.coins", 0L));
-        lore.add("고정 보상 코인: " + fixedCoins);
-        lore.add("마석 파편과 보스 전리품은 일반 사냥에서도 획득 가능");
+        lore.add("보상: 경험치, 강화석 및 유용한 보스 전리품");
         return lore;
     }
 

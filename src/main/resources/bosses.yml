@@ -9,9 +9,8 @@ boss-sessions:
     participation-radius: 80
     rewards:
       progress-min-contribution-ratio: 0.05
-      coins: 5000
+      experience: 500
       items:
-        magic_stone: 20
         basic_upgrade_stone: 32
         wither_core: 1
   ender-dragon:
@@ -21,9 +20,9 @@ boss-sessions:
     participation-radius: 160
     rewards:
       progress-min-contribution-ratio: 0.05
-      coins: 20000
+      experience: 2000
       items:
-        magic_stone: 80
+        basic_upgrade_stone: 16
         dragon_core: 1
     contribution:
       damage-weight: 1.0
