@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   retire-legacy-exploration:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,18 +28,18 @@ jobs:
           fi
 
       - name: Set up Java 25
-        if: steps.guard.outputs.done != 'true'
+        if: ${{ steps.guard.outputs.done != 'true' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
 
       - name: Set up Gradle
-        if: steps.guard.outputs.done != 'true'
+        if: ${{ steps.guard.outputs.done != 'true' }}
         uses: gradle/actions/setup-gradle@v4
 
       - name: Retire legacy exploration and preserve Ocean Monument model
-        if: steps.guard.outputs.done != 'true'
+        if: ${{ steps.guard.outputs.done != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -203,14 +203,14 @@ jobs:
           git diff --check
 
       - name: Build and test retired exploration state
-        if: steps.guard.outputs.done != 'true'
+        if: ${{ steps.guard.outputs.done != 'true' }}
         shell: bash
         run: |
           chmod +x ./gradlew
           ./gradlew clean build --no-daemon
 
       - name: Commit retired exploration state
-        if: steps.guard.outputs.done != 'true'
+        if: ${{ steps.guard.outputs.done != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
