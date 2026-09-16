@@ -63,7 +63,6 @@ class CustomGuiRemovalArchitectureTest {
                 "com/hyunseo/hyunseorpg/alchemy/AlchemyVanillaBypassListener.java",
                 "com/hyunseo/hyunseorpg/crafting/SoulboundItemService.java",
                 "com/hyunseo/hyunseorpg/equipment/EquipmentActualEffectListener.java",
-                "com/hyunseo/hyunseorpg/exploration/listener/ExplorationChestLootListener.java",
                 "com/hyunseo/hyunseorpg/item/VanillaStackingService.java",
                 "com/hyunseo/hyunseorpg/special/flame/FlameAxeListener.java",
                 "com/hyunseo/hyunseorpg/special/moonlit/MoonlitAfterglowListener.java",
