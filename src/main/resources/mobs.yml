@@ -796,7 +796,7 @@ mob-definitions:
     hp: 200.0
     damage: 10.0
     exp: 100
-    drop-table: skeleton_king
+    drop-table: ""
     region: boss
     boss: true
     elite: false

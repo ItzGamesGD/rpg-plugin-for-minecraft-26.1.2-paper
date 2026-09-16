@@ -60,16 +60,28 @@ class LegacyPlayerRpgCoreRemovalArchitectureTest {
     }
 
     @Test
-    void questRuntimeIsAbsentWhileWorldExplorationRemainsWired() throws IOException {
+    void questAndLegacyExplorationRuntimeStayRetiredWhileOceanModelRemains() throws IOException {
         String plugin = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/HyunseoRPGPlugin.java"));
+        String command = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/command/RPGGiveCommand.java"));
+        String migration = Files.readString(PRODUCTION.resolve("com/hyunseo/hyunseorpg/core/config/ConfigMigrationService.java"));
         for (String removed : List.of("QuestRegistry", "QuestService", "AutoQuestService",
                 "QuestProgressListener", "reloadQuestsConfig", "questRegistry")) {
             assertFalse(plugin.contains(removed));
         }
-        assertTrue(plugin.contains("new ExplorationModule("));
-        assertTrue(plugin.contains("explorationModule::reload"));
-        assertTrue(plugin.contains("explorationModule.start()"));
-        assertTrue(plugin.contains("explorationModule.stop()"));
+        assertFalse(plugin.contains("ExplorationModule"));
+        assertFalse(plugin.contains("explorationModule"));
+        assertFalse(command.contains("setExplorationModule"));
+        assertFalse(command.contains("handleExploration"));
+        assertFalse(migration.contains("migrateExploration"));
+        assertFalse(migration.contains("exploration/structures.yml"));
+        assertFalse(migration.contains("normalized.equals(\"exploration\")"));
+        Path exploration = PRODUCTION.resolve("com/hyunseo/hyunseorpg/exploration");
+        assertFalse(Files.exists(exploration.resolve("ExplorationModule.java")));
+        assertFalse(Files.exists(exploration.resolve("runtime")));
+        assertFalse(Files.exists(exploration.resolve("pyramid")));
+        assertFalse(Files.exists(exploration.resolve("raid")));
+        assertTrue(Files.exists(exploration.resolve("ocean/OceanMonumentProgress.java")));
+        assertTrue(Files.exists(exploration.resolve("ocean/MonumentPhase.java")));
     }
 
     @Test
