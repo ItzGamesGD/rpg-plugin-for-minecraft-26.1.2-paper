@@ -91,6 +91,18 @@ replace_once(
     '                "alchemy", "legacy", "cleanup", "all"), prefix);',
 )
 
+completion_test = "src/test/java/com/hyunseo/hyunseorpg/command/RPGGiveCommandCompletionTest.java"
+replace_once(
+    completion_test,
+    '        assertTrue(RPGGiveCommand.rootCompletion("").contains("exploration"));\n',
+    '        assertTrue(!RPGGiveCommand.rootCompletion("").contains("exploration"));\n',
+)
+remove_between(
+    completion_test,
+    "    @Test\n    void exposesExplorationDiagnosticsCompletions() {\n",
+    "    @Test\n    void exposesFarmingReloadAndFarmingSeedIds() {\n",
+)
+
 migration = "src/main/java/com/hyunseo/hyunseorpg/core/config/ConfigMigrationService.java"
 replace_once(
     migration,
