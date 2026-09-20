@@ -4,145 +4,234 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-/** Pure logical state for the dormant Ocean Monument design. */
+/**
+ * Ocean Monument's deterministic, runtime-independent content state.
+ *
+ * <p>The confirmed content flow is discovery, three seals, a pre-final-seal
+ * warning, transition, encounter objectives, the Deep-Sea Tidecaster eligibility,
+ * clear eligibility, and one logical final-reward claim. It deliberately stores
+ * only logical identifiers: no Bukkit types, entity UUIDs, tasks, or locations.</p>
+ */
 public final class OceanMonumentProgress {
     public static final int REQUIRED_SEAL_COUNT = 3;
 
-    private final Set<String> sealIds;
-    private final Set<String> objectiveIds;
-    private final Set<String> brokenSealIds = new LinkedHashSet<>();
+    private final Set<String> requiredSealIds;
+    private final Set<String> requiredObjectiveIds;
+    private final boolean bossRequired;
+    private final Set<String> completedSealIds = new LinkedHashSet<>();
     private final Set<String> completedObjectiveIds = new LinkedHashSet<>();
-    private MonumentPhase phase = MonumentPhase.UNDISCOVERED;
-    private boolean finalSealWarningAcknowledged;
-    private boolean bossDefeated;
-    private boolean finalRewardClaimed;
 
-    public OceanMonumentProgress(Set<String> sealIds, Set<String> objectiveIds) {
-        this.sealIds = normalizedIds(sealIds, "sealIds");
-        this.objectiveIds = normalizedIds(objectiveIds, "objectiveIds");
-        if (this.sealIds.size() != REQUIRED_SEAL_COUNT) {
-            throw new IllegalArgumentException("Ocean Monument requires exactly three seal IDs");
+    private MonumentPhase phase = MonumentPhase.DISCOVERY;
+    private boolean rewardClaimed;
+
+    public OceanMonumentProgress(
+            Set<String> requiredSealIds,
+            Set<String> requiredObjectiveIds,
+            boolean bossRequired
+    ) {
+        this.requiredSealIds = immutableIds(requiredSealIds, "requiredSealIds");
+        if (this.requiredSealIds.size() != REQUIRED_SEAL_COUNT) {
+            throw new IllegalArgumentException("Ocean Monument requires exactly "
+                    + REQUIRED_SEAL_COUNT + " seals");
         }
+        this.requiredObjectiveIds = immutableIds(requiredObjectiveIds, "requiredObjectiveIds");
+        this.bossRequired = bossRequired;
     }
 
     public MonumentPhase phase() {
         return phase;
     }
 
-    public Set<String> sealIds() {
-        return sealIds;
+    public int completedSealCount() {
+        return completedSealIds.size();
     }
 
-    public Set<String> brokenSealIds() {
-        return Set.copyOf(brokenSealIds);
+    public int remainingSealCount() {
+        return requiredSealIds.size() - completedSealIds.size();
     }
 
-    public Set<String> objectiveIds() {
-        return objectiveIds;
+    public int completedObjectiveCount() {
+        return completedObjectiveIds.size();
+    }
+
+    public int remainingObjectiveCount() {
+        return requiredObjectiveIds.size() - completedObjectiveIds.size();
+    }
+
+    public Set<String> completedSealIds() {
+        return Set.copyOf(completedSealIds);
     }
 
     public Set<String> completedObjectiveIds() {
         return Set.copyOf(completedObjectiveIds);
     }
 
-    public boolean finalSealWarningAcknowledged() {
-        return finalSealWarningAcknowledged;
+    public boolean finalSealWarningRequired() {
+        return phase == MonumentPhase.SEAL_OBJECTIVES && remainingSealCount() == 1;
+    }
+
+    public boolean bossRequired() {
+        return bossRequired;
     }
 
     public boolean bossEligible() {
-        return phase == MonumentPhase.ENCOUNTER
-                && completedObjectiveIds.containsAll(objectiveIds)
-                && !bossDefeated;
+        return phase == MonumentPhase.BOSS_ELIGIBLE;
     }
 
     public boolean clearEligible() {
-        return phase == MonumentPhase.ENCOUNTER && bossDefeated;
+        return phase == MonumentPhase.CLEAR_ELIGIBLE;
     }
 
-    public boolean finalRewardClaimed() {
-        return finalRewardClaimed;
+    public boolean rewardEligible() {
+        return phase == MonumentPhase.CLEARED && !rewardClaimed;
+    }
+
+    public boolean rewardClaimed() {
+        return rewardClaimed;
     }
 
     public MonumentActionResult discover() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.UNDISCOVERED) return MonumentActionResult.DUPLICATE;
-        phase = MonumentPhase.SEALED;
-        return MonumentActionResult.APPLIED;
+        if (phase.terminal()) return terminal();
+        if (phase != MonumentPhase.DISCOVERY) return invalidPhase();
+        phase = MonumentPhase.SEAL_OBJECTIVES;
+        return applied();
     }
 
+    /**
+     * Completes one seal exactly once. The third seal is gated by a separate,
+     * explicit final-seal warning acknowledgement.
+     */
+    public MonumentActionResult completeSeal(String sealId) {
+        if (!requiredSealIds.contains(sealId)) return unknown();
+        if (completedSealIds.contains(sealId)) return duplicate();
+        if (phase.terminal()) return terminal();
+        if (phase == MonumentPhase.SEAL_OBJECTIVES && finalSealWarningRequired()) {
+            return reject(MonumentActionResult.Reason.FINAL_SEAL_WARNING_REQUIRED);
+        }
+        if (phase != MonumentPhase.SEAL_OBJECTIVES && phase != MonumentPhase.FINAL_SEAL_READY) {
+            return invalidPhase();
+        }
+        if (phase == MonumentPhase.FINAL_SEAL_READY && remainingSealCount() != 1) {
+            return invalidPhase();
+        }
+
+        completedSealIds.add(sealId);
+        if (completedSealIds.size() == requiredSealIds.size()) {
+            phase = MonumentPhase.TRANSITION_PENDING;
+        }
+        return applied();
+    }
+
+    /**
+     * Records that the runtime has displayed the warning before the final seal.
+     * Presentation itself remains a later runtime-adapter concern.
+     */
     public MonumentActionResult acknowledgeFinalSealWarning() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.SEALED || brokenSealIds.size() != REQUIRED_SEAL_COUNT - 1) {
-            return MonumentActionResult.INVALID_PHASE;
-        }
-        if (finalSealWarningAcknowledged) return MonumentActionResult.DUPLICATE;
-        finalSealWarningAcknowledged = true;
-        return MonumentActionResult.APPLIED;
-    }
-
-    public MonumentActionResult breakSeal(String sealId) {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.SEALED) return MonumentActionResult.INVALID_PHASE;
-        if (!sealIds.contains(sealId)) return MonumentActionResult.UNKNOWN_ID;
-        if (brokenSealIds.contains(sealId)) return MonumentActionResult.DUPLICATE;
-        if (brokenSealIds.size() == REQUIRED_SEAL_COUNT - 1 && !finalSealWarningAcknowledged) {
-            return MonumentActionResult.ACKNOWLEDGEMENT_REQUIRED;
-        }
-        brokenSealIds.add(sealId);
-        if (brokenSealIds.size() == REQUIRED_SEAL_COUNT) phase = MonumentPhase.TRANSITION;
-        return MonumentActionResult.APPLIED;
+        if (phase.terminal()) return terminal();
+        if (!finalSealWarningRequired()) return invalidPhase();
+        phase = MonumentPhase.FINAL_SEAL_READY;
+        return applied();
     }
 
     public MonumentActionResult beginEncounter() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.TRANSITION) return MonumentActionResult.INVALID_PHASE;
-        phase = MonumentPhase.ENCOUNTER;
-        return MonumentActionResult.APPLIED;
+        if (phase.terminal()) return terminal();
+        if (phase != MonumentPhase.TRANSITION_PENDING) return invalidPhase();
+        phase = MonumentPhase.ENCOUNTER_ACTIVE;
+        return applied();
     }
 
+    /**
+     * Completes an already-defined logical encounter objective exactly once.
+     */
     public MonumentActionResult completeObjective(String objectiveId) {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.ENCOUNTER) return MonumentActionResult.INVALID_PHASE;
-        if (!objectiveIds.contains(objectiveId)) return MonumentActionResult.UNKNOWN_ID;
-        return completedObjectiveIds.add(objectiveId)
-                ? MonumentActionResult.APPLIED : MonumentActionResult.DUPLICATE;
+        if (!requiredObjectiveIds.contains(objectiveId)) return unknown();
+        if (completedObjectiveIds.contains(objectiveId)) return duplicate();
+        if (phase.terminal()) return terminal();
+        if (phase != MonumentPhase.ENCOUNTER_ACTIVE) return invalidPhase();
+
+        completedObjectiveIds.add(objectiveId);
+        if (completedObjectiveIds.size() == requiredObjectiveIds.size()) {
+            phase = bossRequired ? MonumentPhase.BOSS_ELIGIBLE : MonumentPhase.CLEAR_ELIGIBLE;
+        }
+        return applied();
     }
 
-    public MonumentActionResult defeatBoss() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (bossDefeated) return MonumentActionResult.DUPLICATE;
-        if (!bossEligible()) return MonumentActionResult.NOT_ELIGIBLE;
-        bossDefeated = true;
-        return MonumentActionResult.APPLIED;
+    /**
+     * Marks the logical boss objective complete. It never represents an entity
+     * death event; a future Paper adapter will decide when to call it.
+     */
+    public MonumentActionResult completeBoss() {
+        if (phase.terminal()) return terminal();
+        if (phase != MonumentPhase.BOSS_ELIGIBLE) return invalidPhase();
+        phase = MonumentPhase.CLEAR_ELIGIBLE;
+        return applied();
     }
 
+    /**
+     * Separates content clear eligibility from StructureRecord persistence,
+     * reward delivery and Bukkit cleanup.
+     */
     public MonumentActionResult clear() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
-        if (!clearEligible()) return MonumentActionResult.NOT_ELIGIBLE;
+        if (phase == MonumentPhase.CLEARED) return duplicate();
+        if (phase == MonumentPhase.ABANDONED) return terminal();
+        if (phase != MonumentPhase.CLEAR_ELIGIBLE) return invalidPhase();
         phase = MonumentPhase.CLEARED;
-        return MonumentActionResult.APPLIED;
+        return applied();
     }
 
+    /**
+     * Pure duplicate-suppression for a future reward adapter; no reward is given
+     * by this class.
+     */
     public MonumentActionResult claimFinalReward() {
-        if (phase == MonumentPhase.ABANDONED) return MonumentActionResult.TERMINAL;
-        if (phase != MonumentPhase.CLEARED) return MonumentActionResult.INVALID_PHASE;
-        if (finalRewardClaimed) return MonumentActionResult.DUPLICATE;
-        finalRewardClaimed = true;
-        return MonumentActionResult.APPLIED;
+        if (phase == MonumentPhase.ABANDONED) return terminal();
+        if (phase != MonumentPhase.CLEARED) return invalidPhase();
+        if (rewardClaimed) return reject(MonumentActionResult.Reason.REWARD_ALREADY_CLAIMED);
+        rewardClaimed = true;
+        return applied();
     }
 
     public MonumentActionResult abandon() {
-        if (phase.terminal()) return MonumentActionResult.TERMINAL;
+        if (phase.terminal()) return terminal();
         phase = MonumentPhase.ABANDONED;
-        return MonumentActionResult.APPLIED;
+        return applied();
     }
 
-    private static Set<String> normalizedIds(Set<String> ids, String name) {
-        Objects.requireNonNull(ids, name);
+    private MonumentActionResult applied() {
+        return MonumentActionResult.applied(phase);
+    }
+
+    private MonumentActionResult unknown() {
+        return reject(MonumentActionResult.Reason.UNKNOWN_ID);
+    }
+
+    private MonumentActionResult duplicate() {
+        return reject(MonumentActionResult.Reason.DUPLICATE);
+    }
+
+    private MonumentActionResult invalidPhase() {
+        return reject(MonumentActionResult.Reason.INVALID_PHASE);
+    }
+
+    private MonumentActionResult terminal() {
+        return reject(MonumentActionResult.Reason.TERMINAL);
+    }
+
+    private MonumentActionResult reject(MonumentActionResult.Reason reason) {
+        return MonumentActionResult.rejected(reason, phase);
+    }
+
+    private static Set<String> immutableIds(Set<String> values, String name) {
+        Objects.requireNonNull(values, name);
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
-        for (String id : ids) {
-            if (id == null || id.isBlank()) throw new IllegalArgumentException(name + " contains a blank ID");
-            if (!normalized.add(id)) throw new IllegalArgumentException(name + " contains a duplicate ID: " + id);
+        for (String value : values) {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException(name + " must contain non-blank ids");
+            }
+            normalized.add(value);
+        }
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(name + " must not be empty");
         }
         return Set.copyOf(normalized);
     }
