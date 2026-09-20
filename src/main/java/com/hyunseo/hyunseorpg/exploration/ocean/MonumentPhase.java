@@ -1,11 +1,17 @@
 package com.hyunseo.hyunseorpg.exploration.ocean;
 
-/** Logical phases of the dormant Ocean Monument design. */
+/**
+ * Pure logical progression for the Ocean Monument content. Runtime presentation,
+ * world mutation and entity work intentionally live outside this model.
+ */
 public enum MonumentPhase {
-    UNDISCOVERED,
-    SEALED,
-    TRANSITION,
-    ENCOUNTER,
+    DISCOVERY,
+    SEAL_OBJECTIVES,
+    FINAL_SEAL_READY,
+    TRANSITION_PENDING,
+    ENCOUNTER_ACTIVE,
+    BOSS_ELIGIBLE,
+    CLEAR_ELIGIBLE,
     CLEARED,
     ABANDONED;
 
