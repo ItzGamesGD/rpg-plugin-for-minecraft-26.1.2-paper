@@ -80,6 +80,9 @@ class LegacyPlayerRpgCoreRemovalArchitectureTest {
         }
 
         Path exploration = PRODUCTION.resolve("com/hyunseo/hyunseorpg/exploration");
+        try (var entries = Files.list(exploration)) {
+            assertEquals(Set.of("ocean"), entries.map(path -> path.getFileName().toString()).collect(Collectors.toSet()));
+        }
         assertFalse(Files.exists(exploration.resolve("pyramid")));
         assertFalse(Files.exists(exploration.resolve("raid")));
         assertFalse(Files.exists(exploration.resolve("runtime")));
@@ -88,8 +91,10 @@ class LegacyPlayerRpgCoreRemovalArchitectureTest {
             Path source = exploration.resolve("ocean").resolve(model);
             assertTrue(Files.exists(source));
             String content = Files.readString(source);
-            for (String runtime : List.of("org.bukkit", "ExplorationModule", "Listener", "Registry", "Persistence")) {
-                assertFalse(content.contains(runtime), model + " must remain runtime-independent");
+            String lower = content.toLowerCase(java.util.Locale.ROOT);
+            for (String runtime : List.of("org.bukkit", "io.papermc", "explorationmodule", "listener",
+                    "registry", "persistence", "javaplugin", "world", "entity", "quest")) {
+                assertFalse(lower.contains(runtime), model + " must remain runtime-independent: " + runtime);
             }
         }
         assertTrue(Files.exists(Path.of("src/test/java/com/hyunseo/hyunseorpg/exploration/ocean/OceanMonumentProgressTest.java")));

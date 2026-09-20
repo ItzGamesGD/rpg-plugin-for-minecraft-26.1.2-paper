@@ -1,9 +1,15 @@
 package com.hyunseo.hyunseorpg.exploration.ocean;
 
-/** Logical phases of a future Ocean Monument encounter. */
+/** Logical phases of the dormant Ocean Monument design. */
 public enum MonumentPhase {
-    DORMANT,
-    ELDER_GUARDIANS,
-    CORE_EXPOSED,
-    COMPLETED
+    UNDISCOVERED,
+    SEALED,
+    TRANSITION,
+    ENCOUNTER,
+    CLEARED,
+    ABANDONED;
+
+    public boolean terminal() {
+        return this == CLEARED || this == ABANDONED;
+    }
 }

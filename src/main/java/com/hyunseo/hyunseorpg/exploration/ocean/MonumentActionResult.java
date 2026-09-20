@@ -1,8 +1,12 @@
 package com.hyunseo.hyunseorpg.exploration.ocean;
 
-/** Result of applying a logical action to Ocean Monument progress. */
+/** Outcome of a pure Ocean Monument state transition. */
 public enum MonumentActionResult {
-    ACCEPTED,
-    ALREADY_APPLIED,
-    INVALID_PHASE
+    APPLIED,
+    DUPLICATE,
+    UNKNOWN_ID,
+    INVALID_PHASE,
+    ACKNOWLEDGEMENT_REQUIRED,
+    NOT_ELIGIBLE,
+    TERMINAL
 }

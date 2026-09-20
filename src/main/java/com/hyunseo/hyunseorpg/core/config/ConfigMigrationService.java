@@ -1747,11 +1747,6 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
         return first == null || first.isBlank() ? fallback : first;
     }
 
-    /** Canonical current phase for migrated Desert Pyramid components. */
-    static String canonicalPyramidPhase(String type) {
-        return "pyramid_push_pillars".equals(normalize(type)) ? "pyramid_pillar_restore" : "";
-    }
-
     private static String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }
 
     public record MigrationReport(boolean success, List<String> lines, File backupDirectory) { }

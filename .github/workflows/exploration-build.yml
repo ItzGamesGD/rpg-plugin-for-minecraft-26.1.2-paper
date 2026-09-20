@@ -11,6 +11,7 @@ on:
       - "main"
       - "codex/gateway-boss-authoritative-second-pass"
       - "codex/refactor-custom-enchant-system-integration"
+      - "codex/refactor-custom-enchant-system-integration-lqumyi"
 
 jobs:
   build-and-test:
