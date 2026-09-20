@@ -54,8 +54,6 @@ class FarmingStage7StructureTest {
                 String path = "crafting-recipes." + recipe;
                 assertTrue(recipeIds.contains(recipe), recipe);
                 assertEquals("materials", crafting.getString(path + ".category"));
-                assertTrue(crafting.isSet("crafting.layout.materials." + recipe),
-                        "layout missing: " + recipe);
                 String input = crafting.getConfigurationSection(path + ".inputs").getKeys(false).stream()
                         .findFirst().orElse("");
                 String output = crafting.getString(path + ".output.item-id", "");
@@ -72,34 +70,6 @@ class FarmingStage7StructureTest {
             }
         }
         assertEquals(20, count);
-    }
-
-    @Test
-    void processedProductsAreSellableAndDoNotUseCookingTags() {
-        YamlConfiguration shops = load("shops.yml");
-        YamlConfiguration items = load("items.yml");
-        for (String crop : CROPS) {
-            for (String quality : QUALITIES) {
-                String id = "processed_" + processedName(crop) + "_" + quality;
-                assertTrue(shops.isConfigurationSection("shops.farming.items." + id), id);
-                assertTrue(shops.getBoolean("shops.farming.items." + id + ".sellable"));
-                assertTrue(items.getStringList("items." + id + ".tags").contains("farming-processed"));
-                assertFalse(items.getStringList("items." + id + ".tags").stream()
-                        .anyMatch(tag -> tag.toLowerCase(Locale.ROOT).contains("cooking")));
-            }
-        }
-    }
-
-    @Test
-    void farmingSeedsArePurchasableOnlyThroughTheGatedFarmingShop() {
-        YamlConfiguration shops = load("shops.yml");
-        for (String crop : CROPS) {
-            String path = "shops.farming.items.seed_" + crop;
-            assertTrue(shops.isConfigurationSection(path), path);
-            assertTrue(shops.getBoolean(path + ".purchasable"));
-            assertEquals(crop, shops.getString(path + ".required-farming-crop"));
-            assertFalse(shops.getBoolean(path + ".sellable"));
-        }
     }
 
     @Test
@@ -131,29 +101,7 @@ class FarmingStage7StructureTest {
     }
 
     @Test
-    void craftingMenuCategoriesAndProcessingLayoutsAreDataDriven() {
-        YamlConfiguration crafting = load("crafting.yml");
-        ConfigurationSection categories = crafting.getConfigurationSection("crafting.menu-categories");
-        ConfigurationSection layouts = crafting.getConfigurationSection("crafting.layout");
-        assertNotNull(categories);
-        assertNotNull(layouts);
 
-        for (String category : categories.getKeys(false)) {
-            assertTrue(categories.isSet(category + ".display-name"), category);
-            assertTrue(categories.isSet(category + ".icon"), category);
-            assertTrue(categories.isSet(category + ".slot"), category);
-            assertTrue(layouts.isConfigurationSection(category), category);
-        }
-
-        ConfigurationSection materials = layouts.getConfigurationSection("materials");
-        assertNotNull(materials);
-        for (String crop : CROPS) {
-            for (String quality : QUALITIES) {
-                assertTrue(materials.isSet("process_" + crop + "_" + quality),
-                        "processing recipe is not reachable from materials layout");
-            }
-        }
-    }
 
     private double sum(ConfigurationSection section) {
         assertNotNull(section);

@@ -1,8 +1,5 @@
 package com.hyunseo.hyunseorpg.equipment;
 
-import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.enchant.EnchantService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -13,19 +10,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /** Shared durability-preservation rules for normal tool damage and farming use. */
 public final class ToolDurabilityService {
-    private final ConfigService config;
     private final EquipmentTierService tiers;
-    private final EquipmentPromotionService promotion;
-    private final EnchantService enchants;
     private final HoeHarvestModifierService hoeModifiers;
 
-    public ToolDurabilityService(ConfigService config, EquipmentTierService tiers,
-                                 EquipmentPromotionService promotion, EnchantService enchants,
-                                 HoeHarvestModifierService hoeModifiers) {
-        this.config = config;
+    public ToolDurabilityService(EquipmentTierService tiers, HoeHarvestModifierService hoeModifiers) {
         this.tiers = tiers;
-        this.promotion = promotion;
-        this.enchants = enchants;
         this.hoeModifiers = hoeModifiers;
     }
 
@@ -37,8 +26,7 @@ public final class ToolDurabilityService {
 
     /** Preserves the existing PlayerItemDamageEvent behavior for normal tools. */
     public boolean shouldPreserveNormal(ItemStack tool) {
-        return tool != null && tool.getItemMeta() != null && tool.getItemMeta().isUnbreakable()
-                || promotionChance(tool) > 0.0D && roll(promotionChance(tool));
+        return tool != null && tool.getItemMeta() != null && tool.getItemMeta().isUnbreakable();
     }
 
     /** Applies one custom-crop harvest use to the player's main-hand hoe. */
@@ -68,17 +56,9 @@ public final class ToolDurabilityService {
         if (meta != null && meta.isUnbreakable()) return true;
         int unbreaking = tool.getEnchantmentLevel(Enchantment.UNBREAKING);
         if (unbreaking > 0 && ThreadLocalRandom.current().nextInt(unbreaking + 1) > 0) return true;
-        if (enchants != null && enchants.hasActiveEquipped(tool, "unbreaking")
-                && roll(clamp(config.getEnchantsDouble("enchants.unbreaking.settings.chance", 0.20D)))) {
-            return true;
-        }
         return roll(hoeModifiers.resolve(tool, null).durabilitySaveChance());
     }
 
-    private double promotionChance(ItemStack tool) {
-        return tool == null || promotion == null ? 0.0D
-                : clamp(promotion.getOptionValue(tool, "durability-save-chance"));
-    }
 
     private boolean roll(double chance) {
         return chance > 0.0D && ThreadLocalRandom.current().nextDouble() < clamp(chance);

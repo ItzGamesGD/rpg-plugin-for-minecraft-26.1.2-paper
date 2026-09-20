@@ -49,15 +49,7 @@ public final class EquipmentTierService {
         return materialTier(item.getType());
     }
 
-    public int getMaxEnhancement(ItemStack item) {
-        return Math.max(0, config.getEquipmentGrowthInt(
-                "tiers.definitions." + getTier(item) + ".max-enhancement", 10));
-    }
 
-    public int getMaxPromotionStage(ItemStack item) {
-        return Math.max(0, config.getEquipmentGrowthInt(
-                "tiers.definitions." + getTier(item) + ".max-promotion-stage", 1));
-    }
 
     private boolean isWeapon(Material material) {
         return material.name().endsWith("_SWORD") || material == Material.MACE;

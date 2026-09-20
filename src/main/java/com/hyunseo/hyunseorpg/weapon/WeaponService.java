@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.weapon;
 
-import com.hyunseo.hyunseorpg.classsystem.RPGClass;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -34,10 +33,8 @@ public final class WeaponService {
                 }
 
                 String legacyClass = meta.getPersistentDataContainer().get(legacyWeaponClassKey, PersistentDataType.STRING);
-                Optional<RPGClass> legacy = RPGClass.fromInput(legacyClass == null ? "" : legacyClass);
-                if (legacy.isPresent()) {
-                    return Optional.of(WeaponType.fromLegacyClass(legacy.get()));
-                }
+                Optional<WeaponType> migrated = legacyWeaponType(legacyClass);
+                if (migrated.isPresent()) return migrated;
             }
         }
 
@@ -59,5 +56,17 @@ public final class WeaponService {
 
     public void markWeaponType(ItemMeta meta, WeaponType weaponType) {
         meta.getPersistentDataContainer().set(weaponTypeKey, PersistentDataType.STRING, weaponType.id());
+    }
+
+    /** Read-only item migration: no player class or class restriction is restored. */
+    private Optional<WeaponType> legacyWeaponType(String value) {
+        if (value == null) return Optional.empty();
+        return switch (value.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "swordmaster", "assassin" -> Optional.of(WeaponType.SWORD);
+            case "bowmaster" -> Optional.of(WeaponType.BOW);
+            case "lancer" -> Optional.of(WeaponType.SPEAR);
+            case "wizard" -> Optional.of(WeaponType.MAGIC);
+            default -> Optional.empty();
+        };
     }
 }

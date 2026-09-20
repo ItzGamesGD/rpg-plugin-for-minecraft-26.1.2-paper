@@ -9,7 +9,6 @@ public record MythicMobData(
         String displayName,
         int level,
         String category,
-        long coinReward,
         long expReward,
         long classExpReward,
         boolean boss,
@@ -21,7 +20,6 @@ public record MythicMobData(
         displayName = displayName == null || displayName.isBlank() ? mobId : displayName;
         level = Math.max(1, level);
         category = category == null ? "" : category.trim().toLowerCase();
-        coinReward = Math.max(0L, coinReward);
         expReward = Math.max(0L, expReward);
         classExpReward = Math.max(0L, classExpReward);
         drops = List.copyOf(drops == null ? List.of() : drops);

@@ -1,14 +1,9 @@
 package com.hyunseo.hyunseorpg.player;
 
-import com.hyunseo.hyunseorpg.classsystem.RPGClass;
 import com.hyunseo.hyunseorpg.farming.FarmingStage;
 import com.hyunseo.hyunseorpg.farming.FarmingDeliveryState;
-import com.hyunseo.hyunseorpg.quest.AutoQuestData;
-import com.hyunseo.hyunseorpg.quest.availability.MonsterDiscoveryData;
-import com.hyunseo.hyunseorpg.stat.StatType;
 
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -18,39 +13,16 @@ import java.util.UUID;
 
 public final class PlayerRPGData {
     private final UUID uuid;
-    private RPGClass selectedClass;
-    private String selectedProfession;
     private int baseLevel;
     private long baseExp;
-    private int statPoints;
-    private int classLevel;
-    private long classExp;
-    private int skillPoints;
-    private int classStatPoints;
-    private long coins;
-    private double currentMana;
     private long minerHasteSeconds;
     private boolean firstWitherClear;
     private boolean firstEnderDragonClear;
     private int witherClearCount;
     private int enderDragonClearCount;
-    private final EnumMap<StatType, Double> stats;
-    private final EnumMap<StatType, Integer> statLevels;
-    private final Map<String, Integer> skillStatLevels;
-    private final Map<String, Integer> classStatLevels;
-    private final Set<String> unlockedSkills;
-    private final Map<String, Integer> skillLevels;
-    private final Map<String, Integer> weaponProficiencyLevels;
-    private final Map<String, Long> weaponProficiencyExp;
     private final Set<String> progressionFlags;
     private final Map<String, Integer> enhancementData;
-    private final Map<String, String> questStates;
-    private final Map<String, Integer> questProgress;
-    private final Map<Integer, AutoQuestData> autoQuests;
-    private long autoQuestCooldownUntil;
-    private int completedAutoQuestCount;
-    private int failedAutoQuestCount;
-    private int abandonedAutoQuestCount;
+    private LegacyQuestCompatibilityData legacyQuestCompatibilityData;
     private final Map<String, MonsterDiscoveryData> customMonsterDiscoveries;
     private final Map<String, Long> customMobKillCounts;
     private final Map<String, Long> bossKillCounts;
@@ -75,35 +47,14 @@ public final class PlayerRPGData {
         this.uuid = Objects.requireNonNull(uuid, "uuid");
         this.baseLevel = 1;
         this.baseExp = 0L;
-        this.statPoints = 0;
-        this.classLevel = 1;
-        this.classExp = 0L;
-        this.skillPoints = 0;
-        this.classStatPoints = 0;
-        this.coins = 0L;
-        this.currentMana = 0.0D;
         this.minerHasteSeconds = 0L;
         this.firstWitherClear = false;
         this.firstEnderDragonClear = false;
         this.witherClearCount = 0;
         this.enderDragonClearCount = 0;
-        this.stats = createDefaultStats();
-        this.statLevels = createDefaultStatLevels();
-        this.skillStatLevels = new HashMap<>();
-        this.classStatLevels = new HashMap<>();
-        this.unlockedSkills = new HashSet<>();
-        this.skillLevels = new HashMap<>();
-        this.weaponProficiencyLevels = new HashMap<>();
-        this.weaponProficiencyExp = new HashMap<>();
         this.progressionFlags = new HashSet<>();
         this.enhancementData = new HashMap<>();
-        this.questStates = new HashMap<>();
-        this.questProgress = new HashMap<>();
-        this.autoQuests = new HashMap<>();
-        this.autoQuestCooldownUntil = 0L;
-        this.completedAutoQuestCount = 0;
-        this.failedAutoQuestCount = 0;
-        this.abandonedAutoQuestCount = 0;
+        this.legacyQuestCompatibilityData = LegacyQuestCompatibilityData.empty();
         this.customMonsterDiscoveries = new HashMap<>();
         this.customMobKillCounts = new HashMap<>();
         this.bossKillCounts = new HashMap<>();
@@ -130,23 +81,6 @@ public final class PlayerRPGData {
         return uuid;
     }
 
-    public RPGClass getSelectedClass() {
-        return selectedClass;
-    }
-
-    public void setSelectedClass(RPGClass selectedClass) {
-        this.selectedClass = selectedClass;
-    }
-
-    public String getSelectedProfession() {
-        return selectedProfession;
-    }
-
-    public void setSelectedProfession(String selectedProfession) {
-        this.selectedProfession = selectedProfession == null || selectedProfession.isBlank()
-                ? null
-                : normalizeId(selectedProfession);
-    }
 
     public int getBaseLevel() {
         return baseLevel;
@@ -164,64 +98,6 @@ public final class PlayerRPGData {
         this.baseExp = requireNonNegative(baseExp, "baseExp");
     }
 
-    public int getStatPoints() {
-        return statPoints;
-    }
-
-    public void setStatPoints(int statPoints) {
-        this.statPoints = requireNonNegative(statPoints, "statPoints");
-    }
-
-    public int getClassLevel() {
-        return classLevel;
-    }
-
-    public void setClassLevel(int classLevel) {
-        this.classLevel = requireAtLeast(classLevel, 1, "classLevel");
-    }
-
-    public long getClassExp() {
-        return classExp;
-    }
-
-    public void setClassExp(long classExp) {
-        this.classExp = requireNonNegative(classExp, "classExp");
-    }
-
-    public int getSkillPoints() {
-        return skillPoints;
-    }
-
-    public void setSkillPoints(int skillPoints) {
-        this.skillPoints = requireNonNegative(skillPoints, "skillPoints");
-    }
-
-    public int getClassStatPoints() {
-        return classStatPoints;
-    }
-
-    public void setClassStatPoints(int classStatPoints) {
-        this.classStatPoints = requireNonNegative(classStatPoints, "classStatPoints");
-    }
-
-    public long getCoins() {
-        return coins;
-    }
-
-    public void setCoins(long coins) {
-        this.coins = requireNonNegative(coins, "coins");
-    }
-
-    public double getCurrentMana() {
-        return currentMana;
-    }
-
-    public void setCurrentMana(double currentMana) {
-        if (currentMana < 0.0D) {
-            throw new IllegalArgumentException("currentMana must be non-negative");
-        }
-        this.currentMana = currentMana;
-    }
 
     public long getMinerHasteSeconds() {
         return minerHasteSeconds;
@@ -249,101 +125,6 @@ public final class PlayerRPGData {
     public void setEnderDragonClearCount(int value) { enderDragonClearCount = requireNonNegative(value, "enderDragonClearCount"); }
     public void incrementEnderDragonClearCount() { enderDragonClearCount = Math.addExact(enderDragonClearCount, 1); }
 
-    public double getStat(StatType statType) {
-        return stats.getOrDefault(Objects.requireNonNull(statType, "statType"), 0.0D);
-    }
-
-    public void setStat(StatType statType, double value) {
-        stats.put(Objects.requireNonNull(statType, "statType"), requireNonNegative(value, "stat value"));
-    }
-
-    public Map<StatType, Double> getStats() {
-        return Collections.unmodifiableMap(stats);
-    }
-
-    public int getStatLevel(StatType statType) {
-        return statLevels.getOrDefault(Objects.requireNonNull(statType, "statType"), 0);
-    }
-
-    public void setStatLevel(StatType statType, int level) {
-        statLevels.put(Objects.requireNonNull(statType, "statType"), requireNonNegative(level, "stat level"));
-    }
-
-    public Map<StatType, Integer> getStatLevels() {
-        return Collections.unmodifiableMap(statLevels);
-    }
-
-    public int getSkillStatLevel(String skillStatId) {
-        return skillStatLevels.getOrDefault(normalizeId(skillStatId), 0);
-    }
-
-    public void setSkillStatLevel(String skillStatId, int level) {
-        skillStatLevels.put(normalizeId(skillStatId), requireNonNegative(level, "skill stat level"));
-    }
-
-    public Map<String, Integer> getSkillStatLevels() {
-        return Collections.unmodifiableMap(skillStatLevels);
-    }
-
-    public int getClassStatLevel(String classStatId) {
-        return classStatLevels.getOrDefault(normalizeId(classStatId), 0);
-    }
-
-    public void setClassStatLevel(String classStatId, int level) {
-        classStatLevels.put(normalizeId(classStatId), requireNonNegative(level, "class stat level"));
-    }
-
-    public Map<String, Integer> getClassStatLevels() {
-        return Collections.unmodifiableMap(classStatLevels);
-    }
-
-    public boolean hasUnlockedSkill(String skillId) {
-        return unlockedSkills.contains(normalizeId(skillId));
-    }
-
-    public void unlockSkill(String skillId) {
-        unlockedSkills.add(normalizeId(skillId));
-    }
-
-    public Set<String> getUnlockedSkills() {
-        return Collections.unmodifiableSet(unlockedSkills);
-    }
-
-    public int getSkillLevel(String skillId) {
-        return skillLevels.getOrDefault(normalizeId(skillId), 0);
-    }
-
-    public void setSkillLevel(String skillId, int level) {
-        skillLevels.put(normalizeId(skillId), requireNonNegative(level, "skill level"));
-    }
-
-    public Map<String, Integer> getSkillLevels() {
-        return Collections.unmodifiableMap(skillLevels);
-    }
-
-    public int getWeaponProficiencyLevel(String weaponTypeId) {
-        return weaponProficiencyLevels.getOrDefault(normalizeId(weaponTypeId), 1);
-    }
-
-    public void setWeaponProficiencyLevel(String weaponTypeId, int level) {
-        weaponProficiencyLevels.put(normalizeId(weaponTypeId), requireAtLeast(level, 1, "weapon proficiency level"));
-    }
-
-    public Map<String, Integer> getWeaponProficiencyLevels() {
-        return Collections.unmodifiableMap(weaponProficiencyLevels);
-    }
-
-    public long getWeaponProficiencyExp(String weaponTypeId) {
-        return weaponProficiencyExp.getOrDefault(normalizeId(weaponTypeId), 0L);
-    }
-
-    public void setWeaponProficiencyExp(String weaponTypeId, long experience) {
-        weaponProficiencyExp.put(normalizeId(weaponTypeId), requireNonNegative(experience, "weapon proficiency experience"));
-    }
-
-    public Map<String, Long> getWeaponProficiencyExpData() {
-        return Collections.unmodifiableMap(weaponProficiencyExp);
-    }
 
     public boolean hasProgressionFlag(String flag) {
         return progressionFlags.contains(normalizeId(flag));
@@ -369,92 +150,12 @@ public final class PlayerRPGData {
         return Collections.unmodifiableMap(enhancementData);
     }
 
-    public String getQuestState(String questId) {
-        return questStates.getOrDefault(normalizeId(questId), "");
+    void preserveLegacyQuestCompatibilityData(LegacyQuestCompatibilityData compatibilityData) {
+        this.legacyQuestCompatibilityData = Objects.requireNonNull(compatibilityData, "compatibilityData");
     }
 
-    public void setQuestState(String questId, String state) {
-        questStates.put(normalizeId(questId), Objects.requireNonNull(state, "state").trim().toUpperCase());
-    }
-
-    public boolean hasCompletedQuest(String questId) {
-        return "COMPLETED".equalsIgnoreCase(getQuestState(questId));
-    }
-
-    public Map<String, String> getQuestStates() {
-        return Collections.unmodifiableMap(questStates);
-    }
-
-    public int getQuestProgress(String questId, String objectiveId) {
-        return questProgress.getOrDefault(questProgressKey(questId, objectiveId), 0);
-    }
-
-    public void setQuestProgress(String questId, String objectiveId, int amount) {
-        questProgress.put(questProgressKey(questId, objectiveId), requireNonNegative(amount, "quest progress"));
-    }
-
-    public Map<String, Integer> getQuestProgressData() {
-        return Collections.unmodifiableMap(questProgress);
-    }
-
-    public long getAutoQuestCooldownUntil() {
-        return autoQuestCooldownUntil;
-    }
-
-    public void setAutoQuestCooldownUntil(long timestamp) {
-        autoQuestCooldownUntil = Math.max(0L, timestamp);
-    }
-
-    public int getCompletedAutoQuestCount() {
-        return completedAutoQuestCount;
-    }
-
-    public void setCompletedAutoQuestCount(int count) {
-        completedAutoQuestCount = requireNonNegative(count, "completed auto quest count");
-    }
-
-    public void incrementCompletedAutoQuestCount() {
-        if (completedAutoQuestCount < Integer.MAX_VALUE) completedAutoQuestCount++;
-    }
-
-    public int getFailedAutoQuestCount() {
-        return failedAutoQuestCount;
-    }
-
-    public void setFailedAutoQuestCount(int count) {
-        failedAutoQuestCount = requireNonNegative(count, "failed auto quest count");
-    }
-
-    public void incrementFailedAutoQuestCount() {
-        if (failedAutoQuestCount < Integer.MAX_VALUE) failedAutoQuestCount++;
-    }
-
-    public int getAbandonedAutoQuestCount() {
-        return abandonedAutoQuestCount;
-    }
-
-    public void setAbandonedAutoQuestCount(int count) {
-        abandonedAutoQuestCount = requireNonNegative(count, "abandoned auto quest count");
-    }
-
-    public void incrementAbandonedAutoQuestCount() {
-        if (abandonedAutoQuestCount < Integer.MAX_VALUE) abandonedAutoQuestCount++;
-    }
-
-    public AutoQuestData getAutoQuest(int slot) {
-        return autoQuests.get(slot);
-    }
-
-    public void setAutoQuest(AutoQuestData quest) {
-        if (quest != null) autoQuests.put(quest.slot(), quest);
-    }
-
-    public void removeAutoQuest(int slot) {
-        autoQuests.remove(slot);
-    }
-
-    public Map<Integer, AutoQuestData> getAutoQuests() {
-        return Collections.unmodifiableMap(autoQuests);
+    LegacyQuestCompatibilityData legacyQuestCompatibilityData() {
+        return legacyQuestCompatibilityData;
     }
 
     public MonsterDiscoveryData getCustomMonsterDiscovery(String mobId) {
@@ -748,26 +449,6 @@ public final class PlayerRPGData {
 
     public void setAlchemyDataMigrationRequired(boolean required) {
         alchemyDataMigrationRequired = required;
-    }
-
-    private static String questProgressKey(String questId, String objectiveId) {
-        return normalizeId(questId) + "." + normalizeId(objectiveId);
-    }
-
-    private static EnumMap<StatType, Double> createDefaultStats() {
-        EnumMap<StatType, Double> defaultStats = new EnumMap<>(StatType.class);
-        for (StatType statType : StatType.values()) {
-            defaultStats.put(statType, 0.0D);
-        }
-        return defaultStats;
-    }
-
-    private static EnumMap<StatType, Integer> createDefaultStatLevels() {
-        EnumMap<StatType, Integer> defaultStatLevels = new EnumMap<>(StatType.class);
-        for (StatType statType : StatType.values()) {
-            defaultStatLevels.put(statType, 0);
-        }
-        return defaultStatLevels;
     }
 
     private static String normalizeId(String value) {

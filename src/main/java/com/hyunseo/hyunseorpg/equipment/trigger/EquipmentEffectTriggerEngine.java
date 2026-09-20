@@ -7,12 +7,7 @@ import com.hyunseo.hyunseorpg.enchant.EnchantService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.skill.SkillInputResult;
 import com.hyunseo.hyunseorpg.skill.SkillInputType;
-import com.hyunseo.hyunseorpg.skill.SkillService;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
-import com.hyunseo.hyunseorpg.skill.SkillData;
-import com.hyunseo.hyunseorpg.skill.SkillRegistry;
-import com.hyunseo.hyunseorpg.skill.SkillCastContext;
-import com.hyunseo.hyunseorpg.skill.effect.SkillEffectPhase;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
@@ -57,14 +52,13 @@ public final class EquipmentEffectTriggerEngine {
         handlers.put(normalize(handlerId), handler);
     }
 
-    public SkillInputResult triggerInput(Player player, SkillInputType input, ItemStack triggeringItem,
-                                         SkillService skillService) {
+    public SkillInputResult triggerInput(Player player, SkillInputType input, ItemStack triggeringItem) {
         long tick = plugin.getServer().getCurrentTick();
         inputDispatches.entrySet().removeIf(entry -> entry.getKey().tick() < tick - 2L);
         InputDispatchKey dispatchKey = new InputDispatchKey(player.getUniqueId(),
                 equipmentInstances.get(triggeringItem).orElse(new UUID(0L, 0L)), input, tick);
         // A duplicate event in the same tick is still a handled input. Returning ignored here
-        // would allow SkillService to fall through into a second legacy execution path.
+        // would allow a second execution path.
         if (inputDispatches.putIfAbsent(dispatchKey, tick) != null) return SkillInputResult.accepted(true);
         if (triggeringItem != null && enchantService.hasInputBinding(triggeringItem)) {
             equipmentInstances.ensure(triggeringItem);
@@ -76,12 +70,6 @@ public final class EquipmentEffectTriggerEngine {
         for (ResolvedEnchant candidate : candidates) {
             EnchantData enchant = candidate.enchant();
             EquipmentEffectHandler handler = handlers.get(normalize(enchant.handlerId()));
-            if (handler == null && "skill".equals(normalize(enchant.handlerId()))) {
-                handler = (ignored, value) -> {
-                    SkillInputResult result = skillService.executeEnchantment(player, value, input);
-                    return result.accepted() ? EquipmentEffectResult.EXECUTED : EquipmentEffectResult.CONDITION_NOT_MET;
-                };
-            }
             if (handler == null) {
                 plugin.getLogger().warning("No equipment effect handler for enchant " + enchant.enchantId()
                         + " (handler=" + enchant.handlerId() + ")");

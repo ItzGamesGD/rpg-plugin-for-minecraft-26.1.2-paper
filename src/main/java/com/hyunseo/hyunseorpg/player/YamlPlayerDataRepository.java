@@ -1,18 +1,9 @@
 package com.hyunseo.hyunseorpg.player;
 
-import com.hyunseo.hyunseorpg.classsystem.RPGClass;
 import com.hyunseo.hyunseorpg.farming.FarmingStage;
 import com.hyunseo.hyunseorpg.farming.CropQuality;
 import com.hyunseo.hyunseorpg.farming.DeliveryStatus;
 import com.hyunseo.hyunseorpg.farming.FarmingDeliveryState;
-import com.hyunseo.hyunseorpg.stat.StatType;
-import com.hyunseo.hyunseorpg.weapon.WeaponType;
-import com.hyunseo.hyunseorpg.quest.AutoQuestData;
-import com.hyunseo.hyunseorpg.quest.AutoQuestObjectiveData;
-import com.hyunseo.hyunseorpg.quest.AutoQuestStatus;
-import com.hyunseo.hyunseorpg.quest.AutoQuestType;
-import com.hyunseo.hyunseorpg.quest.availability.MonsterDiscoveryData;
-import com.hyunseo.hyunseorpg.quest.availability.QuestTargetSource;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,7 +13,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -52,33 +42,16 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
             throw new IOException("Player data UUID mismatch in " + playerFile.getName());
         }
 
-        readSelectedClass(yaml, data);
-        data.setSelectedProfession(yaml.getString("selectedProfession"));
         // Older/manual test files may use 0 as an uninitialized level. PlayerRPGData
         // treats level 1 as the minimum valid RPG level, so migrate such values here.
         int storedBaseLevel = yaml.getInt("baseLevel", data.getBaseLevel());
         data.setBaseLevel(Math.max(1, storedBaseLevel));
         data.setBaseExp(yaml.getLong("baseExp", data.getBaseExp()));
-        data.setStatPoints(yaml.getInt("statPoints", data.getStatPoints()));
-        int storedClassLevel = yaml.getInt("classLevel", data.getClassLevel());
-        data.setClassLevel(Math.max(1, storedClassLevel));
-        data.setClassExp(yaml.getLong("classExp", data.getClassExp()));
-        data.setSkillPoints(yaml.getInt("skillPoints", data.getSkillPoints()));
-        data.setClassStatPoints(yaml.getInt("classStatPoints", data.getClassStatPoints()));
-        data.setCoins(yaml.getLong("coins", data.getCoins()));
-        data.setCurrentMana(yaml.getDouble("currentMana", data.getCurrentMana()));
         data.setMinerHasteSeconds(yaml.getLong("minerHasteSeconds", data.getMinerHasteSeconds()));
         data.setFirstWitherClear(yaml.getBoolean("bossProgress.firstWitherClear", false));
         data.setFirstEnderDragonClear(yaml.getBoolean("bossProgress.firstEnderDragonClear", false));
         data.setWitherClearCount(yaml.getInt("bossProgress.witherClearCount", 0));
         data.setEnderDragonClearCount(yaml.getInt("bossProgress.enderDragonClearCount", 0));
-        readStats(yaml, data);
-        readStatLevels(yaml, data);
-        readIntegerMap(yaml, "skillStatLevels", data::setSkillStatLevel);
-        readIntegerMap(yaml, "classStatLevels", data::setClassStatLevel);
-        readStringSet(yaml, "unlockedSkills", data::unlockSkill);
-        readIntegerMap(yaml, "skillLevels", data::setSkillLevel);
-        readWeaponProficiencies(yaml, data);
         readStringSet(yaml, "progressionFlags", data::addProgressionFlag);
         readStringSet(yaml, "visitedWorlds", value -> {
             String dimension = canonicalDimension(value);
@@ -87,20 +60,10 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         readStringSet(yaml, "unlockedWorlds", data::addUnlockedWorld);
         readStringSet(yaml, "clearedWorlds", data::addClearedWorld);
         readIntegerMap(yaml, "enhancementData", data::setEnhancementLevel);
-        readStringMap(yaml, "questStates", data::setQuestState);
+        data.preserveLegacyQuestCompatibilityData(LegacyQuestCompatibilityData.capture(yaml));
         readLongMap(yaml, "customMobKillCounts", data::setCustomMobKillCount);
         readCustomMonsterDiscoveries(yaml, data);
         readLongMap(yaml, "bossKillCounts", data::setBossKillCount);
-        readIntegerMap(yaml, "questProgress", (key, value) -> {
-            String[] parts = key.split("\\.", 2);
-            if (parts.length == 2) {
-                data.setQuestProgress(parts[0], parts[1], value);
-            }
-        });
-        data.setCompletedAutoQuestCount(yaml.getInt("quests.history.completed", 0));
-        data.setFailedAutoQuestCount(yaml.getInt("quests.history.failed", 0));
-        data.setAbandonedAutoQuestCount(yaml.getInt("quests.history.abandoned", 0));
-        readAutoQuests(yaml, data);
         readFarmingData(yaml, data);
         readAlchemyData(yaml, data);
         return data;
@@ -114,42 +77,19 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         YamlConfiguration yaml = new YamlConfiguration();
         yaml.set("schema-version", 4);
         yaml.set("uuid", data.getUuid().toString());
-        yaml.set("selectedClass", data.getSelectedClass() == null ? null : data.getSelectedClass().id());
         yaml.set("baseLevel", data.getBaseLevel());
         yaml.set("baseExp", data.getBaseExp());
-        yaml.set("statPoints", data.getStatPoints());
-        yaml.set("classLevel", data.getClassLevel());
-        yaml.set("classExp", data.getClassExp());
-        yaml.set("skillPoints", data.getSkillPoints());
-        yaml.set("classStatPoints", data.getClassStatPoints());
-        yaml.set("coins", data.getCoins());
-        yaml.set("currentMana", data.getCurrentMana());
         yaml.set("minerHasteSeconds", data.getMinerHasteSeconds());
         yaml.set("bossProgress.firstWitherClear", data.hasFirstWitherClear());
         yaml.set("bossProgress.firstEnderDragonClear", data.hasFirstEnderDragonClear());
         yaml.set("bossProgress.witherClearCount", data.getWitherClearCount());
         yaml.set("bossProgress.enderDragonClearCount", data.getEnderDragonClearCount());
 
-        for (StatType statType : StatType.values()) {
-            yaml.set("stats." + statType.name(), data.getStat(statType));
-            yaml.set("statLevels." + statType.name(), data.getStatLevel(statType));
-        }
-
-        data.getSkillStatLevels().forEach((skillStatId, level) -> yaml.set("skillStatLevels." + skillStatId, level));
-        data.getClassStatLevels().forEach((classStatId, level) -> yaml.set("classStatLevels." + classStatId, level));
-        yaml.set("unlockedSkills", data.getUnlockedSkills().stream().sorted().toList());
-        data.getSkillLevels().forEach((skillId, level) -> yaml.set("skillLevels." + skillId, level));
-        for (WeaponType weaponType : WeaponType.values()) {
-            String weaponTypeId = weaponType.id();
-            yaml.set("weaponProficiencies." + weaponTypeId + ".level", data.getWeaponProficiencyLevel(weaponTypeId));
-            yaml.set("weaponProficiencies." + weaponTypeId + ".exp", data.getWeaponProficiencyExp(weaponTypeId));
-        }
         yaml.set("progressionFlags", data.getProgressionFlags().stream().sorted().toList());
         yaml.set("visitedWorlds", data.getVisitedWorlds().stream()
                 .filter(this::isCanonicalDimension)
                 .sorted().toList());
         data.getEnhancementData().forEach((enhancementId, level) -> yaml.set("enhancementData." + enhancementId, level));
-        data.getQuestStates().forEach((questId, state) -> yaml.set("questStates." + questId, state));
         data.getCustomMobKillCounts().forEach((mobId, amount) -> yaml.set("customMobKillCounts." + mobId, amount));
         data.getCustomMonsterDiscoveries().forEach((mobId, discovery) -> {
             String root = "discovery.custom-monsters." + mobId;
@@ -157,37 +97,7 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
             yaml.set(root + ".first-killed-at", discovery.firstKilledAt());
         });
         data.getBossKillCounts().forEach((bossId, amount) -> yaml.set("bossKillCounts." + bossId, amount));
-        data.getQuestProgressData().forEach((progressId, amount) -> yaml.set("questProgress." + progressId, amount));
-        yaml.set("quests.cooldown-until", data.getAutoQuestCooldownUntil());
-        yaml.set("quests.history.completed", data.getCompletedAutoQuestCount());
-        yaml.set("quests.history.failed", data.getFailedAutoQuestCount());
-        yaml.set("quests.history.abandoned", data.getAbandonedAutoQuestCount());
-        data.getAutoQuests().forEach((slot, quest) -> {
-            String root = "quests.active.slot-" + slot;
-            yaml.set(root + ".id", quest.id());
-            yaml.set(root + ".type", quest.type().name());
-            yaml.set(root + ".target-source", quest.targetSource().name());
-            yaml.set(root + ".target", quest.target());
-            yaml.set(root + ".display-name", quest.displayName());
-            yaml.set(root + ".amount", quest.amount());
-            yaml.set(root + ".progress", quest.progress());
-            yaml.set(root + ".created-at", quest.createdAt());
-            yaml.set(root + ".expires-at", quest.expiresAt());
-            yaml.set(root + ".reward-coins", quest.rewardCoins());
-            yaml.set(root + ".reward-exp", quest.rewardExp());
-            yaml.set(root + ".difficulty", quest.difficulty());
-            yaml.set(root + ".status", quest.status().name());
-            int objectiveIndex = 1;
-            for (AutoQuestObjectiveData objective : quest.objectives()) {
-                String objectiveRoot = root + ".objectives.objective-" + objectiveIndex++;
-                yaml.set(objectiveRoot + ".target-source", objective.source().name());
-                yaml.set(objectiveRoot + ".target", objective.target());
-                yaml.set(objectiveRoot + ".display-name", objective.displayName());
-                yaml.set(objectiveRoot + ".amount", objective.amount());
-                yaml.set(objectiveRoot + ".progress", objective.progress());
-                yaml.set(objectiveRoot + ".difficulty", objective.difficulty());
-            }
-        });
+        data.legacyQuestCompatibilityData().writeTo(yaml);
         yaml.set("farming.version", data.getFarmingDataVersion());
         yaml.set("farming.stage", data.getFarmingStage().name());
         yaml.set("farming.total-valid-harvests", data.getFarmingTotalValidHarvests());
@@ -237,49 +147,8 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         return getPlayerFile(Objects.requireNonNull(uuid, "uuid")).exists();
     }
 
-    private void readSelectedClass(YamlConfiguration yaml, PlayerRPGData data) {
-        String classId = yaml.getString("selectedClass");
-        if (classId == null || classId.isBlank()) {
-            return;
-        }
 
-        RPGClass.fromInput(classId).ifPresentOrElse(
-                data::setSelectedClass,
-                () -> plugin.getLogger().warning("Ignoring unknown RPG class in player data: " + classId)
-        );
-    }
 
-    private void readStats(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection statsSection = yaml.getConfigurationSection("stats");
-        if (statsSection == null) {
-            return;
-        }
-
-        for (String key : statsSection.getKeys(false)) {
-            try {
-                StatType statType = StatType.valueOf(key.toUpperCase(Locale.ROOT));
-                data.setStat(statType, statsSection.getDouble(key, 0.0D));
-            } catch (IllegalArgumentException exception) {
-                plugin.getLogger().log(Level.WARNING, "Ignoring unknown stat in player data: " + key, exception);
-            }
-        }
-    }
-
-    private void readStatLevels(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection statLevelsSection = yaml.getConfigurationSection("statLevels");
-        if (statLevelsSection == null) {
-            return;
-        }
-
-        for (String key : statLevelsSection.getKeys(false)) {
-            try {
-                StatType statType = StatType.valueOf(key.toUpperCase(Locale.ROOT));
-                data.setStatLevel(statType, statLevelsSection.getInt(key, 0));
-            } catch (IllegalArgumentException exception) {
-                plugin.getLogger().log(Level.WARNING, "Ignoring unknown stat level in player data: " + key, exception);
-            }
-        }
-    }
 
     private void readStringSet(YamlConfiguration yaml, String path, StringValueConsumer consumer) {
         for (String value : yaml.getStringList(path)) {
@@ -311,96 +180,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         }
     }
 
-    private void readWeaponProficiencies(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection section = yaml.getConfigurationSection("weaponProficiencies");
-        if (section != null) {
-            for (String weaponTypeId : section.getKeys(false)) {
-                data.setWeaponProficiencyLevel(weaponTypeId, section.getInt(weaponTypeId + ".level", 1));
-                data.setWeaponProficiencyExp(weaponTypeId, section.getLong(weaponTypeId + ".exp", 0L));
-            }
-            return;
-        }
-        // One-time compatibility read for previous player YAML files.
-        readIntegerMap(yaml, "weaponProficiencyLevels", data::setWeaponProficiencyLevel);
-        readLongMap(yaml, "weaponProficiencyExp", data::setWeaponProficiencyExp);
-    }
-
-    private void readStringMap(YamlConfiguration yaml, String path, StringStringConsumer consumer) {
-        ConfigurationSection section = yaml.getConfigurationSection(path);
-        if (section == null) {
-            return;
-        }
-
-        for (String key : section.getKeys(false)) {
-            consumer.accept(key, section.getString(key, ""));
-        }
-    }
-
-    private void readAutoQuests(YamlConfiguration yaml, PlayerRPGData data) {
-        data.setAutoQuestCooldownUntil(yaml.getLong("quests.cooldown-until", 0L));
-        ConfigurationSection active = yaml.getConfigurationSection("quests.active");
-        if (active == null) return;
-        for (String slotKey : active.getKeys(false)) {
-            ConfigurationSection section = active.getConfigurationSection(slotKey);
-            if (section == null || !slotKey.toLowerCase(Locale.ROOT).startsWith("slot-")) continue;
-            int slot;
-            try {
-                slot = Integer.parseInt(slotKey.substring(5));
-                AutoQuestType type = AutoQuestType.valueOf(section.getString("type", "HUNT").toUpperCase(Locale.ROOT));
-                QuestTargetSource source = parseTargetSource(section.getString("target-source", ""), type);
-                AutoQuestStatus status = parseStatus(section.getString("status", ""), section.getInt("progress", 0), section.getInt("amount", 1));
-                List<AutoQuestObjectiveData> objectives = readAutoQuestObjectives(section, type);
-                if (objectives.isEmpty()) {
-                    data.setAutoQuest(new AutoQuestData(slot,
-                            section.getString("id", "auto-" + slot), type, source,
-                            section.getString("target", ""), section.getString("display-name", ""),
-                            section.getInt("amount", 1), section.getInt("progress", 0),
-                            section.getLong("created-at", 0L), section.getLong("expires-at", 0L),
-                            section.getLong("reward-coins", 0L), section.getLong("reward-exp", 0L),
-                            section.getInt("difficulty", 1), status));
-                } else {
-                    data.setAutoQuest(new AutoQuestData(slot, section.getString("id", "auto-" + slot), type,
-                            objectives, section.getString("display-name", ""), section.getLong("created-at", 0L),
-                            section.getLong("expires-at", 0L), section.getLong("reward-coins", 0L),
-                            section.getLong("reward-exp", 0L), status));
-                }
-            } catch (IllegalArgumentException exception) {
-                plugin.getLogger().warning("Ignoring invalid auto quest slot in " + getPlayerFile(data.getUuid()).getName() + ": " + slotKey);
-            }
-        }
-    }
-
-    private QuestTargetSource parseTargetSource(String raw, AutoQuestType type) {
-        try {
-            return QuestTargetSource.valueOf(raw == null ? "" : raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ignored) {
-            return type == AutoQuestType.ITEM_DELIVERY
-                    ? QuestTargetSource.HYUNSEORPG_CUSTOM_ITEM : QuestTargetSource.HYUNSEORPG_CUSTOM_MOB;
-        }
-    }
-
-    private List<AutoQuestObjectiveData> readAutoQuestObjectives(ConfigurationSection quest, AutoQuestType type) {
-        ConfigurationSection section = quest.getConfigurationSection("objectives");
-        if (section == null) return List.of();
-        List<AutoQuestObjectiveData> objectives = new java.util.ArrayList<>();
-        for (String key : section.getKeys(false)) {
-            ConfigurationSection objective = section.getConfigurationSection(key);
-            if (objective == null) continue;
-            QuestTargetSource source = parseTargetSource(objective.getString("target-source", ""), type);
-            objectives.add(new AutoQuestObjectiveData(source, objective.getString("target", ""),
-                    objective.getString("display-name", ""), objective.getInt("amount", 1),
-                    objective.getInt("progress", 0), objective.getInt("difficulty", 1)));
-        }
-        return List.copyOf(objectives);
-    }
-
-    private AutoQuestStatus parseStatus(String raw, int progress, int amount) {
-        try {
-            return AutoQuestStatus.valueOf(raw == null ? "" : raw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ignored) {
-            return progress >= Math.max(1, amount) ? AutoQuestStatus.READY_TO_COMPLETE : AutoQuestStatus.ACTIVE;
-        }
-    }
 
     private void readCustomMonsterDiscoveries(YamlConfiguration yaml, PlayerRPGData data) {
         ConfigurationSection discoveries = yaml.getConfigurationSection("discovery.custom-monsters");
@@ -513,8 +292,4 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         void accept(String key, long value);
     }
 
-    @FunctionalInterface
-    private interface StringStringConsumer {
-        void accept(String key, String value);
-    }
 }

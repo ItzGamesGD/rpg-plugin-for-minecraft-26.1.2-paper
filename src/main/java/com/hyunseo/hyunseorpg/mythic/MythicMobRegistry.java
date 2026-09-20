@@ -81,7 +81,6 @@ public final class MythicMobRegistry {
                 configService.getMythicMobsString(path + "display-name", id),
                 configService.getMythicMobsInt(path + "level", 1),
                 configService.getMythicMobsString(path + "category", ""),
-                configService.getMythicMobsLong(path + "coin-reward", 0L),
                 configService.getMythicMobsLong(path + "exp-reward", 0L),
                 configService.getMythicMobsLong(path + "class-exp-reward", 0L),
                 configService.getMythicMobsBoolean(path + "boss", false),

@@ -65,7 +65,7 @@ public final class RPGItemRegistry {
             }
             if (isLegacyProfessionDefinition(id, category, path)) {
                 // Old PDC items remain harmlessly readable by RPGItemService, but
-                // no new registry entry, recipe, shop product, or reward is created.
+                // no new registry entry, recipe, or reward is created.
                 configService.getPlugin().getLogger().warning(
                         "Ignoring legacy profession item definition: " + id);
                 continue;
@@ -144,7 +144,6 @@ public final class RPGItemRegistry {
                 || !configService.getItemsString(path + ".required-profession", "").isBlank()
                 || !configService.getItemsString(path + ".profession", "").isBlank()
                 || !configService.getItemsString(path + ".job", "").isBlank()
-                || configService.getItemsDouble(path + ".coin-bonus", -1.0D) >= 0.0D
                 || configService.getItemsDouble(path + ".extra-drop-chance", -1.0D) >= 0.0D;
         if (hasProfessionFields) return true;
 
@@ -175,7 +174,6 @@ public final class RPGItemRegistry {
 
     private String fallbackDisplayName(String id) {
         return switch (id) {
-            case "magic_stone" -> "마석";
             case "enchant_book_blade_throw" -> "칼날 연쇄 인챈트 북";
             case "enchant_book_light_greatsword" -> "빛의 대검 인챈트 북";
             case "enchant_book_laser_arrow" -> "레이저 화살 인챈트 북";

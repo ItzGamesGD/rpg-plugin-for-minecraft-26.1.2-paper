@@ -1,9 +1,6 @@
 package com.hyunseo.hyunseorpg.combat;
 
-import com.hyunseo.hyunseorpg.stat.StatService;
-import com.hyunseo.hyunseorpg.stat.StatType;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import org.bukkit.entity.LivingEntity;
@@ -13,20 +10,13 @@ import org.bukkit.inventory.ItemStack;
 public final class CombatService {
     private final ThreadLocal<Boolean> internalDamage = ThreadLocal.withInitial(() -> false);
     private final ThreadLocal<DamageContext> activeDamageContext = new ThreadLocal<>();
-    private StatService statService;
     private EquipmentEnhancementService equipmentEnhancementService;
-    private EquipmentPromotionService equipmentPromotionService;
     private EquipmentTierService equipmentTierService;
     private ConfigService configService;
-
-    public void setStatService(StatService statService) {
-        this.statService = statService;
-    }
 
     public void setEquipmentEnhancementService(EquipmentEnhancementService equipmentEnhancementService) {
         this.equipmentEnhancementService = equipmentEnhancementService;
     }
-    public void setEquipmentPromotionService(EquipmentPromotionService equipmentPromotionService) { this.equipmentPromotionService = equipmentPromotionService; }
     public void setEquipmentTierService(EquipmentTierService equipmentTierService) { this.equipmentTierService = equipmentTierService; }
     public void setConfigService(ConfigService configService) { this.configService = configService; }
     public boolean isInternalDamage() { return internalDamage.get(); }
@@ -54,7 +44,6 @@ public final class CombatService {
     }
 
     public void applySkillDamage(Player attacker, LivingEntity target, double damage) {
-        // Legacy skills keep their existing promotion multiplier semantics.
         applyContextDamage(new DamageContext(attacker, held(attacker), "", DamageType.CUSTOM_SKILL,
                 damage, true, true, true), target, false, true);
     }
@@ -106,24 +95,13 @@ public final class CombatService {
                                         boolean includeAttackerAttackStat, boolean legacySkillMultiplier) {
         Player attacker = context.sourcePlayer();
         double finalDamage = context.baseDamage();
-        if (statService != null) {
-            if (includeAttackerAttackStat) {
-                finalDamage += statService.getEffectiveStat(attacker, StatType.ATTACK);
-            }
-            if (target instanceof Player targetPlayer) {
-                double reduction = Math.min(0.9D, statService.getEffectiveStat(targetPlayer, StatType.DAMAGE_REDUCTION));
-                finalDamage *= Math.max(0.0D, 1.0D - reduction);
-            }
-        }
         if (target instanceof Player targetPlayer && equipmentEnhancementService != null) {
             double equipmentReduction = 0.0D;
             for (org.bukkit.inventory.ItemStack armor : targetPlayer.getInventory().getArmorContents()) {
                 equipmentReduction += equipmentEnhancementService.getDamageReductionBonus(armor);
-                if (equipmentPromotionService != null) equipmentReduction += equipmentPromotionService.getDamageReduction(armor);
             }
             org.bukkit.inventory.ItemStack offHand = targetPlayer.getInventory().getItemInOffHand();
             equipmentReduction += equipmentEnhancementService.getDamageReductionBonus(offHand);
-            if (equipmentPromotionService != null) equipmentReduction += equipmentPromotionService.getDamageReduction(offHand);
             double cap = configService == null ? 0.8D
                     : Math.max(0.0D, Math.min(1.0D,
                     configService.getDouble("equipment-effects.damage-reduction-cap", 0.8D)));
@@ -134,15 +112,6 @@ public final class CombatService {
                 && equipmentTierService.getCategory(mainHand) == EquipmentTierService.Category.TOOL;
         if (!tool && equipmentEnhancementService != null) {
             finalDamage += equipmentEnhancementService.getAttackBonus(mainHand);
-        }
-        if (!tool && equipmentPromotionService != null) {
-            finalDamage += equipmentPromotionService.getWeaponDamageBonus(mainHand);
-            if (context.damageType() == DamageType.PROJECTILE) {
-                finalDamage += equipmentPromotionService.getOptionValue(mainHand, "projectile-damage");
-            }
-            if (legacySkillMultiplier || context.isSkillDamage()) {
-                finalDamage *= equipmentPromotionService.getSkillDamageMultiplier(mainHand);
-            }
         }
         return Math.max(0.0D, finalDamage);
     }

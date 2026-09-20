@@ -35,8 +35,6 @@ class AlchemyU10ContractTest {
     }
 
     @Test void vanillaBypassPolicyTargetsCustomPotionNotEveryBrewingStand() {
-        YamlConfiguration gui = load("alchemy/gui.yml");
-        assertTrue(gui.getBoolean("enabled", false));
         assertTrue(load("alchemy/catalysts.yml").getConfigurationSection("catalysts").getKeys(false).size() > 0);
     }
 

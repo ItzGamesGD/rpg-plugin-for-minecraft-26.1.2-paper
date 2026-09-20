@@ -14,7 +14,6 @@ public record MobData(
         MobAttributeData attributes,
         long baseExp,
         long classExp,
-        long coinReward,
         String dropTableId,
         String region,
         boolean boss,

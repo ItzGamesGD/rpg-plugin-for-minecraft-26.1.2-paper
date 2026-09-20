@@ -1,8 +1,7 @@
 package com.hyunseo.hyunseorpg.enchant;
 
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
+import com.hyunseo.hyunseorpg.enchant.nativeapi.RetiredVanillaEnchantments;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrowthPolicy;
 import com.hyunseo.hyunseorpg.equipment.EquipmentInstanceService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
 import com.hyunseo.hyunseorpg.equipment.EquipmentTierService;
@@ -10,15 +9,14 @@ import com.hyunseo.hyunseorpg.equipment.trigger.EnchantTriggerBinding;
 import com.hyunseo.hyunseorpg.equipment.trigger.TriggerType;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.skill.SkillInputType;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentData;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentRegistry;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
 import com.hyunseo.hyunseorpg.weapon.WeaponType;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -28,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -35,13 +34,12 @@ import java.util.HashSet;
 
 /** Persists equipped custom enchant IDs, levels and deterministic input conflicts. */
 public final class EnchantService {
+    private static final String NATIVE_NAMESPACE = "hyunseorpg";
     private final EnchantRegistry registry;
     private final ConfigService config;
     private final RPGItemService itemService;
-    private final EquipmentPromotionService promotionService;
     private final WeaponService weaponService;
     private final EquipmentTierService tierService;
-    private final SpecialEquipmentRegistry specialEquipment;
     private final EquipmentInstanceService equipmentInstances;
     private final NamespacedKey equippedKey;
     private final NamespacedKey generatedLoreKey;
@@ -49,19 +47,19 @@ public final class EnchantService {
     private final NamespacedKey bookDataVersionKey;
     private final NamespacedKey bookInputKey;
     private final NamespacedKey bookCategoryKey;
-    private EquipmentGrowthPolicy growthPolicy;
+    private final NamespacedKey swiftSneakSyncKey;
+    private final NamespacedKey swiftSneakOriginalKey;
+    private final NamespacedKey itemIdKey;
 
     public EnchantService(JavaPlugin plugin, ConfigService config, EnchantRegistry registry, RPGItemService itemService,
-                          EquipmentPromotionService promotionService, WeaponService weaponService,
-                          EquipmentTierService tierService, SpecialEquipmentRegistry specialEquipment,
+                          WeaponService weaponService,
+                          EquipmentTierService tierService,
                           EquipmentInstanceService equipmentInstances) {
         this.registry = registry;
         this.config = config;
         this.itemService = itemService;
-        this.promotionService = promotionService;
         this.weaponService = weaponService;
         this.tierService = tierService;
-        this.specialEquipment = specialEquipment;
         this.equipmentInstances = equipmentInstances;
         this.equippedKey = new NamespacedKey(plugin, "equipped_enchants");
         this.generatedLoreKey = new NamespacedKey(plugin, "generated_enchant_lore");
@@ -69,18 +67,13 @@ public final class EnchantService {
         this.bookDataVersionKey = new NamespacedKey(plugin, "enchant_book_data_version");
         this.bookInputKey = new NamespacedKey(plugin, "enchant_book_input");
         this.bookCategoryKey = new NamespacedKey(plugin, "enchant_book_category");
-    }
-
-    public void setGrowthPolicy(EquipmentGrowthPolicy growthPolicy) {
-        this.growthPolicy = growthPolicy;
+        this.swiftSneakSyncKey = new NamespacedKey(plugin, "swift_sneak_vanilla_sync");
+        this.swiftSneakOriginalKey = new NamespacedKey(plugin, "swift_sneak_original_level");
+        this.itemIdKey = new NamespacedKey(plugin, "item_id");
     }
 
     public Optional<EnchantData> findForInput(ItemStack equipment, SkillInputType inputType) {
         if (equipment == null || equipment.getType().isAir()) return Optional.empty();
-        if (growthPolicy != null && !growthPolicy.canEnchant(equipment)) return Optional.empty();
-        if (promotionService.getUnlockedEnchantSlots(equipment) <= 0 && getEnchantSlotLimit(equipment) <= 0) {
-            return Optional.empty();
-        }
         WeaponType weapon = weaponService.getWeaponType(equipment).orElse(null);
         for (String id : getActiveEquipped(equipment)) {
             EnchantData data = registry.get(id).orElse(null);
@@ -92,6 +85,18 @@ public final class EnchantService {
     }
 
     public Optional<EnchantData> getEnchantFromBook(ItemStack book) {
+        if (book != null && book.hasItemMeta()) {
+            List<EnchantData> custom = allNativeEnchantments(book).keySet().stream()
+                    .filter(enchantment -> NATIVE_NAMESPACE.equals(enchantment.getKey().getNamespace()))
+                    .map(enchantment -> registry.get(enchantment.getKey().getKey()).orElse(null))
+                    .filter(Objects::nonNull)
+                    .toList();
+            // Compatibility books intentionally have one custom enchant. Reject ambiguous native books
+            // instead of selecting whichever map entry happens to iterate first.
+            if (custom.size() == 1) return Optional.of(custom.getFirst());
+            if (custom.size() > 1) return Optional.empty();
+        }
+        // Temporary compatibility path for old generated books.
         return registry.getAll().stream().filter(data -> itemService.isItem(book, data.bookItemId())).findFirst();
     }
 
@@ -103,33 +108,33 @@ public final class EnchantService {
 
     public int getBookLevel(ItemStack book) {
         if (book == null || !book.hasItemMeta()) return 1;
+        Optional<EnchantData> data = getEnchantFromBook(book);
+        if (data.isPresent()) {
+            Enchantment enchantment = nativeEnchant(data.get().enchantId());
+            Integer level = enchantment == null ? null : allNativeEnchantments(book).get(enchantment);
+            if (level != null) return Math.max(1, level);
+        }
         return Math.max(1, book.getItemMeta().getPersistentDataContainer()
                 .getOrDefault(bookLevelKey, PersistentDataType.INTEGER, 1));
     }
 
-    /** Creates an extraction result while preserving the current enchant definition metadata. */
+    /** Maintenance-only extraction result; normal book acquisition/application remains Minecraft-owned. */
     public Optional<ItemStack> createBook(String enchantId, int level) {
         EnchantData data = registry.get(enchantId).orElse(null);
-        if (data == null || data.bookItemId().isBlank()) return Optional.empty();
-        ItemStack book = itemService.create(data.bookItemId(), 1).orElse(null);
-        if (book == null) return Optional.empty();
+        if (data == null) return Optional.empty();
+        Enchantment nativeEnchant = nativeEnchant(data.enchantId());
+        if (nativeEnchant == null) return Optional.empty();
+        ItemStack book = new ItemStack(Material.ENCHANTED_BOOK);
         ItemMeta meta = book.getItemMeta();
-        if (meta == null) return Optional.empty();
+        if (!(meta instanceof EnchantmentStorageMeta storage)) return Optional.empty();
         int safeLevel = Math.max(1, Math.min(data.maxLevel(), level));
-        var pdc = meta.getPersistentDataContainer();
-        pdc.set(bookLevelKey, PersistentDataType.INTEGER, safeLevel);
-        pdc.set(bookDataVersionKey, PersistentDataType.INTEGER, 1);
-        pdc.set(bookInputKey, PersistentDataType.STRING, data.triggers().stream()
-                .filter(binding -> binding.type() == TriggerType.INPUT && binding.input() != null)
-                .map(binding -> binding.input().name()).findFirst().orElse("PASSIVE"));
-        pdc.set(bookCategoryKey, PersistentDataType.STRING, data.equipmentCategory());
+        storage.addStoredEnchant(nativeEnchant, safeLevel, true);
         book.setItemMeta(meta);
-        refreshBookLore(book);
         return Optional.of(book);
     }
 
     /** Removes exactly the selected enchant and refreshes only generated enchant lore. */
-    public boolean removeEnchant(ItemStack equipment, String enchantId) {
+    public boolean removeEnchantForExtraction(ItemStack equipment, String enchantId) {
         String canonical = registry.canonicalId(enchantId);
         List<EquippedEnchant> equipped = new ArrayList<>(getEquippedEntries(equipment));
         boolean removed = equipped.removeIf(entry -> entry.id().equals(canonical));
@@ -149,18 +154,15 @@ public final class EnchantService {
     }
 
     public List<String> getActiveEquipped(ItemStack equipment) {
-        List<String> equipped = getEquipped(equipment);
-        int limit = Math.min(equipped.size(), getEnchantSlotLimit(equipment));
-        return equipped.subList(0, Math.max(0, limit));
+        // Native enchantments are governed by their registry definition and vanilla application rules.
+        return getEquipped(equipment);
     }
 
     public int getEnchantLevel(ItemStack equipment, String enchantId) {
         String canonical = registry.canonicalId(enchantId);
-        return getEquippedEntries(equipment).stream()
-                .filter(entry -> entry.id().equals(canonical))
-                .findFirst()
-                .map(EquippedEnchant::level)
-                .orElse(0);
+        migrateLegacyEnchantments(equipment);
+        Enchantment enchantment = nativeEnchant(canonical);
+        return enchantment == null || equipment == null ? 0 : equipment.getEnchantmentLevel(enchantment);
     }
 
     public boolean hasEquipped(ItemStack equipment, String enchantId) {
@@ -190,70 +192,45 @@ public final class EnchantService {
         return false;
     }
 
-    public boolean equip(ItemStack equipment, ItemStack book) {
-        Optional<EnchantData> data = getEnchantFromBook(book);
-        if (data.isEmpty() || equipment == null || equipment.getType().isAir()) return false;
-        if (growthPolicy != null && !growthPolicy.canEnchant(equipment)) return false;
-
-        EnchantData enchant = data.get();
-        WeaponType weapon = weaponService.getWeaponType(equipment).orElse(null);
-        if (!matchesEquipment(enchant, equipment, weapon)) return false;
-
-        List<EquippedEnchant> equipped = new ArrayList<>(getEquippedEntries(equipment));
-        int bookLevel = Math.max(1, getBookLevel(book));
-        for (int index = 0; index < equipped.size(); index++) {
-            EquippedEnchant current = equipped.get(index);
-            if (!current.id().equals(enchant.enchantId())) continue;
-            int nextLevel = current.level() + bookLevel;
-            if (nextLevel > enchant.maxLevel()) return false;
-            equipped.set(index, new EquippedEnchant(current.id(), nextLevel));
-            return persistEquipped(equipment, equipped);
-        }
-
-        if (getEnchantSlotLimit(equipment) <= equipped.size()) return false;
-        if (hasInputConflict(enchant, equipped)) return false;
-
-        equipped.add(new EquippedEnchant(enchant.enchantId(), Math.min(enchant.maxLevel(), bookLevel)));
-        return persistEquipped(equipment, equipped);
-    }
-
+    /** Maintenance-only mutation used by extraction; normal application is exclusively vanilla-anvil owned. */
     private boolean persistEquipped(ItemStack equipment, List<EquippedEnchant> equipped) {
         equipmentInstances.ensure(equipment);
         ItemMeta meta = equipment.getItemMeta();
         if (meta == null) return false;
-        meta.getPersistentDataContainer().set(equippedKey, PersistentDataType.STRING, encode(equipped));
-        rebuildEquippedLore(meta, equipped);
+        for (Enchantment enchantment : new ArrayList<>(meta.getEnchants().keySet())) {
+            if (NATIVE_NAMESPACE.equals(enchantment.getKey().getNamespace())) meta.removeEnchant(enchantment);
+        }
+        for (EquippedEnchant entry : equipped) {
+            Enchantment enchantment = nativeEnchant(entry.id());
+            if (enchantment != null) meta.addEnchant(enchantment, entry.level(), true);
+        }
+        meta.getPersistentDataContainer().remove(equippedKey);
+        removeGeneratedLore(meta);
         equipment.setItemMeta(meta);
         return true;
     }
 
-    /** Rebuilds only the previously generated enchant section; all other item lore remains untouched. */
+    /** Legacy cleanup/migration hook. Native enchantments use Minecraft's tooltip exclusively. */
     public void refreshEquippedLore(ItemStack equipment) {
         if (equipment == null || !equipment.hasItemMeta()) return;
+        migrateLegacyEnchantments(equipment);
         ItemMeta meta = equipment.getItemMeta();
         if (meta == null) return;
-        List<EquippedEnchant> equipped = getEquippedEntries(equipment);
-        // Registry aliases are read transparently, then persisted in canonical form on the
-        // next normal lore refresh so old items converge without losing other PDC data.
-        meta.getPersistentDataContainer().set(equippedKey, PersistentDataType.STRING, encode(equipped));
-        rebuildEquippedLore(meta, equipped);
+        removeGeneratedLore(meta);
         equipment.setItemMeta(meta);
     }
 
     /** Called by item creation so books and equipped items share the same definition data. */
     public void refreshBookLore(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return;
-        EnchantData data = getEnchantFromBook(item).orElse(null);
-        if (data == null) return;
+        migrateLegacyEnchantments(item);
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
-        meta.displayName(Component.text(data.displayName() + " 인챈트 북", NamedTextColor.LIGHT_PURPLE)
-                .decoration(TextDecoration.ITALIC, false));
-        meta.lore(EnchantLoreFormatter.bookLines(data));
+        removeGeneratedLore(meta);
         item.setItemMeta(meta);
     }
 
-    private void rebuildEquippedLore(ItemMeta meta, List<EquippedEnchant> equipped) {
+    private void removeGeneratedLore(ItemMeta meta) {
         Set<String> oldGenerated = decodeGenerated(meta.getPersistentDataContainer().get(generatedLoreKey, PersistentDataType.STRING));
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta);
         lore.removeIf(line -> {
@@ -262,15 +239,8 @@ public final class EnchantService {
                     || plain.startsWith("인챈트: ") || plain.startsWith("Enchant: ")
                     || plain.startsWith("?몄콌?? ");
         });
-        List<Component> generated = new ArrayList<>();
-        if (!equipped.isEmpty()) {
-            generated.add(Component.text(EnchantLoreFormatter.SECTION_TITLE, NamedTextColor.DARK_AQUA));
-            equipped.stream().sorted(java.util.Comparator.comparing(EquippedEnchant::id)).forEach(entry ->
-                    registry.get(entry.id()).ifPresent(data -> generated.addAll(EnchantLoreFormatter.equipmentLines(data, entry.level()))));
-        }
-        lore.addAll(generated);
         meta.lore(lore.build());
-        meta.getPersistentDataContainer().set(generatedLoreKey, PersistentDataType.STRING, encodeGenerated(generated));
+        meta.getPersistentDataContainer().remove(generatedLoreKey);
     }
 
     public String formatEquipped(ItemStack equipment) {
@@ -284,27 +254,173 @@ public final class EnchantService {
 
     private List<EquippedEnchant> getEquippedEntries(ItemStack equipment) {
         if (equipment == null || !equipment.hasItemMeta()) return List.of();
-        String raw = equipment.getItemMeta().getPersistentDataContainer().get(equippedKey, PersistentDataType.STRING);
-        if (raw == null || raw.isBlank()) return List.of();
-        LinkedHashMap<String, Integer> values = new LinkedHashMap<>();
-        for (String part : raw.split(",")) {
-            String trimmed = part == null ? "" : part.trim();
-            if (trimmed.isBlank()) continue;
-            String[] split = trimmed.split("@", 2);
-            EnchantData data = registry.get(split[0]).orElse(null);
-            if (data == null) continue;
-            int level = 1;
-            if (split.length == 2) {
-                try { level = Integer.parseInt(split[1]); } catch (NumberFormatException ignored) { }
+        migrateLegacyEnchantments(equipment);
+        return allNativeEnchantments(equipment).entrySet().stream()
+                .filter(entry -> NATIVE_NAMESPACE.equals(entry.getKey().getKey().getNamespace()))
+                .map(entry -> new EquippedEnchant(entry.getKey().getKey().getKey(), entry.getValue()))
+                .filter(entry -> registry.get(entry.id()).isPresent())
+                .sorted(java.util.Comparator.comparing(EquippedEnchant::id))
+                .toList();
+    }
+
+    /** Lazily upgrades old equipped_enchants PDC without touching unrelated PDC or vanilla enchants. */
+    public boolean migrateLegacyEnchantments(ItemStack equipment) {
+        if (equipment == null || !equipment.hasItemMeta()) return false;
+        ItemMeta meta = equipment.getItemMeta();
+        boolean changed = migrateRetiredNativeEnchantments(meta);
+        changed |= migrateRetiredCustomBook(equipment, meta);
+        String raw = meta.getPersistentDataContainer().get(equippedKey, PersistentDataType.STRING);
+        if (raw != null && !raw.isBlank()) {
+            List<String> preserved = new ArrayList<>();
+            for (String encoded : raw.split(",")) {
+                String[] parts = encoded.trim().split("@", 2);
+                int level;
+                try { level = parts.length == 2 ? Integer.parseInt(parts[1]) : 1; }
+                catch (NumberFormatException exception) { preserved.add(encoded.trim()); continue; }
+                String legacyId = normalize(parts[0]);
+                legacyId = RetiredVanillaEnchantments.LEGACY_ALIASES.getOrDefault(legacyId, legacyId);
+                String vanillaId = RetiredVanillaEnchantments.VANILLA_TARGETS.get(legacyId);
+                EnchantData active = vanillaId == null ? registry.get(legacyId).orElse(null) : null;
+                Enchantment target = vanillaId == null
+                        ? (active == null ? null : nativeEnchant(active.enchantId()))
+                        : Registry.ENCHANTMENT.get(new NamespacedKey(NamespacedKey.MINECRAFT, vanillaId));
+                if (target == null) {
+                    preserved.add(encoded.trim());
+                    config.getPlugin().getLogger().warning("Preserving unmapped legacy enchant '" + encoded.trim() + "'");
+                    continue;
+                }
+                int maximum = vanillaId == null ? active.maxLevel() : target.getMaxLevel();
+                int desired = RetiredVanillaEnchantments.mergedLevel(levelOf(meta, target), level, 0, maximum);
+                if (hasMigrationConflict(meta, target, null)) {
+                    preserved.add(encoded.trim());
+                    config.getPlugin().getLogger().warning("Preserving incompatible legacy enchant '" + encoded.trim() + "'");
+                    continue;
+                }
+                setLevel(meta, target, desired);
+                changed = true;
             }
-            level = Math.max(1, Math.min(data.maxLevel(), level));
-            values.merge(data.enchantId(), level, Math::max);
+            if (preserved.isEmpty()) meta.getPersistentDataContainer().remove(equippedKey);
+            else meta.getPersistentDataContainer().set(equippedKey, PersistentDataType.STRING, String.join(",", preserved));
         }
-        return values.entrySet().stream().map(entry -> new EquippedEnchant(entry.getKey(), entry.getValue())).toList();
+        if (changed || raw != null) equipment.setItemMeta(meta);
+        return changed;
+    }
+
+    private boolean migrateRetiredCustomBook(ItemStack item, ItemMeta meta) {
+        if (item.getType() != Material.ENCHANTED_BOOK) return false;
+        String itemId = meta.getPersistentDataContainer().get(itemIdKey, PersistentDataType.STRING);
+        if (itemId == null) return false;
+        String retiredId = normalize(itemId).replaceFirst("^enchant_book_", "");
+        retiredId = RetiredVanillaEnchantments.LEGACY_ALIASES.getOrDefault(retiredId, retiredId);
+        String vanillaId = RetiredVanillaEnchantments.VANILLA_TARGETS.get(retiredId);
+        if (vanillaId == null) return false;
+        Enchantment target = Registry.ENCHANTMENT.get(new NamespacedKey(NamespacedKey.MINECRAFT, vanillaId));
+        if (target == null || hasMigrationConflict(meta, target, null)) {
+            config.getPlugin().getLogger().warning("Preserving incompatible retired enchant book '" + itemId + "'");
+            return false;
+        }
+        int legacyLevel = meta.getPersistentDataContainer().getOrDefault(bookLevelKey, PersistentDataType.INTEGER, 1);
+        setLevel(meta, target, RetiredVanillaEnchantments.mergedLevel(levelOf(meta, target), legacyLevel, 0,
+                target.getMaxLevel()));
+        cleanRetiredBookPresentation(meta);
+        return true;
+    }
+
+    private boolean migrateRetiredNativeEnchantments(ItemMeta meta) {
+        boolean changed = false;
+        boolean convertedBook = false;
+        Map<Enchantment, Integer> present = meta instanceof EnchantmentStorageMeta storage
+                ? new LinkedHashMap<>(storage.getStoredEnchants()) : new LinkedHashMap<>(meta.getEnchants());
+        for (Map.Entry<Enchantment, Integer> entry : present.entrySet()) {
+            String namespace = entry.getKey().getKey().getNamespace();
+            String retiredId = entry.getKey().getKey().getKey();
+            String vanillaId = NATIVE_NAMESPACE.equals(namespace)
+                    ? RetiredVanillaEnchantments.VANILLA_TARGETS.get(retiredId) : null;
+            if (vanillaId == null) continue;
+            Enchantment vanilla = Registry.ENCHANTMENT.get(new NamespacedKey(NamespacedKey.MINECRAFT, vanillaId));
+            if (vanilla == null || hasMigrationConflict(meta, vanilla, entry.getKey())) {
+                config.getPlugin().getLogger().warning("Preserving incompatible retired native enchant '" + retiredId + "'");
+                continue;
+            }
+            int snapshot = retiredId.equals("swift_sneak")
+                    ? meta.getPersistentDataContainer().getOrDefault(swiftSneakOriginalKey, PersistentDataType.INTEGER, 0) : 0;
+            int desired = RetiredVanillaEnchantments.mergedLevel(
+                    levelOf(meta, vanilla), entry.getValue(), snapshot, vanilla.getMaxLevel());
+            setLevel(meta, vanilla, desired);
+            removeLevel(meta, entry.getKey());
+            if (retiredId.equals("swift_sneak")) {
+                meta.getPersistentDataContainer().remove(swiftSneakSyncKey);
+                meta.getPersistentDataContainer().remove(swiftSneakOriginalKey);
+            }
+            changed = true;
+            convertedBook |= meta instanceof EnchantmentStorageMeta;
+        }
+        // A prior bridge snapshot can survive after its retired enchant was already removed.
+        Integer snapshot = meta.getPersistentDataContainer().get(swiftSneakOriginalKey, PersistentDataType.INTEGER);
+        if (snapshot != null) {
+            Enchantment swift = Enchantment.SWIFT_SNEAK;
+            setLevel(meta, swift, RetiredVanillaEnchantments.mergedLevel(levelOf(meta, swift), 0,
+                    snapshot, swift.getMaxLevel()));
+            meta.getPersistentDataContainer().remove(swiftSneakSyncKey);
+            meta.getPersistentDataContainer().remove(swiftSneakOriginalKey);
+            changed = true;
+        }
+        if (convertedBook) cleanRetiredBookPresentation(meta);
+        return changed;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void cleanRetiredBookPresentation(ItemMeta meta) {
+        meta.displayName(null);
+        meta.lore(null);
+        if (meta.hasCustomModelData()) meta.setCustomModelData(null);
+        var pdc = meta.getPersistentDataContainer();
+        pdc.remove(itemIdKey);
+        pdc.remove(bookLevelKey);
+        pdc.remove(bookDataVersionKey);
+        pdc.remove(bookInputKey);
+        pdc.remove(bookCategoryKey);
+        pdc.remove(generatedLoreKey);
+    }
+
+    private boolean hasMigrationConflict(ItemMeta meta, Enchantment candidate, Enchantment ignored) {
+        return allEnchantments(meta).keySet().stream().anyMatch(existing -> !existing.equals(candidate)
+                && !existing.equals(ignored)
+                && !(NATIVE_NAMESPACE.equals(existing.getKey().getNamespace())
+                    && RetiredVanillaEnchantments.IDS.contains(existing.getKey().getKey()))
+                && (candidate.conflictsWith(existing) || existing.conflictsWith(candidate)));
+    }
+
+    private Map<Enchantment, Integer> allEnchantments(ItemMeta meta) {
+        return meta instanceof EnchantmentStorageMeta storage ? storage.getStoredEnchants() : meta.getEnchants();
+    }
+
+    private int levelOf(ItemMeta meta, Enchantment enchantment) {
+        return allEnchantments(meta).getOrDefault(enchantment, 0);
+    }
+
+    private void setLevel(ItemMeta meta, Enchantment enchantment, int level) {
+        if (level <= 0) return;
+        if (meta instanceof EnchantmentStorageMeta storage) storage.addStoredEnchant(enchantment, level, true);
+        else meta.addEnchant(enchantment, level, true);
+    }
+
+    private void removeLevel(ItemMeta meta, Enchantment enchantment) {
+        if (meta instanceof EnchantmentStorageMeta storage) storage.removeStoredEnchant(enchantment);
+        else meta.removeEnchant(enchantment);
+    }
+
+    private Enchantment nativeEnchant(String enchantId) {
+        return Registry.ENCHANTMENT.get(new NamespacedKey(NATIVE_NAMESPACE, registry.canonicalId(enchantId)));
+    }
+
+    private Map<Enchantment, Integer> allNativeEnchantments(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return Map.of();
+        ItemMeta meta = item.getItemMeta();
+        return meta instanceof EnchantmentStorageMeta storage ? storage.getStoredEnchants() : meta.getEnchants();
     }
 
     private boolean matchesEquipment(EnchantData data, ItemStack equipment, WeaponType weapon) {
-        if (data.enchantId().equals("unbreaking") && equipment.getType().getMaxDurability() <= 0) return false;
         if (data.weaponType() != null && data.weaponType() != weapon) return false;
         if (!data.equipmentCategory().isBlank()
                 && !tierService.getCategory(equipment).name().equalsIgnoreCase(data.equipmentCategory())) {
@@ -353,11 +469,6 @@ public final class EnchantService {
                 .reduce((left, right) -> left + "," + right).orElse("");
     }
 
-    private String encodeGenerated(List<Component> lines) {
-        return lines.stream().map(line -> PlainTextComponentSerializer.plainText().serialize(line))
-                .collect(java.util.stream.Collectors.joining("\u001F"));
-    }
-
     private Set<String> decodeGenerated(String raw) {
         if (raw == null || raw.isBlank()) return Set.of();
         Set<String> values = new HashSet<>();
@@ -367,20 +478,6 @@ public final class EnchantService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    public int getEnchantSlotLimit(ItemStack equipment) {
-        int existing = promotionService.getUnlockedEnchantSlots(equipment);
-        int baseline = Math.max(0, config.getEnchantsInt("enchant-slots.baseline."
-                + tierService.getCategory(equipment).name(), 0));
-        int direct = growthPolicy != null && growthPolicy.canEnchantDirectly(equipment) ? 1 : 0;
-        if (growthPolicy == null || growthPolicy.grade(equipment) != com.hyunseo.hyunseorpg.equipment.EquipmentGrade.GRADE_4) {
-            return Math.max(direct, Math.max(existing, baseline));
-        }
-        String id = itemService.getItemId(equipment).orElse("");
-        SpecialEquipmentData data = specialEquipment.get(id).orElse(null);
-        return data == null ? Math.max(direct, Math.max(existing, baseline))
-                : Math.max(Math.max(direct, Math.max(existing, baseline)), data.customEnchantSlots());
     }
 
     private record EquippedEnchant(String id, int level) { }

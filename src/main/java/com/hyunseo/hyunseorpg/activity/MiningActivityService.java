@@ -1,7 +1,6 @@
 package com.hyunseo.hyunseorpg.activity;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.progression.ProgressionAccessRewardService;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -36,19 +35,13 @@ public final class MiningActivityService {
             Material.CRACKED_STONE_BRICKS, Material.CHISELED_STONE_BRICKS);
 
     private final ConfigService config;
-    private final ActivityCoinRewardService rewards;
     private final ActivityBlockRepository placedBlocks;
-    private final ProgressionAccessRewardService accessRewards;
     private final ActivityBlockRewardValidator blockRewards;
 
-    public MiningActivityService(ConfigService config, ActivityCoinRewardService rewards,
-                                 ActivityBlockRepository placedBlocks,
-                                 ProgressionAccessRewardService accessRewards,
+    public MiningActivityService(ConfigService config, ActivityBlockRepository placedBlocks,
                                  ActivityBlockRewardValidator blockRewards) {
         this.config = config;
-        this.rewards = rewards;
         this.placedBlocks = placedBlocks;
-        this.accessRewards = accessRewards;
         this.blockRewards = blockRewards;
     }
 
@@ -61,8 +54,6 @@ public final class MiningActivityService {
         }
         if (!blockRewards.isValidRewardBreak(event, "MINING")) return;
         if (!isEligible(player, block)) return;
-        accessRewards.roll(player, ActivityType.MINING, block.getLocation());
-        rewards.reward(player, ActivityType.MINING, block.getLocation());
     }
 
     /** Compatibility entry point for non-event callers. */
@@ -72,8 +63,6 @@ public final class MiningActivityService {
             return;
         }
         if (!isEligible(player, block)) return;
-        accessRewards.roll(player, ActivityType.MINING, block.getLocation());
-        rewards.reward(player, ActivityType.MINING, block.getLocation());
     }
 
     public void recordPlacement(Block block) {
@@ -91,26 +80,14 @@ public final class MiningActivityService {
     public boolean isEligible(Player player, Block block) {
         if (player == null || block == null || !isMiningBlock(block)) return false;
         if (isStoneBlock(block.getType()) && block.getWorld().getEnvironment() != World.Environment.NORMAL) return false;
-        if (player.getGameMode() != GameMode.SURVIVAL
-                && !(player.getGameMode() == GameMode.ADVENTURE
-                && config.getProgressionLoopBoolean("activity-coins.activities.MINING.allow-adventure", true))) return false;
+        if (player.getGameMode() != GameMode.SURVIVAL) return false;
         if (!allowedWorld(player.getWorld().getName())) return false;
-        return !config.getProgressionLoopBoolean("activity-coins.activities.MINING.require-pickaxe", true)
-                || isPickaxe(player.getInventory().getItemInMainHand());
+        return isPickaxe(player.getInventory().getItemInMainHand());
     }
 
-    private boolean allowedWorld(String worldName) {
-        Set<String> configured = config.getProgressionLoopStringList("activity-coins.activities.MINING.allowed-worlds")
-                .stream().map(value -> value.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        return configured.isEmpty() || configured.contains(worldName.toLowerCase(Locale.ROOT));
-    }
+    private boolean allowedWorld(String worldName) { return true; }
 
-    private boolean isStoneBlock(Material material) {
-        Set<Material> configured = config.getProgressionLoopStringList("activity-coins.activities.MINING.stone-blocks")
-                .stream().map(value -> Material.matchMaterial(value.toUpperCase(Locale.ROOT)))
-                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
-        return (configured.isEmpty() ? DEFAULT_STONE_BLOCKS : configured).contains(material);
-    }
+    private boolean isStoneBlock(Material material) { return DEFAULT_STONE_BLOCKS.contains(material); }
 
     private boolean isPickaxe(ItemStack item) {
         return item != null && item.getType().name().endsWith("_PICKAXE");

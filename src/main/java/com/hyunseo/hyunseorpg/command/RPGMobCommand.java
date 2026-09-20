@@ -146,8 +146,6 @@ public final class RPGMobCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(Component.text("displayName=" + mobTagService.getMobDisplayName(entity), NamedTextColor.GRAY));
         player.sendMessage(Component.text("boss=" + mobService.isBossMob(entity) + ", elite=" + mobService.isEliteMob(entity), NamedTextColor.GRAY));
         player.sendMessage(Component.text("baseExpReward=" + mobService.getBaseExpReward(entity), NamedTextColor.GRAY));
-        player.sendMessage(Component.text("classExpReward=" + mobService.getClassExpReward(entity), NamedTextColor.GRAY));
-        player.sendMessage(Component.text("coinReward=" + mobService.getCoinReward(entity), NamedTextColor.GRAY));
 
         Optional<MobData> mobData = mobService.getMobData(entity);
         if (mobData.isPresent()) {

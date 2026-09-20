@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "hyunseorpg:blade_chain",
+    "hyunseorpg:light_greatsword",
+    "hyunseorpg:laser_arrow",
+    "hyunseorpg:axe_heavy_strike",
+    "hyunseorpg:titans_wrath",
+    "hyunseorpg:fire_arrow_rain",
+    "hyunseorpg:crossbow_barrage",
+    "hyunseorpg:area_excavation",
+    "hyunseorpg:elytra_launch",
+    "hyunseorpg:precision_flight",
+    "hyunseorpg:explosive_mace"
+  ]
+}

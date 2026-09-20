@@ -23,27 +23,18 @@ import java.util.Set;
 
 public final class ConfigService {
     private final JavaPlugin plugin;
-    private FileConfiguration statsConfig;
     private FileConfiguration expConfig;
     private FileConfiguration mobsConfig;
-    private FileConfiguration classesConfig;
-    private FileConfiguration questsConfig;
-    private FileConfiguration skillsConfig;
     private FileConfiguration weaponsConfig;
-    private FileConfiguration equipmentOptionsConfig;
     private FileConfiguration itemsConfig;
-    private FileConfiguration shopsConfig;
     private FileConfiguration equipmentGrowthConfig;
     private FileConfiguration enchantsConfig;
     private FileConfiguration equipmentInputsConfig;
     private FileConfiguration craftingConfig;
-    private FileConfiguration progressionLoopConfig;
     private FileConfiguration mythicMobsConfig;
-    private FileConfiguration bossesConfig;
     private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
     private FileConfiguration specialEquipmentConfig;
-    private FileConfiguration equipmentSupportConfig;
     private FileConfiguration farmingCropsConfig;
     private FileConfiguration farmingGrowthConfig;
     private FileConfiguration farmingHarvestConfig;
@@ -64,7 +55,6 @@ public final class ConfigService {
     private FileConfiguration alchemyPotionsConfig;
     private FileConfiguration alchemyRecipesConfig;
     private FileConfiguration alchemyCatalystsConfig;
-    private FileConfiguration alchemyGuiConfig;
 
     public ConfigService(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -78,30 +68,21 @@ public final class ConfigService {
             plugin.saveDefaultConfig();
         }
         plugin.reloadConfig();
-        this.statsConfig = loadManagedConfig("stats.yml");
         this.expConfig = loadManagedConfig("exp.yml");
         this.mobsConfig = loadManagedConfig("mobs.yml");
-        this.classesConfig = loadManagedConfig("classes.yml");
-        this.questsConfig = loadManagedConfig("quests.yml");
-        this.skillsConfig = loadManagedConfig("skills.yml");
         this.weaponsConfig = loadManagedConfig("weapons.yml");
         // Lifestyle professions were removed from the active runtime. The field and
         // accessors remain as a compatibility facade for legacy source only; the
         // live professions.yml file is migrated to archive/legacy instead of loaded.
-        this.equipmentOptionsConfig = loadManagedConfig("equipment-options.yml");
         this.itemsConfig = loadManagedConfig("items.yml");
-        this.shopsConfig = loadManagedConfig("shops.yml");
         this.equipmentGrowthConfig = loadManagedConfig("equipment-growth.yml");
         this.enchantsConfig = loadManagedConfig("enchants.yml");
         this.equipmentInputsConfig = loadManagedConfig("equipment-inputs.yml");
         this.craftingConfig = loadManagedConfig("crafting.yml");
-        this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
         this.mythicMobsConfig = loadManagedConfig("mythic-mobs.yml");
-        this.bossesConfig = loadManagedConfig("bosses.yml");
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
-        this.equipmentSupportConfig = loadManagedConfig("equipment-support.yml");
         this.farmingCropsConfig = loadManagedConfig("farming/crops.yml");
         this.farmingGrowthConfig = loadManagedConfig("farming/growth.yml");
         this.farmingHarvestConfig = loadManagedConfig("farming/harvest.yml");
@@ -122,7 +103,6 @@ public final class ConfigService {
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
-        this.alchemyGuiConfig = loadManagedConfig("alchemy/gui.yml");
         // Existing server files are authoritative. Missing defaults are handled by
         // the explicit /rpg migrate command, never during ordinary startup/reload.
     }
@@ -159,13 +139,7 @@ public final class ConfigService {
         return plugin;
     }
 
-    public int getStatsInt(String path, int defaultValue) {
-        return statsConfig.getInt(path, defaultValue);
-    }
 
-    public double getStatsDouble(String path, double defaultValue) {
-        return statsConfig.getDouble(path, defaultValue);
-    }
 
     public int getExpInt(String path, int defaultValue) {
         return expConfig.getInt(path, defaultValue);
@@ -195,38 +169,12 @@ public final class ConfigService {
         return mobsConfig.getBoolean(path, defaultValue);
     }
 
-    public int getClassesInt(String path, int defaultValue) {
-        return classesConfig.getInt(path, defaultValue);
-    }
 
-    public double getClassesDouble(String path, double defaultValue) {
-        return classesConfig.getDouble(path, defaultValue);
-    }
 
-    public String getClassesString(String path, String defaultValue) {
-        return classesConfig.getString(path, defaultValue);
-    }
 
-    public Set<String> getClassesKeys(String path) {
-        ConfigurationSection section = classesConfig.getConfigurationSection(path);
-        return section == null ? Set.of() : section.getKeys(false);
-    }
 
-    public ConfigurationSection getClassesSection(String path) {
-        return classesConfig.getConfigurationSection(path);
-    }
 
-    public void setStatsValue(String path, Object value) {
-        statsConfig.set(path, value);
-    }
 
-    public void saveStatsConfig() {
-        try {
-            statsConfig.save(new File(plugin.getDataFolder(), "stats.yml"));
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save stats.yml", exception);
-        }
-    }
 
     public String getMobsString(String path, String defaultValue) {
         return mobsConfig.getString(path, defaultValue);
@@ -321,37 +269,7 @@ public final class ConfigService {
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
     }
 
-    public boolean getBossesBoolean(String path, boolean defaultValue) {
-        return bossesConfig.getBoolean(path, defaultValue);
-    }
-
-    public int getBossesInt(String path, int defaultValue) {
-        return bossesConfig.getInt(path, defaultValue);
-    }
-
-    public long getBossesLong(String path, long defaultValue) {
-        return bossesConfig.getLong(path, defaultValue);
-    }
-
-    public double getBossesDouble(String path, double defaultValue) {
-        return bossesConfig.getDouble(path, defaultValue);
-    }
-
-    public String getBossesString(String path, String defaultValue) {
-        return bossesConfig.getString(path, defaultValue);
-    }
-
-    public ConfigurationSection getBossesSection(String path) {
-        return bossesConfig.getConfigurationSection(path);
-    }
-
-    public java.util.Set<String> getBossesKeys(String path) {
-        ConfigurationSection section = getBossesSection(path);
-        return section == null ? java.util.Set.of() : section.getKeys(false);
-    }
-
-    public void reloadBossesConfig() {
-        this.bossesConfig = loadManagedConfig("bosses.yml");
+    public void reloadGatewayBossConfig() {
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
     }
 
@@ -368,60 +286,18 @@ public final class ConfigService {
         return gatewayBossConfig.getDouble(path, defaultValue);
     }
 
-    public Set<String> getQuestsKeys(String path) {
-        if (questsConfig.getConfigurationSection(path) == null) {
-            return Set.of();
-        }
-        return questsConfig.getConfigurationSection(path).getKeys(false);
-    }
 
-    public boolean getQuestsBoolean(String path, boolean defaultValue) {
-        return questsConfig.getBoolean(path, defaultValue);
-    }
 
-    public int getQuestsInt(String path, int defaultValue) {
-        return questsConfig.getInt(path, defaultValue);
-    }
 
-    public long getQuestsLong(String path, long defaultValue) {
-        return questsConfig.getLong(path, defaultValue);
-    }
 
-    public String getQuestsString(String path, String defaultValue) {
-        return questsConfig.getString(path, defaultValue);
-    }
 
-    public List<String> getQuestsStringList(String path) {
-        return questsConfig.getStringList(path);
-    }
 
-    public void reloadQuestsConfig() {
-        this.questsConfig = loadManagedConfig("quests.yml");
-    }
 
-    public ConfigurationSection getQuestsSection(String path) {
-        return questsConfig.getConfigurationSection(path);
-    }
 
-    public Set<String> getSkillsKeys(String path) {
-        return getKeys(skillsConfig, path);
-    }
 
-    public ConfigurationSection getSkillsSection(String path) {
-        return skillsConfig.getConfigurationSection(path);
-    }
 
-    public String getSkillsString(String path, String defaultValue) {
-        return skillsConfig.getString(path, defaultValue);
-    }
 
-    public int getSkillsInt(String path, int defaultValue) {
-        return skillsConfig.getInt(path, defaultValue);
-    }
 
-    public double getSkillsDouble(String path, double defaultValue) {
-        return skillsConfig.getDouble(path, defaultValue);
-    }
 
     public Set<String> getWeaponsKeys(String path) {
         return getKeys(weaponsConfig, path);
@@ -467,106 +343,16 @@ public final class ConfigService {
         return getKeys(craftingConfig, path);
     }
 
-    public void setCraftingValue(String path, Object value) {
-        craftingConfig.set(path, value);
-    }
 
-    public boolean saveCraftingConfig() {
-        try {
-            craftingConfig.save(new File(plugin.getDataFolder(), "crafting.yml"));
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to save crafting.yml", exception);
-            return false;
-        }
-    }
+
+
 
     /** Writes a validated layout atomically without mutating the live configuration on failure. */
-    public boolean replaceCraftingLayout(Map<String, Map<String, Integer>> layouts) {
-        File target = new File(plugin.getDataFolder(), "crafting.yml");
-        File temporary = new File(plugin.getDataFolder(), "crafting.yml.tmp");
-        YamlConfiguration candidate = YamlConfiguration.loadConfiguration(target);
-        candidate.set("crafting.layout", null);
-        for (Map.Entry<String, Map<String, Integer>> category : layouts.entrySet()) {
-            String root = "crafting.layout." + category.getKey();
-            for (Map.Entry<String, Integer> entry : category.getValue().entrySet()) {
-                candidate.set(root + "." + entry.getKey(), entry.getValue());
-            }
-        }
-        try {
-            candidate.save(temporary);
-            try {
-                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException exception) {
-                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            this.craftingConfig = candidate;
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to atomically save crafting.yml", exception);
-            if (temporary.exists() && !temporary.delete()) {
-                plugin.getLogger().fine("Unable to remove temporary crafting config: " + temporary);
-            }
-            return false;
-        }
-    }
-
-    public void reloadCraftingConfig() {
+public void reloadCraftingConfig() {
         this.craftingConfig = loadManagedConfig("crafting.yml");
     }
 
-    public Set<String> getProgressionLoopKeys(String path) {
-        return getKeys(progressionLoopConfig, path);
-    }
 
-    public ConfigurationSection getProgressionLoopSection(String path) {
-        return progressionLoopConfig.getConfigurationSection(path);
-    }
-
-    public String getProgressionLoopString(String path, String defaultValue) {
-        return progressionLoopConfig.getString(path, defaultValue);
-    }
-
-    public int getProgressionLoopInt(String path, int defaultValue) {
-        return progressionLoopConfig.getInt(path, defaultValue);
-    }
-
-    public long getProgressionLoopLong(String path, long defaultValue) {
-        return progressionLoopConfig.getLong(path, defaultValue);
-    }
-
-    public double getProgressionLoopDouble(String path, double defaultValue) {
-        return progressionLoopConfig.getDouble(path, defaultValue);
-    }
-
-    public boolean getProgressionLoopBoolean(String path, boolean defaultValue) {
-        return progressionLoopConfig.getBoolean(path, defaultValue);
-    }
-
-    public List<String> getProgressionLoopStringList(String path) {
-        return progressionLoopConfig.getStringList(path);
-    }
-
-    public void reloadProgressionLoopConfig() {
-        this.progressionLoopConfig = loadManagedConfig("progression-loop.yml");
-    }
-
-    public Set<String> getEquipmentOptionsKeys(String path) {
-        return getKeys(equipmentOptionsConfig, path);
-    }
-
-    public ConfigurationSection getEquipmentOptionsSection(String path) {
-        return equipmentOptionsConfig.getConfigurationSection(path);
-    }
-
-    public String getEquipmentOptionsString(String path, String defaultValue) {
-        return equipmentOptionsConfig.getString(path, defaultValue);
-    }
-
-    public double getEquipmentOptionsDouble(String path, double defaultValue) {
-        return equipmentOptionsConfig.getDouble(path, defaultValue);
-    }
 
     public Set<String> getItemsKeys(String path) {
         return getKeys(itemsConfig, path);
@@ -590,56 +376,6 @@ public final class ConfigService {
 
     public double getItemsDouble(String path, double defaultValue) {
         return itemsConfig.getDouble(path, defaultValue);
-    }
-
-    public Set<String> getShopsKeys(String path) {
-        return getKeys(shopsConfig, path);
-    }
-
-    public ConfigurationSection getShopsSection(String path) {
-        return shopsConfig.getConfigurationSection(path);
-    }
-
-    public String getShopsString(String path, String defaultValue) {
-        return shopsConfig.getString(path, defaultValue);
-    }
-
-    public long getShopsLong(String path, long defaultValue) {
-        return shopsConfig.getLong(path, defaultValue);
-    }
-
-    public boolean getShopsBoolean(String path, boolean defaultValue) {
-        return shopsConfig.getBoolean(path, defaultValue);
-    }
-
-    public ItemStack getShopsItemStack(String path) {
-        ItemStack itemStack = shopsConfig.getItemStack(path);
-        return itemStack == null ? null : itemStack.clone();
-    }
-
-    public void setShopsValue(String path, Object value) {
-        shopsConfig.set(path, value);
-    }
-
-    public boolean saveShopsConfig() {
-        File targetFile = new File(plugin.getDataFolder(), "shops.yml");
-        File temporaryFile = new File(plugin.getDataFolder(), "shops.yml.tmp");
-        try {
-            shopsConfig.save(temporaryFile);
-            try {
-                Files.move(temporaryFile.toPath(), targetFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException ignored) {
-                Files.move(temporaryFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            return true;
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save shops.yml", exception);
-            return false;
-        }
-    }
-
-    public void reloadShopsConfig() {
-        this.shopsConfig = loadManagedConfig("shops.yml");
     }
 
     public Set<String> getEquipmentGrowthKeys(String path) {
@@ -708,42 +444,6 @@ public final class ConfigService {
 
     public void reloadSpecialEquipmentConfig() {
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
-    }
-
-    public Set<String> getEquipmentSupportKeys(String path) {
-        return getKeys(equipmentSupportConfig, path);
-    }
-
-    public ConfigurationSection getEquipmentSupportSection(String path) {
-        return equipmentSupportConfig.getConfigurationSection(path);
-    }
-
-    public String getEquipmentSupportString(String path, String defaultValue) {
-        return equipmentSupportConfig.getString(path, defaultValue);
-    }
-
-    public int getEquipmentSupportInt(String path, int defaultValue) {
-        return equipmentSupportConfig.getInt(path, defaultValue);
-    }
-
-    public long getEquipmentSupportLong(String path, long defaultValue) {
-        return equipmentSupportConfig.getLong(path, defaultValue);
-    }
-
-    public double getEquipmentSupportDouble(String path, double defaultValue) {
-        return equipmentSupportConfig.getDouble(path, defaultValue);
-    }
-
-    public boolean getEquipmentSupportBoolean(String path, boolean defaultValue) {
-        return equipmentSupportConfig.getBoolean(path, defaultValue);
-    }
-
-    public List<String> getEquipmentSupportStringList(String path) {
-        return equipmentSupportConfig.getStringList(path);
-    }
-
-    public void reloadEquipmentSupportConfig() {
-        this.equipmentSupportConfig = loadManagedConfig("equipment-support.yml");
     }
 
     public ConfigurationSection getFarmingCropsSection(String path) {
@@ -1071,7 +771,6 @@ public final class ConfigService {
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
-        this.alchemyGuiConfig = loadManagedConfig("alchemy/gui.yml");
     }
 
     public ConfigurationSection getAlchemyAbundanceSection(String path) { return alchemyAbundanceConfig.getConfigurationSection(path); }
@@ -1123,8 +822,6 @@ public final class ConfigService {
         return canonicalMaterial;
     }
 
-    public ConfigurationSection getAlchemyGuiSection(String path) { return alchemyGuiConfig.getConfigurationSection(path); }
-    public boolean getAlchemyGuiBoolean(String path, boolean fallback) { return alchemyGuiConfig.getBoolean(path, fallback); }
 
     public double getFarmingHoeEnhancementDouble(String path, double defaultValue) {
         return farmingHoeEnhancementConfig.getDouble(path, defaultValue);
@@ -1319,41 +1016,6 @@ public final class ConfigService {
             plugin.getLogger().info("Removed disabled custom mob entries from " + resourceName + ".");
         } catch (IOException exception) {
             plugin.getLogger().log(Level.WARNING, "Failed to remove disabled custom mob entries from " + resourceName, exception);
-        }
-    }
-
-    private void migrateBossRewards(FileConfiguration configuration) {
-        ConfigurationSection sessions = configuration.getConfigurationSection("boss-sessions");
-        if (sessions == null) return;
-        boolean changed = false;
-        for (String bossId : sessions.getKeys(false)) {
-            ConfigurationSection boss = sessions.getConfigurationSection(bossId);
-            if (boss == null) continue;
-            ConfigurationSection rewards = boss.getConfigurationSection("rewards");
-            ConfigurationSection first = boss.getConfigurationSection("first-clear-rewards");
-            if (rewards == null && first != null) {
-                copySection(configuration, first, "boss-sessions." + bossId + ".rewards");
-                changed = true;
-            }
-            if (boss.isSet("first-clear-rewards")) {
-                boss.set("first-clear-rewards", null);
-                changed = true;
-            }
-            if (boss.isSet("repeat-rewards")) {
-                boss.set("repeat-rewards", null);
-                changed = true;
-            }
-            if (!boss.isSet("respawn-cooldown-seconds")) {
-                boss.set("respawn-cooldown-seconds", bossId.equalsIgnoreCase("ender-dragon") ? 1800 : 900);
-                changed = true;
-            }
-        }
-        if (!changed) return;
-        try {
-            configuration.save(new File(plugin.getDataFolder(), "bosses.yml"));
-            plugin.getLogger().info("Migrated boss rewards to fixed rewards and added respawn cooldown settings.");
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.WARNING, "Failed to migrate bosses.yml", exception);
         }
     }
 

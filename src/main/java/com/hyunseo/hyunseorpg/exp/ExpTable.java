@@ -29,34 +29,10 @@ public final class ExpTable {
         return Math.max(1, configService.getExpInt("base-level.max-level", 100));
     }
 
-    public int getStatPointsPerBaseLevel() {
-        return Math.max(0, configService.getExpInt("base-level.stat-points-per-level", 1));
-    }
 
-    public long getRequiredExpForNextClassLevel(int currentLevel) {
-        int safeLevel = Math.max(1, currentLevel);
-        long configuredValue = configService.getExpLong("class-exp-required." + safeLevel, -1L);
-        if (configuredValue > 0L) {
-            return configuredValue;
-        }
-        return 20L + (long) safeLevel * 10L;
-    }
 
-    public int getMaxClassLevel() {
-        return Math.max(1, configService.getExpInt("class-level.max-level", 100));
-    }
 
-    public int getSkillPointsPerClassLevel() {
-        return Math.max(0, configService.getExpInt("class-level.skill-points-per-level", 1));
-    }
 
-    public int getClassStatPointsPerClassLevel() {
-        return Math.max(0, configService.getExpInt("class-level.class-stat-points-per-level", 1));
-    }
-
-    public boolean shouldSyncVanillaExpBar() {
-        return configService.getExpBoolean("base-level.sync-vanilla-exp-bar", true);
-    }
 
     private long scaled(long value) {
         double multiplier = configService.getExpDouble("base-level.required-exp-multiplier", 1.0D);

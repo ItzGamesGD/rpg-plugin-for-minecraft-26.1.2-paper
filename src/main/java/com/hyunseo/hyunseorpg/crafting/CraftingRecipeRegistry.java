@@ -222,13 +222,10 @@ public final class CraftingRecipeRegistry {
         String configured = normalize(explicit);
         if (!configured.isBlank()) return canonicalCategoryId(configured);
 
-        // Category membership is data-driven. Any category declared in the YAML can
-        // claim a recipe without requiring a Java enum or a recipe-specific branch.
+        // Legacy category lists are read only as a compatibility fallback. New
+        // definitions declare their category directly on the physical recipe.
         for (String category : configuredCategoryIds()) {
             if (config.getCraftingStringList("crafting.categories." + category).stream()
-                    .anyMatch(value -> value.equalsIgnoreCase(recipeId))) return category;
-            ConfigurationSection layout = config.getCraftingSection("crafting.layout." + category);
-            if (layout != null && layout.getKeys(false).stream()
                     .anyMatch(value -> value.equalsIgnoreCase(recipeId))) return category;
         }
 
@@ -246,12 +243,9 @@ public final class CraftingRecipeRegistry {
     }
 
     private List<String> configuredCategoryIds() {
-        java.util.LinkedHashSet<String> categories = new java.util.LinkedHashSet<>();
-        categories.addAll(config.getCraftingKeys("crafting.menu-categories").stream().map(this::normalize).toList());
-        categories.addAll(config.getCraftingKeys("crafting.layout").stream().map(this::normalize).toList());
-        categories.addAll(config.getCraftingKeys("crafting.categories").stream().map(this::normalize).toList());
-        categories.remove("");
-        return List.copyOf(categories);
+        return java.util.Arrays.stream(CraftingCategory.values())
+                .map(CraftingCategory::configId)
+                .toList();
     }
 
     private String canonicalCategoryId(String rawCategory) {

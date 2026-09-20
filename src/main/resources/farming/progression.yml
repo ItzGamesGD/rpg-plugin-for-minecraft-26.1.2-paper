@@ -3,14 +3,12 @@ enabled: true
 
 promotion:
   # Farming promotion is separate from the ordinary equipment star system.
-  # It consumes no coins and always succeeds after all conditions are met.
   skilled:
     minimum-tier: iron
     required-enhancement: 10
     required-valid-harvests: 1
     required-crop-item-id: crop_corn
     required-crop-amount: 1
-    required-magic-stone-amount: 1
     unlock-crop: onion
   proficient:
     minimum-tier: diamond
@@ -18,7 +16,6 @@ promotion:
     required-valid-harvests: 2
     required-crop-item-id: crop_onion
     required-crop-amount: 1
-    required-magic-stone-amount: 2
     unlock-crop: chili
   advanced:
     minimum-tier: netherite
@@ -26,7 +23,6 @@ promotion:
     required-valid-harvests: 4
     required-crop-item-id: crop_chili
     required-crop-amount: 1
-    required-magic-stone-amount: 4
     unlock-crop: garlic
   expert:
     minimum-tier: netherite
@@ -34,5 +30,4 @@ promotion:
     required-valid-harvests: 8
     required-crop-item-id: crop_garlic
     required-crop-amount: 1
-    required-magic-stone-amount: 8
     unlock-crop: ''

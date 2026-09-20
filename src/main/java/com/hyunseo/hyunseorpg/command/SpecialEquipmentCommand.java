@@ -2,7 +2,6 @@ package com.hyunseo.hyunseorpg.command;
 
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentData;
 import com.hyunseo.hyunseorpg.special.SpecialEquipmentService;
-import com.hyunseo.hyunseorpg.special.SpecialEquipmentMenuService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -20,25 +19,17 @@ import java.util.Locale;
 /** Admin and test entry point for the YAML-defined special equipment system. */
 public final class SpecialEquipmentCommand implements CommandExecutor, TabCompleter {
     private final SpecialEquipmentService service;
-    private final SpecialEquipmentMenuService menu;
-
-    public SpecialEquipmentCommand(SpecialEquipmentService service, SpecialEquipmentMenuService menu) {
+    public SpecialEquipmentCommand(SpecialEquipmentService service) {
         this.service = service;
-        this.menu = menu;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("/specialequipment <menu|list|info|give|unlock|soul|craft|debug>", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/specialequipment <list|info|give|unlock|soul|debug>", NamedTextColor.YELLOW));
             return true;
         }
         String action = args[0].toLowerCase(Locale.ROOT);
-        if (action.equals("menu")) {
-            if (sender instanceof Player player) menu.open(player);
-            else sender.sendMessage(Component.text("This action requires a player.", NamedTextColor.RED));
-            return true;
-        }
         if (action.equals("list")) {
             sender.sendMessage(Component.text("Special equipment: " + service.registry().getAll().stream().map(SpecialEquipmentData::id).toList(), NamedTextColor.AQUA));
             return true;
@@ -46,7 +37,6 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
         if (action.equals("info")) return info(sender, args);
         if (action.equals("give")) return give(sender, args);
         if (action.equals("unlock")) return unlock(sender, args);
-        if (action.equals("craft")) return craft(sender, args);
         if (action.equals("soul")) return soul(sender, args);
         if (action.equals("debug")) return debug(sender, args);
         sender.sendMessage(Component.text("Unknown special equipment action.", NamedTextColor.RED));
@@ -109,19 +99,6 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
         return true;
     }
 
-    private boolean craft(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This action requires a player.", NamedTextColor.RED));
-            return true;
-        }
-        if (args.length < 2) {
-            player.sendMessage(Component.text("/specialequipment craft <equipmentId>", NamedTextColor.YELLOW));
-            return true;
-        }
-        service.craft(player, args[1]);
-        return true;
-    }
-
     private boolean soul(CommandSender sender, String[] args) {
         if (!sender.hasPermission("hyunseorpg.special.admin")) return denied(sender);
         if (args.length < 4) {
@@ -174,8 +151,8 @@ public final class SpecialEquipmentCommand implements CommandExecutor, TabComple
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return prefix(List.of("menu", "list", "info", "give", "unlock", "soul", "craft", "debug"), args[0]);
-        if (args.length == 2 && (args[0].equalsIgnoreCase("info") || args[0].equalsIgnoreCase("craft"))) {
+        if (args.length == 1) return prefix(List.of("list", "info", "give", "unlock", "soul", "debug"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
             return prefix(service.registry().getAll().stream().map(SpecialEquipmentData::id).toList(), args[1]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("unlock"))) return onlinePlayers(args[1]);

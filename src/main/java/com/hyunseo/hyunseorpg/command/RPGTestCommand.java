@@ -1,11 +1,7 @@
 package com.hyunseo.hyunseorpg.command;
 
-import com.hyunseo.hyunseorpg.boss.BossSessionManager;
-import com.hyunseo.hyunseorpg.boss.BossType;
 import com.hyunseo.hyunseorpg.core.config.RPGReloadService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentData;
 import com.hyunseo.hyunseorpg.equipment.EquipmentDefinition;
 import com.hyunseo.hyunseorpg.equipment.EquipmentMetadataService;
@@ -35,36 +31,30 @@ import java.util.Random;
 
 public final class RPGTestCommand implements CommandExecutor, TabCompleter {
     private static final String PERMISSION = "hyunseorpg.admin.test";
-    private final CoinService coins;
     private final RPGItemRegistry itemRegistry;
     private final RPGItemService items;
     private final SoulboundItemService soulbound;
     private final WeaponItemService weapons;
     private final EquipmentEnhancementService enhancement;
-    private final EquipmentPromotionService promotion;
     private final EquipmentMetadataService equipmentMetadata;
     private final EquipmentRegistry equipmentRegistry;
-    private final BossSessionManager bosses;
     private final RPGReloadService reload;
     private final GatewayPrototypeService gatewayPrototype;
     private final ThousandEyesController thousandEyes;
 
-    public RPGTestCommand(CoinService coins, RPGItemRegistry itemRegistry, RPGItemService items,
+    public RPGTestCommand(RPGItemRegistry itemRegistry, RPGItemService items,
                           SoulboundItemService soulbound, WeaponItemService weapons,
-                          EquipmentEnhancementService enhancement, EquipmentPromotionService promotion,
-                          BossSessionManager bosses, RPGReloadService reload,
+                          EquipmentEnhancementService enhancement,
+                          RPGReloadService reload,
                           EquipmentMetadataService equipmentMetadata, EquipmentRegistry equipmentRegistry,
                           GatewayPrototypeService gatewayPrototype, ThousandEyesController thousandEyes) {
-        this.coins = coins;
         this.itemRegistry = itemRegistry;
         this.items = items;
         this.soulbound = soulbound;
         this.weapons = weapons;
         this.enhancement = enhancement;
-        this.promotion = promotion;
         this.equipmentMetadata = equipmentMetadata;
         this.equipmentRegistry = equipmentRegistry;
-        this.bosses = bosses;
         this.reload = reload;
         this.gatewayPrototype = gatewayPrototype;
         this.thousandEyes = thousandEyes;
@@ -76,12 +66,8 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         if (args.length == 0) { usage(sender, label); return true; }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "give", "item" -> give(sender, args, label);
-            case "coins" -> adjustCoins(sender, args, false, label);
-            case "setcoins" -> adjustCoins(sender, args, true, label);
             case "hand", "inspect" -> inspect(sender, args);
             case "maxhand", "maxgrowth" -> maxHand(sender, args);
-            case "option-roll" -> optionRoll(sender, args);
-            case "boss" -> boss(sender, args, label);
             case "gateway" -> gateway(sender, args, label);
             case "basic-swarm" -> basicSwarm(sender, args, label);
             case "orbital-core" -> orbitalCore(sender, args);
@@ -194,17 +180,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(target.getName() + "에게 " + args[2] + " x" + amount + " 지급 완료");
     }
 
-    private void adjustCoins(CommandSender sender, String[] args, boolean set, String label) {
-        if (args.length < 3) { sender.sendMessage("/" + label + " " + (set ? "setcoins" : "coins") + " <player> <amount>"); return; }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        try {
-            long amount = Long.parseLong(args[2]);
-            if (target == null || amount < 0) throw new NumberFormatException();
-            if (set) coins.setCoins(target, amount); else coins.addCoins(target, amount);
-            sender.sendMessage("코인 처리 완료: " + coins.getCoins(target));
-        } catch (NumberFormatException exception) { sender.sendMessage("플레이어 또는 수량이 올바르지 않습니다."); }
-    }
-
     private void inspect(CommandSender sender, String[] args) {
         Player target = args.length > 1 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player player ? player : null;
         if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
@@ -215,18 +190,13 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
             if (definition != null) sender.sendMessage("equipment-definition=" + definition);
         });
         if (item.getType().isAir()) { sender.sendMessage("주손 장비가 없습니다."); return; }
-        sender.sendMessage("강화=" + enhancement.getLevel(item) + " 승급=" + promotion.getStage(item)
-                + " 인챈트 슬롯=" + promotion.getUnlockedEnchantSlots(item));
-        sender.sendMessage("일반 옵션=" + promotion.getGeneralOptions(item));
-        sender.sendMessage("특수 옵션=" + promotion.getSpecialOptions(item));
+        sender.sendMessage("강화=" + enhancement.getLevel(item));
     }
 
     private String formatEquipmentData(EquipmentData data) {
         return "equipment-data=id=" + data.itemId()
                 + ",type=" + data.equipmentType()
-                + ",grade=" + data.grade().value()
                 + ",upgrade=" + data.upgradeLevel()
-                + ",promotion=" + data.promotionLevel()
                 + ",enchants=" + data.enchantData()
                 + ",kills=" + data.killCount()
                 + ",data-version=" + data.dataVersion();
@@ -238,71 +208,10 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         ItemStack item = target.getInventory().getItemInMainHand();
         if (item.getType().isAir()) { sender.sendMessage("Main hand is empty."); return; }
 
-        int promotionsApplied = 0;
-        for (int attempts = 0; attempts < 64; attempts++) {
-            enhancement.forceEnhancementLevel(item, enhancement.getMaximumLevel(item));
-            var preview = promotion.preview(item);
-            if (preview.isEmpty()) break;
-            promotion.apply(item, preview.get());
-            promotionsApplied++;
-        }
         int finalEnhancement = enhancement.forceEnhancementLevel(item, enhancement.getMaximumLevel(item));
         target.getInventory().setItemInMainHand(item);
         sender.sendMessage("main-hand max growth applied: player=" + target.getName()
-                + ", enhancement=+" + finalEnhancement
-                + ", promotion=" + promotion.getStage(item)
-                + ", promotions-applied=" + promotionsApplied
-                + ", enchant-slots=" + promotion.getUnlockedEnchantSlots(item));
-        sender.sendMessage("general-options=" + promotion.getGeneralOptions(item));
-        sender.sendMessage("special-options=" + promotion.getSpecialOptions(item));
-    }
-
-    private void optionRoll(CommandSender sender, String[] args) {
-        if (args.length < 2) {
-            sender.sendMessage("/rpgtest option-roll <optionId> [count]");
-            return;
-        }
-        int count = 1000;
-        if (args.length >= 3) {
-            try { count = Math.max(1, Math.min(100_000, Integer.parseInt(args[2]))); }
-            catch (NumberFormatException exception) { sender.sendMessage("count는 숫자여야 합니다."); return; }
-        }
-        var definition = promotion.getOptionDefinition(args[1]).orElse(null);
-        if (definition == null || !definition.promotionEligible()) {
-            sender.sendMessage("승급 수치형 옵션을 찾을 수 없습니다: " + args[1]);
-            return;
-        }
-        Random random = new Random(0x48595250474CL);
-        int lower = 0, upper = 0, minimum = 0, maximum = 0;
-        double sum = 0.0D;
-        for (int index = 0; index < count; index++) {
-            double value = promotion.simulateFirstOptionRoll(definition.id(), random).orElseThrow();
-            sum += value;
-            if (Math.abs(value - definition.minimum()) < 0.000001D) minimum++;
-            if (Math.abs(value - definition.maximum()) < 0.000001D) maximum++;
-            if (value <= definition.minimum() + (definition.maximum() - definition.minimum()) * 0.5D) lower++;
-            else upper++;
-        }
-        sender.sendMessage("option-roll simulation: " + definition.id() + " count=" + count);
-        sender.sendMessage("range=" + definition.minimum() + ".." + definition.maximum()
-                + " step=" + definition.step() + " average=" + (sum / count));
-        sender.sendMessage("lower-half=" + lower + " upper-half=" + upper
-                + " minimum=" + minimum + " maximum=" + maximum);
-    }
-
-    private void boss(CommandSender sender, String[] args, String label) {
-        if (args.length < 3) { sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]"); return; }
-        BossType type = BossType.fromInput(args[2]).orElse(null);
-        if (type == null) { sender.sendMessage("보스 종류는 wither 또는 dragon입니다."); return; }
-        Player target = args.length > 3 ? Bukkit.getPlayerExact(args[3]) : sender instanceof Player player ? player : null;
-        if (target == null) { sender.sendMessage("플레이어를 찾을 수 없습니다."); return; }
-        switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "start" -> sender.sendMessage("보스 세션 시작: " + bosses.startTest(target, type));
-            case "end" -> sender.sendMessage("보스 세션 종료: " + bosses.endFor(target, type));
-            case "complete" -> sender.sendMessage("보스 강제 완료: " + bosses.forceComplete(target, type));
-            case "status" -> sender.sendMessage(type.configId() + ": " + bosses.status(type));
-            default -> sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
-        }
+                + ", enhancement=+" + finalEnhancement);
     }
 
     private ItemStack createItem(String rawId) {
@@ -316,20 +225,17 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
 
     private void usage(CommandSender sender, String label) {
         sender.sendMessage("/" + label + " give <player> <itemId> [amount]");
-        sender.sendMessage("/" + label + " coins|setcoins <player> <amount>");
         sender.sendMessage("/" + label + " maxhand [player]");
-        sender.sendMessage("/" + label + " option-roll <optionId> [count]");
-        sender.sendMessage("/" + label + " boss <start|end|complete|status> <wither|dragon> [player]");
         sender.sendMessage("/" + label + " gateway <boss|cycle|payload|reflection|placement|pairing|weapon-ai|cancel> [type] [debug]");
         sender.sendMessage("/" + label + " basic-swarm <random|pattern <name> [count]>");
         sender.sendMessage("/" + label + " orbital-core [1-4|cancel]");
         sender.sendMessage("/" + label + " thousand-eyes <spawn|remove|central-laser|gateway-burst|scatter-lasers|path-dash> [seed]");
-        sender.sendMessage("/" + label + " reload [all|bosses|recipes|mobs]");
+        sender.sendMessage("/" + label + " reload [all|gateway-boss|recipes|mobs]");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return filter(List.of("give", "coins", "setcoins", "hand", "inspect", "maxhand", "maxgrowth", "option-roll", "boss", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
+        if (args.length == 1) return filter(List.of("give", "hand", "inspect", "maxhand", "maxgrowth", "gateway", "basic-swarm", "orbital-core", "thousand-eyes", "reload"), args[0]);
         if (args.length == 2 && args[0].equalsIgnoreCase("orbital-core")) return filter(List.of("1", "2", "3", "4", "cancel"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("gateway")) return filter(List.of("boss", "cycle", "payload", "reflection", "placement", "pairing", "weapon-ai", "cancel"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("gateway") && args[1].equalsIgnoreCase("payload")) return filter(java.util.Arrays.stream(GatewayPayloadType.values()).map(Enum::name).toList(), args[2]);
@@ -337,9 +243,6 @@ public final class RPGTestCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("basic-swarm")) return filter(List.of("random", "pattern"), args[1]);
         if (args.length == 3 && args[0].equalsIgnoreCase("basic-swarm") && args[1].equalsIgnoreCase("pattern")) return filter(java.util.Arrays.stream(BasicWeaponPattern.values()).map(Enum::name).toList(), args[2]);
         if (args.length == 2 && args[0].equalsIgnoreCase("thousand-eyes")) return filter(List.of("spawn", "remove", "central-laser", "gateway-burst", "scatter-lasers", "path-dash"), args[1]);
-        if (args.length == 2 && args[0].equalsIgnoreCase("boss")) return filter(List.of("start", "end", "complete", "status"), args[1]);
-        if (args.length == 3 && args[0].equalsIgnoreCase("boss")) return filter(List.of("wither", "dragon"), args[2]);
-        if (args.length == 4 && args[0].equalsIgnoreCase("boss")) return filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[3]);
         if (args.length == 2 && args[0].equalsIgnoreCase("reload")) return filter(List.of(reload.ids()), args[1]);
         if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("hand")
                 || args[0].equalsIgnoreCase("inspect") || args[0].equalsIgnoreCase("maxhand")

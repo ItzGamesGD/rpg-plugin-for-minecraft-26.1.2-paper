@@ -42,7 +42,6 @@ class FarmingStage8EssenceTokenTest {
         assertEquals(essence.getLong("required-abundance-points"),
                 crafting.getLong("crafting-recipes.abundance_essence.required-abundance-points"));
         assertFalse(crafting.isSet("crafting-recipes.abundance_essence.inputs"));
-        assertTrue(crafting.isSet("crafting.layout.materials.abundance_essence"));
     }
 
     @Test

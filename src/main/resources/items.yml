@@ -11,7 +11,7 @@ items:
   potion_bleed: { material: POTION, display-name: "출혈 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_vulnerability: { material: POTION, display-name: "취약 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_necrosis: { material: POTION, display-name: "괴사 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
-  abundance_essence: { material: AMETHYST_SHARD, display-name: "풍요의 정수", category: FARMING_ESSENCE, rarity: LEGENDARY, tags: [farming-essence, "farming:abundance_essence", non-sellable, alchemy-catalyst], lore: ["후반 농사 합성 재료입니다.", "상점에 판매할 수 없습니다."] }
+  abundance_essence: { material: AMETHYST_SHARD, display-name: "풍요의 정수", category: FARMING_ESSENCE, rarity: LEGENDARY, tags: [farming-essence, "farming:abundance_essence", non-sellable, alchemy-catalyst], lore: ["후반 농사 합성 재료입니다.", "후속 제작에 사용하는 실제 아이템입니다."] }
   vitality_stat_token: { material: HEART_OF_THE_SEA, display-name: "생명의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
   satiety_stat_token: { material: COOKIE, display-name: "포만의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
   abundance_stat_token: { material: SUNFLOWER, display-name: "풍요의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
@@ -74,23 +74,10 @@ items:
   processed_garlic_concentrate_proficient: { material: WHEAT, display-name: "마늘 농축액 - 중급", category: FARMING_PROCESSED, rarity: RARE, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 중급"] }
   processed_garlic_concentrate_advanced: { material: WHEAT, display-name: "마늘 농축액 - 고급", category: FARMING_PROCESSED, rarity: EPIC, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 고급"] }
   processed_garlic_concentrate_supreme: { material: WHEAT, display-name: "마늘 농축액 - 최고급", category: FARMING_PROCESSED, rarity: LEGENDARY, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed, farming-supreme-material], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 최고급"] }
-  enchant_extraction_ticket: { material: PAPER, display-name: "인챈트 추출권", category: SUPPORT, rarity: EPIC, custom-model-data: 23601, lore: ["장비에서 선택한 커스텀 인챈트를 추출합니다.", "장비 성장 메뉴에서 사용합니다."] }
-  promotion_option_reroll_ticket: { material: PAPER, display-name: "승급 옵션 초기화권", category: SUPPORT, rarity: EPIC, custom-model-data: 23602, lore: ["장비의 선택한 승급 옵션을 다시 결정합니다.", "현재 수치보다 낮아지지 않습니다."] }
   enchant_book_axe_heavy_strike: { material: ENCHANTED_BOOK, display-name: "강타 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22126, lore: ["도끼에 강타를 부여합니다."] }
   enchant_book_titans_wrath: { material: ENCHANTED_BOOK, display-name: "타이탄의 분노 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22127, lore: ["도끼에 타이탄의 분노를 부여합니다."] }
-  enchant_book_protection: { material: ENCHANTED_BOOK, display-name: "보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22130, lore: ["방어구에 보호를 부여합니다."] }
-  enchant_book_fire_protection: { material: ENCHANTED_BOOK, display-name: "화염 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22131, lore: ["방어구에 화염 보호를 부여합니다."] }
-  enchant_book_blast_protection: { material: ENCHANTED_BOOK, display-name: "폭발 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22132, lore: ["방어구에 폭발 보호를 부여합니다."] }
-  enchant_book_projectile_protection: { material: ENCHANTED_BOOK, display-name: "투사체 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22133, lore: ["방어구에 투사체 보호를 부여합니다."] }
   enchant_book_skill_protection: { material: ENCHANTED_BOOK, display-name: "기술 보호 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22134, lore: ["방어구에 기술 보호를 부여합니다."] }
-  enchant_book_thorns: { material: ENCHANTED_BOOK, display-name: "가시 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22135, lore: ["방어구에 가시를 부여합니다."] }
   enchant_book_rolling_landing: { material: ENCHANTED_BOOK, display-name: "구르기 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22136, lore: ["부츠에 구르기를 부여합니다."] }
-  enchant_book_respiration: { material: ENCHANTED_BOOK, display-name: "호흡 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22137, lore: ["투구에 호흡을 부여합니다."] }
-  enchant_book_aqua_affinity: { material: ENCHANTED_BOOK, display-name: "친수성 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22138, lore: ["투구에 친수성을 부여합니다."] }
-  enchant_book_swift_sneak: { material: ENCHANTED_BOOK, display-name: "신속한 잠행 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22139, lore: ["레깅스에 신속한 잠행을 부여합니다."] }
-  enchant_book_depth_strider: { material: ENCHANTED_BOOK, display-name: "물갈퀴 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22140, lore: ["부츠에 물갈퀴를 부여합니다."] }
-  enchant_book_soul_speed: { material: ENCHANTED_BOOK, display-name: "영혼 가속 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22141, lore: ["부츠에 영혼 가속을 부여합니다."] }
-  enchant_book_frost_walker: { material: ENCHANTED_BOOK, display-name: "얼음 걸음 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22142, lore: ["부츠에 얼음 걸음을 부여합니다."] }
   enchant_book_wind_arrow: { material: ENCHANTED_BOOK, display-name: "바람 화살 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22144, lore: ["활에 바람 화살을 부여합니다."] }
   enchant_book_crossbow_barrage: { material: ENCHANTED_BOOK, display-name: "연발 사격 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22145, lore: ["쇠뇌에 연발 사격을 부여합니다."] }
   enchant_book_fire_arrow_rain: { material: ENCHANTED_BOOK, display-name: "불화살 비 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22155, lore: ["활에 불화살 비를 부여합니다."] }
@@ -118,95 +105,42 @@ items:
   elite_zombie_core: { material: ECHO_SHARD, display-name: "엘리트 좀비 코어", category: MATERIAL, custom-model-data: 22002 }
   forest_fang: { material: BONE, display-name: "숲 늑대 송곳니", category: MATERIAL, custom-model-data: 22003 }
   guard_bone: { material: BONE, display-name: "경비병의 뼈", category: MATERIAL, custom-model-data: 22004 }
-  skeleton_king_sigil: { material: PAPER, display-name: "스켈레톤 킹 인장", category: QUEST, rarity: EPIC, custom-model-data: 22005 }
   basic_upgrade_stone: { material: AMETHYST_SHARD, display-name: "기본 강화석", category: ENHANCEMENT, custom-model-data: 22100 }
-  basic_upgrade_fragment:
-    material: IRON_NUGGET
-    display-name: "강화석 파편"
-    category: ENHANCEMENT_MATERIAL
-    custom-model-data: 22103
-    lore: ["10개를 모아 강화석으로 제작합니다.", "모루 > 강화에서 강화석을 사용합니다."]
-  basic_promotion_stone: { material: PRISMARINE_CRYSTALS, display-name: "기본 승급석", category: ENHANCEMENT, custom-model-data: 22101 }
-  magic_stone:
-    material: AMETHYST_BLOCK
-    display-name: "마석"
-    category: ENCHANTMENT
-    rarity: RARE
-    custom-model-data: 22102
-    lore: ["인챈트 북 구매에 사용하는 재화"]
-  magic_stone_fragment:
-    material: AMETHYST_SHARD
-    display-name: "마석 파편"
-    category: ENCHANTMENT_MATERIAL
-    rarity: COMMON
-    custom-model-data: 22104
-    lore: ["여러 개를 모아 마석으로 제작할 수 있습니다.", "Shift + F > 제작 메뉴에서 사용처를 확인하세요."]
-  wither_core:
-    material: NETHER_STAR
-    display-name: "위더의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24001
-  wither_fragment:
-    material: NETHER_STAR
-    display-name: "위더 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24002
-  dragon_core:
-    material: DRAGON_BREATH
-    display-name: "드래곤의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24003
-  dragon_fragment:
-    material: DRAGON_BREATH
-    display-name: "드래곤 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24004
   enchant_book_blade_throw:
     material: ENCHANTED_BOOK
     display-name: "검 투척 인챈트 북"
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22110
-    lore: ["검 장비에 장착하여 검 투척을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 검 투척을 사용합니다."]
   enchant_book_light_greatsword:
     material: ENCHANTED_BOOK
     display-name: "빛의 대검 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22111
-    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다."]
   enchant_book_laser_arrow:
     material: ENCHANTED_BOOK
     display-name: "레이저 화살 인챈트 북"
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22112
-    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
-  enchant_book_durability_save_pickaxe:
-    material: ENCHANTED_BOOK
-    display-name: "곡괭이 보존 인챈트 북"
-    category: ENCHANTMENT
-    rarity: RARE
-    custom-model-data: 22120
-    lore: ["곡괭이의 내구도 감소를 완화하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다."]
   enchant_book_mining_bonus_drop:
     material: ENCHANTED_BOOK
     display-name: "광맥 추가 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22121
-    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   enchant_book_area_mining_pickaxe:
     material: ENCHANTED_BOOK
     display-name: "광역 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22122
-    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   fire_sword: { material: GOLDEN_SWORD, display-name: "불타는 검", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23401, lore: ["불 원소의 기본 장비"] }
   fire_bow: { material: BOW, display-name: "불타는 활", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23402, lore: ["불 원소의 기본 장비"] }
   fireball: { material: FIRE_CHARGE, display-name: "파이어볼", category: ELEMENTAL_CONSUMABLE, custom-model-data: 23403, lore: ["불 원소 소비 아이템"] }

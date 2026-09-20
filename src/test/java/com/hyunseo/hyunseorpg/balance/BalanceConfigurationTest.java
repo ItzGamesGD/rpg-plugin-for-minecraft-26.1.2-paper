@@ -18,16 +18,12 @@ final class BalanceConfigurationTest {
     }
 
     @Test
-    void canonicalMagicStoneRecipeUsesNineFragments() {
+    void upgradeStoneRecipeUsesMinecraftResources() {
         YamlConfiguration crafting = load("crafting.yml");
-        assertEquals(9, crafting.getInt("crafting-recipes.magic_stone_from_fragments.inputs.magic_stone_fragment"));
-        assertEquals("magic_stone", crafting.getString(
-                "crafting-recipes.magic_stone_from_fragments.output.item-id"));
-        assertEquals(1, crafting.getInt(
-                "crafting-recipes.magic_stone_from_fragments.output.amount"));
-        assertTrue(crafting.getStringList("crafting.categories.materials")
-                .contains("magic_stone_from_fragments"));
-        assertEquals(19, crafting.getInt("crafting.layout.materials.magic_stone_from_fragments"));
+        assertEquals(1, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:DIAMOND"));
+        assertEquals(4, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:REDSTONE"));
+        assertEquals(4, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:LAPIS_LAZULI"));
+        assertEquals("basic_upgrade_stone", crafting.getString("crafting-recipes.basic_upgrade_stone.output.item-id"));
     }
 
     private YamlConfiguration load(String fileName) {

@@ -231,20 +231,6 @@ public final class MobService {
         return Math.max(0L, (long) configService.getMobsInt("reward.rpg-class-exp", 3) * level);
     }
 
-    public long getCoinReward(LivingEntity entity) {
-        Optional<MobData> mobData = getMobData(entity);
-        if (mobData.isPresent() && mobData.get().coinReward() > 0L) {
-            return mobData.get().coinReward();
-        }
-        if (!isRpgMob(entity)) {
-            return Math.max(0L, configService.getMobsInt("reward.normal-coins", 0));
-        }
-
-        int level = Math.max(1, mobTagService.getMobLevel(entity));
-        long baseCoins = Math.max(0L, configService.getMobsInt("reward.rpg-coin-base", 1));
-        double coinsPerLevel = Math.max(0.0D, configService.getMobsDouble("reward.rpg-coin-per-level", 0.5D));
-        return Math.max(0L, baseCoins + Math.round(coinsPerLevel * level));
-    }
 
     public boolean isRewardableMob(LivingEntity entity) {
         return isManageableRpgCandidate(entity);

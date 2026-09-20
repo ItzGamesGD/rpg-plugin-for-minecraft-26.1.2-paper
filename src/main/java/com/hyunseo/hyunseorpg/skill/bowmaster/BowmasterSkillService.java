@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.skill.bowmaster;
 
-import com.hyunseo.hyunseorpg.classsystem.ClassStatService;
 import com.hyunseo.hyunseorpg.weapon.WeaponService;
 import com.hyunseo.hyunseorpg.weapon.WeaponType;
 import com.hyunseo.hyunseorpg.combat.CombatService;
@@ -44,7 +43,6 @@ public final class BowmasterSkillService implements Listener {
     private final ConfigService configService;
     private final WeaponService weaponService;
     private final CombatService combatService;
-    private final ClassStatService classStatService;
     private final Map<UUID, Integer> pendingFireArrowLevelByPlayer = new ConcurrentHashMap<>();
     private final Set<BukkitTask> tasks = ConcurrentHashMap.newKeySet();
     private final Set<BlockDisplay> beamDisplays = ConcurrentHashMap.newKeySet();
@@ -54,14 +52,12 @@ public final class BowmasterSkillService implements Listener {
             JavaPlugin plugin,
             ConfigService configService,
             WeaponService weaponService,
-            CombatService combatService,
-            ClassStatService classStatService
+            CombatService combatService
     ) {
         this.plugin = plugin;
         this.configService = configService;
         this.weaponService = weaponService;
         this.combatService = combatService;
-        this.classStatService = classStatService;
     }
 
     public void prepareFireArrow(Player player, int skillLevel) {
@@ -81,7 +77,7 @@ public final class BowmasterSkillService implements Listener {
         }
 
         double range = configService.getDouble("bowmaster.laser-arrow.range", 100.0D)
-                + classStatService.getClassStatBonus(player, "laser_arrow", "laser_range");
+                + 0.0D;
         double radius = configService.getDouble("bowmaster.laser-arrow.hitbox-radius", 2.0D);
         long visualTicks = Math.max(1L, configService.getLong("bowmaster.laser-arrow.visual-ticks", 6L));
         double damage = configService.getDouble(
@@ -166,7 +162,7 @@ public final class BowmasterSkillService implements Listener {
         return true;
     }
 
-    /** Performs the geometry-only check before SkillService consumes mana or starts cooldown. */
+    /** Performs the geometry-only check before the standalone enchant handler starts its cooldown. */
     public boolean canCastArrowRain(Player player) {
         if (!configService.getBoolean("bowmaster.arrow-rain.enabled", true)) return false;
         double range = configService.getDouble("bowmaster.arrow-rain.target-range", 40.0D);

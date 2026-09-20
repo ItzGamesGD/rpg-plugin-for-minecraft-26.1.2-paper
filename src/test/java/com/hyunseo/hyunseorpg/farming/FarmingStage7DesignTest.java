@@ -27,13 +27,10 @@ class FarmingStage7DesignTest {
                 assertTrue(crafting.isConfigurationSection("crafting-recipes." + id), id);
                 assertEquals("materials", crafting.getString("crafting-recipes." + id + ".category"));
                 assertEquals(1, crafting.getInt("crafting-recipes." + id + ".output.amount"));
-                assertTrue(crafting.isSet("crafting.layout.materials." + id), id);
                 assertTrue(crafting.getString("crafting-recipes." + id + ".output.item-id", "")
                         .startsWith("processed_"));
             }
         }
-        assertFalse(crafting.isConfigurationSection("crafting.menu-categories.cooking"));
-        assertFalse(crafting.isConfigurationSection("crafting.layout.cooking"));
     }
 
     @Test

@@ -53,7 +53,7 @@ public final class FarmingEssenceService {
     }
 
     public boolean isSellable() {
-        // This is a policy boundary, not an operator-controlled shop switch.
+        // This is a policy boundary, not an operator-controlled economy switch.
         return false;
     }
 

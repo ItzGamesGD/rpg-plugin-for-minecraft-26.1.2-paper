@@ -47,11 +47,11 @@ public final class ConfigMigrationService {
                     List.of("도끼에 연쇄 벌목을 부여합니다."))
     );
     private static final List<String> MANAGED_FILES = List.of(
-            "config.yml", "stats.yml", "exp.yml", "classes.yml", "skills.yml", "weapons.yml",
-            "items.yml", "shops.yml", "crafting.yml", "equipment-growth.yml",
-            "equipment-options.yml", "equipment-inputs.yml", "enchants.yml",
-            "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "bosses.yml", "hunting-grounds.yml",
-            "progression-loop.yml", "quests.yml", "worlds.yml", "special-equipment.yml", "equipment-support.yml"
+            "config.yml", "exp.yml", "weapons.yml",
+            "items.yml", "crafting.yml", "equipment-growth.yml",
+            "equipment-inputs.yml", "enchants.yml",
+            "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "hunting-grounds.yml",
+            "worlds.yml", "special-equipment.yml"
     );
     private static final List<String> FARMING_FILES = List.of(
             "farming/crops.yml", "farming/growth.yml", "farming/harvest.yml",
@@ -61,7 +61,7 @@ public final class ConfigMigrationService {
     private static final List<String> ALCHEMY_FILES = List.of(
             "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
             "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
-            "alchemy/catalysts.yml", "alchemy/gui.yml");
+            "alchemy/catalysts.yml");
     private static final List<String> EXPLORATION_FILES = List.of("exploration/structures.yml");
     private static final List<String> OFFICIAL_EXPLORATION_MOB_IDS = List.of(
             "golden_bulwark", "mire_shaman", "shield_raider", "crossbow_raider",
@@ -127,7 +127,6 @@ public final class ConfigMigrationService {
             if (archiveLegacy && !normalized.equals("all")) {
                 migrateItems(lines, changedFiles);
                 migrateLegacyProfessionRecipes(lines, changedFiles);
-                migrateLegacyProfessionShops(lines, changedFiles);
             }
             if (!List.of("configs", "items", "mobs", "players", "farming", "alchemy", "exploration", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
@@ -173,17 +172,11 @@ public final class ConfigMigrationService {
         migrateItems(lines, changedFiles);
         migrateEnchants(lines, changedFiles);
         migrateSpecialEquipment(lines, changedFiles);
-        migrateEquipmentSupport(lines, changedFiles);
         migrateEquipmentGrowth(lines, changedFiles);
-        migrateProgression(lines, changedFiles);
-        migrateQuests(lines, changedFiles);
         migrateLegacyProfessionRecipes(lines, changedFiles);
-        migrateLegacyProfessionShops(lines, changedFiles);
-            migrateCraftingAmounts(lines, changedFiles);
-            migrateShopAmounts(lines, changedFiles);
-            migrateEconomyAndEnchantPolicy(lines, changedFiles);
-            migrateVanillaStacking(lines, changedFiles);
-        migrateBossElementalAndPersistence(lines, changedFiles);
+        migrateCraftingAmounts(lines, changedFiles);
+        migrateVanillaStacking(lines, changedFiles);
+        migrateMobAndPersistence(lines, changedFiles);
         migrateLegacyItemReferences(lines, changedFiles);
         migrateRetiredSpecialRecipes(lines, changedFiles);
     }
@@ -243,7 +236,6 @@ public final class ConfigMigrationService {
         migrateHoeGrowthDesign(lines, changedFiles);
         migrateFarmingCrafting(lines, changedFiles);
         migrateFarmingItemReferences(lines, changedFiles);
-        migrateFarmingShop(lines, changedFiles);
         migrateKoreanDisplayText(lines, changedFiles);
     }
 
@@ -280,7 +272,6 @@ public final class ConfigMigrationService {
             if (fileName.equals("alchemy/potions.yml") && copyMissingTree(target, defaults, "potions")) changed = true;
             if (fileName.equals("alchemy/recipes.yml") && copyMissingTree(target, defaults, "recipes")) changed = true;
             if (fileName.equals("alchemy/catalysts.yml") && copyMissingTree(target, defaults, "catalysts")) changed = true;
-            if (fileName.equals("alchemy/gui.yml") && copyMissingTree(target, defaults, "gui")) changed = true;
             if (fileName.equals("alchemy/effects.yml")
                     && target.getInt("effects.effect_shock.baseline.tick-interval", 0) == 80) {
                 target.set("effects.effect_shock.baseline.tick-interval", 320);
@@ -610,7 +601,6 @@ public final class ConfigMigrationService {
         activateEntries("alchemy/effects.yml", "effects", effects, "status", "IMPLEMENTED_RUNTIME", lines, changedFiles);
         activateEntries("alchemy/potions.yml", "potions", potions, "enabled", true, lines, changedFiles);
         activateEntries("alchemy/recipes.yml", "recipes", potions, "enabled", true, lines, changedFiles);
-        activateEntries("alchemy/gui.yml", "", List.of(), "enabled", true, lines, changedFiles);
         List<String> catalysts = List.of("redstone", "glowstone_dust", "gunpowder", "dragon_breath",
                 "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge");
         activateEntries("alchemy/catalysts.yml", "catalysts", catalysts, "enabled", true, lines, changedFiles);
@@ -742,32 +732,6 @@ public final class ConfigMigrationService {
             }
         }
 
-        FileConfiguration shops = loadLive("shops.yml");
-        if (shops != null && shops.isSet("shops.farming.title")
-                && !"농사".equals(shops.getString("shops.farming.title", ""))) {
-            shops.set("shops.farming.title", "농사");
-            lines.add("shops.yml: localized farming shop title");
-            mark(shops, "shops.yml", changedFiles, lines, "farming shop localization staged");
-        }
-
-        FileConfiguration crafting = loadLive("crafting.yml");
-        FileConfiguration craftingDefaults = loadResource("crafting.yml");
-        if (crafting != null && craftingDefaults != null) {
-            boolean changed = false;
-            for (String category : List.of("materials", "equipment", "special", "consumables")) {
-                String path = "crafting.menu-categories." + category + ".display-name";
-                String display = craftingDefaults.getString(path, "");
-                if (!display.isBlank() && !display.equals(crafting.getString(path, ""))) {
-                    crafting.set(path, display);
-                    changed = true;
-                }
-            }
-            if (changed) {
-                lines.add("crafting.yml: localized canonical crafting category names");
-                mark(crafting, "crafting.yml", changedFiles, lines, "crafting localization staged");
-            }
-        }
-
         FileConfiguration quality = loadLive("farming/quality.yml");
         FileConfiguration qualityDefaults = loadResource("farming/quality.yml");
         if (quality != null && qualityDefaults != null) {
@@ -863,20 +827,12 @@ public final class ConfigMigrationService {
         }
     }
 
-    /**
-     * Adds only bundled farming processing recipes and their saved layout
-     * positions. Existing operator recipes, slots, and category lists win.
-     */
+    /** Adds only bundled farming processing recipes to the canonical recipe registry. */
     private void migrateFarmingCrafting(List<String> lines, List<File> changedFiles) {
         String fileName = "crafting.yml";
         FileConfiguration target = loadLive(fileName);
         FileConfiguration defaults = loadResource(fileName);
         if (target == null || defaults == null) return;
-
-        if (copyMissingTree(target, defaults, "crafting.menu-categories")) {
-            lines.add(fileName + ": added missing data-driven crafting menu categories");
-            mark(target, fileName, changedFiles, lines, "crafting category definitions staged");
-        }
 
         ConfigurationSection defaultRecipes = defaults.getConfigurationSection("crafting-recipes");
         if (defaultRecipes == null) return;
@@ -949,23 +905,6 @@ public final class ConfigMigrationService {
                     "abundance essence point recipe staged");
         }
 
-        ConfigurationSection defaultLayout = defaults.getConfigurationSection("crafting.layout");
-        if (defaultLayout == null) return;
-        for (String rawCategory : defaultLayout.getKeys(false)) {
-            ConfigurationSection category = defaultLayout.getConfigurationSection(rawCategory);
-            if (category == null) continue;
-            String categoryId = normalize(rawCategory);
-            for (String rawRecipeId : category.getKeys(false)) {
-                String recipeId = normalize(rawRecipeId);
-                if (!farmingRecipeIds.contains(recipeId)) continue;
-                String targetPath = "crafting.layout." + categoryId + "." + rawRecipeId;
-                if (target.isSet(targetPath)) continue;
-                target.set(targetPath, category.get(rawRecipeId));
-                lines.add(fileName + ": added farming layout entry " + categoryId + "/" + recipeId);
-                mark(target, fileName, changedFiles, lines, "farming layout staged");
-            }
-        }
-
         List<String> categories = target.getStringList("crafting.categories.materials");
         boolean categoryListChanged = false;
         for (String id : farmingRecipeIds) {
@@ -979,74 +918,10 @@ public final class ConfigMigrationService {
             lines.add(fileName + ": added farming processing recipes to materials category fallback");
             mark(target, fileName, changedFiles, lines, "farming category fallback staged");
         }
-        migrateMissingCraftingLayouts(target, defaults, lines, changedFiles);
     }
 
     /** Restores missing bundled positions without moving or rewriting operator placements. */
-    private void migrateMissingCraftingLayouts(FileConfiguration target, FileConfiguration defaults,
-                                               List<String> lines, List<File> changedFiles) {
-        ConfigurationSection defaultLayout = defaults.getConfigurationSection("crafting.layout");
-        ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
-        if (defaultLayout == null || recipes == null) return;
-
-        Set<String> placedRecipes = new HashSet<>();
-        ConfigurationSection currentLayout = target.getConfigurationSection("crafting.layout");
-        if (currentLayout != null) {
-            for (String category : currentLayout.getKeys(false)) {
-                ConfigurationSection entries = currentLayout.getConfigurationSection(category);
-                if (entries != null) {
-                    for (String recipeId : entries.getKeys(false)) placedRecipes.add(normalize(recipeId));
-                }
-            }
-        }
-
-        boolean changed = false;
-        for (String rawCategory : defaultLayout.getKeys(false)) {
-            ConfigurationSection defaultsForCategory = defaultLayout.getConfigurationSection(rawCategory);
-            if (defaultsForCategory == null) continue;
-            String category = normalize(rawCategory);
-            Set<Integer> occupied = occupiedSlots(target, category);
-            for (String rawRecipeId : defaultsForCategory.getKeys(false)) {
-                String recipeId = normalize(rawRecipeId);
-                ConfigurationSection recipe = recipes.getConfigurationSection(rawRecipeId);
-                if (recipe == null || !recipe.getBoolean("enabled", true) || placedRecipes.contains(recipeId)) continue;
-                Object rawPosition = defaultsForCategory.get(rawRecipeId);
-                int position = rawPosition instanceof Number number && number.intValue() >= 0
-                        ? number.intValue() : (occupied.stream().max(Integer::compareTo).orElse(-1) + 1);
-                while (occupied.contains(position)) position++;
-                target.set("crafting.layout." + category + "." + rawRecipeId, position);
-                occupied.add(position);
-                placedRecipes.add(recipeId);
-                changed = true;
-                lines.add("crafting.yml: restored missing canonical layout entry "
-                        + category + "/" + recipeId + " at slot " + position);
-
-                String listPath = "crafting.categories." + category;
-                if (target.isSet(listPath)) {
-                    List<String> categoryRecipes = new ArrayList<>(target.getStringList(listPath));
-                    if (categoryRecipes.stream().noneMatch(value -> normalize(value).equals(recipeId))) {
-                        categoryRecipes.add(recipeId);
-                        target.set(listPath, categoryRecipes);
-                    }
-                }
-            }
-        }
-        if (changed) mark(target, "crafting.yml", changedFiles, lines,
-                "missing active crafting layout entries restored");
-    }
-
-    private Set<Integer> occupiedSlots(FileConfiguration target, String category) {
-        Set<Integer> occupied = new HashSet<>();
-        ConfigurationSection entries = target.getConfigurationSection("crafting.layout." + category);
-        if (entries == null) return occupied;
-        for (String recipeId : entries.getKeys(false)) {
-            Object raw = entries.get(recipeId);
-            if (raw instanceof Number number && number.intValue() >= 0) occupied.add(number.intValue());
-        }
-        return occupied;
-    }
-
-    private void migrateFarmingItemReferences(List<String> lines, List<File> changedFiles) {
+private void migrateFarmingItemReferences(List<String> lines, List<File> changedFiles) {
         FileConfiguration items = loadLive("items.yml");
         FileConfiguration defaults = loadResource("items.yml");
         FileConfiguration crops = loadLive("farming/crops.yml");
@@ -1126,35 +1001,7 @@ public final class ConfigMigrationService {
         }
     }
 
-    private void migrateFarmingShop(List<String> lines, List<File> changedFiles) {
-        FileConfiguration target = loadLive("shops.yml");
-        FileConfiguration defaults = loadResource("shops.yml");
-        if (target == null || defaults == null || !defaults.isConfigurationSection("shops.farming")) return;
-        if (copyMissingTree(target, defaults, "shops.farming")) {
-            lines.add("shops.yml: added missing farming shop entries");
-            mark(target, "shops.yml", changedFiles, lines, "farming shop migration staged");
-        }
-    }
-
-    private void migrateBossElementalAndPersistence(List<String> lines, List<File> changedFiles) {
-        FileConfiguration boss = loadLive("bosses.yml");
-        FileConfiguration bossDefaults = loadResource("bosses.yml");
-        if (boss != null && bossDefaults != null) {
-            boolean changed = false;
-            for (String path : List.of("boss-sessions.wither.rewards.progress-min-contribution-ratio",
-                    "boss-sessions.ender-dragon.rewards.progress-min-contribution-ratio",
-                    "boss-sessions.ender-dragon.contribution")) {
-                if (!boss.isSet(path) && bossDefaults.isSet(path)) {
-                    copyTree(boss, bossDefaults, path);
-                    changed = true;
-                }
-            }
-            if (changed) {
-                lines.add("bosses.yml: added contribution and fixed-total reward settings");
-                mark(boss, "bosses.yml", changedFiles, lines, "boss contribution migration staged");
-            }
-        }
-
+    private void migrateMobAndPersistence(List<String> lines, List<File> changedFiles) {
         migrateMobDefinitions(lines, changedFiles);
 
         FileConfiguration spawns = loadLive("monster-spawns.yml");
@@ -1214,33 +1061,6 @@ public final class ConfigMigrationService {
         if (changed) mark(mobs, "mobs.yml", changedFiles, lines, "custom mob migration staged");
     }
 
-    private void migrateEquipmentSupport(List<String> lines, List<File> changedFiles) {
-        String fileName = "equipment-support.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        boolean changed = copyMissingTree(target, defaults, "extraction")
-                | copyMissingTree(target, defaults, "promotion-option-reroll")
-                | copyMissingTree(target, defaults, "future-features");
-        if (changed) {
-            lines.add(fileName + ": added support extraction/reroll settings");
-            mark(target, fileName, changedFiles, lines, "equipment support migration staged");
-        }
-        migrateSupportShop(lines, changedFiles);
-    }
-
-    private void migrateSupportShop(List<String> lines, List<File> changedFiles) {
-        String fileName = "shops.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        if (!target.isConfigurationSection("shops.equipment_support")) {
-            copyTree(target, defaults, "shops.equipment_support");
-            lines.add(fileName + ": added equipment_support shop");
-            mark(target, fileName, changedFiles, lines, "equipment support shop migration staged");
-        }
-    }
-
     private void migrateVanillaStacking(List<String> lines, List<File> changedFiles) {
         String fileName = "config.yml";
         FileConfiguration target = loadLive(fileName);
@@ -1250,45 +1070,6 @@ public final class ConfigMigrationService {
             copyTree(target, defaults, "vanilla-stacking");
             mark(target, fileName, changedFiles, lines, "added vanilla-stacking settings");
         }
-    }
-
-    private void migrateQuests(List<String> lines, List<File> changedFiles) {
-        String fileName = "quests.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        boolean changed = false;
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
-            changed = true;
-        }
-        if (!target.isConfigurationSection("auto") && defaults.isConfigurationSection("auto")) {
-            copyTree(target, defaults, "auto");
-            lines.add("quests.yml: added automatic quest settings");
-            changed = true;
-        }
-        if (target.isConfigurationSection("auto") && defaults.isConfigurationSection("auto")) {
-            for (String path : List.of("auto.generation", "auto.eligibility", "auto.exclusions", "auto.rewards")) {
-                if (!target.isConfigurationSection(path) && defaults.isConfigurationSection(path)) {
-                    copyTree(target, defaults, path);
-                    lines.add("quests.yml: added " + path + " settings");
-                    changed = true;
-                }
-            }
-            if (!target.isConfigurationSection("auto.types") && defaults.isConfigurationSection("auto.types")) {
-                target.set("auto.legacy-types", target.getStringList("auto.types"));
-                target.set("auto.types", null);
-                copyTree(target, defaults, "auto.types");
-                lines.add("quests.yml: migrated legacy auto.types list to weighted type settings");
-                changed = true;
-            }
-        }
-        if (target.getInt("schema-version", 0) < 2) {
-            target.set("schema-version", 2);
-            lines.add("quests.yml: schema-version -> 2");
-            changed = true;
-        }
-        if (changed) mark(target, fileName, changedFiles, lines, "quest migration staged");
     }
 
     private void describeLegacyArchive(List<String> lines) {
@@ -1308,8 +1089,7 @@ public final class ConfigMigrationService {
         File dataFolder = plugin.getDataFolder();
         File canonical = new File(dataFolder, "equipment-growth.yml");
         FileConfiguration growth = canonical.isFile() ? YamlConfiguration.loadConfiguration(canonical) : null;
-        if (growth == null || !growth.isConfigurationSection("enhancement")
-                || !growth.isConfigurationSection("promotion")) {
+        if (growth == null || !growth.isConfigurationSection("enhancement")) {
             throw new IOException("Cannot archive legacy growth files before equipment-growth.yml is complete");
         }
 
@@ -1396,9 +1176,9 @@ public final class ConfigMigrationService {
     }
 
     private void migrateLegacyItemReferences(List<String> lines, List<File> changedFiles) {
-        Map<String, String> aliases = Map.of("upgrade_stone_fragment", "basic_upgrade_fragment");
-        for (String fileName : List.of("mythic-mobs.yml", "mobs.yml", "crafting.yml", "progression-loop.yml",
-                "shops.yml", "equipment-growth.yml", "enchants.yml", "equipment-support.yml")) {
+        Map<String, String> aliases = Map.of();
+        for (String fileName : List.of("mythic-mobs.yml", "mobs.yml", "crafting.yml",
+                "equipment-growth.yml", "enchants.yml")) {
             FileConfiguration target = loadLive(fileName);
             if (target == null) continue;
             int replacements = replaceLegacyValues(target, aliases);
@@ -1436,18 +1216,6 @@ public final class ConfigMigrationService {
                 target.set(path, values);
                 lines.add("crafting.yml: removed retired special recipes from " + path);
                 changed = true;
-            }
-        }
-        ConfigurationSection layout = target.getConfigurationSection("crafting.layout");
-        if (layout != null) {
-            for (String category : layout.getKeys(false)) {
-                ConfigurationSection slots = layout.getConfigurationSection(category);
-                if (slots == null) continue;
-                for (String rawId : new ArrayList<>(slots.getKeys(false))) {
-                    if (!RETIRED_SPECIAL_ITEM_IDS.contains(normalize(rawId))) continue;
-                    slots.set(rawId, null);
-                    changed = true;
-                }
             }
         }
         if (changed) mark(target, "crafting.yml", changedFiles, lines, "retired special recipes removed");
@@ -1571,11 +1339,14 @@ public final class ConfigMigrationService {
                 | removeRetiredEnchantDefinitions(target, lines)
                 | migrateLegacyEnchantDefaults(target, lines)
                 | migrateEnchantLore(target, defaults, lines)
-                | copyMissingTree(target, defaults, "enchant-slots")
                 | copyMissingTree(target, defaults, "enchants")
                 | copyMissingTree(target, defaults, "enchant-lore");
+        if (target.isSet("enchant-slots")) {
+            target.set("enchant-slots", null);
+            changed = true;
+        }
         if (changed) {
-            lines.add("enchants.yml: reconciled enchant definitions and slot settings");
+            lines.add("enchants.yml: reconciled native enchant definitions");
             mark(target, fileName, changedFiles, lines, "enchant content migration staged");
         }
     }
@@ -1593,9 +1364,21 @@ public final class ConfigMigrationService {
         changed |= migrateDefinitionAlias(target, defaults, "area_mining_pickaxe", "area_excavation",
                 List.of("handler-id", "book-item-id", "executor-id", "equipment-category", "material-patterns",
                         "source-scope", "triggers", "input", "legacy-aliases"), lines);
-        changed |= migrateDefinitionAlias(target, defaults, "durability_save_pickaxe", "unbreaking",
-                List.of("handler-id", "book-item-id", "executor-id", "source-scope", "triggers", "input",
-                        "legacy-aliases"), lines);
+        if (target.isConfigurationSection("enchants.durability_save_pickaxe")) {
+            target.set("enchants.durability_save_pickaxe", null);
+            lines.add("enchants.yml: retired vanilla duplicate durability_save_pickaxe");
+            changed = true;
+        }
+        for (String retired : List.of("protection", "fire_protection", "blast_protection",
+                "projectile_protection", "thorns", "respiration", "aqua_affinity", "swift_sneak",
+                "depth_strider", "soul_speed", "frost_walker", "unbreaking")) {
+            if (target.isConfigurationSection("enchants." + retired)) {
+                target.set("enchants." + retired, null);
+                target.set("enchant-lore." + retired, null);
+                lines.add("enchants.yml: retired vanilla duplicate " + retired);
+                changed = true;
+            }
+        }
 
         if (target.isConfigurationSection("enchants.mining_bonus_drop")
                 && !"content".equalsIgnoreCase(target.getString("enchants.mining_bonus_drop.handler-id", ""))) {
@@ -1710,16 +1493,6 @@ public final class ConfigMigrationService {
             lines.add("enchants.yml: consolidated blade_chain to one F input");
             changed = true;
         }
-        if (target.getInt("enchant-slots.baseline.FISHING_ROD", 0) == 1) {
-            target.set("enchant-slots.baseline.FISHING_ROD", 2);
-            lines.add("enchants.yml: expanded fishing rod enchant slots from 1 to 2");
-            changed = true;
-        }
-        if (target.getInt("enchant-slots.baseline.ELYTRA", 0) == 1) {
-            target.set("enchant-slots.baseline.ELYTRA", 2);
-            lines.add("enchants.yml: expanded elytra enchant slots from 1 to 2");
-            changed = true;
-        }
         ConfigurationSection speeds = target.getConfigurationSection("enchants.precision_flight.settings.hotbar-speed");
         if (speeds != null && speeds.isSet("0")) {
             List<Object> values = new ArrayList<>();
@@ -1777,8 +1550,6 @@ public final class ConfigMigrationService {
         FileConfiguration defaults = loadResource(fileName);
         if (target == null || defaults == null) return;
         boolean changed = copyMissingTree(target, defaults, "special-equipment");
-        FileConfiguration growthDefaults = loadResource("equipment-growth.yml");
-        changed |= normalizeSpecialPromotionPools(target, defaults, growthDefaults, lines);
         changed |= normalizeSpecialGrowthPolicy(target, lines);
         if (changed) {
             lines.add("special-equipment.yml: added missing special equipment settings");
@@ -1797,12 +1568,12 @@ public final class ConfigMigrationService {
                 growth = target.createSection(root + ".growth");
                 changed = true;
             }
-            if (!Boolean.FALSE.equals(growth.get("enhancement-enabled"))) {
-                growth.set("enhancement-enabled", false);
+            if (growth.isSet("enhancement-enabled")) {
+                growth.set("enhancement-enabled", null);
                 changed = true;
             }
-            if (!Boolean.FALSE.equals(growth.get("promotion-enabled"))) {
-                growth.set("promotion-enabled", false);
+            if (growth.isSet("promotion-enabled")) {
+                growth.set("promotion-enabled", null);
                 changed = true;
             }
             if (!Boolean.TRUE.equals(growth.get("unbreakable"))) {
@@ -1817,13 +1588,15 @@ public final class ConfigMigrationService {
                 growth.set("allow-promotion", null);
                 changed = true;
             }
-            String promotion = root + ".promotion";
-            String futurePromotion = root + ".future-promotion";
-            if (target.isConfigurationSection(promotion) && !target.isSet(futurePromotion)) {
-                target.set(futurePromotion, target.get(promotion));
-                target.set(promotion, null);
-                lines.add("special-equipment.yml: moved inactive promotion settings for " + id
-                        + " to future-promotion");
+            for (String retired : List.of("promotion", "future-promotion", "grade")) {
+                String path = root + "." + retired;
+                if (target.isSet(path)) {
+                    target.set(path, null);
+                    changed = true;
+                }
+            }
+            if (growth.isSet("custom-enchant-slots")) {
+                growth.set("custom-enchant-slots", null);
                 changed = true;
             }
         }
@@ -1855,23 +1628,15 @@ public final class ConfigMigrationService {
                 "added axe combat enhancement profile");
         changed |= mergeMissingListValues(target, defaults, "enhancement.profiles.tool.materials", lines,
                 "added missing tool enhancement materials");
-        changed |= migrateGrowthProfile(target, defaults, "promotion.option-definitions", lines,
-                "added promotion option definitions and eligibility flags");
-        changed |= migrateGrowthProfile(target, defaults, "option-roll", lines,
-                "added weighted promotion option roll settings");
-        for (String profile : List.of("pickaxe", "shovel", "hoe", "axe", "crossbow")) {
-            changed |= migrateGrowthProfile(target, defaults, "promotion.profiles." + profile, lines,
-                    "added promotion profile " + profile);
+        if (target.isSet("promotion") || target.isSet("option-roll")) {
+            target.set("promotion", null);
+            target.set("option-roll", null);
+            lines.add("equipment-growth.yml: removed retired equipment promotion configuration");
+            changed = true;
         }
-        changed |= normalizePromotionPools(target, defaults, lines);
-        changed |= migrateGrowthProfile(target, defaults, "promotion.grades", lines,
-                "added promotion enhancement requirement settings");
-        changed |= migrateGrowthProfile(target, defaults, "promotion.slot-unlocks", lines,
-                "added promotion enchant-slot unlock settings");
-        changed |= normalizeEnhancementMaxLevel(target, defaults, lines);
-        changed |= normalizeEnhancementCostCurve(target, defaults, lines);
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
+        changed |= migrateStageTwoAnvilEnhancement(target, defaults, lines);
+        if (target.getInt("schema-version", 0) < 2) {
+            target.set("schema-version", 2);
             changed = true;
         }
         if (changed) mark(target, fileName, changedFiles, lines, "equipment growth profile migration staged");
@@ -1903,229 +1668,32 @@ public final class ConfigMigrationService {
         return true;
     }
 
-    private boolean normalizePromotionPools(FileConfiguration target, FileConfiguration defaults,
-                                             List<String> lines) {
-        ConfigurationSection definitions = defaults.getConfigurationSection("promotion.option-definitions");
-        ConfigurationSection profiles = target.getConfigurationSection("promotion.profiles");
-        if (definitions == null || profiles == null) return false;
-        Set<String> blocked = definitions.getKeys(false).stream()
-                .filter(id -> !definitions.getBoolean(id + ".promotion-eligible", true))
-                .map(ConfigMigrationService::normalize)
-                .collect(java.util.stream.Collectors.toSet());
-        boolean changed = false;
-        for (String profile : profiles.getKeys(false)) {
-            for (String pool : List.of("general-option-pool", "special-option-pool")) {
-                String path = "promotion.profiles." + profile + "." + pool;
-                List<String> current = new ArrayList<>(target.getStringList(path));
-                if (current.isEmpty()) continue;
-                List<String> normalized = new ArrayList<>();
-                for (String raw : current) {
-                    String value = normalize(raw);
-                    if (blocked.contains(value)) continue;
-                    if ((profile.equalsIgnoreCase("bow") || profile.equalsIgnoreCase("crossbow"))
-                            && pool.equals("general-option-pool") && value.equals("attack-damage")) {
-                        value = "projectile-damage";
-                    }
-                    if (!normalized.contains(value)) normalized.add(value);
-                }
-                List<String> defaultsForPool = defaults.getStringList("promotion.profiles." + profile + "." + pool);
-                for (String raw : defaultsForPool) {
-                    String value = normalize(raw);
-                    if (!blocked.contains(value) && !normalized.contains(value)) normalized.add(value);
-                }
-                if (!normalized.equals(current)) {
-                    target.set(path, normalized);
-                    lines.add("equipment-growth.yml: normalized promotion option pool " + profile + "/" + pool);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
 
-    private boolean normalizeEnhancementMaxLevel(FileConfiguration target, FileConfiguration defaults,
-                                                  List<String> lines) {
-        int canonical = Math.max(1, defaults.getInt("enhancement.max-level", 50));
-        boolean changed = false;
-        if (target.getInt("enhancement.max-level", canonical) != canonical) {
-            target.set("enhancement.max-level", canonical);
-            lines.add("equipment-growth.yml: normalized enhancement.max-level -> " + canonical);
-            changed = true;
-        }
-        ConfigurationSection definitions = defaults.getConfigurationSection("tiers.definitions");
-        if (definitions != null) {
-            for (String tier : definitions.getKeys(false)) {
-                String path = "tiers.definitions." + tier + ".max-enhancement";
-                int expected = defaults.getInt(path, canonical);
-                if (target.getInt(path, expected) != expected) {
-                    target.set(path, expected);
-                    lines.add("equipment-growth.yml: normalized " + path + " -> " + expected);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
 
-    private boolean normalizeEnhancementCostCurve(FileConfiguration target, FileConfiguration defaults,
-                                                   List<String> lines) {
-        ConfigurationSection targetCurve = target.getConfigurationSection("enhancement.cost-curve");
-        ConfigurationSection defaultCurve = defaults.getConfigurationSection("enhancement.cost-curve");
-        if (targetCurve == null || defaultCurve == null) return false;
-        boolean malformed = targetCurve.getKeys(false).stream()
-                .anyMatch(key -> targetCurve.isConfigurationSection(key));
-        boolean missingFinalPoint = targetCurve.getKeys(false).stream()
-                .noneMatch(key -> Math.abs(parseDouble(key) - 1.0D) < 0.000001D);
-        if (!malformed && !missingFinalPoint) return false;
-        target.set("enhancement.cost-curve", null);
-        copyTree(target, defaults, "enhancement.cost-curve");
-        lines.add("equipment-growth.yml: normalized enhancement cost curve");
-        return true;
-    }
-
-    private boolean normalizeSpecialPromotionPools(FileConfiguration target, FileConfiguration defaults,
-                                                    FileConfiguration growthDefaults, List<String> lines) {
-        ConfigurationSection definitions = growthDefaults == null
-                ? null : growthDefaults.getConfigurationSection("promotion.option-definitions");
-        ConfigurationSection items = target.getConfigurationSection("special-equipment.items");
-        if (definitions == null || items == null) return false;
-        Set<String> blocked = definitions.getKeys(false).stream()
-                .filter(id -> !definitions.getBoolean(id + ".promotion-eligible", true))
-                .map(ConfigMigrationService::normalize)
-                .collect(java.util.stream.Collectors.toSet());
+    private boolean migrateStageTwoAnvilEnhancement(FileConfiguration target, FileConfiguration defaults,
+                                                     List<String> lines) {
         boolean changed = false;
-        for (String itemId : items.getKeys(false)) {
-            for (String pool : List.of("general-option-pool", "special-option-pool")) {
-                String path = "special-equipment.items." + itemId + ".promotion.options." + pool;
-                List<String> current = new ArrayList<>(target.getStringList(path));
-                if (current.isEmpty()) continue;
-                List<String> normalized = current.stream().map(ConfigMigrationService::normalize)
-                        .filter(value -> !blocked.contains(value)).distinct().collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-                List<String> defaultsForPool = defaults.getStringList(
-                        "special-equipment.items." + itemId + ".promotion.options." + pool);
-                for (String raw : defaultsForPool) {
-                    String value = normalize(raw);
-                    if (!blocked.contains(value) && !normalized.contains(value)) normalized.add(value);
-                }
-                if (!normalized.equals(current)) {
-                    target.set(path, normalized);
-                    lines.add("special-equipment.yml: normalized promotion option pool " + itemId + "/" + pool);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
-
-    private void migrateProgression(List<String> lines, List<File> changedFiles) {
-        String fileName = "progression-loop.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        boolean changed = false;
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
-            changed = true;
-        }
-        if (defaults.isConfigurationSection("stages")
-                && copyMissingTree(target, defaults, "stages")) {
-            lines.add("progression-loop.yml: restored missing canonical stage definitions");
-            changed = true;
-        }
-        if (!target.isConfigurationSection("stages.boss") && defaults.isConfigurationSection("stages.boss")) {
-            copyTree(target, defaults, "stages.boss");
-            lines.add("progression-loop.yml: added boss stage");
-            changed = true;
-        }
-        for (String root : List.of("stages.activity", "stages.crafting", "sources")) {
-            if (!target.isConfigurationSection(root) && defaults.isConfigurationSection(root)) {
-                copyTree(target, defaults, root);
-                lines.add("progression-loop.yml: added canonical loop section " + root);
+        for (String path : List.of("enhancement.caps", "enhancement.elemental-item-ids",
+                "enhancement.xp-level-cost")) {
+            if (!target.isSet(path) && defaults.isSet(path)) {
+                if (defaults.isConfigurationSection(path)) copyTree(target, defaults, path);
+                else target.set(path, defaults.get(path));
                 changed = true;
             }
         }
-        if (target.isConfigurationSection("stages.dungeon")) {
-            target.set("stages.dungeon", null);
-            lines.add("progression-loop.yml: removed legacy dungeon stage");
-            changed = true;
-        }
-        if (target.isConfigurationSection("stages.hunting_ground")) {
-            target.set("stages.hunting_ground", null);
-            lines.add("progression-loop.yml: removed legacy hunting-ground stage");
-            changed = true;
-        }
-        ConfigurationSection stages = target.getConfigurationSection("stages");
-        if (stages != null) {
-            for (String stage : stages.getKeys(false)) {
-                List<String> next = new ArrayList<>(target.getStringList("stages." + stage + ".next"));
-                if (next.removeIf(value -> value.equalsIgnoreCase("dungeon")
-                        || value.equalsIgnoreCase("hunting_ground"))) {
-                    if (stage.equalsIgnoreCase("enhancement")
-                            && !next.stream().anyMatch(value -> value.equalsIgnoreCase("boss"))) next.add("boss");
-                    target.set("stages." + stage + ".next", next);
-                    lines.add("progression-loop.yml: removed deprecated next stage from " + stage);
-                    changed = true;
-                }
+        for (String legacy : List.of("enhancement.start-chance", "enhancement.final-chance",
+                "enhancement.fail-bonus", "enhancement.maximum-chance", "enhancement.initial-cost",
+                "enhancement.cost-curve")) {
+            if (target.isSet(legacy)) {
+                target.set(legacy, null);
+                changed = true;
             }
         }
-        List<Map<?, ?>> shopOutputs = target.getMapList("stages.shop.outputs");
-        List<Map<?, ?>> filteredShopOutputs = shopOutputs.stream()
-                .filter(value -> !"hunting_ground_ticket".equalsIgnoreCase(String.valueOf(value.get("id"))))
-                .toList();
-        if (filteredShopOutputs.size() != shopOutputs.size()) {
-            target.set("stages.shop.outputs", filteredShopOutputs);
-            lines.add("progression-loop.yml: removed hunting-ground ticket from shop outputs");
-            changed = true;
-        }
-        List<String> huntNext = new ArrayList<>(target.getStringList("stages.hunt.next"));
-        if (target.isConfigurationSection("stages.hunt")
-                && huntNext.stream().noneMatch(value -> value.equalsIgnoreCase("crafting"))) {
-            huntNext.add("crafting");
-            target.set("stages.hunt.next", huntNext);
-            lines.add("progression-loop.yml: connected hunt -> crafting");
-            changed = true;
-        }
-        if (!target.isConfigurationSection("magic-stone-fragments") && defaults.isConfigurationSection("magic-stone-fragments")) {
-            copyTree(target, defaults, "magic-stone-fragments");
-            lines.add("progression-loop.yml: added magic stone fragment activity sources");
-            changed = true;
-        }
-        if (!target.isConfigurationSection("activity-coins") && defaults.isConfigurationSection("activity-coins")) {
-            copyTree(target, defaults, "activity-coins");
-            lines.add("progression-loop.yml: added activity coin reward table");
-            changed = true;
-        }
-        if (!target.isConfigurationSection("activity-coins.activities.HUSBANDRY")
-                && defaults.isConfigurationSection("activity-coins.activities.HUSBANDRY")) {
-            copyTree(target, defaults, "activity-coins.activities.HUSBANDRY");
-            lines.add("progression-loop.yml: added husbandry coin reward table");
-            changed = true;
-        }
-        if (!target.isConfigurationSection("activity-coins.activities.FISHING.tiers")
-                && defaults.isConfigurationSection("activity-coins.activities.FISHING.tiers")) {
-            copyTree(target, defaults, "activity-coins.activities.FISHING.tiers");
-            lines.add("progression-loop.yml: added fishing reward tiers");
-            changed = true;
-        }
-        if (target.isConfigurationSection("activity-coins.activities.BUILDING")) {
-            target.set("activity-coins.activities.BUILDING", null);
-            lines.add("progression-loop.yml: removed building coin reward activity");
-            changed = true;
-        }
-        if (!target.isSet("activity-coins.activities.FARMING.allowed-crops")
-                && defaults.isSet("activity-coins.activities.FARMING.allowed-crops")) {
-            target.set("activity-coins.activities.FARMING.allowed-crops",
-                    defaults.get("activity-coins.activities.FARMING.allowed-crops"));
-            lines.add("progression-loop.yml: added farming crop registry");
-            changed = true;
-        }
-        if (target.isSet("activity-coins.activities.LOGGING.require-natural-tree")) {
-            target.set("activity-coins.activities.LOGGING.require-natural-tree", null);
-            lines.add("progression-loop.yml: removed unused natural-tree requirement");
-            changed = true;
-        }
-        if (changed) mark(target, fileName, changedFiles, lines, "progression migration staged");
+        if (changed) lines.add("equipment-growth.yml: migrated enhancement to vanilla anvil XP-level policy");
+        return changed;
     }
+
+
 
     private void migrateCraftingAmounts(List<String> lines, List<File> changedFiles) {
         String fileName = "crafting.yml";
@@ -2133,18 +1701,6 @@ public final class ConfigMigrationService {
         FileConfiguration defaults = loadResource(fileName);
         if (target == null) return;
         boolean changed = false;
-        if (defaults != null && !target.isConfigurationSection("crafting-recipes.enchant_extraction_ticket")
-                && defaults.isConfigurationSection("crafting-recipes.enchant_extraction_ticket")) {
-            copyTree(target, defaults, "crafting-recipes.enchant_extraction_ticket");
-            lines.add("crafting.yml: added enchant extraction ticket recipe");
-            changed = true;
-        }
-        if (defaults != null && !target.isConfigurationSection("crafting-recipes.magic_stone_from_fragments")
-                && defaults.isConfigurationSection("crafting-recipes.magic_stone_from_fragments")) {
-            copyTree(target, defaults, "crafting-recipes.magic_stone_from_fragments");
-            lines.add("crafting.yml: added magic stone fragment recipe");
-            changed = true;
-        }
         ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
         if (recipes == null) return;
         for (String recipe : recipes.getKeys(false)) {
@@ -2165,29 +1721,6 @@ public final class ConfigMigrationService {
                 }
             }
         }
-        if (!target.isConfigurationSection("crafting.layout")
-                && defaults != null && defaults.isConfigurationSection("crafting.layout")) {
-            copyTree(target, defaults, "crafting.layout");
-            lines.add("crafting.yml: added canonical crafting.layout");
-            changed = true;
-        }
-        changed |= appendMissingCraftingEntry(target, defaults, "crafting.categories.materials", "enchant_extraction_ticket");
-        changed |= appendMissingCraftingEntry(target, defaults, "crafting.categories.materials", "magic_stone_from_fragments");
-        if (defaults != null && target.isConfigurationSection("crafting.layout.materials")
-                && !target.isSet("crafting.layout.materials.enchant_extraction_ticket")
-                && defaults.isSet("crafting.layout.materials.enchant_extraction_ticket")) {
-            target.set("crafting.layout.materials.enchant_extraction_ticket",
-                    defaults.get("crafting.layout.materials.enchant_extraction_ticket"));
-            changed = true;
-        }
-        if (defaults != null && target.isConfigurationSection("crafting.layout.materials")
-                && !target.isSet("crafting.layout.materials.magic_stone_from_fragments")
-                && defaults.isSet("crafting.layout.materials.magic_stone_from_fragments")) {
-            target.set("crafting.layout.materials.magic_stone_from_fragments",
-                    defaults.get("crafting.layout.materials.magic_stone_from_fragments"));
-            lines.add("crafting.yml: added magic stone recipe layout entry");
-            changed = true;
-        }
         if (target.getInt("schema-version", 0) < 2) {
             target.set("schema-version", 2);
             lines.add("crafting.yml: schema-version -> 2");
@@ -2197,127 +1730,14 @@ public final class ConfigMigrationService {
     }
 
     /** Applies the approved economy policy without replacing unrelated operator settings. */
-    private void migrateEconomyAndEnchantPolicy(List<String> lines, List<File> changedFiles) {
-        FileConfiguration progression = loadLive("progression-loop.yml");
-        if (progression != null) {
-            boolean changed = false;
-            changed |= setIfDifferent(progression, "activity-coins.activities.MINING.coins", 50);
-            changed |= setIfDifferent(progression, "activity-coins.activities.FARMING.coins", 0);
-            changed |= setIfDifferent(progression, "activity-coins.activities.HUNTING.coins", 0);
-            if (progression.isConfigurationSection("activity-coins.activities.BUILDING")) {
-                progression.set("activity-coins.activities.BUILDING", null);
-                lines.add("progression-loop.yml: removed building coin activity");
-                changed = true;
-            }
-            if (changed) mark(progression, "progression-loop.yml", changedFiles, lines,
-                    "approved activity coin policy applied");
-        }
-
-        FileConfiguration support = loadLive("equipment-support.yml");
-        if (support != null) {
-            boolean changed = false;
-            changed |= setIfDifferent(support, "extraction.currency-cost", 6000);
-            changed |= setIfDifferent(support, "promotion-option-reroll.currency-cost", 2000);
-            if (changed) mark(support, "equipment-support.yml", changedFiles, lines,
-                    "support transaction fees applied");
-        }
-
-        FileConfiguration crafting = loadLive("crafting.yml");
-        if (crafting != null) {
-            boolean changed = false;
-            changed |= setRecipe(crafting, "magic_stone_from_fragments",
-                    Map.of("magic_stone_fragment", 9), "magic_stone");
-            changed |= setRecipe(crafting, "basic_promotion_stone_from_magic",
-                    Map.of("magic_stone", 1, "basic_upgrade_stone", 1), "basic_promotion_stone");
-            changed |= setRecipe(crafting, "enchant_extraction_ticket",
-                    Map.of("magic_stone", 4, "basic_promotion_stone", 4), "enchant_extraction_ticket");
-            changed |= setRecipe(crafting, "promotion_option_reroll_ticket",
-                    Map.of("magic_stone", 2, "basic_promotion_stone", 1), "promotion_option_reroll_ticket");
-            changed |= appendMissingCraftingEntry(crafting, loadResource("crafting.yml"),
-                    "crafting.categories.materials", "basic_promotion_stone_from_magic");
-            changed |= appendMissingCraftingEntry(crafting, loadResource("crafting.yml"),
-                    "crafting.categories.materials", "promotion_option_reroll_ticket");
-            if (changed) mark(crafting, "crafting.yml", changedFiles, lines,
-                    "canonical material and support recipes applied");
-        }
-
-        FileConfiguration shops = loadLive("shops.yml");
-        FileConfiguration shopDefaults = loadResource("shops.yml");
-        if (shops != null) {
-            boolean changed = false;
-            ConfigurationSection shopRoots = shops.getConfigurationSection("shops");
-            if (shopRoots != null) {
-                for (String shopId : shopRoots.getKeys(false)) {
-                    ConfigurationSection products = shops.getConfigurationSection("shops." + shopId + ".items");
-                    if (products == null) continue;
-                    for (String productId : products.getKeys(false)) {
-                        String root = "shops." + shopId + ".items." + productId;
-                        String itemId = normalize(shops.getString(root + ".item.id", ""));
-                        if (normalize(shops.getString(root + ".currency-item-id", "")).equals("coin")) {
-                            changed |= setIfDifferent(shops, root + ".currency-item-id", "");
-                            lines.add("shops.yml: normalized CoinService currency representation at " + root);
-                        }
-                        if (itemId.startsWith("enchant_book_")) {
-                            boolean active = activeEnchantBook(itemId);
-                            changed |= setIfDifferent(shops, root + ".buy-price", active ? 9 : 0);
-                            changed |= setIfDifferent(shops, root + ".sell-price", 0);
-                            changed |= setIfDifferent(shops, root + ".purchasable", active);
-                            changed |= setIfDifferent(shops, root + ".sellable", false);
-                            changed |= setIfDifferent(shops, root + ".currency-item-id", "magic_stone");
-                        } else if (Set.of("basic_upgrade_stone", "basic_upgrade_fragment", "magic_stone",
-                                "magic_stone_fragment", "basic_promotion_stone").contains(itemId)) {
-                            changed |= setIfDifferent(shops, root + ".buy-price", 0);
-                            changed |= setIfDifferent(shops, root + ".sell-price", 0);
-                            changed |= setIfDifferent(shops, root + ".purchasable", false);
-                            changed |= setIfDifferent(shops, root + ".sellable", false);
-                            changed |= setIfDifferent(shops, root + ".currency-item-id", "");
-                        } else if (itemId.equals("enchant_extraction_ticket")
-                                || itemId.equals("promotion_option_reroll_ticket")) {
-                            changed |= setIfDifferent(shops, root + ".buy-price", 0);
-                            changed |= setIfDifferent(shops, root + ".sell-price", 0);
-                            changed |= setIfDifferent(shops, root + ".purchasable", false);
-                            changed |= setIfDifferent(shops, root + ".sellable", false);
-                            changed |= setIfDifferent(shops, root + ".currency-item-id", "");
-                        }
-                    }
-                }
-            }
-            if (shopDefaults != null) {
-                ConfigurationSection defaults = shopDefaults.getConfigurationSection("shops.enchant.items");
-                if (defaults != null) {
-                    for (String productId : defaults.getKeys(false)) {
-                        String sourceRoot = "shops.enchant.items." + productId;
-                        String itemId = normalize(shopDefaults.getString(sourceRoot + ".item.id", ""));
-                        if (!activeEnchantBook(itemId)) continue;
-                        String targetRoot = "shops.enchant.items." + productId;
-                        if (!shops.isConfigurationSection(targetRoot)) {
-                            copyTree(shops, shopDefaults, targetRoot);
-                            changed = true;
-                        }
-                        changed |= setIfDifferent(shops, targetRoot + ".buy-price", 9);
-                        changed |= setIfDifferent(shops, targetRoot + ".sell-price", 0);
-                        changed |= setIfDifferent(shops, targetRoot + ".purchasable", true);
-                        changed |= setIfDifferent(shops, targetRoot + ".sellable", false);
-                        changed |= setIfDifferent(shops, targetRoot + ".currency-item-id", "magic_stone");
-                    }
-                }
-            }
-            if (changed) mark(shops, "shops.yml", changedFiles, lines,
-                    "core material and active enchant shop policy applied");
-        }
-    }
-
     private boolean activeEnchantBook(String itemId) {
         return switch (normalize(itemId)) {
             case "enchant_book_blade_throw", "enchant_book_light_greatsword", "enchant_book_laser_arrow",
-                    "enchant_book_axe_heavy_strike", "enchant_book_titans_wrath", "enchant_book_protection",
-                    "enchant_book_fire_protection", "enchant_book_blast_protection", "enchant_book_projectile_protection",
-                    "enchant_book_skill_protection", "enchant_book_thorns", "enchant_book_rolling_landing",
-                    "enchant_book_respiration", "enchant_book_aqua_affinity", "enchant_book_swift_sneak",
-                    "enchant_book_depth_strider", "enchant_book_soul_speed", "enchant_book_frost_walker",
+                    "enchant_book_axe_heavy_strike", "enchant_book_titans_wrath",
+                    "enchant_book_skill_protection", "enchant_book_rolling_landing",
                     "enchant_book_wind_arrow", "enchant_book_fire_arrow_rain", "enchant_book_crossbow_barrage",
                     "enchant_book_treasure_finder", "enchant_book_multi_catch", "enchant_book_elytra_launch",
-                    "enchant_book_precision_flight", "enchant_book_durability_save_pickaxe",
+                    "enchant_book_precision_flight",
                     "enchant_book_mining_bonus_drop", "enchant_book_area_mining_pickaxe",
                     "enchant_book_auto_replant", "enchant_book_auto_smelt", "enchant_book_chain_logging",
                     "enchant_book_explosive_mace" -> true;
@@ -2361,50 +1781,6 @@ public final class ConfigMigrationService {
         values.add(value);
         target.set(path, values);
         return true;
-    }
-
-    private void migrateShopAmounts(List<String> lines, List<File> changedFiles) {
-        String fileName = "shops.yml";
-        FileConfiguration target = loadLive(fileName);
-        ConfigurationSection shops = target == null ? null : target.getConfigurationSection("shops");
-        if (shops == null) return;
-
-        boolean changed = false;
-        for (String shopId : shops.getKeys(false)) {
-            ConfigurationSection products = target.getConfigurationSection("shops." + shopId + ".items");
-            if (products == null) continue;
-            for (String productId : products.getKeys(false)) {
-                String root = "shops." + shopId + ".items." + productId;
-                long configuredAmount;
-                if (target.isSet(root + ".amount")) {
-                    configuredAmount = target.getLong(root + ".amount", 1L);
-                    if (configuredAmount <= 0L || configuredAmount > Integer.MAX_VALUE) {
-                        lines.add(fileName + ": invalid " + root + ".amount=" + configuredAmount + "; normalized to 1");
-                        configuredAmount = 1L;
-                        target.set(root + ".amount", configuredAmount);
-                        changed = true;
-                    }
-                } else {
-                    ItemStack serialized = target.getItemStack(root + ".item.serialized");
-                    configuredAmount = serialized == null || serialized.getType().isAir()
-                            ? 1L : Math.max(1, serialized.getAmount());
-                    target.set(root + ".amount", configuredAmount);
-                    lines.add(fileName + ": migrated " + shopId + "/" + productId
-                            + " amount=" + configuredAmount + " from serialized.count");
-                    changed = true;
-                }
-
-                ItemStack serialized = target.getItemStack(root + ".item.serialized");
-                if (serialized != null && !serialized.getType().isAir() && serialized.getAmount() != 1) {
-                    ItemStack normalized = serialized.clone();
-                    normalized.setAmount(1);
-                    target.set(root + ".item.serialized", normalized);
-                    lines.add(fileName + ": normalized " + shopId + "/" + productId + " serialized.count to 1");
-                    changed = true;
-                }
-            }
-        }
-        if (changed) mark(target, fileName, changedFiles, lines, "shop amount migration staged");
     }
 
     private boolean normalizeAmount(FileConfiguration target, String path, List<String> lines) {
@@ -2460,47 +1836,11 @@ public final class ConfigMigrationService {
                 changed = true;
             }
         }
-        ConfigurationSection layouts = target.getConfigurationSection("crafting.layout");
-        if (layouts != null) {
-            for (String category : layouts.getKeys(false)) {
-                ConfigurationSection layout = layouts.getConfigurationSection(category);
-                if (layout == null) continue;
-                for (String recipe : new ArrayList<>(layout.getKeys(false))) {
-                    if (!removedRecipeIds.contains(normalize(recipe))) continue;
-                    layout.set(recipe, null);
-                    lines.add("crafting.yml: removed inactive profession layout entry "
-                            + category + "." + recipe);
-                    changed = true;
-                }
-            }
-        }
         if (!target.isSet("schema-version")) {
             target.set("schema-version", 1);
             changed = true;
         }
         if (changed) mark(target, "crafting.yml", changedFiles, lines, "legacy profession recipes migrated");
-    }
-
-    private void migrateLegacyProfessionShops(List<String> lines, List<File> changedFiles) {
-        FileConfiguration target = loadLive("shops.yml");
-        if (target == null) return;
-        Set<String> legacyItemIds = collectLegacyProfessionItemIds(loadLive("items.yml"));
-        ConfigurationSection shops = target.getConfigurationSection("shops");
-        if (shops == null) return;
-        boolean changed = false;
-        for (String shopId : shops.getKeys(false)) {
-            ConfigurationSection items = shops.getConfigurationSection(shopId + ".items");
-            if (items == null) continue;
-            for (String productId : new ArrayList<>(items.getKeys(false))) {
-                String path = "shops." + shopId + ".items." + productId;
-                String configuredId = normalize(target.getString(path + ".item.id", ""));
-                if (!legacyItemIds.contains(normalize(productId)) && !legacyItemIds.contains(configuredId)) continue;
-                target.set(path, null);
-                lines.add("shops.yml: removed legacy profession product " + shopId + "/" + productId);
-                changed = true;
-            }
-        }
-        if (changed) mark(target, "shops.yml", changedFiles, lines, "legacy profession products removed");
     }
 
     private Set<String> collectLegacyProfessionItemIds(FileConfiguration configuration) {
@@ -2529,7 +1869,7 @@ public final class ConfigMigrationService {
         if (category.equals("profession") || category.equals("job")
                 || category.startsWith("profession_") || category.startsWith("job_")) return true;
         for (String key : List.of("profession-bonus", "job-bonus", "required-profession", "profession-level",
-                "job-level", "coin-bonus", "extra-drop-chance")) {
+                "job-level", "extra-drop-chance")) {
             if (definition.isSet(key)) return true;
         }
         return false;
@@ -2578,7 +1918,6 @@ public final class ConfigMigrationService {
                 changed = true;
             }
             changed |= migrateFarmingProfile(data, file.getName(), lines);
-            changed |= migrateFlatProficiencies(data, file.getName(), lines);
             for (String path : DEPRECATED_PLAYER_PATHS) {
                 if (data.isSet(path)) {
                     data.set(path, null);
@@ -2622,37 +1961,6 @@ public final class ConfigMigrationService {
         return changed;
     }
 
-    private boolean migrateFlatProficiencies(FileConfiguration data, String fileName, List<String> lines) {
-        ConfigurationSection levels = data.getConfigurationSection("weaponProficiencyLevels");
-        ConfigurationSection experience = data.getConfigurationSection("weaponProficiencyExp");
-        if (levels == null && experience == null) return false;
-        boolean changed = false;
-        if (levels != null) {
-            for (String id : levels.getKeys(false)) {
-                String path = "weaponProficiencies." + normalize(id) + ".level";
-                if (!data.isSet(path)) {
-                    data.set(path, Math.max(1, levels.getInt(id, 1)));
-                    changed = true;
-                }
-            }
-        }
-        if (experience != null) {
-            for (String id : experience.getKeys(false)) {
-                String path = "weaponProficiencies." + normalize(id) + ".exp";
-                if (!data.isSet(path)) {
-                    data.set(path, Math.max(0L, experience.getLong(id, 0L)));
-                    changed = true;
-                }
-            }
-        }
-        if (levels != null || experience != null) {
-            data.set("weaponProficiencyLevels", null);
-            data.set("weaponProficiencyExp", null);
-            lines.add("players/" + fileName + ": migrated flat proficiency fields to weaponProficiencies");
-            changed = true;
-        }
-        return changed;
-    }
 
     private final Map<File, FileConfiguration> pending = new java.util.LinkedHashMap<>();
 

@@ -76,15 +76,14 @@ class FarmingStage12IntegrationContractTest {
     }
 
     @Test
-    void growthAndSaleInputsAreInspectableButRemainTemporary() {
+    void growthInputsRemainWhileCurrencyShopIsRetired() {
         YamlConfiguration crops = load("farming/crops.yml");
         YamlConfiguration growth = load("farming/growth.yml");
-        YamlConfiguration shops = load("shops.yml");
         for (String crop : CROPS) {
             assertEquals(4, crops.getInt("crops." + crop + ".stages"));
             assertEquals(60L, growth.getLong("crops." + crop + ".seconds-per-stage"));
-            assertTrue(shops.getLong("shops.farming.items.crop_" + crop + ".sell-price", 0L) > 0L);
         }
+        assertFalse(java.nio.file.Files.exists(java.nio.file.Path.of("src/main/resources/shops.yml")));
         assertEquals(1200L, load("farming/deliveries.yml").getLong("refresh-seconds"));
         assertEquals(1200L, load("farming/deliveries.yml").getLong("time-limit-seconds"));
     }

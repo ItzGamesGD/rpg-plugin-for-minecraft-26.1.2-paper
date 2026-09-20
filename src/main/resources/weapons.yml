@@ -1,10 +1,4 @@
 # Weapon combat progression is independent from the selected lifestyle profession.
-proficiency:
-  max-level: 100
-  base-exp: 100
-  exp-per-level: 35
-  combat-exp-per-hit: 1
-
 weapons:
   sword:
     material: IRON_SWORD

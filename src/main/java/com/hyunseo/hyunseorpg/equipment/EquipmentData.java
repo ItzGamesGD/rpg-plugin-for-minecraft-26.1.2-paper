@@ -10,10 +10,7 @@ import java.util.Set;
 public record EquipmentData(
         String itemId,
         EquipmentTierService.Category equipmentType,
-        EquipmentGrade grade,
         int upgradeLevel,
-        String promotionLevel,
-        String promotionGrade,
         List<String> enchantData,
         long killCount,
         Set<String> customFlags,
@@ -22,10 +19,7 @@ public record EquipmentData(
     public EquipmentData {
         itemId = itemId == null ? "" : itemId;
         equipmentType = equipmentType == null ? EquipmentTierService.Category.UNSUPPORTED : equipmentType;
-        grade = grade == null ? EquipmentGrade.UNSPECIFIED : grade;
         upgradeLevel = Math.max(0, upgradeLevel);
-        promotionLevel = promotionLevel == null ? "" : promotionLevel;
-        promotionGrade = promotionGrade == null ? "" : promotionGrade;
         enchantData = List.copyOf(enchantData == null ? List.of() : enchantData);
         killCount = Math.max(0L, killCount);
         customFlags = Set.copyOf(customFlags == null ? Set.of() : customFlags);

@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "hyunseorpg:skill_protection",
+    "hyunseorpg:rolling_landing",
+    "hyunseorpg:wind_arrow",
+    "hyunseorpg:mining_bonus_drop",
+    "hyunseorpg:auto_replant",
+    "hyunseorpg:auto_smelt",
+    "hyunseorpg:chain_logging",
+    "hyunseorpg:treasure_finder",
+    "hyunseorpg:multi_catch",
+    "hyunseorpg:blade_chain",
+    "hyunseorpg:light_greatsword",
+    "hyunseorpg:laser_arrow",
+    "hyunseorpg:axe_heavy_strike",
+    "hyunseorpg:titans_wrath",
+    "hyunseorpg:fire_arrow_rain",
+    "hyunseorpg:crossbow_barrage",
+    "hyunseorpg:area_excavation",
+    "hyunseorpg:elytra_launch",
+    "hyunseorpg:precision_flight",
+    "hyunseorpg:explosive_mace"
+  ]
+}

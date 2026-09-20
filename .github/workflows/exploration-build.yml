@@ -9,6 +9,8 @@ on:
     branches:
       - "codex/exploration-*"
       - "main"
+      - "codex/gateway-boss-authoritative-second-pass"
+      - "codex/refactor-custom-enchant-system-integration"
 
 jobs:
   build-and-test:
@@ -29,4 +31,4 @@ jobs:
       - name: Run clean build and JUnit
         run: |
           chmod +x ./gradlew
-          ./gradlew clean test --no-daemon
+          ./gradlew clean build --no-daemon

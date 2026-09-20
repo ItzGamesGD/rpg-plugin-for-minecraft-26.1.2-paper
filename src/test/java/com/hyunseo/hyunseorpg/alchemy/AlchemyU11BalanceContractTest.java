@@ -47,22 +47,7 @@ class AlchemyU11BalanceContractTest {
     }
 
     @Test
-    void abundanceExchangeAndGuiRemainExplicitlyPending() {
-        YamlConfiguration abundance = load("alchemy/abundance.yml");
-        assertFalse(abundance.getBoolean("enabled", true));
-        assertEquals("FARMING_BRIDGE_MAPPING_PENDING", abundance.getString("reason_disabled"));
-        ConfigurationSection essences = abundance.getConfigurationSection("essences");
-        assertNotNull(essences);
-        for (String id : essences.getKeys(false)) {
-            assertFalse(abundance.getBoolean("essences." + id + ".enabled", true), id);
-            assertEquals("BALANCE_PENDING", abundance.getString("essences." + id + ".balance"), id);
-        }
 
-        YamlConfiguration gui = load("alchemy/gui.yml");
-        assertTrue(gui.getBoolean("enabled", false));
-        assertTrue(gui.getBoolean("gui.transaction.atomic-consume-and-give"));
-        assertTrue(gui.getBoolean("gui.transaction.return-uncommitted-on-close"));
-    }
 
     private YamlConfiguration load(String path) {
         var stream = getClass().getClassLoader().getResourceAsStream(path);

@@ -98,7 +98,7 @@ public final class CraftingTransactionService {
             Capacity capacity = capacity(recipe, output, initial, player);
             int requested = maximum ? capacity.maximum() : 1;
             if (requested < 1) {
-                if (recipe.requiredAbundancePoints() > 0L && currencyMaximum(player, recipe) < 1) {
+                if (recipe.requiredAbundancePoints() > 0L && abundanceMaximum(player, recipe) < 1) {
                     return Result.failure(Status.INSUFFICIENT_ABUNDANCE_POINTS, capacity);
                 }
                 return Result.failure(capacity.materialMaximum() < 1
@@ -178,11 +178,11 @@ public final class CraftingTransactionService {
         int capacityMaximum = 0;
         while (capacityMaximum < materialMaximum && addExact(simulated, output.clone())) capacityMaximum++;
         int maximum = Math.min(materialMaximum, capacityMaximum);
-        maximum = Math.min(maximum, currencyMaximum(player, recipe));
+        maximum = Math.min(maximum, abundanceMaximum(player, recipe));
         return new Capacity(materialMaximum, capacityMaximum, maximum);
     }
 
-    private int currencyMaximum(Player player, CraftingRecipeData recipe) {
+    private int abundanceMaximum(Player player, CraftingRecipeData recipe) {
         if (recipe.requiredAbundancePoints() < 1L) return Integer.MAX_VALUE;
         if (abundancePoints == null) return 0;
         long available = abundancePoints(player);
