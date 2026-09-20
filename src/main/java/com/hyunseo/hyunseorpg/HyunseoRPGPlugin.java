@@ -113,10 +113,6 @@ import com.hyunseo.hyunseorpg.alchemy.potion.PaperPotionUseService;
 import com.hyunseo.hyunseorpg.alchemy.potion.YamlPotionRegistry;
 import com.hyunseo.hyunseorpg.alchemy.recipe.AlchemyRecipeRegistry;
 import com.hyunseo.hyunseorpg.alchemy.recipe.YamlAlchemyRecipeRegistry;
-import com.hyunseo.hyunseorpg.exploration.ExplorationModule;
-import com.hyunseo.hyunseorpg.exploration.integration.ExistingHyunseoRpgAdapters;
-import com.hyunseo.hyunseorpg.exploration.integration.ExplorationPorts;
-import com.hyunseo.hyunseorpg.exploration.integration.BukkitExplorationPorts;
 import com.hyunseo.hyunseorpg.activity.MiningActivityListener;
 import com.hyunseo.hyunseorpg.activity.MiningActivityService;
 import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
@@ -248,7 +244,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private YamlSpecialCatalystRegistry specialCatalystRegistry;
     private BoundedSpecialCatalystExecutionService specialCatalystExecutionService;
     private com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog alchemyAuditLog;
-    private ExplorationModule explorationModule;
     private GatewayPrototypeService gatewayPrototypeService;
     private ThousandEyesController thousandEyesController;
 
@@ -458,24 +453,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 mobService, expService, mobDropService,
                 mythicMobIntegrationService);
 
-        this.explorationModule = new ExplorationModule(this,
-                BukkitExplorationPorts.compose(
-                        this,
-                        ExistingHyunseoRpgAdapters.mobPort(mobService),
-                        ExistingHyunseoRpgAdapters.itemRewardPort(itemService, inventoryDeliveryService),
-                        ExistingHyunseoRpgAdapters.entityCleanupPort(mobService)),
-                null);
-
         this.gatewayPrototypeService = new GatewayPrototypeService(this, configService);
 
         configureReloadService();
-        reloadService.register("exploration", explorationModule::reload);
 
         registerCommandsSafe();
         registerListeners();
-        if (!explorationModule.start()) {
-            getLogger().severe("Exploration module failed to start; keeping it disabled for this boot.");
-        }
         loadCurrentlyOnlinePlayers();
         cropGrowthService.start();
         playerDataService.startAutosave();
@@ -534,9 +517,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         if (monsterBehaviorService != null) {
             monsterBehaviorService.stop();
-        }
-        if (explorationModule != null) {
-            explorationModule.stop();
         }
         if (playerDataService != null) {
             playerDataService.stopAutosave();
@@ -650,7 +630,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         give.setPotionFactory(potionFactory);
         give.setSpecialEquipmentService(specialEquipmentService);
         give.setInventoryNormalizer(vanillaStackingService::normalizeAndMergeInventory);
-        give.setExplorationModule(explorationModule);
 
         RPGTestCommand test = new RPGTestCommand(itemRegistry, itemService, soulboundItemService,
                 weaponItemService, equipmentEnhancementService,

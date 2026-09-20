@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RPGGiveCommandCompletionTest {
@@ -11,14 +12,8 @@ class RPGGiveCommandCompletionTest {
     void exposesPendingAndClaimCompletions() {
         assertTrue(RPGGiveCommand.rootCompletion("").contains("pending"));
         assertTrue(RPGGiveCommand.rootCompletion("").contains("farming"));
-        assertTrue(RPGGiveCommand.rootCompletion("").contains("exploration"));
+        assertFalse(RPGGiveCommand.rootCompletion("").contains("exploration"));
         assertTrue(RPGGiveCommand.pendingCompletion("").contains("claim"));
-    }
-
-    @Test
-    void exposesExplorationDiagnosticsCompletions() {
-        assertTrue(RPGGiveCommand.explorationActionCompletion("").containsAll(
-                List.of("status", "inspect", "complete", "choose")));
     }
 
     @Test
@@ -36,6 +31,7 @@ class RPGGiveCommandCompletionTest {
     @Test
     void exposesMobMigrationTarget() {
         assertTrue(RPGGiveCommand.migrationTargetCompletion("").contains("mobs"));
+        assertFalse(RPGGiveCommand.migrationTargetCompletion("").contains("exploration"));
     }
 
     @Test
