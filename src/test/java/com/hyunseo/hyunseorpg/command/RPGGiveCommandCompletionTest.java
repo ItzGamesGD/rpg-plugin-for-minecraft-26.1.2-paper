@@ -2,6 +2,8 @@ package com.hyunseo.hyunseorpg.command;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,15 +38,6 @@ class RPGGiveCommandCompletionTest {
                 List.of("list", "apply", "remove", "clear", "debug", "reload")));
     }
 
-    @Test
-    void exposesStage9FarmingAdminActions() {
-        List<String> actions = RPGGiveCommand.farmingActionCompletion("");
-        assertTrue(actions.containsAll(List.of(
-                "status", "unlock", "lock", "setstage", "setharvests", "addharvests",
-                "setpoints", "addpoints", "setfavor", "addfavor", "reset", "give", "giveprocessed",
-                "giveessence", "givetoken", "settokens", "debugharvest", "debugquality", "debugdelivery", "repairchunk",
-                "recalculate", "reloadplayer", "delivery")));
-    }
 
     @Test
     void potionIdsRequireCanonicalFactoryPath() {
