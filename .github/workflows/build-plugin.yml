@@ -1,4 +1,4 @@
-name: Build HyunseoRPG Plugin
+name: Build and Pre-release HyunseoRPG Plugin
 
 on:
   push:
@@ -7,16 +7,22 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  RELEASE_TAG: v0.1.0-dev.1
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - name: Checkout repository
+      - name: Checkout main source
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Java 25
         uses: actions/setup-java@v4
@@ -34,10 +40,27 @@ jobs:
       - name: List produced JARs
         run: ls -lah build/libs
 
-      - name: Upload plugin JAR
+      - name: Upload plugin JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: HyunseoRPG-plugin
           path: build/libs/HyunseoRPG-*.jar
           if-no-files-found: error
           retention-days: 7
+
+      - name: Create GitHub pre-release and attach JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MAIN_SHA="$(git rev-parse HEAD)"
+          JAR_PATH="$(find build/libs -maxdepth 1 -type f -name 'HyunseoRPG-*.jar' | head -n 1)"
+          test -n "$JAR_PATH"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$JAR_PATH" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$JAR_PATH" \
+              --target "$MAIN_SHA" \
+              --title "HyunseoRPG $RELEASE_TAG" \
+              --notes "Development pre-release built and verified automatically from main. Intended for live validation before a stable release." \
+              --prerelease
+          fi
