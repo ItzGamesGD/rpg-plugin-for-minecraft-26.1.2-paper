@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-/** Guards the non-final balance defaults and the canonical magic-stone recipe. */
+/** Guards the non-final balance defaults after the custom crafting surface is retired. */
 final class BalanceConfigurationTest {
     @Test
     void xpCurveRemainsNeutralUntilPlaytestTimingExists() {
@@ -18,12 +18,9 @@ final class BalanceConfigurationTest {
     }
 
     @Test
-    void upgradeStoneRecipeUsesMinecraftResources() {
-        YamlConfiguration crafting = load("crafting.yml");
-        assertEquals(1, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:DIAMOND"));
-        assertEquals(4, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:REDSTONE"));
-        assertEquals(4, crafting.getInt("crafting-recipes.basic_upgrade_stone.inputs.vanilla:LAPIS_LAZULI"));
-        assertEquals("basic_upgrade_stone", crafting.getString("crafting-recipes.basic_upgrade_stone.output.item-id"));
+    void customCraftingConfigurationIsRetired() {
+        Path crafting = Path.of(System.getProperty("user.dir"), "src", "main", "resources", "crafting.yml");
+        assertFalse(java.nio.file.Files.exists(crafting));
     }
 
     private YamlConfiguration load(String fileName) {
