@@ -6,27 +6,18 @@ import org.junit.jupiter.api.Test;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Regression guards for the first economy safety migration. */
 final class StructureSafetyDataTest {
-    private static final Set<String> RETIRED_RECIPES = Set.of(
-            "fire_sword", "fire_bow", "water_sword", "wind_sword", "wind_bow",
-            "earth_sword", "earth_bow", "earth_mace", "ice_sword", "ice_bow",
-            "magic_sword", "magic_bow");
-
     @Test
-    void buildingRewardsAndLegacyRecipesAreNotActive() {
-        YamlConfiguration crafting = load("crafting.yml");
-
-        assertFalse(crafting.getBoolean("craft2.enabled", false));
-        for (String recipe : RETIRED_RECIPES) {
-            assertFalse(crafting.isConfigurationSection("crafting-recipes." + recipe), recipe);
-            assertFalse(crafting.getStringList("crafting.categories.equipment").contains(recipe), recipe);
-        }
+    void customCraftingAndLegacyRecipeSurfaceIsRetired() {
+        Path crafting = Path.of(System.getProperty("user.dir"), "src", "main", "resources", "crafting.yml");
+        assertFalse(Files.exists(crafting));
     }
 
     @Test
