@@ -18,7 +18,6 @@ import com.hyunseo.hyunseorpg.enhancement.VanillaAnvilPolicyListener;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthConfigValidator;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.equipment.HoeHarvestModifierService;
 import com.hyunseo.hyunseorpg.equipment.ToolDurabilityService;
 import com.hyunseo.hyunseorpg.enchant.EnchantRegistry;
 import com.hyunseo.hyunseorpg.enchant.EnchantService;
@@ -71,27 +70,6 @@ import com.hyunseo.hyunseorpg.progression.NaturalDiscoveryService;
 import com.hyunseo.hyunseorpg.progression.DimensionVisitTracker;
 import com.hyunseo.hyunseorpg.activity.ActivityBlockRepository;
 import com.hyunseo.hyunseorpg.activity.ActivityBlockRewardValidator;
-import com.hyunseo.hyunseorpg.farming.CropBlockAdapter;
-import com.hyunseo.hyunseorpg.farming.CropGrowthService;
-import com.hyunseo.hyunseorpg.farming.CropIndex;
-import com.hyunseo.hyunseorpg.farming.CropQualityService;
-import com.hyunseo.hyunseorpg.farming.CropRegistry;
-import com.hyunseo.hyunseorpg.farming.CropStorage;
-import com.hyunseo.hyunseorpg.farming.FarmingProfileService;
-import com.hyunseo.hyunseorpg.farming.FarmingStage;
-import com.hyunseo.hyunseorpg.farming.FarmingPromotionService;
-import com.hyunseo.hyunseorpg.farming.FarmingHoePromotionService;
-import com.hyunseo.hyunseorpg.farming.DeliveryRegistry;
-import com.hyunseo.hyunseorpg.farming.DeliveryService;
-import com.hyunseo.hyunseorpg.farming.DeliveryDataService;
-import com.hyunseo.hyunseorpg.farming.AbundancePointService;
-import com.hyunseo.hyunseorpg.farming.FavorService;
-import com.hyunseo.hyunseorpg.farming.FarmingEssenceService;
-import com.hyunseo.hyunseorpg.farming.FarmingItemBridge;
-import com.hyunseo.hyunseorpg.farming.FarmingStatTokenService;
-import com.hyunseo.hyunseorpg.farming.FarmingStatTokenListener;
-import com.hyunseo.hyunseorpg.farming.VanillaCropBlockAdapter;
-import com.hyunseo.hyunseorpg.farming.YamlChunkCropStorage;
 import com.hyunseo.hyunseorpg.alchemy.EffectService;
 import com.hyunseo.hyunseorpg.alchemy.BerserkEffectHandler;
 import com.hyunseo.hyunseorpg.alchemy.BleedEffectHandler;
@@ -154,7 +132,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private WeaponItemService weaponItemService;
     private RPGItemRegistry itemRegistry;
     private RPGItemService itemService;
-    private InventoryDeliveryService inventoryDeliveryService;
     private PendingRewardService pendingRewardService;
     private NaturalDiscoveryService naturalDiscoveryService;
     private RPGReloadService reloadService;
@@ -194,19 +171,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private ActivityBlockRewardValidator activityBlockRewardValidator;
     private SoulboundItemService soulboundItemService;
     private MiningActivityService miningActivityService;
-    private CropGrowthService cropGrowthService;
-    private FarmingProfileService farmingProfileService;
-    private FarmingPromotionService farmingPromotionService;
-    private FarmingHoePromotionService farmingHoePromotionService;
-    private DeliveryRegistry deliveryRegistry;
-    private DeliveryService deliveryService;
-    private AbundancePointService abundancePointService;
-    private FavorService favorService;
-    private FarmingEssenceService farmingEssenceService;
-    private FarmingItemBridge farmingItemBridge;
-    private FarmingStatTokenService farmingStatTokenService;
-    private CropQualityService cropQualityService;
-    private HoeHarvestModifierService hoeHarvestModifierService;
     private ToolDurabilityService toolDurabilityService;
     private EnhancementRegistry enhancementRegistry;
     private EquipmentEnhancementService equipmentEnhancementService;
@@ -272,23 +236,21 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.potionRegistry.reload();
         this.potionPdc = new PaperPotionPdcContract(this);
         this.potionFactory = new PotionFactory(potionRegistry, itemService, potionPdc, 1);
-        this.alchemyRecipeRegistry = new YamlAlchemyRecipeRegistry(configService, potionRegistry, itemService);
-        this.alchemyRecipeRegistry.reload();
         this.catalystRegistry = new YamlCatalystRegistry(configService);
         this.specialCatalystRegistry = new YamlSpecialCatalystRegistry(configService);
         this.catalystRegistry.reload();
         this.specialCatalystRegistry.reload();
+        this.alchemyRecipeRegistry = new YamlAlchemyRecipeRegistry(
+                configService, potionRegistry, itemService, catalystRegistry, specialCatalystRegistry);
+        this.alchemyRecipeRegistry.reload();
         this.specialCatalystExecutionService = new BoundedSpecialCatalystExecutionService(
                 this, specialCatalystRegistry, potionRegistry, effectService, 128);
         this.potionUseListener = new PaperPotionUseListener(this, potionPdc,
                 new PaperPotionUseService(potionRegistry, potionPdc, effectService, itemService, 1,
                         catalystRegistry, specialCatalystExecutionService), specialCatalystExecutionService);
         this.alchemyAuditLog = new com.hyunseo.hyunseorpg.alchemy.AlchemyAuditLog(this);
-        this.cropQualityService = new CropQualityService(configService, itemService);
-        this.cropQualityService.load();
         this.vanillaStackingService = new VanillaStackingService(configService, itemService);
         this.itemService.setItemNormalizer(vanillaStackingService::normalize);
-        this.vanillaStackingService.setAdditionalNormalizer(itemService::normalizeFarmingItem);
         this.inventoryDeliveryService = new InventoryDeliveryService();
         this.inventoryDeliveryService.setItemNormalizer(vanillaStackingService::normalize);
         this.naturalDiscoveryService = new NaturalDiscoveryService(this, configService, playerDataService, itemService);
@@ -313,40 +275,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         }
         this.pendingRewardService = new PendingRewardService(this);
         this.inventoryDeliveryService.setPendingRewardService(pendingRewardService);
-        CropRegistry cropRegistry = new CropRegistry(configService, itemService);
-        this.farmingProfileService = new FarmingProfileService(playerDataService, cropRegistry);
-        this.farmingEssenceService = new FarmingEssenceService(configService);
-        this.farmingItemBridge = new FarmingItemBridge(itemService, cropQualityService, farmingEssenceService);
-        this.farmingStatTokenService = new FarmingStatTokenService(
-                this, configService, itemService, farmingProfileService);
-        this.farmingStatTokenService.load();
-        this.craftingTransactionService.setRecipeAccessAllowed(this::canAccessCraftingRecipe);
-        this.deliveryRegistry = new DeliveryRegistry(configService, itemService);
-        if (!this.deliveryRegistry.load()) {
-            getLogger().warning("Unable to load farming delivery definitions: "
-                    + String.join("; ", deliveryRegistry.lastErrors()));
-        }
-        this.abundancePointService = new AbundancePointService(playerDataService);
-        this.craftingTransactionService.setAbundancePointService(abundancePointService);
-        this.favorService = new FavorService(configService);
-        this.favorService.load();
-        this.deliveryService = new DeliveryService(
-                new DeliveryDataService(playerDataService, abundancePointService), deliveryRegistry);
-        CropIndex cropIndex = new CropIndex();
-        CropStorage cropStorage = new YamlChunkCropStorage(this);
-        CropBlockAdapter cropBlockAdapter = new VanillaCropBlockAdapter();
-        this.cropGrowthService = new CropGrowthService(
-                this, configService, itemService, cropRegistry, cropIndex, cropStorage, cropBlockAdapter,
-                farmingProfileService, inventoryDeliveryService);
-        this.cropGrowthService.harvestService().setQualityService(cropQualityService);
-        this.cropGrowthService.harvestService().setAbundancePointService(abundancePointService);
         this.miningActivityService = new MiningActivityService(configService, activityBlockRepository,
                 activityBlockRewardValidator);
         this.enhancementRegistry = new EnhancementRegistry(configService);
         this.equipmentTierService = new EquipmentTierService(configService, itemService);
         this.equipmentMetadataService = new EquipmentMetadataService(this, itemService, equipmentTierService);
         this.itemService.setItemNormalizer(item -> {
-            itemService.normalizeFarmingItem(item);
             vanillaStackingService.normalize(item);
             equipmentMetadataService.ensureDataVersion(item);
         });
@@ -359,15 +293,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.enhancementClassificationService = new EnhancementClassificationService(
                 configService, itemService, equipmentTierService, equipmentGrowthPolicy, specialEquipmentRegistry);
         this.equipmentEnhancementService.setClassificationService(enhancementClassificationService);
-        this.farmingHoePromotionService = new FarmingHoePromotionService(
-                this, configService, equipmentTierService);
-        this.farmingHoePromotionService.load();
-        this.cropGrowthService.harvestService().setHoePromotionService(farmingHoePromotionService);
-        this.hoeHarvestModifierService = new HoeHarvestModifierService(
-                configService, equipmentTierService, equipmentEnhancementService);
-        this.farmingPromotionService = new FarmingPromotionService(
-                this, configService, itemService, farmingProfileService, equipmentTierService, equipmentEnhancementService);
-        this.farmingPromotionService.setHoePromotionService(farmingHoePromotionService);
         this.equipmentRegistry = new EquipmentRegistry(configService, itemRegistry, itemService,
                 enhancementRegistry, equipmentTierService, specialEquipmentRegistry);
         this.equipmentRegistry.load();
@@ -391,22 +316,15 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.enchantService = new EnchantService(
                 this, configService, enchantRegistry, itemService, weaponService, equipmentTierService,
                 equipmentInstanceService);
-        this.toolDurabilityService = new ToolDurabilityService(
-                equipmentTierService, hoeHarvestModifierService);
-        this.cropGrowthService.harvestService().setHoeHarvestServices(
-                hoeHarvestModifierService, toolDurabilityService);
+        this.toolDurabilityService = new ToolDurabilityService(equipmentTierService);
         this.itemService.setItemNormalizer(item -> {
-            itemService.normalizeFarmingItem(item);
             vanillaStackingService.normalize(item);
             equipmentMetadataService.ensureDataVersion(item);
-            farmingHoePromotionService.ensureData(item);
             enchantService.refreshBookLore(item);
         });
         this.inventoryDeliveryService.setItemNormalizer(item -> {
-            itemService.normalizeFarmingItem(item);
             vanillaStackingService.normalize(item);
             equipmentMetadataService.ensureDataVersion(item);
-            farmingHoePromotionService.ensureData(item);
             enchantService.refreshBookLore(item);
         });
         this.pendingRewardService.setItemNormalizer(vanillaStackingService::normalize);
@@ -460,7 +378,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         registerCommandsSafe();
         registerListeners();
         loadCurrentlyOnlinePlayers();
-        cropGrowthService.start();
         playerDataService.startAutosave();
         swordmasterBladeService.start();
         zombieVariantService.start();
@@ -493,9 +410,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             equipmentEnchantContentService.shutdown();
         }
         if (effectService != null) effectService.shutdown();
-        if (cropGrowthService != null) {
-            cropGrowthService.shutdown();
-        }
         if (cooldownService != null) {
             cooldownService.clearAll();
         }
@@ -540,22 +454,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         return playerDataService;
     }
 
-    public FarmingProfileService getFarmingProfileService() {
-        return farmingProfileService;
-    }
-
-    public AbundancePointService getAbundancePointService() {
-        return abundancePointService;
-    }
-
-    public FarmingEssenceService getFarmingEssenceService() {
-        return farmingEssenceService;
-    }
-
-    public FarmingItemBridge getFarmingItemBridge() {
-        return farmingItemBridge;
-    }
-
     public EffectService getEffectService() {
         return effectService;
     }
@@ -569,34 +467,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     public YamlCatalystRegistry getCatalystRegistry() { return catalystRegistry; }
     public YamlSpecialCatalystRegistry getSpecialCatalystRegistry() { return specialCatalystRegistry; }
     public BoundedSpecialCatalystExecutionService getSpecialCatalystExecutionService() { return specialCatalystExecutionService; }
-
-    private boolean canAccessCraftingRecipe(Player player, CraftingRecipeData recipe) {
-        if (recipe.farmingType().equalsIgnoreCase("essence")) {
-            if (!farmingEssenceService.enabled()
-                    || !recipe.ingredients().isEmpty()
-                    || !recipe.outputId().equals(farmingEssenceService.resultItemId())
-                    || recipe.outputAmount() != farmingEssenceService.resultCount()
-                    || recipe.requiredAbundancePoints() != farmingEssenceService.requiredAbundancePoints()) {
-                return false;
-            }
-            return FarmingStage.fromInput(farmingEssenceService.unlockStage())
-                    .map(required -> farmingProfileService.getFarmingProfile(player).stage().atLeast(required))
-                    .orElse(false);
-        }
-        if (recipe.requiredFarmingStage().isBlank()) return true;
-        return FarmingStage.fromInput(recipe.requiredFarmingStage())
-                .map(required -> farmingProfileService.getFarmingProfile(player).stage().atLeast(required))
-                .orElse(false);
-    }
-
-    public FarmingStatTokenService getFarmingStatTokenService() {
-        return farmingStatTokenService;
-    }
-
-    public FavorService getFavorService() {
-        return favorService;
-    }
-
 
     public LevelService getLevelService() {
         return levelService;
@@ -621,10 +491,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 zombieVariantService);
         give.setMaintenanceServices(new ConfigDoctor(this), new ConfigMigrationService(this));
         give.setPendingRewardService(pendingRewardService);
-        give.setFarmingServices(farmingProfileService, farmingPromotionService, playerDataService);
-        give.setFarmingOperations(farmingStatTokenService, cropGrowthService);
-        give.setFarmingDiagnostics(deliveryService, cropQualityService);
-        give.setFarmingAuditLogger(message -> getLogger().info("[FarmingAdmin] " + message));
         give.setEffectService(effectService);
         give.setAlchemyServices(potionRegistry, potionPdc, specialCatalystExecutionService, alchemyAuditLog);
         give.setPotionFactory(potionFactory);
@@ -716,8 +582,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         });
         reloadService.registerDetailed("crafting", () -> {
             configService.reloadCraftingConfig();
-            configService.reloadFarmingQualityConfig();
-            cropQualityService.load();
             if (!craftingRecipeRegistry.load()) {
                 return new RPGReloadService.ReloadOutcome(false, java.util.List.of(
                         RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors()))));
@@ -726,8 +590,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         });
         reloadService.register("recipes", () -> {
             configService.reloadCraftingConfig();
-            configService.reloadFarmingQualityConfig();
-            cropQualityService.load();
             return craftingRecipeRegistry.load();
         });
         reloadService.register("mobs", () -> {
@@ -748,37 +610,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             configService.reloadMythicMobsConfig();
             mythicMobRegistry.load();
             return true;
-        });
-        reloadService.registerDetailed("farming", () -> {
-            configService.reloadFarmingCropsConfig();
-            configService.reloadFarmingGrowthConfig();
-            configService.reloadFarmingHarvestConfig();
-            configService.reloadFarmingProgressionConfig();
-            configService.reloadFarmingQualityConfig();
-            configService.reloadFarmingHoeEnhancementConfig();
-            configService.reloadFarmingHoePromotionConfig();
-            configService.reloadFarmingDeliveriesConfig();
-            configService.reloadFarmingFavorConfig();
-            configService.reloadFarmingEssenceConfig();
-            configService.reloadFarmingStatTokensConfig();
-            farmingHoePromotionService.load();
-            farmingStatTokenService.load();
-            favorService.load();
-            cropQualityService.load();
-            boolean deliveriesOk = deliveryRegistry.load();
-            boolean farmingOk = cropGrowthService.reload();
-            boolean recipesOk = craftingRecipeRegistry.load();
-            java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
-            details.add(farmingOk
-                    ? RPGReloadService.ReloadDetail.pass("farming")
-                    : RPGReloadService.ReloadDetail.fail("farming", String.join("; ", cropGrowthService.registry().lastErrors())));
-            details.add(deliveriesOk
-                    ? RPGReloadService.ReloadDetail.pass("farming-deliveries")
-                    : RPGReloadService.ReloadDetail.fail("farming-deliveries", String.join("; ", deliveryRegistry.lastErrors())));
-            details.add(recipesOk
-                    ? RPGReloadService.ReloadDetail.pass("crafting-recipes")
-                    : RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors())));
-            return new RPGReloadService.ReloadOutcome(farmingOk && deliveriesOk && recipesOk, details);
         });
         reloadService.registerDetailed("effects", () -> {
             configService.reloadAlchemyEffectsConfigs();
@@ -831,24 +662,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         configService.reloadItemsConfig();
         configService.reloadMobsConfig();
         configService.reloadCraftingConfig();
-        configService.reloadFarmingCropsConfig();
-        configService.reloadFarmingGrowthConfig();
-        configService.reloadFarmingHarvestConfig();
-        configService.reloadFarmingProgressionConfig();
-        configService.reloadFarmingQualityConfig();
-        configService.reloadFarmingHoeEnhancementConfig();
-        configService.reloadFarmingHoePromotionConfig();
-        configService.reloadFarmingDeliveriesConfig();
-        configService.reloadFarmingFavorConfig();
-        configService.reloadFarmingEssenceConfig();
-        configService.reloadFarmingStatTokensConfig();
         configService.reloadAlchemyEffectsConfigs();
-        farmingHoePromotionService.load();
-        farmingStatTokenService.load();
-        favorService.load();
-        boolean deliveriesOk = deliveryRegistry.load();
         itemRegistry.load();
-        cropQualityService.load();
         equipmentRegistry.load();
         enchantRegistry.load();
         configService.reloadSpecialEquipmentConfig();
@@ -884,19 +699,12 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         details.add(!catalystsOk ? RPGReloadService.ReloadDetail.skip("special-catalysts", "SKIPPED due to catalyst dependency failure")
                 : specialCatalystsOk ? RPGReloadService.ReloadDetail.pass("special-catalysts")
                 : RPGReloadService.ReloadDetail.fail("special-catalysts", "special catalyst registry rejected candidate"));
-        boolean farmingOk = cropGrowthService.reload();
-        details.add(farmingOk
-                ? RPGReloadService.ReloadDetail.pass("farming")
-                : RPGReloadService.ReloadDetail.fail("farming", String.join("; ", cropGrowthService.registry().lastErrors())));
-        details.add(deliveriesOk
-                ? RPGReloadService.ReloadDetail.pass("farming-deliveries")
-                : RPGReloadService.ReloadDetail.fail("farming-deliveries", String.join("; ", deliveryRegistry.lastErrors())));
         boolean recipesOk = craftingRecipeRegistry.load();
         details.add(recipesOk
                 ? RPGReloadService.ReloadDetail.pass("crafting-recipes")
                 : RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors())));
         if (!effectsOk || !potionsOk || !alchemyRecipesOk || !catalystsOk
-                || !specialCatalystsOk || !farmingOk || !deliveriesOk || !recipesOk) {
+                || !specialCatalystsOk || !recipesOk) {
             return new RPGReloadService.ReloadOutcome(false, details);
         }
         effectService.commitReload();
@@ -907,7 +715,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     private java.util.List<RPGReloadService.ReloadDetail> reloadDetailsFromDoctor(ConfigDoctor.DoctorReport report) {
         java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
-        for (String group : java.util.List.of("items", "farming", "effects", "crafting-recipes")) {
+        for (String group : java.util.List.of("items", "effects", "crafting-recipes")) {
             java.util.List<String> errors = report.lines().stream()
                     .filter(line -> line.startsWith("ERROR") && (line.contains(group)
                             || (group.equals("crafting-recipes") && line.contains("crafting.yml"))))
@@ -943,7 +751,10 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(potionUseListener, this);
         getServer().getPluginManager().registerEvents(specialCatalystExecutionService, this);
         getServer().getPluginManager().registerEvents(
-                new com.hyunseo.hyunseorpg.alchemy.AlchemyVanillaBypassListener(this, alchemyAuditLog), this);
+                new com.hyunseo.hyunseorpg.alchemy.brewing.BrewingStandAlchemyListener(
+                        alchemyRecipeRegistry, potionFactory,
+                        new com.hyunseo.hyunseorpg.alchemy.brewing.BrewingInputResolver(
+                                potionPdc, itemService, catalystRegistry, specialCatalystRegistry)), this);
         getServer().getPluginManager().registerEvents(new CooldownCleanupListener(cooldownService), this);
         getServer().getPluginManager().registerEvents(new SkillInputListener(
                 this, equipmentEffectTriggerEngine, enchantService, equipmentInstanceService, alchemyCombatAdapter,
@@ -955,10 +766,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
                 new com.hyunseo.hyunseorpg.enchant.EnchantLoreRefreshListener(this, enchantService), this);
         getServer().getPluginManager().registerEvents(
                 new com.hyunseo.hyunseorpg.enchant.NativeEnchantMigrationListener(enchantService), this);
-        getServer().getPluginManager().registerEvents(cropGrowthService, this);
         getServer().getPluginManager().registerEvents(new MiningActivityListener(
                 miningActivityService, activityBlockRepository), this);
-        getServer().getPluginManager().registerEvents(new FarmingStatTokenListener(farmingStatTokenService), this);
         getServer().getPluginManager().registerEvents(vanillaStackingService, this);
         getServer().getPluginManager().registerEvents(soulboundItemService, this);
         getServer().getPluginManager().registerEvents(new MobSpawnListener(

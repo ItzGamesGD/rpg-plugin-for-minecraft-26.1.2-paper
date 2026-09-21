@@ -2,8 +2,6 @@ package com.hyunseo.hyunseorpg.command;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,16 +9,14 @@ class RPGGiveCommandCompletionTest {
     @Test
     void exposesPendingAndClaimCompletions() {
         assertTrue(RPGGiveCommand.rootCompletion("").contains("pending"));
-        assertTrue(RPGGiveCommand.rootCompletion("").contains("farming"));
+        assertFalse(RPGGiveCommand.rootCompletion("").contains("farming"));
         assertFalse(RPGGiveCommand.rootCompletion("").contains("exploration"));
         assertTrue(RPGGiveCommand.pendingCompletion("").contains("claim"));
     }
 
     @Test
-    void exposesFarmingReloadAndFarmingSeedIds() {
-        assertTrue(RPGGiveCommand.reloadCompletion("farm", new String[]{"all", "farming"}).contains("farming"));
-        List<String> seeds = List.of("seed_corn", "seed_onion", "seed_chili", "seed_garlic");
-        assertTrue(RPGGiveCommand.giveCompletion("seed_", seeds).containsAll(seeds));
+    void retiredFarmingReloadIsNotSuggested() {
+        assertFalse(RPGGiveCommand.reloadCompletion("farm", new String[]{"all", "alchemy"}).contains("farming"));
     }
 
     @Test

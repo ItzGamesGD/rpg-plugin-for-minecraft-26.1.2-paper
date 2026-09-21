@@ -1,9 +1,5 @@
 package com.hyunseo.hyunseorpg.player;
 
-import com.hyunseo.hyunseorpg.farming.FarmingStage;
-import com.hyunseo.hyunseorpg.farming.CropQuality;
-import com.hyunseo.hyunseorpg.farming.DeliveryStatus;
-import com.hyunseo.hyunseorpg.farming.FarmingDeliveryState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -64,7 +60,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         readLongMap(yaml, "customMobKillCounts", data::setCustomMobKillCount);
         readCustomMonsterDiscoveries(yaml, data);
         readLongMap(yaml, "bossKillCounts", data::setBossKillCount);
-        readFarmingData(yaml, data);
         readAlchemyData(yaml, data);
         return data;
     }
@@ -98,29 +93,6 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         });
         data.getBossKillCounts().forEach((bossId, amount) -> yaml.set("bossKillCounts." + bossId, amount));
         data.legacyQuestCompatibilityData().writeTo(yaml);
-        yaml.set("farming.version", data.getFarmingDataVersion());
-        yaml.set("farming.stage", data.getFarmingStage().name());
-        yaml.set("farming.total-valid-harvests", data.getFarmingTotalValidHarvests());
-        yaml.set("farming.abundance-points", data.getFarmingAbundancePoints());
-        data.getFarmingCropHarvests().forEach((cropId, amount) ->
-                yaml.set("farming.crop-harvests." + cropId, amount));
-        yaml.set("farming.unlocked-crops", data.getFarmingUnlockedCrops().stream().sorted().toList());
-        data.getFarmingStatTokenUses().forEach((tokenId, amount) ->
-                yaml.set("farming.stat-token-uses." + tokenId, amount));
-        data.getFarmingDeliveryCompletedCounts().forEach((provider, count) ->
-                yaml.set("farming.deliveries." + provider + ".completed-count", count));
-        data.getFarmingDeliveries().forEach((provider, delivery) -> {
-            String root = "farming.deliveries." + provider;
-            yaml.set(root + ".active-delivery-id", delivery.deliveryId());
-            yaml.set(root + ".definition-id", delivery.definitionId());
-            yaml.set(root + ".item-family", delivery.itemFamily());
-            yaml.set(root + ".required-amount", delivery.requiredAmount());
-            yaml.set(root + ".minimum-quality", delivery.minimumQuality().id());
-            yaml.set(root + ".created-at", delivery.createdAt());
-            yaml.set(root + ".expires-at", delivery.expiresAt());
-            yaml.set(root + ".status", delivery.status().name());
-            yaml.set(root + ".status-at", delivery.statusAt());
-        });
         yaml.set("alchemy.version", data.getAlchemyDataVersion());
         File target = getPlayerFile(data.getUuid());
         File temp = new File(target.getParentFile(), target.getName() + ".tmp");
@@ -193,71 +165,11 @@ public final class YamlPlayerDataRepository implements PlayerDataRepository {
         }
     }
 
-    private void readFarmingData(YamlConfiguration yaml, PlayerRPGData data) {
-        boolean hasFarmingSection = yaml.isConfigurationSection("farming");
-        int storedVersion = yaml.getInt("farming.version", 1);
-        // Keep the on-disk version in memory. Explicit farming migration owns
-        // version upgrades; loading an old profile must not silently promote it.
-        data.setFarmingDataVersion(Math.max(1, storedVersion));
-        String rawStage = yaml.getString("farming.stage");
-        if (rawStage != null) {
-            FarmingStage.fromInput(rawStage).ifPresentOrElse(
-                    data::setFarmingStage,
-                    () -> plugin.getLogger().warning("Ignoring unknown farming stage in player data: " + rawStage));
-        }
-        data.setFarmingTotalValidHarvests(yaml.getLong("farming.total-valid-harvests", 0L));
-        data.setFarmingAbundancePoints(Math.max(0L, yaml.getLong("farming.abundance-points", 0L)));
-        readLongMap(yaml, "farming.favor",
-                (provider, amount) -> data.setFarmingFavor(provider, Math.max(0L, amount)));
-        readLongMap(yaml, "farming.crop-harvests", data::setFarmingCropHarvestCount);
-        if (yaml.get("farming.unlocked-crops") != null) {
-            data.clearFarmingUnlockedCrops();
-            readStringSet(yaml, "farming.unlocked-crops", data::unlockFarmingCrop);
-        }
-        readIntegerMap(yaml, "farming.stat-token-uses", data::setFarmingStatTokenUses);
-        readFarmingDeliveries(yaml, data);
-        data.setFarmingDataMigrationRequired(!hasFarmingSection || storedVersion < 3);
-    }
-
     private void readAlchemyData(YamlConfiguration yaml, PlayerRPGData data) {
         boolean hasAlchemySection = yaml.isConfigurationSection("alchemy");
         int storedVersion = yaml.getInt("alchemy.version", 1);
         data.setAlchemyDataVersion(Math.max(1, storedVersion));
         data.setAlchemyDataMigrationRequired(!hasAlchemySection || storedVersion < 1);
-    }
-
-    private void readFarmingDeliveries(YamlConfiguration yaml, PlayerRPGData data) {
-        ConfigurationSection deliveries = yaml.getConfigurationSection("farming.deliveries");
-        if (deliveries == null) return;
-        for (String provider : deliveries.getKeys(false)) {
-            String root = "farming.deliveries." + provider;
-            data.setFarmingDeliveryCompletedCount(provider,
-                    Math.max(0, yaml.getInt(root + ".completed-count", 0)));
-            String deliveryId = yaml.getString(root + ".active-delivery-id", "");
-            if (deliveryId.isBlank()) continue;
-            try {
-                CropQuality quality = CropQuality.fromId(yaml.getString(root + ".minimum-quality", "normal"))
-                        .orElse(CropQuality.NORMAL);
-                DeliveryStatus status;
-                try {
-                    status = DeliveryStatus.valueOf(yaml.getString(root + ".status", "ACTIVE").toUpperCase(java.util.Locale.ROOT));
-                } catch (IllegalArgumentException exception) {
-                    status = DeliveryStatus.ACTIVE;
-                }
-                data.setFarmingDelivery(provider, new FarmingDeliveryState(
-                        deliveryId,
-                        yaml.getString(root + ".definition-id", provider),
-                        yaml.getString(root + ".item-family", "crop_corn"),
-                        Math.max(1, yaml.getInt(root + ".required-amount", 1)),
-                        quality,
-                        Math.max(0L, yaml.getLong(root + ".created-at", 0L)),
-                        Math.max(0L, yaml.getLong(root + ".expires-at", 0L)),
-                        status,
-                        Math.max(0L, yaml.getLong(root + ".status-at", 0L))));
-            } catch (RuntimeException exception) {
-                plugin.getLogger().warning("Ignoring invalid farming delivery state for provider " + provider + ": " + exception.getMessage());
-            }
-        }
     }
 
     private void ensurePlayersDirectory() throws IOException {

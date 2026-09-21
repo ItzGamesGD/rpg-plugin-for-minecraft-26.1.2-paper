@@ -5,9 +5,7 @@ import java.util.Locale;
 
 /** Immutable canonical recipe definition shared by every crafting surface. */
 public record CraftingRecipeData(String id, boolean enabled, String categoryId,
-                                 List<Ingredient> ingredients, String outputId, int outputAmount,
-                                 String farmingType, String requiredFarmingStage,
-                                 long requiredAbundancePoints) {
+                                 List<Ingredient> ingredients, String outputId, int outputAmount) {
     public CraftingRecipeData {
         id = normalize(id);
         categoryId = normalize(categoryId);
@@ -15,29 +13,6 @@ public record CraftingRecipeData(String id, boolean enabled, String categoryId,
         ingredients = List.copyOf(ingredients == null ? List.of() : ingredients);
         outputId = normalize(outputId);
         if (outputAmount < 1) throw new IllegalArgumentException("outputAmount must be positive");
-        farmingType = normalize(farmingType);
-        requiredFarmingStage = normalize(requiredFarmingStage);
-        if (requiredAbundancePoints < 0L) {
-            throw new IllegalArgumentException("requiredAbundancePoints must be non-negative");
-        }
-    }
-
-    public CraftingRecipeData(String id, boolean enabled, String categoryId,
-                              List<Ingredient> ingredients, String outputId, int outputAmount,
-                              String farmingType, String requiredFarmingStage) {
-        this(id, enabled, categoryId, ingredients, outputId, outputAmount,
-                farmingType, requiredFarmingStage, 0L);
-    }
-
-    public CraftingRecipeData(String id, boolean enabled, String categoryId,
-                              List<Ingredient> ingredients, String outputId, int outputAmount,
-                              String farmingType) {
-        this(id, enabled, categoryId, ingredients, outputId, outputAmount, farmingType, "");
-    }
-
-    public CraftingRecipeData(String id, boolean enabled, String categoryId,
-                              List<Ingredient> ingredients, String outputId, int outputAmount) {
-        this(id, enabled, categoryId, ingredients, outputId, outputAmount, "");
     }
 
     /** Compatibility constructor for existing integrations using the legacy core categories. */

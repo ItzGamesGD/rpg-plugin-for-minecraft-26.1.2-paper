@@ -1,11 +1,5 @@
-data_version: 1
-recipes:
-  potion_test_speed: { enabled: false, result-potion-id: potion_test_speed, ingredients: [], reason-disabled: "개발 테스트 전용" }
-  potion_vampire: { enabled: true, result-potion-id: potion_vampire, ingredients: [abundance_essence, vanilla:SPIDER_EYE, processed_garlic_concentrate_normal], balance: BALANCE_PENDING }
-  potion_berserk: { enabled: true, result-potion-id: potion_berserk, ingredients: [abundance_essence, vanilla:BLAZE_POWDER, processed_chili_extract_normal, vanilla:SUGAR], balance: BALANCE_PENDING }
-  potion_corrosion: { enabled: true, result-potion-id: potion_corrosion, ingredients: [corrosion_essence, vanilla:SLIME_BALL, vanilla:ROTTEN_FLESH], balance: BALANCE_PENDING }
-  potion_frostbite: { enabled: true, result-potion-id: potion_frostbite, ingredients: [corrosion_essence, vanilla:SNOWBALL, vanilla:ICE], balance: BALANCE_PENDING }
-  potion_shock: { enabled: true, result-potion-id: potion_shock, ingredients: [corrosion_essence, vanilla:COPPER_INGOT, vanilla:REDSTONE], balance: BALANCE_PENDING }
-  potion_bleed: { enabled: true, result-potion-id: potion_bleed, ingredients: [corrosion_essence, vanilla:CACTUS, processed_chili_extract_normal], balance: BALANCE_PENDING }
-  potion_vulnerability: { enabled: true, result-potion-id: potion_vulnerability, ingredients: [corrosion_essence, vanilla:ROTTEN_FLESH, vanilla:SPIDER_EYE], balance: BALANCE_PENDING }
-  potion_necrosis: { enabled: true, result-potion-id: potion_necrosis, ingredients: [corrosion_essence, vanilla:WITHER_ROSE, vanilla:SPIDER_EYE], balance: BALANCE_PENDING }
+# Each entry is one vanilla-style Brewing Stand transition:
+# base-input-id in a bottle slot + ingredient-id in the ingredient slot -> result-potion-id.
+# Catalysts use the same staged transition model and never require hidden slots.
+data_version: 2
+recipes: {}

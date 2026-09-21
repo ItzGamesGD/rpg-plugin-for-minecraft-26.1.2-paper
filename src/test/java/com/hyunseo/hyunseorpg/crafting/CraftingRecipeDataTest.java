@@ -37,22 +37,4 @@ final class CraftingRecipeDataTest {
         assertFalse(CraftingCategory.fromConfig("missing", null) != null);
     }
 
-    @Test
-    void customCategoryDoesNotRequireJavaEnum() {
-        CraftingRecipeData data = new CraftingRecipeData("process_onion_normal", true,
-                "farming_processing", List.of(new CraftingRecipeData.Ingredient("crop_onion", 1)),
-                "processed_onion_concentrate_normal", 1);
-
-        assertEquals("farming_processing", data.categoryId());
-    }
-
-    @Test
-    void currencyOnlyRecipeCanHaveNoItemIngredients() {
-        CraftingRecipeData data = new CraftingRecipeData("abundance_essence", true,
-                "materials", List.of(), "abundance_essence", 1,
-                "essence", "expert", 100L);
-
-        assertTrue(data.ingredients().isEmpty());
-        assertEquals(100L, data.requiredAbundancePoints());
-    }
 }

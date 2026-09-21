@@ -51,16 +51,6 @@ public final class CraftingRecipeRenderer {
                     : KoreanDisplay.itemId(ingredient.id(), items);
             lore.add(Component.text("- " + label + ": " + owned + "/" + ingredient.amount(), color));
         }
-        if (!recipe.requiredFarmingStage().isBlank()) {
-            lore.add(Component.text("\uD544\uC694 \uB18D\uC0AC \uB2E8\uACC4: "
-                    + KoreanDisplay.farmingStage(recipe.requiredFarmingStage()), NamedTextColor.GRAY));
-        }
-        if (recipe.requiredAbundancePoints() > 0L) {
-            long owned = transactions.abundancePoints(player);
-            NamedTextColor color = owned >= recipe.requiredAbundancePoints()
-                    ? NamedTextColor.GREEN : NamedTextColor.RED;
-            lore.add(Component.text("\uD48D\uC694 \uD3EC\uC778\uD2B8: " + owned + "/" + recipe.requiredAbundancePoints(), color));
-        }
         lore.add(Component.text("\uC88C\uD074\uB9AD: 1\uD68C \uC81C\uC791", NamedTextColor.YELLOW));
         lore.add(Component.text("Shift + \uC88C\uD074\uB9AD: \uAC00\uB2A5\uD55C \uCD5C\uB300 \uC81C\uC791", NamedTextColor.YELLOW));
         meta.lore(lore);

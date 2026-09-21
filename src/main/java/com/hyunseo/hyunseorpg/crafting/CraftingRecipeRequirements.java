@@ -4,19 +4,9 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.Set;
 
-/** Shared validity predicate for item-input and deferred farming-point recipes. */
+/** Null-safe access to configured crafting inputs. */
 public final class CraftingRecipeRequirements {
     private CraftingRecipeRequirements() {
-    }
-
-    public static boolean isValid(boolean hasItemInputs, long requiredAbundancePoints) {
-        return hasItemInputs || requiredAbundancePoints > 0L;
-    }
-
-    public static String invalidReason(boolean hasItemInputs, long requiredAbundancePoints) {
-        return isValid(hasItemInputs, requiredAbundancePoints)
-                ? ""
-                : "no inputs or farming-point requirement";
     }
 
     /** Returns recipe input keys without requiring an inputs section to exist. */

@@ -48,7 +48,7 @@ class LegacyEconomyRemovalArchitectureTest {
         assertTrue(Files.exists(MAIN.resolve("java/com/hyunseo/hyunseorpg/enhancement/VanillaAnvilEnhancementListener.java")));
         assertTrue(Files.exists(MAIN.resolve("java/com/hyunseo/hyunseorpg/enhancement/VanillaAnvilPolicyListener.java")));
         assertFalse(Files.exists(MAIN.resolve("java/com/hyunseo/hyunseorpg/enhancement/EquipmentPromotionService.java")));
-        assertTrue(Files.exists(MAIN.resolve("java/com/hyunseo/hyunseorpg/farming/FarmingPromotionService.java")));
+        assertFalse(Files.exists(MAIN.resolve("java/com/hyunseo/hyunseorpg/farming")));
     }
 
     @Test
