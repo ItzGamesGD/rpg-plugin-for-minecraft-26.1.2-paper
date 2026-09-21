@@ -1,7 +1,5 @@
 package com.hyunseo.hyunseorpg.player;
 
-import com.hyunseo.hyunseorpg.farming.FarmingStage;
-import com.hyunseo.hyunseorpg.farming.FarmingDeliveryState;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,17 +27,6 @@ public final class PlayerRPGData {
     private final Set<String> visitedWorlds;
     private final Set<String> unlockedWorlds;
     private final Set<String> clearedWorlds;
-    private int farmingDataVersion;
-    private FarmingStage farmingStage;
-    private long farmingTotalValidHarvests;
-    private final Map<String, Long> farmingCropHarvests;
-    private final Set<String> farmingUnlockedCrops;
-    private final Map<String, Integer> farmingStatTokenUses;
-    private long farmingAbundancePoints;
-    private final Map<String, Long> farmingFavor;
-    private final Map<String, FarmingDeliveryState> farmingDeliveries;
-    private final Map<String, Integer> farmingDeliveryCompletedCounts;
-    private boolean farmingDataMigrationRequired;
     private int alchemyDataVersion;
     private boolean alchemyDataMigrationRequired;
 
@@ -61,18 +48,6 @@ public final class PlayerRPGData {
         this.visitedWorlds = new HashSet<>();
         this.unlockedWorlds = new HashSet<>();
         this.clearedWorlds = new HashSet<>();
-        this.farmingDataVersion = 3;
-        this.farmingStage = FarmingStage.BASIC;
-        this.farmingTotalValidHarvests = 0L;
-        this.farmingCropHarvests = new HashMap<>();
-        this.farmingUnlockedCrops = new HashSet<>();
-        this.farmingUnlockedCrops.add("corn");
-        this.farmingStatTokenUses = new HashMap<>();
-        this.farmingAbundancePoints = 0L;
-        this.farmingFavor = new HashMap<>();
-        this.farmingDeliveries = new HashMap<>();
-        this.farmingDeliveryCompletedCounts = new HashMap<>();
-        this.farmingDataMigrationRequired = true;
         this.alchemyDataVersion = 1;
         this.alchemyDataMigrationRequired = true;
     }
@@ -260,179 +235,6 @@ public final class PlayerRPGData {
 
     public Set<String> getClearedWorlds() {
         return Collections.unmodifiableSet(clearedWorlds);
-    }
-
-    public int getFarmingDataVersion() {
-        return farmingDataVersion;
-    }
-
-    public void setFarmingDataVersion(int version) {
-        farmingDataVersion = requireAtLeast(version, 1, "farming data version");
-    }
-
-    public FarmingStage getFarmingStage() {
-        return farmingStage;
-    }
-
-    public void setFarmingStage(FarmingStage stage) {
-        farmingStage = Objects.requireNonNull(stage, "stage");
-    }
-
-    public long getFarmingTotalValidHarvests() {
-        return farmingTotalValidHarvests;
-    }
-
-    public void setFarmingTotalValidHarvests(long amount) {
-        farmingTotalValidHarvests = requireNonNegative(amount, "farming total valid harvests");
-    }
-
-    public void addFarmingValidHarvest(String cropId, long amount) {
-        long validAmount = requireNonNegative(amount, "farming harvest amount");
-        if (validAmount == 0L) return;
-        String id = normalizeId(cropId);
-        farmingTotalValidHarvests = safeAdd(farmingTotalValidHarvests, validAmount);
-        farmingCropHarvests.put(id, safeAdd(farmingCropHarvests.getOrDefault(id, 0L), validAmount));
-    }
-
-    public long getFarmingCropHarvestCount(String cropId) {
-        return farmingCropHarvests.getOrDefault(normalizeId(cropId), 0L);
-    }
-
-    public void setFarmingCropHarvestCount(String cropId, long amount) {
-        farmingCropHarvests.put(normalizeId(cropId), requireNonNegative(amount, "farming crop harvest count"));
-    }
-
-    public Map<String, Long> getFarmingCropHarvests() {
-        return Collections.unmodifiableMap(farmingCropHarvests);
-    }
-
-    public void clearFarmingHarvestData() {
-        farmingTotalValidHarvests = 0L;
-        farmingCropHarvests.clear();
-    }
-
-    public boolean isFarmingCropUnlocked(String cropId) {
-        return farmingUnlockedCrops.contains(normalizeId(cropId));
-    }
-
-    public void unlockFarmingCrop(String cropId) {
-        farmingUnlockedCrops.add(normalizeId(cropId));
-    }
-
-    public void lockFarmingCrop(String cropId) {
-        farmingUnlockedCrops.remove(normalizeId(cropId));
-    }
-
-    public void clearFarmingUnlockedCrops() {
-        farmingUnlockedCrops.clear();
-    }
-
-    public Set<String> getFarmingUnlockedCrops() {
-        return Collections.unmodifiableSet(farmingUnlockedCrops);
-    }
-
-    public int getFarmingStatTokenUses(String tokenId) {
-        return farmingStatTokenUses.getOrDefault(normalizeId(tokenId), 0);
-    }
-
-    public void setFarmingStatTokenUses(String tokenId, int amount) {
-        farmingStatTokenUses.put(normalizeId(tokenId), requireNonNegative(amount, "farming stat token uses"));
-    }
-
-    public Map<String, Integer> getFarmingStatTokenUses() {
-        return Collections.unmodifiableMap(farmingStatTokenUses);
-    }
-
-    public void clearFarmingStatTokenUses() {
-        farmingStatTokenUses.clear();
-    }
-
-    public long getFarmingAbundancePoints() {
-        return farmingAbundancePoints;
-    }
-
-    public void setFarmingAbundancePoints(long amount) {
-        farmingAbundancePoints = requireNonNegative(amount, "farming abundance points");
-    }
-
-    public void addFarmingAbundancePoints(long amount) {
-        if (amount < 0L) throw new IllegalArgumentException("farming abundance points must be non-negative");
-        farmingAbundancePoints = safeAdd(farmingAbundancePoints, amount);
-    }
-
-    public long getFarmingFavor(String providerId) {
-        return farmingFavor.getOrDefault(normalizeId(providerId), 0L);
-    }
-
-    public void setFarmingFavor(String providerId, long amount) {
-        farmingFavor.put(normalizeId(providerId), requireNonNegative(amount, "farming favor"));
-    }
-
-    public void addFarmingFavor(String providerId, long amount) {
-        if (amount < 0L) throw new IllegalArgumentException("farming favor must be non-negative");
-        String id = normalizeId(providerId);
-        farmingFavor.put(id, safeAdd(farmingFavor.getOrDefault(id, 0L), amount));
-    }
-
-    public Map<String, Long> getFarmingFavor() {
-        return Collections.unmodifiableMap(farmingFavor);
-    }
-
-    public void clearFarmingFavor() {
-        farmingFavor.clear();
-    }
-
-    public FarmingDeliveryState getFarmingDelivery(String providerId) {
-        return farmingDeliveries.get(normalizeId(providerId));
-    }
-
-    public void setFarmingDelivery(String providerId, FarmingDeliveryState state) {
-        String id = normalizeId(providerId);
-        if (state == null) farmingDeliveries.remove(id);
-        else farmingDeliveries.put(id, state);
-    }
-
-    public void clearFarmingDelivery(String providerId) {
-        farmingDeliveries.remove(normalizeId(providerId));
-    }
-
-    public Map<String, FarmingDeliveryState> getFarmingDeliveries() {
-        return Collections.unmodifiableMap(farmingDeliveries);
-    }
-
-    public void clearFarmingDeliveries() {
-        farmingDeliveries.clear();
-    }
-
-    public int getFarmingDeliveryCompletedCount(String providerId) {
-        return farmingDeliveryCompletedCounts.getOrDefault(normalizeId(providerId), 0);
-    }
-
-    public void incrementFarmingDeliveryCompletedCount(String providerId) {
-        String id = normalizeId(providerId);
-        int current = getFarmingDeliveryCompletedCount(id);
-        farmingDeliveryCompletedCounts.put(id, current == Integer.MAX_VALUE ? current : current + 1);
-    }
-
-    public void setFarmingDeliveryCompletedCount(String providerId, int amount) {
-        farmingDeliveryCompletedCounts.put(normalizeId(providerId), requireNonNegative(amount,
-                "farming delivery completed count"));
-    }
-
-    public Map<String, Integer> getFarmingDeliveryCompletedCounts() {
-        return Collections.unmodifiableMap(farmingDeliveryCompletedCounts);
-    }
-
-    public void clearFarmingDeliveryCompletedCounts() {
-        farmingDeliveryCompletedCounts.clear();
-    }
-
-    public boolean isFarmingDataMigrationRequired() {
-        return farmingDataMigrationRequired;
-    }
-
-    public void setFarmingDataMigrationRequired(boolean required) {
-        farmingDataMigrationRequired = required;
     }
 
     public int getAlchemyDataVersion() {

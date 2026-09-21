@@ -23,7 +23,6 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 import java.util.Locale;
 import java.util.Arrays;
-import java.util.function.Consumer;
 
 /** Applies the configured maximum stack size only to approved vanilla items. */
 public final class VanillaStackingService implements Listener {
@@ -32,20 +31,14 @@ public final class VanillaStackingService implements Listener {
 
     private final ConfigService configService;
     private final RPGItemService itemService;
-    private Consumer<ItemStack> additionalNormalizer = item -> { };
 
     public VanillaStackingService(ConfigService configService, RPGItemService itemService) {
         this.configService = configService;
         this.itemService = itemService;
     }
 
-    public void setAdditionalNormalizer(Consumer<ItemStack> normalizer) {
-        this.additionalNormalizer = normalizer == null ? item -> { } : normalizer;
-    }
-
     /** Mutates only the max-stack component; item identity and all other meta remain untouched. */
     public ItemStack normalize(ItemStack item) {
-        additionalNormalizer.accept(item);
         if (!isEligible(item)) return item;
         int max = configuredMax(item.getType());
         if (max <= item.getType().getMaxStackSize()) return item;
@@ -199,46 +192,9 @@ public final class VanillaStackingService implements Listener {
                 () -> normalizeAndMergeInventory(player.getInventory()));
     }
 
-    /**
-     * Canonicalizes farming metadata and coalesces only identical farming items.
-     * Other plugin-owned items and vanilla items are deliberately left alone.
-     */
+    /** Normalizes inventory entries without merging plugin-owned stacks. */
     public void normalizeAndMergeInventory(Inventory inventory) {
         if (inventory == null) return;
         for (ItemStack item : inventory.getContents()) normalize(item);
-        mergeFarmingStacks(inventory);
-    }
-
-    private void mergeFarmingStacks(Inventory inventory) {
-        for (int sourceSlot = 0; sourceSlot < inventory.getSize(); sourceSlot++) {
-            ItemStack source = inventory.getItem(sourceSlot);
-            if (!isStackableFarmingItem(source)) continue;
-
-            for (int targetSlot = 0; targetSlot < sourceSlot; targetSlot++) {
-                ItemStack target = inventory.getItem(targetSlot);
-                if (!isStackableFarmingItem(target) || !source.isSimilar(target)) continue;
-
-                int targetCapacity = effectiveMaxStackSize(target);
-                int room = Math.max(0, targetCapacity - target.getAmount());
-                if (room == 0) continue;
-
-                int moved = Math.min(room, source.getAmount());
-                target.setAmount(target.getAmount() + moved);
-                source.setAmount(source.getAmount() - moved);
-                inventory.setItem(targetSlot, target);
-                if (source.getAmount() <= 0) {
-                    inventory.setItem(sourceSlot, null);
-                    break;
-                }
-                inventory.setItem(sourceSlot, source);
-            }
-        }
-    }
-
-    private boolean isStackableFarmingItem(ItemStack item) {
-        if (item == null || item.getType().isAir()) return false;
-        return itemService.getItemId(item)
-                .map(itemService::isFarmingItemId)
-                .orElse(false);
     }
 }

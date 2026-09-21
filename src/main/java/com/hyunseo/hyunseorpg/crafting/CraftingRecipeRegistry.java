@@ -64,22 +64,6 @@ public final class CraftingRecipeRegistry {
                 && recipe.categoryId().equalsIgnoreCase(categoryId)).toList();
     }
 
-    /** Returns active farming recipes without relying on recipe ID naming conventions. */
-    public List<CraftingRecipeData> getAllByFarmingType(String rawType) {
-        String type = normalize(rawType);
-        return getAll().stream().filter(recipe -> recipe.enabled()
-                && (recipe.farmingType().equalsIgnoreCase(type)
-                || (type.equals("processing") && isProcessedFarmingOutput(recipe.outputId()))))
-                .toList();
-    }
-
-    private boolean isProcessedFarmingOutput(String outputId) {
-        return itemService.getData(outputId)
-                .map(data -> data.tags().contains("farming-processed")
-                        || data.category().equalsIgnoreCase("farming_processed"))
-                .orElse(false);
-    }
-
     public Optional<CraftingRecipeData> get(String rawId) {
         return Optional.ofNullable(recipes.get(normalize(rawId)));
     }
@@ -169,9 +153,6 @@ public final class CraftingRecipeRegistry {
         ConfigurationSection inputs;
         boolean enabled;
         String category;
-        String farmingType;
-        String requiredFarmingStage;
-        long requiredAbundancePoints;
         if (forcedCategory == null) {
             outputId = normalize(config.getCraftingString(path + ".output.item-id", ""));
             outputAmount = positive(config.getCraftingSection(path + ".output") == null
@@ -179,12 +160,6 @@ public final class CraftingRecipeRegistry {
             inputs = config.getCraftingSection(path + ".inputs");
             enabled = config.getCraftingBoolean(path + ".enabled", true);
             category = categoryFor(id, outputId, config.getCraftingString(path + ".category", ""));
-            farmingType = config.getCraftingString(path + ".farming-type", "");
-            requiredFarmingStage = config.getCraftingString(path + ".required-farming-stage", "");
-            requiredAbundancePoints = nonNegativeLong(
-                    config.getCraftingSection(path) == null ? null
-                            : config.getCraftingSection(path).get("required-abundance-points"),
-                    path + ".required-abundance-points");
         } else {
             outputId = normalize(config.getSpecialEquipmentString(path.substring(0, path.lastIndexOf(".crafting")) + ".item-id", ""));
             outputAmount = positive(config.getSpecialEquipmentSection(path) == null
@@ -193,19 +168,13 @@ public final class CraftingRecipeRegistry {
             enabled = config.getSpecialEquipmentBoolean(path.substring(0, path.lastIndexOf(".crafting")) + ".enabled", true)
                     && config.getSpecialEquipmentBoolean(path + ".enabled", true);
             category = normalize(forcedCategory);
-            farmingType = "";
-            requiredFarmingStage = "";
-            requiredAbundancePoints = 0L;
         }
         if (id.isBlank()) throw new IllegalArgumentException(path + ": blank recipe id");
         if (outputId.isBlank()) throw new IllegalArgumentException(path + ": missing output item-id");
         validateItem(outputId, path + ".output.item-id");
         List<String> inputKeys = CraftingRecipeRequirements.inputKeys(inputs).stream().toList();
         boolean hasInputs = !inputKeys.isEmpty();
-        if (!CraftingRecipeRequirements.isValid(hasInputs, requiredAbundancePoints)) {
-            throw new IllegalArgumentException(path + ": "
-                    + CraftingRecipeRequirements.invalidReason(hasInputs, requiredAbundancePoints));
-        }
+        if (!hasInputs) throw new IllegalArgumentException(path + ": recipe has no inputs");
         List<CraftingRecipeData.Ingredient> ingredients = new ArrayList<>();
         for (String rawIngredient : inputKeys) {
             String ingredient = normalize(rawIngredient);
@@ -214,8 +183,7 @@ public final class CraftingRecipeRegistry {
                     path + ".inputs." + rawIngredient)));
             validateItem(ingredient, path + ".inputs." + rawIngredient);
         }
-        return new CraftingRecipeData(id, enabled, category, ingredients, outputId, outputAmount,
-                farmingType, requiredFarmingStage, requiredAbundancePoints);
+        return new CraftingRecipeData(id, enabled, category, ingredients, outputId, outputAmount);
     }
 
     private String categoryFor(String recipeId, String outputId, String explicit) {

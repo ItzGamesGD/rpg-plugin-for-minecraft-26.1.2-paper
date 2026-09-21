@@ -21,16 +21,19 @@ public final class YamlAlchemyRecipeRegistry implements AlchemyRecipeRegistry {
             boolean enabled = config.getAlchemyRecipeBoolean(path + ".enabled", false);
             if (!enabled) continue;
             if (result.isBlank() || potions.find(result).isEmpty()) return false;
-            for (String ingredient : config.getAlchemyRecipeStringList(path + ".ingredients")) {
-                String normalized = normalize(ingredient);
-                if (!isKnownIngredient(normalized)) return false;
-            }
-            candidate.put(id, new AlchemyRecipeDefinition(id, result,
-                    config.getAlchemyRecipeStringList(path + ".ingredients").stream().map(this::normalize).toList(), true));
+            String base = normalize(config.getAlchemyRecipeString(path + ".base-potion-id", ""));
+            String ingredient = normalize(config.getAlchemyRecipeString(path + ".ingredient", ""));
+            if (base.isBlank() || ingredient.isBlank() || !isKnownIngredient(ingredient)) return false;
+            candidate.put(id, new AlchemyRecipeDefinition(id, base, ingredient, result, true));
         }
         snapshot = Map.copyOf(candidate); return true;
     }
     @Override public synchronized java.util.Optional<AlchemyRecipeDefinition> findByResult(String potionId) { return snapshot.values().stream().filter(r -> r.resultPotionId().equals(normalize(potionId))).findFirst(); }
+    @Override public synchronized java.util.Optional<AlchemyRecipeDefinition> findTransition(String basePotionId, String ingredientId) {
+        String base = normalize(basePotionId); String ingredient = normalize(ingredientId);
+        return snapshot.values().stream().filter(r -> r.enabled() && r.basePotionId().equals(base)
+                && r.ingredientId().equals(ingredient)).findFirst();
+    }
     @Override public synchronized Map<String, AlchemyRecipeDefinition> all() { return snapshot; }
     private boolean isKnownIngredient(String id) {
         if (id.startsWith("vanilla:")) {

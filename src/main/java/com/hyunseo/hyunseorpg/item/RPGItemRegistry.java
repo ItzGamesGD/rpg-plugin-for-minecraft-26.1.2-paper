@@ -58,11 +58,6 @@ public final class RPGItemRegistry {
             List<String> lore = KoreanDisplay.canonicalItemLore(id)
                     .orElseGet(() -> localizedLore(configuredLore, bundledLore));
             String category = configService.getItemsString(path + ".category", "MATERIAL");
-            if (isRetiredCookingDefinition(id, category)) {
-                configService.getPlugin().getLogger().info(
-                        "Ignoring retired cooking item definition: " + id);
-                continue;
-            }
             if (isLegacyProfessionDefinition(id, category, path)) {
                 // Old PDC items remain harmlessly readable by RPGItemService, but
                 // no new registry entry, recipe, or reward is created.
@@ -123,10 +118,7 @@ public final class RPGItemRegistry {
         return values != null && values.stream().anyMatch(this::containsLatin);
     }
 
-    private boolean isRetiredCookingDefinition(String id, String category) {
-        String normalizedCategory = category == null ? "" : category.trim().toUpperCase(Locale.ROOT);
-        return normalizedCategory.equals("FARMING_COOKED") || id.startsWith("cooked_");
-    }
+
 
     public Optional<RPGItemData> get(String itemId) {
         return Optional.ofNullable(itemsById.get(normalize(itemId)));
@@ -149,7 +141,7 @@ public final class RPGItemRegistry {
 
         String normalizedId = id.toLowerCase(Locale.ROOT);
         return normalizedId.contains("lumberjack") || normalizedId.contains("woodcutter")
-                || normalizedId.contains("farmer") || normalizedId.contains("farming")
+
                 || normalizedId.contains("hunter") || normalizedId.contains("hunting")
                 || normalizedId.contains("profession") || normalizedId.contains("job")
                 || normalizedId.equals("miner_grace")
@@ -177,10 +169,8 @@ public final class RPGItemRegistry {
             case "enchant_book_blade_throw" -> "칼날 연쇄 인챈트 북";
             case "enchant_book_light_greatsword" -> "빛의 대검 인챈트 북";
             case "enchant_book_laser_arrow" -> "레이저 화살 인챈트 북";
-            case "abundance_essence" -> "풍요의 정수";
             case "vitality_stat_token" -> "생명의 증표";
             case "satiety_stat_token" -> "포만의 증표";
-            case "abundance_stat_token" -> "풍요의 증표";
             case "seed_corn" -> "옥수수 씨앗";
             case "seed_onion" -> "양파 씨앗";
             case "seed_chili" -> "고추 씨앗";

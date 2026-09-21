@@ -7,7 +7,6 @@ import java.util.Optional;
 public enum ActivityType {
     MINING,
     LOGGING,
-    FARMING,
     HUNTING,
     HUSBANDRY,
     REPAIRING,

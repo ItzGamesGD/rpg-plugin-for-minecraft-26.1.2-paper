@@ -53,14 +53,9 @@ public final class ConfigMigrationService {
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "hunting-grounds.yml",
             "worlds.yml", "special-equipment.yml"
     );
-    private static final List<String> FARMING_FILES = List.of(
-            "farming/crops.yml", "farming/growth.yml", "farming/harvest.yml",
-            "farming/progression.yml", "farming/quality.yml", "farming/processing.yml",
-            "farming/hoe_enhancement.yml", "farming/hoe_promotion.yml",
-            "farming/deliveries.yml", "farming/favor.yml", "farming/essence.yml", "farming/stat_tokens.yml");
     private static final List<String> ALCHEMY_FILES = List.of(
             "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
-            "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
+"alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml");
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
             "burning_sword", "flowing_water_sword", "wind_cutting_sword", "earth_special_sword",
@@ -107,9 +102,6 @@ public final class ConfigMigrationService {
             if (normalized.equals("mobs")) {
                 migrateMobDefinitions(lines, changedFiles);
             }
-            if (normalized.equals("farming") || normalized.equals("all")) {
-                migrateFarming(lines, changedFiles);
-            }
             if (normalized.equals("alchemy") || normalized.equals("all")) {
                 migrateAlchemy(lines, changedFiles);
             }
@@ -121,7 +113,7 @@ public final class ConfigMigrationService {
                 migrateItems(lines, changedFiles);
                 migrateLegacyProfessionRecipes(lines, changedFiles);
             }
-            if (!List.of("configs", "items", "mobs", "players", "farming", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
+            if (!List.of("configs", "items", "mobs", "players", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
             }
@@ -174,63 +166,6 @@ public final class ConfigMigrationService {
         migrateRetiredSpecialRecipes(lines, changedFiles);
     }
 
-    private void migrateFarming(List<String> lines, List<File> changedFiles) {
-        for (String fileName : FARMING_FILES) {
-            FileConfiguration defaults = loadResource(fileName);
-            if (defaults == null) {
-                lines.add("ERROR " + fileName + ": bundled farming default is missing");
-                continue;
-            }
-            FileConfiguration target = loadLive(fileName);
-            boolean changed = false;
-            if (target == null) {
-                target = new YamlConfiguration();
-                copyMissingRoot(target, defaults);
-                changed = true;
-                lines.add(fileName + ": created missing farming config from bundled defaults");
-            } else {
-                if (fileName.equals("farming/essence.yml")) {
-                    changed = migrateLegacyEssenceKeys(target, lines);
-                }
-                changed |= copyMissingRoot(target, defaults);
-                if (changed) lines.add(fileName + ": added missing farming keys without overwriting operator values");
-            }
-            if (fileName.equals("farming/essence.yml")) {
-                if (target.isSet("material-tag")) {
-                    target.set("material-tag", null);
-                    changed = true;
-                    lines.add(fileName + ": removed legacy supreme-material requirement");
-                }
-                if (target.isSet("required-material-amount")) {
-                    target.set("required-material-amount", null);
-                    changed = true;
-                    lines.add(fileName + ": removed legacy material amount requirement");
-                }
-                if (target.getBoolean("sellable", false)) {
-                    target.set("sellable", false);
-                    changed = true;
-                    lines.add(fileName + ": enforced non-sellable essence policy");
-                }
-                if (target.getBoolean("reverse-conversion", false)) {
-                    target.set("reverse-conversion", false);
-                    changed = true;
-                    lines.add(fileName + ": disabled abundance essence reverse conversion");
-                }
-            }
-            if (fileName.equals("farming/harvest.yml")
-                    && target.getLong("direct.abundance-points", 0L) < 1L
-                    && defaults.getLong("direct.abundance-points", 0L) > 0L) {
-                target.set("direct.abundance-points", defaults.getLong("direct.abundance-points"));
-                changed = true;
-                lines.add(fileName + ": enabled direct harvest abundance point placeholder");
-            }
-            if (changed) mark(target, fileName, changedFiles, lines, "farming migration staged");
-        }
-        migrateHoeGrowthDesign(lines, changedFiles);
-        migrateFarmingCrafting(lines, changedFiles);
-        migrateFarmingItemReferences(lines, changedFiles);
-        migrateKoreanDisplayText(lines, changedFiles);
-    }
 
     private void migrateAlchemy(List<String> lines, List<File> changedFiles) {
         for (String fileName : ALCHEMY_FILES) {
@@ -259,9 +194,6 @@ public final class ConfigMigrationService {
                     || copyMissingTree(target, defaults, "multiplier")) {
                 changed = true;
             }
-            if (fileName.equals("alchemy/abundance.yml")
-                    && (copyMissingTree(target, defaults, "essences")
-                    || copyMissingTree(target, defaults, "activities"))) changed = true;
             if (fileName.equals("alchemy/potions.yml") && copyMissingTree(target, defaults, "potions")) changed = true;
             if (fileName.equals("alchemy/recipes.yml") && copyMissingTree(target, defaults, "recipes")) changed = true;
             if (fileName.equals("alchemy/catalysts.yml") && copyMissingTree(target, defaults, "catalysts")) changed = true;
@@ -273,7 +205,6 @@ public final class ConfigMigrationService {
             }
             if (changed) mark(target, fileName, changedFiles, lines, "alchemy migration staged");
         }
-        migrateAlchemyCrafting(lines, changedFiles);
         activateProductionAlchemy(lines, changedFiles);
     }
 
@@ -286,7 +217,6 @@ public final class ConfigMigrationService {
         activateEntries("alchemy/effects.yml", "effects", effects, "enabled", true, lines, changedFiles);
         activateEntries("alchemy/effects.yml", "effects", effects, "status", "IMPLEMENTED_RUNTIME", lines, changedFiles);
         activateEntries("alchemy/potions.yml", "potions", potions, "enabled", true, lines, changedFiles);
-        activateEntries("alchemy/recipes.yml", "recipes", potions, "enabled", true, lines, changedFiles);
         List<String> catalysts = List.of("redstone", "glowstone_dust", "gunpowder", "dragon_breath",
                 "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge");
         activateEntries("alchemy/catalysts.yml", "catalysts", catalysts, "enabled", true, lines, changedFiles);
@@ -351,108 +281,11 @@ public final class ConfigMigrationService {
     }
 
     /** Installs only the canonical alchemy recipes; operator crafting data remains authoritative. */
-    private void migrateAlchemyCrafting(List<String> lines, List<File> changedFiles) {
-        String fileName = "crafting.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-        ConfigurationSection recipes = defaults.getConfigurationSection("crafting-recipes");
-        if (recipes == null) return;
-        for (String rawId : recipes.getKeys(false)) {
-            String type = normalize(defaults.getString("crafting-recipes." + rawId + ".farming-type", ""));
-            if (!type.startsWith("alchemy_")) continue;
-            String path = "crafting-recipes." + rawId;
-            if (target.isSet(path)) continue;
-            copyTree(target, defaults, path);
-            lines.add(fileName + ": added missing alchemy " + type + " recipe " + normalize(rawId));
-            mark(target, fileName, changedFiles, lines, "alchemy crafting recipe staged");
-        }
-        List<String> categories = target.getStringList("crafting.categories.materials");
-        boolean categoryChanged = false;
-        for (String rawId : recipes.getKeys(false)) {
-            String type = normalize(defaults.getString("crafting-recipes." + rawId + ".farming-type", ""));
-            String id = normalize(rawId);
-            if (!type.startsWith("alchemy_") || categories.stream().anyMatch(existing -> normalize(existing).equals(id))) continue;
-            categories.add(id);
-            categoryChanged = true;
-        }
-        if (categoryChanged) {
-            target.set("crafting.categories.materials", categories);
-            lines.add(fileName + ": added alchemy recipes to materials fallback category");
-            mark(target, fileName, changedFiles, lines, "alchemy crafting category staged");
-        }
-    }
+
 
     /**
-     * Localizes only canonical farming presentation fields. Gameplay values,
-     * prices, tags, materials, and operator-defined non-farming items remain untouched.
      */
-    private void migrateKoreanDisplayText(List<String> lines, List<File> changedFiles) {
-        FileConfiguration items = loadLive("items.yml");
-        FileConfiguration itemDefaults = loadResource("items.yml");
-        if (items != null && itemDefaults != null) {
-            ConfigurationSection defaults = itemDefaults.getConfigurationSection("items");
-            ConfigurationSection target = items.getConfigurationSection("items");
-            boolean changed = false;
-            if (defaults != null && target != null) {
-                for (String rawId : defaults.getKeys(false)) {
-                    String id = normalize(rawId);
-                    if (!isFarmingPresentationId(id) || !target.isConfigurationSection(rawId)) continue;
-                    String sourcePath = "items." + rawId;
-                    String targetPath = "items." + rawId;
-                    String display = itemDefaults.getString(sourcePath + ".display-name", "");
-                    List<String> lore = itemDefaults.getStringList(sourcePath + ".lore");
-                    if (!display.isBlank() && !display.equals(items.getString(targetPath + ".display-name", ""))) {
-                        items.set(targetPath + ".display-name", display);
-                        changed = true;
-                    }
-                    if (!lore.isEmpty() && !lore.equals(items.getStringList(targetPath + ".lore"))) {
-                        items.set(targetPath + ".lore", lore);
-                        changed = true;
-                    }
-                }
-            }
-            if (changed) {
-                lines.add("items.yml: localized canonical farming item names and lore");
-                mark(items, "items.yml", changedFiles, lines, "farming localization staged");
-            }
-        }
 
-        FileConfiguration quality = loadLive("farming/quality.yml");
-        FileConfiguration qualityDefaults = loadResource("farming/quality.yml");
-        if (quality != null && qualityDefaults != null) {
-            boolean changed = false;
-            for (String id : List.of("normal", "basic", "proficient", "advanced", "supreme")) {
-                String path = "quality." + id + ".display-name";
-                String display = qualityDefaults.getString(path, "");
-                if (!display.isBlank() && !display.equals(quality.getString(path, ""))) {
-                    quality.set(path, display);
-                    changed = true;
-                }
-            }
-            if (changed) {
-                lines.add("farming/quality.yml: localized quality names");
-                mark(quality, "farming/quality.yml", changedFiles, lines, "quality localization staged");
-            }
-        }
-    }
-
-    private boolean isFarmingPresentationId(String id) {
-        return id.startsWith("seed_") || id.startsWith("crop_") || id.startsWith("processed_")
-                || id.equals("abundance_essence") || id.endsWith("_stat_token");
-    }
-
-    private boolean migrateLegacyEssenceKeys(FileConfiguration target, List<String> lines) {
-        boolean changed = false;
-        changed |= moveLegacyKey(target, "item-id", "result-item-id");
-        changed |= moveLegacyKey(target, "required-farming-stage", "unlock-stage");
-        changed |= moveLegacyKey(target, "output-amount", "result-count");
-        changed |= moveLegacyKey(target, "tradeable", "tradable");
-        if (changed) {
-            lines.add("farming/essence.yml: converted legacy essence keys to the Prompt 10 contract");
-        }
-        return changed;
-    }
 
     private boolean moveLegacyKey(FileConfiguration target, String legacyPath, String canonicalPath) {
         if (!target.isSet(legacyPath)) return false;
@@ -466,226 +299,12 @@ public final class ConfigMigrationService {
     }
 
     /** Migrates legacy hoe growth fields while preserving operator values. */
-    private void migrateHoeGrowthDesign(List<String> lines, List<File> changedFiles) {
-        FileConfiguration promotion = loadLive("farming/hoe_promotion.yml");
-        FileConfiguration promotionDefaults = loadResource("farming/hoe_promotion.yml");
-        if (promotion != null) {
-            boolean changed = promotion.isSet("farming-stage-mapping") || promotion.isSet("levels");
-            promotion.set("farming-stage-mapping", null);
-            promotion.set("levels", null);
-            if (promotionDefaults != null) {
-                changed |= copyMissingTree(promotion, promotionDefaults, "limits");
-                changed |= copyMissingTree(promotion, promotionDefaults, "tiers");
-            }
-            if (changed) {
-                lines.add("farming/hoe_promotion.yml: migrated item-local tier/star passive table");
-                mark(promotion, "farming/hoe_promotion.yml", changedFiles, lines, "hoe promotion design correction staged");
-            }
-        }
 
-        FileConfiguration enhancement = loadLive("farming/hoe_enhancement.yml");
-        FileConfiguration enhancementDefaults = loadResource("farming/hoe_enhancement.yml");
-        if (enhancement != null) {
-            boolean changed = enhancement.isSet("limits.maximum-quality-density-shift");
-            enhancement.set("limits.maximum-quality-density-shift", null);
-            ConfigurationSection levels = enhancement.getConfigurationSection("levels");
-            if (levels != null) {
-                for (String level : levels.getKeys(false)) {
-                    if (enhancement.isSet("levels." + level + ".quality-density-shift")) changed = true;
-                    enhancement.set("levels." + level + ".quality-density-shift", null);
-                }
-            }
-            if (enhancementDefaults != null) {
-                changed |= copyMissingTree(enhancement, enhancementDefaults, "limits");
-                changed |= copyMissingTree(enhancement, enhancementDefaults, "levels");
-            }
-            if (changed) {
-                lines.add("farming/hoe_enhancement.yml: moved quality effect to sale bonus and restored missing curves");
-                mark(enhancement, "farming/hoe_enhancement.yml", changedFiles, lines, "hoe enhancement design correction staged");
-            }
-        }
 
-        FileConfiguration progression = loadLive("farming/progression.yml");
-        if (progression != null && progression.isSet("hoe")) {
-            progression.set("hoe", null);
-            lines.add("farming/progression.yml: removed legacy hoe quality/drop modifiers");
-            mark(progression, "farming/progression.yml", changedFiles, lines, "hoe progression design correction staged");
-        }
-    }
 
-    /** Adds only bundled farming processing recipes to the canonical recipe registry. */
-    private void migrateFarmingCrafting(List<String> lines, List<File> changedFiles) {
-        String fileName = "crafting.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null || defaults == null) return;
-
-        ConfigurationSection defaultRecipes = defaults.getConfigurationSection("crafting-recipes");
-        if (defaultRecipes == null) return;
-        Set<String> farmingRecipeIds = new HashSet<>();
-        for (String rawId : defaultRecipes.getKeys(false)) {
-            String id = normalize(rawId);
-            String farmingType = normalize(defaults.getString("crafting-recipes." + rawId + ".farming-type", ""));
-            if (!(farmingType.equals("processing") || farmingType.equals("essence"))) continue;
-            farmingRecipeIds.add(id);
-            String path = "crafting-recipes." + rawId;
-            if (!target.isSet(path)) {
-                copyTree(target, defaults, path);
-                lines.add(fileName + ": added missing farming " + farmingType + " recipe " + id);
-                mark(target, fileName, changedFiles, lines, "farming recipe staged");
-            }
-        }
-
-        ConfigurationSection essence = target.getConfigurationSection("crafting-recipes.abundance_essence");
-        ConfigurationSection essenceDefaults = defaults.getConfigurationSection("crafting-recipes.abundance_essence");
-        if (essence != null && essenceDefaults != null) {
-            boolean essenceChanged = false;
-            if (essence.isSet("inputs")) {
-                essence.set("inputs", null);
-                essenceChanged = true;
-                lines.add(fileName + ": removed supreme-material inputs from abundance_essence");
-            }
-            if (!essence.isSet("required-abundance-points")
-                    && essenceDefaults.isSet("required-abundance-points")) {
-                copyTree(target, defaults, "crafting-recipes.abundance_essence.required-abundance-points");
-                essenceChanged = true;
-                lines.add(fileName + ": added abundance point requirement to abundance_essence");
-            }
-            FileConfiguration farmingEssence = loadLive("farming/essence.yml");
-            if (farmingEssence == null) farmingEssence = loadResource("farming/essence.yml");
-            long authoritativePoints = farmingEssence == null
-                    ? 0L : farmingEssence.getLong("required-abundance-points", 0L);
-            String authoritativeItem = farmingEssence == null ? "" : firstNonBlank(
-                    farmingEssence.getString("result-item-id", ""),
-                    farmingEssence.getString("item-id", "abundance_essence"));
-            int authoritativeCount = farmingEssence == null ? 1 : Math.max(1,
-                    farmingEssence.getInt("result-count", farmingEssence.getInt("output-amount", 1)));
-            String authoritativeStage = farmingEssence == null ? "expert" : firstNonBlank(
-                    farmingEssence.getString("unlock-stage", ""),
-                    farmingEssence.getString("required-farming-stage", "expert"));
-            if (authoritativePoints > 0L
-                    && setIfDifferent(target, "crafting-recipes.abundance_essence.required-abundance-points",
-                    authoritativePoints)) {
-                essenceChanged = true;
-                lines.add(fileName + ": synchronized abundance_essence points from farming/essence.yml: "
-                        + authoritativePoints);
-            }
-            if (!authoritativeItem.isBlank()
-                    && setIfDifferent(target, "crafting-recipes.abundance_essence.output.item-id", authoritativeItem)) {
-                essenceChanged = true;
-                lines.add(fileName + ": synchronized abundance_essence result item from farming/essence.yml: "
-                        + authoritativeItem);
-            }
-            if (setIfDifferent(target, "crafting-recipes.abundance_essence.output.amount", authoritativeCount)) {
-                essenceChanged = true;
-                lines.add(fileName + ": synchronized abundance_essence result count from farming/essence.yml: "
-                        + authoritativeCount);
-            }
-            if (!authoritativeStage.isBlank()
-                    && setIfDifferent(target, "crafting-recipes.abundance_essence.required-farming-stage", authoritativeStage)) {
-                essenceChanged = true;
-                lines.add(fileName + ": synchronized abundance_essence unlock stage from farming/essence.yml: "
-                        + authoritativeStage);
-            }
-            if (essenceChanged) mark(target, fileName, changedFiles, lines,
-                    "abundance essence point recipe staged");
-        }
-
-        List<String> categories = target.getStringList("crafting.categories.materials");
-        boolean categoryListChanged = false;
-        for (String id : farmingRecipeIds) {
-            if (!categories.stream().anyMatch(existing -> normalize(existing).equals(id))) {
-                categories.add(id);
-                categoryListChanged = true;
-            }
-        }
-        if (categoryListChanged) {
-            target.set("crafting.categories.materials", categories);
-            lines.add(fileName + ": added farming processing recipes to materials category fallback");
-            mark(target, fileName, changedFiles, lines, "farming category fallback staged");
-        }
-    }
 
     /** Restores missing bundled positions without moving or rewriting operator placements. */
-private void migrateFarmingItemReferences(List<String> lines, List<File> changedFiles) {
-        FileConfiguration items = loadLive("items.yml");
-        FileConfiguration defaults = loadResource("items.yml");
-        FileConfiguration crops = loadLive("farming/crops.yml");
-        FileConfiguration quality = loadLive("farming/quality.yml");
-        FileConfiguration crafting = loadLive("crafting.yml");
-        FileConfiguration craftingDefaults = loadResource("crafting.yml");
-        if (items == null || defaults == null || crops == null) return;
-        Set<String> ids = new HashSet<>();
-        ConfigurationSection cropSection = crops.getConfigurationSection("crops");
-        if (cropSection != null) {
-            for (String crop : cropSection.getKeys(false)) {
-                ids.add(normalize(crops.getString("crops." + crop + ".seed-item-id", "")));
-                ids.add(normalize(crops.getString("crops." + crop + ".crop-item-id", "")));
-            }
-        }
-        ConfigurationSection qualityItems = quality == null ? null : quality.getConfigurationSection("items");
-        if (qualityItems != null) {
-            for (String crop : qualityItems.getKeys(false)) {
-                ConfigurationSection levels = qualityItems.getConfigurationSection(crop);
-                if (levels != null) for (String level : levels.getKeys(false)) ids.add(normalize(levels.getString(level, "")));
-            }
-        }
-        addProcessedRecipeOutputs(ids, crafting, craftingDefaults);
-        FileConfiguration essence = loadLive("farming/essence.yml");
-        if (essence == null) essence = loadResource("farming/essence.yml");
-        if (essence != null) ids.add(normalize(firstNonBlank(
-                essence.getString("result-item-id", ""),
-                essence.getString("item-id", ""))));
-        FileConfiguration statTokens = loadLive("farming/stat_tokens.yml");
-        if (statTokens == null) statTokens = loadResource("farming/stat_tokens.yml");
-        if (statTokens != null && statTokens.isConfigurationSection("tokens")) {
-            for (String token : statTokens.getConfigurationSection("tokens").getKeys(false)) {
-                ids.add(normalize(statTokens.getString("tokens." + token + ".item-id", "")));
-            }
-        }
-        boolean changed = false;
-        for (String id : ids) {
-            if (id.isBlank() || items.isSet("items." + id) || !defaults.isSet("items." + id)) continue;
-            copyTree(items, defaults, "items." + id);
-            lines.add("items.yml: added missing farming item " + id);
-            changed = true;
-        }
-        ConfigurationSection defaultItems = defaults.getConfigurationSection("items");
-        if (defaultItems != null) {
-            for (String rawId : defaultItems.getKeys(false)) {
-                String id = normalize(rawId);
-                List<String> requiredTags = defaults.getStringList("items." + rawId + ".tags");
-                if (requiredTags.isEmpty() || !items.isConfigurationSection("items." + id)) continue;
-                List<String> currentTags = new ArrayList<>(items.getStringList("items." + id + ".tags"));
-                boolean tagChanged = false;
-                for (String tag : requiredTags) {
-                    if (tag.isBlank() || currentTags.stream().anyMatch(value -> value.equalsIgnoreCase(tag))) continue;
-                    currentTags.add(tag);
-                    tagChanged = true;
-                }
-                if (tagChanged) {
-                    items.set("items." + id + ".tags", currentTags);
-                    lines.add("items.yml: added missing farming item tags for " + id);
-                    changed = true;
-                }
-            }
-        }
-        if (changed) mark(items, "items.yml", changedFiles, lines, "farming item references staged");
-    }
 
-    private void addProcessedRecipeOutputs(Set<String> ids, FileConfiguration live,
-                                            FileConfiguration defaults) {
-        for (FileConfiguration source : new FileConfiguration[]{live, defaults}) {
-            if (source == null) continue;
-            ConfigurationSection recipes = source.getConfigurationSection("crafting-recipes");
-            if (recipes == null) continue;
-            for (String recipe : recipes.getKeys(false)) {
-                String farmingType = normalize(source.getString("crafting-recipes." + recipe + ".farming-type", ""));
-                String id = normalize(source.getString("crafting-recipes." + recipe + ".output.item-id", ""));
-                if (!farmingType.isBlank() && !id.isBlank()) ids.add(id);
-            }
-        }
-    }
 
     private void migrateMobAndPersistence(List<String> lines, List<File> changedFiles) {
         migrateMobDefinitions(lines, changedFiles);
@@ -1589,7 +1208,6 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
                 lines.add("players/" + file.getName() + ": normalized classLevel to 1");
                 changed = true;
             }
-            changed |= migrateFarmingProfile(data, file.getName(), lines);
             for (String path : DEPRECATED_PLAYER_PATHS) {
                 if (data.isSet(path)) {
                     data.set(path, null);
@@ -1604,34 +1222,7 @@ private void migrateFarmingItemReferences(List<String> lines, List<File> changed
         }
     }
 
-    /** Adds only missing farming v3 fields; existing progression and delivery values win. */
-    private boolean migrateFarmingProfile(FileConfiguration data, String fileName, List<String> lines) {
-        boolean changed = false;
-        if (!data.isConfigurationSection("farming")) {
-            data.set("farming.version", 3);
-            data.set("farming.stage", "BASIC");
-            data.set("farming.total-valid-harvests", 0L);
-            data.set("farming.crop-harvests.corn", 0L);
-            data.set("farming.unlocked-crops", List.of("corn"));
-            data.set("farming.abundance-points", 0L);
-            changed = true;
-            lines.add("players/" + fileName + ": created missing farming profile v3");
-            return true;
-        }
-        if (data.getInt("farming.version", 1) < 3) {
-            data.set("farming.version", 3);
-            changed = true;
-            lines.add("players/" + fileName + ": farming.version -> 3");
-        }
-        if (!data.isSet("farming.stage")) { data.set("farming.stage", "BASIC"); changed = true; }
-        if (!data.isSet("farming.total-valid-harvests")) { data.set("farming.total-valid-harvests", 0L); changed = true; }
-        if (!data.isSet("farming.crop-harvests")) { data.set("farming.crop-harvests.corn", 0L); changed = true; }
-        // An explicitly saved empty list is an intentional admin state and must remain empty.
-        if (!data.isSet("farming.unlocked-crops")) { data.set("farming.unlocked-crops", List.of("corn")); changed = true; }
-        if (!data.isSet("farming.abundance-points")) { data.set("farming.abundance-points", 0L); changed = true; }
-        if (changed) lines.add("players/" + fileName + ": filled missing farming profile fields without overwriting values");
-        return changed;
-    }
+
 
 
     private final Map<File, FileConfiguration> pending = new java.util.LinkedHashMap<>();

@@ -35,23 +35,10 @@ public final class ConfigService {
     private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
     private FileConfiguration specialEquipmentConfig;
-    private FileConfiguration farmingCropsConfig;
-    private FileConfiguration farmingGrowthConfig;
-    private FileConfiguration farmingHarvestConfig;
-    private FileConfiguration farmingProgressionConfig;
-    private FileConfiguration farmingQualityConfig;
-    private FileConfiguration farmingHoeEnhancementConfig;
-    private FileConfiguration farmingHoePromotionConfig;
-    private FileConfiguration farmingCookingConfig;
-    private FileConfiguration farmingDeliveriesConfig;
-    private FileConfiguration farmingFavorConfig;
-    private FileConfiguration farmingEssenceConfig;
-    private FileConfiguration farmingStatTokensConfig;
     private FileConfiguration alchemyEffectsConfig;
     private FileConfiguration alchemyComponentsConfig;
     private FileConfiguration alchemyConflictsConfig;
     private FileConfiguration alchemyScalingConfig;
-    private FileConfiguration alchemyAbundanceConfig;
     private FileConfiguration alchemyPotionsConfig;
     private FileConfiguration alchemyRecipesConfig;
     private FileConfiguration alchemyCatalystsConfig;
@@ -83,23 +70,10 @@ public final class ConfigService {
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
-        this.farmingCropsConfig = loadManagedConfig("farming/crops.yml");
-        this.farmingGrowthConfig = loadManagedConfig("farming/growth.yml");
-        this.farmingHarvestConfig = loadManagedConfig("farming/harvest.yml");
-        this.farmingProgressionConfig = loadManagedConfig("farming/progression.yml");
-        this.farmingQualityConfig = loadManagedConfig("farming/quality.yml");
-        this.farmingHoeEnhancementConfig = loadManagedConfig("farming/hoe_enhancement.yml");
-        this.farmingHoePromotionConfig = loadManagedConfig("farming/hoe_promotion.yml");
-        this.farmingCookingConfig = loadManagedConfig("farming/cooking.yml");
-        this.farmingDeliveriesConfig = loadManagedConfig("farming/deliveries.yml");
-        this.farmingFavorConfig = loadManagedConfig("farming/favor.yml");
-        this.farmingEssenceConfig = loadManagedConfig("farming/essence.yml");
-        this.farmingStatTokensConfig = loadManagedConfig("farming/stat_tokens.yml");
         this.alchemyEffectsConfig = loadManagedConfig("alchemy/effects.yml");
         this.alchemyComponentsConfig = loadManagedConfig("alchemy/components.yml");
         this.alchemyConflictsConfig = loadManagedConfig("alchemy/conflicts.yml");
         this.alchemyScalingConfig = loadManagedConfig("alchemy/scaling.yml");
-        this.alchemyAbundanceConfig = loadManagedConfig("alchemy/abundance.yml");
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
@@ -446,261 +420,133 @@ public void reloadCraftingConfig() {
         this.specialEquipmentConfig = loadManagedConfig("special-equipment.yml");
     }
 
-    public ConfigurationSection getFarmingCropsSection(String path) {
-        return farmingCropsConfig.getConfigurationSection(path);
-    }
 
-    public String getFarmingCropsString(String path, String defaultValue) {
-        return farmingCropsConfig.getString(path, defaultValue);
-    }
 
-    public int getFarmingCropsInt(String path, int defaultValue) {
-        return farmingCropsConfig.getInt(path, defaultValue);
-    }
 
-    public boolean getFarmingCropsBoolean(String path, boolean defaultValue) {
-        return farmingCropsConfig.getBoolean(path, defaultValue);
-    }
 
-    public void reloadFarmingCropsConfig() {
-        this.farmingCropsConfig = loadManagedConfig("farming/crops.yml");
-    }
 
-    public ConfigurationSection getFarmingGrowthSection(String path) {
-        return farmingGrowthConfig.getConfigurationSection(path);
-    }
 
-    public long getFarmingGrowthLong(String path, long defaultValue) {
-        return farmingGrowthConfig.getLong(path, defaultValue);
-    }
 
-    public boolean getFarmingGrowthBoolean(String path, boolean defaultValue) {
-        return farmingGrowthConfig.getBoolean(path, defaultValue);
-    }
 
-    public void reloadFarmingGrowthConfig() {
-        this.farmingGrowthConfig = loadManagedConfig("farming/growth.yml");
-    }
 
-    public int getFarmingHarvestInt(String path, int defaultValue) {
-        return farmingHarvestConfig.getInt(path, defaultValue);
-    }
 
-    public long getFarmingHarvestLong(String path, long defaultValue) {
-        return farmingHarvestConfig.getLong(path, defaultValue);
-    }
 
-    public double getFarmingHarvestDouble(String path, double defaultValue) {
-        return farmingHarvestConfig.getDouble(path, defaultValue);
-    }
 
-    public boolean getFarmingHarvestBoolean(String path, boolean defaultValue) {
-        return farmingHarvestConfig.getBoolean(path, defaultValue);
-    }
 
-    public void reloadFarmingHarvestConfig() {
-        this.farmingHarvestConfig = loadManagedConfig("farming/harvest.yml");
-    }
 
-    public String getFarmingProgressionString(String path, String defaultValue) {
-        return farmingProgressionConfig.getString(path, defaultValue);
-    }
 
-    public int getFarmingProgressionInt(String path, int defaultValue) {
-        return farmingProgressionConfig.getInt(path, defaultValue);
-    }
 
-    public long getFarmingProgressionLong(String path, long defaultValue) {
-        return farmingProgressionConfig.getLong(path, defaultValue);
-    }
 
-    public double getFarmingProgressionDouble(String path, double defaultValue) {
-        return farmingProgressionConfig.getDouble(path, defaultValue);
-    }
 
-    public boolean getFarmingProgressionBoolean(String path, boolean defaultValue) {
-        return farmingProgressionConfig.getBoolean(path, defaultValue);
-    }
 
-    public ConfigurationSection getFarmingProgressionSection(String path) {
-        return farmingProgressionConfig.getConfigurationSection(path);
-    }
 
-    public void reloadFarmingProgressionConfig() {
-        this.farmingProgressionConfig = loadManagedConfig("farming/progression.yml");
-    }
 
-    public Set<String> getFarmingQualityKeys(String path) {
-        return getKeys(farmingQualityConfig, path);
-    }
 
-    public ConfigurationSection getFarmingQualitySection(String path) {
-        return farmingQualityConfig.getConfigurationSection(path);
-    }
 
-    public String getFarmingQualityString(String path, String defaultValue) {
-        return farmingQualityConfig.getString(path, defaultValue);
-    }
 
-    public double getFarmingQualityDouble(String path, double defaultValue) {
-        return farmingQualityConfig.getDouble(path, defaultValue);
-    }
 
-    public boolean getFarmingQualityBoolean(String path, boolean defaultValue) {
-        return farmingQualityConfig.getBoolean(path, defaultValue);
-    }
 
-    public void reloadFarmingQualityConfig() {
-        this.farmingQualityConfig = loadManagedConfig("farming/quality.yml");
-    }
 
-    public Set<String> getFarmingCookingKeys(String path) {
-        return getKeys(farmingCookingConfig, path);
-    }
 
-    public ConfigurationSection getFarmingCookingSection(String path) {
-        return farmingCookingConfig.getConfigurationSection(path);
-    }
 
-    public String getFarmingCookingString(String path, String defaultValue) {
-        return farmingCookingConfig.getString(path, defaultValue);
-    }
 
-    public int getFarmingCookingInt(String path, int defaultValue) {
-        return farmingCookingConfig.getInt(path, defaultValue);
-    }
 
-    public boolean getFarmingCookingBoolean(String path, boolean defaultValue) {
-        return farmingCookingConfig.getBoolean(path, defaultValue);
-    }
 
-    public List<String> getFarmingCookingStringList(String path) {
-        return farmingCookingConfig.getStringList(path);
-    }
 
-    public void reloadFarmingCookingConfig() {
-        this.farmingCookingConfig = loadManagedConfig("farming/cooking.yml");
-    }
 
-    public Set<String> getFarmingDeliveriesKeys(String path) {
-        return getKeys(farmingDeliveriesConfig, path);
-    }
 
-    public ConfigurationSection getFarmingDeliveriesSection(String path) {
-        return farmingDeliveriesConfig.getConfigurationSection(path);
-    }
 
-    public long getFarmingDeliveriesLong(String path, long defaultValue) {
-        return farmingDeliveriesConfig.getLong(path, defaultValue);
-    }
 
-    public boolean getFarmingDeliveriesBoolean(String path, boolean defaultValue) {
-        return farmingDeliveriesConfig.getBoolean(path, defaultValue);
-    }
 
-    public int getFarmingDeliveriesInt(String path, int defaultValue) {
-        return farmingDeliveriesConfig.getInt(path, defaultValue);
-    }
 
-    public double getFarmingDeliveriesDouble(String path, double defaultValue) {
-        return farmingDeliveriesConfig.getDouble(path, defaultValue);
-    }
 
-    public String getFarmingDeliveriesString(String path, String defaultValue) {
-        return farmingDeliveriesConfig.getString(path, defaultValue);
-    }
 
-    public void reloadFarmingDeliveriesConfig() {
-        this.farmingDeliveriesConfig = loadManagedConfig("farming/deliveries.yml");
-    }
 
-    public boolean getFarmingFavorBoolean(String path, boolean defaultValue) {
-        return farmingFavorConfig.getBoolean(path, defaultValue);
-    }
 
-    public long getFarmingFavorLong(String path, long defaultValue) {
-        return farmingFavorConfig.getLong(path, defaultValue);
-    }
 
-    public double getFarmingFavorDouble(String path, double defaultValue) {
-        return farmingFavorConfig.getDouble(path, defaultValue);
-    }
 
-    public String getFarmingFavorString(String path, String defaultValue) {
-        return farmingFavorConfig.getString(path, defaultValue);
-    }
 
-    public Set<String> getFarmingFavorKeys(String path) {
-        return getKeys(farmingFavorConfig, path);
-    }
 
-    public ConfigurationSection getFarmingFavorSection(String path) {
-        return farmingFavorConfig.getConfigurationSection(path);
-    }
 
-    public void reloadFarmingFavorConfig() {
-        this.farmingFavorConfig = loadManagedConfig("farming/favor.yml");
-    }
 
-    public boolean getFarmingEssenceBoolean(String path, boolean defaultValue) {
-        return farmingEssenceConfig.getBoolean(path, defaultValue);
-    }
 
-    public int getFarmingEssenceInt(String path, int defaultValue) {
-        return farmingEssenceConfig.getInt(path, defaultValue);
-    }
 
-    public long getFarmingEssenceLong(String path, long defaultValue) {
-        return farmingEssenceConfig.getLong(path, defaultValue);
-    }
 
-    public String getFarmingEssenceString(String path, String defaultValue) {
-        return farmingEssenceConfig.getString(path, defaultValue);
-    }
 
-    public List<String> getFarmingEssenceStringList(String path) {
-        return List.copyOf(farmingEssenceConfig.getStringList(path));
-    }
 
-    public Set<String> getFarmingEssenceKeys(String path) {
-        return getKeys(farmingEssenceConfig, path);
-    }
 
-    public ConfigurationSection getFarmingEssenceSection(String path) {
-        return farmingEssenceConfig.getConfigurationSection(path);
-    }
 
-    public void reloadFarmingEssenceConfig() {
-        this.farmingEssenceConfig = loadManagedConfig("farming/essence.yml");
-    }
 
-    public boolean getFarmingStatTokensBoolean(String path, boolean defaultValue) {
-        return farmingStatTokensConfig.getBoolean(path, defaultValue);
-    }
 
-    public int getFarmingStatTokensInt(String path, int defaultValue) {
-        return farmingStatTokensConfig.getInt(path, defaultValue);
-    }
 
-    public double getFarmingStatTokensDouble(String path, double defaultValue) {
-        return farmingStatTokensConfig.getDouble(path, defaultValue);
-    }
 
-    public String getFarmingStatTokensString(String path, String defaultValue) {
-        return farmingStatTokensConfig.getString(path, defaultValue);
-    }
 
-    public Set<String> getFarmingStatTokensKeys(String path) {
-        return getKeys(farmingStatTokensConfig, path);
-    }
 
-    public ConfigurationSection getFarmingStatTokensSection(String path) {
-        return farmingStatTokensConfig.getConfigurationSection(path);
-    }
 
-    public void reloadFarmingStatTokensConfig() {
-        this.farmingStatTokensConfig = loadManagedConfig("farming/stat_tokens.yml");
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public ConfigurationSection getAlchemyEffectsSection(String path) {
         return alchemyEffectsConfig.getConfigurationSection(path);
@@ -767,17 +613,16 @@ public void reloadCraftingConfig() {
         this.alchemyComponentsConfig = loadManagedConfig("alchemy/components.yml");
         this.alchemyConflictsConfig = loadManagedConfig("alchemy/conflicts.yml");
         this.alchemyScalingConfig = loadManagedConfig("alchemy/scaling.yml");
-        this.alchemyAbundanceConfig = loadManagedConfig("alchemy/abundance.yml");
         this.alchemyPotionsConfig = loadManagedConfig("alchemy/potions.yml");
         this.alchemyRecipesConfig = loadManagedConfig("alchemy/recipes.yml");
         this.alchemyCatalystsConfig = loadManagedConfig("alchemy/catalysts.yml");
     }
 
-    public ConfigurationSection getAlchemyAbundanceSection(String path) { return alchemyAbundanceConfig.getConfigurationSection(path); }
-    public Set<String> getAlchemyAbundanceKeys(String path) { return getKeys(alchemyAbundanceConfig, path); }
-    public String getAlchemyAbundanceString(String path, String fallback) { return alchemyAbundanceConfig.getString(path, fallback); }
-    public boolean getAlchemyAbundanceBoolean(String path, boolean fallback) { return alchemyAbundanceConfig.getBoolean(path, fallback); }
-    public int getAlchemyAbundanceInt(String path, int fallback) { return alchemyAbundanceConfig.getInt(path, fallback); }
+
+
+
+
+
 
     public ConfigurationSection getAlchemyPotionsSection(String path) { return alchemyPotionsConfig.getConfigurationSection(path); }
     public Set<String> getAlchemyPotionKeys(String path) { return getKeys(alchemyPotionsConfig, path); }
@@ -823,53 +668,29 @@ public void reloadCraftingConfig() {
     }
 
 
-    public double getFarmingHoeEnhancementDouble(String path, double defaultValue) {
-        return farmingHoeEnhancementConfig.getDouble(path, defaultValue);
-    }
 
-    public int getFarmingHoeEnhancementInt(String path, int defaultValue) {
-        return farmingHoeEnhancementConfig.getInt(path, defaultValue);
-    }
 
-    public boolean getFarmingHoeEnhancementBoolean(String path, boolean defaultValue) {
-        return farmingHoeEnhancementConfig.getBoolean(path, defaultValue);
-    }
 
-    public Set<String> getFarmingHoeEnhancementKeys(String path) {
-        return getKeys(farmingHoeEnhancementConfig, path);
-    }
 
-    public void reloadFarmingHoeEnhancementConfig() {
-        this.farmingHoeEnhancementConfig = loadManagedConfig("farming/hoe_enhancement.yml");
-    }
 
-    public double getFarmingHoePromotionDouble(String path, double defaultValue) {
-        return farmingHoePromotionConfig.getDouble(path, defaultValue);
-    }
 
-    public int getFarmingHoePromotionInt(String path, int defaultValue) {
-        return farmingHoePromotionConfig.getInt(path, defaultValue);
-    }
 
-    public String getFarmingHoePromotionString(String path, String defaultValue) {
-        return farmingHoePromotionConfig.getString(path, defaultValue);
-    }
 
-    public boolean getFarmingHoePromotionBoolean(String path, boolean defaultValue) {
-        return farmingHoePromotionConfig.getBoolean(path, defaultValue);
-    }
 
-    public List<String> getFarmingHoePromotionStringList(String path) {
-        return farmingHoePromotionConfig.getStringList(path);
-    }
 
-    public Set<String> getFarmingHoePromotionKeys(String path) {
-        return getKeys(farmingHoePromotionConfig, path);
-    }
 
-    public void reloadFarmingHoePromotionConfig() {
-        this.farmingHoePromotionConfig = loadManagedConfig("farming/hoe_promotion.yml");
-    }
+
+
+
+
+
+
+
+
+
+
+
+
 
     public Set<String> getEnchantsKeys(String path) {
         return getKeys(enchantsConfig, path);

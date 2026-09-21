@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.crafting;
 
-import com.hyunseo.hyunseorpg.farming.AbundancePointService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.item.VanillaStackingService;
 import org.bukkit.Material;
@@ -36,7 +35,6 @@ public final class CraftingTransactionService {
             (player, recipe) -> Optional.empty();
     private Predicate<String> maximumCraftingAllowed = recipeId -> true;
     private BiPredicate<Player, CraftingRecipeData> recipeAccessAllowed = (player, recipe) -> true;
-    private AbundancePointService abundancePoints;
 
     public CraftingTransactionService(CraftingRecipeRegistry recipes, RPGItemService itemService,
                                       SoulboundItemService soulbound,
@@ -64,20 +62,15 @@ public final class CraftingTransactionService {
 
     /**
      * Optional policy boundary for recipes with player-owned requirements.
-     * Generic crafting remains open by default; farming supplies the stage policy.
+     * Generic crafting remains open by default.
      */
     public void setRecipeAccessAllowed(BiPredicate<Player, CraftingRecipeData> predicate) {
         this.recipeAccessAllowed = predicate == null ? (player, recipe) -> true : predicate;
     }
 
-    public void setAbundancePointService(AbundancePointService abundancePoints) {
-        this.abundancePoints = abundancePoints;
-    }
 
-    public long abundancePoints(Player player) {
-        return abundancePoints == null || player == null ? 0L
-                : abundancePoints.getPoints(player.getUniqueId());
-    }
+
+
 
     public Result craft(Player player, String recipeId, boolean maximum) {
         if (player == null || !player.isOnline()) return Result.failure(Status.PLAYER_OFFLINE);
@@ -98,9 +91,6 @@ public final class CraftingTransactionService {
             Capacity capacity = capacity(recipe, output, initial, player);
             int requested = maximum ? capacity.maximum() : 1;
             if (requested < 1) {
-                if (recipe.requiredAbundancePoints() > 0L && abundanceMaximum(player, recipe) < 1) {
-                    return Result.failure(Status.INSUFFICIENT_ABUNDANCE_POINTS, capacity);
-                }
                 return Result.failure(capacity.materialMaximum() < 1
                         ? Status.MISSING_INGREDIENTS : Status.NO_SPACE, capacity);
             }
@@ -119,34 +109,16 @@ public final class CraftingTransactionService {
                 for (int count = 0; count < requested; count++) deliveryObserver.accept(player, output.clone());
                 return true;
             };
-            if (recipe.requiredAbundancePoints() > 0L) {
-                if (abundancePoints == null) return Result.failure(Status.FAILED, capacity);
-                long cost;
-                try {
-                    cost = Math.multiplyExact(recipe.requiredAbundancePoints(), requested);
-                } catch (ArithmeticException overflow) {
-                    return Result.failure(Status.FAILED, capacity);
-                }
-                if (!abundancePoints.spendForTransaction(player.getUniqueId(), cost, applied,
-                        () -> {
-                            player.getInventory().setStorageContents(cloneStorage(initial));
-                            player.updateInventory();
-                        })) {
-                    return Result.failure(abundancePoints(player) < cost
-                            ? Status.INSUFFICIENT_ABUNDANCE_POINTS : Status.FAILED, capacity);
-                }
-            } else {
-                try {
-                    if (!applied.getAsBoolean()) {
-                        player.getInventory().setStorageContents(cloneStorage(initial));
-                        player.updateInventory();
-                        return Result.failure(Status.FAILED, capacity);
-                    }
-                } catch (RuntimeException exception) {
+            try {
+                if (!applied.getAsBoolean()) {
                     player.getInventory().setStorageContents(cloneStorage(initial));
                     player.updateInventory();
                     return Result.failure(Status.FAILED, capacity);
                 }
+            } catch (RuntimeException exception) {
+                player.getInventory().setStorageContents(cloneStorage(initial));
+                player.updateInventory();
+                return Result.failure(Status.FAILED, capacity);
             }
             return Result.success(requested, capacity);
         } catch (RuntimeException exception) {
@@ -178,17 +150,10 @@ public final class CraftingTransactionService {
         int capacityMaximum = 0;
         while (capacityMaximum < materialMaximum && addExact(simulated, output.clone())) capacityMaximum++;
         int maximum = Math.min(materialMaximum, capacityMaximum);
-        maximum = Math.min(maximum, abundanceMaximum(player, recipe));
         return new Capacity(materialMaximum, capacityMaximum, maximum);
     }
 
-    private int abundanceMaximum(Player player, CraftingRecipeData recipe) {
-        if (recipe.requiredAbundancePoints() < 1L) return Integer.MAX_VALUE;
-        if (abundancePoints == null) return 0;
-        long available = abundancePoints(player);
-        long maximum = available / recipe.requiredAbundancePoints();
-        return (int) Math.min(Integer.MAX_VALUE, maximum);
-    }
+
 
     private ItemStack createOutput(Player player, CraftingRecipeData recipe) {
         ItemStack output = dynamicOutputResolver.apply(player, recipe).orElseGet(() -> outputFactory.apply(player, recipe));

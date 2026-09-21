@@ -10,7 +10,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.hyunseo.hyunseorpg.item.VanillaStackingPolicy;
 import com.hyunseo.hyunseorpg.enchant.EnchantRegistry;
 import com.hyunseo.hyunseorpg.core.BuildInfo;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRequirements;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,11 +31,7 @@ import java.util.Set;
 public final class ConfigDoctor {
     private static final Set<String> VALID_SECTIONS = Set.of(
             "all", "configs", "items", "recipes", "equipment", "mobs", "players",
-            "quests", "stacking", "vanilla-stacking", "enchants", "farming", "alchemy", "effects", "reload");
-    private static final List<String> FARMING_FILES = List.of(
-            "crops.yml", "growth.yml", "harvest.yml", "progression.yml", "quality.yml", "processing.yml",
-            "hoe_enhancement.yml", "hoe_promotion.yml", "deliveries.yml", "favor.yml",
-            "essence.yml", "stat_tokens.yml");
+            "quests", "stacking", "vanilla-stacking", "enchants", "alchemy", "effects", "reload");
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "exp.yml", "weapons.yml",
             "items.yml", "crafting.yml", "equipment-growth.yml",
@@ -44,7 +39,7 @@ public final class ConfigDoctor {
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml",
             "special-equipment.yml"
             , "alchemy/effects.yml", "alchemy/components.yml", "alchemy/conflicts.yml", "alchemy/scaling.yml",
-            "alchemy/abundance.yml", "alchemy/potions.yml", "alchemy/recipes.yml",
+            "alchemy/potions.yml", "alchemy/recipes.yml",
             "alchemy/catalysts.yml"
     );
     private static final List<String> SPECIAL_TIER_ITEMS = List.of(
@@ -101,9 +96,6 @@ public final class ConfigDoctor {
         }
         if (section.isBlank() || section.equals("all") || section.equals("enchants")) {
             checkEnchants(lines, counts);
-        }
-        if (section.isBlank() || section.equals("all") || section.equals("farming")) {
-            checkFarming(lines, counts);
         }
         if (section.isBlank() || section.equals("all") || section.equals("alchemy") || section.equals("effects")) {
             checkAlchemy(lines, counts);
@@ -262,14 +254,8 @@ public final class ConfigDoctor {
             if (outputAmount < 1) error(lines, counts, path + ".output.amount: expected positive integer");
             ConfigurationSection inputs = crafting.getConfigurationSection(path + ".inputs");
             Set<String> inputKeys = CraftingRecipeRequirements.inputKeys(inputs);
-            boolean hasInputs = !inputKeys.isEmpty();
-            long requiredAbundancePoints = crafting.getLong(path + ".required-abundance-points", 0L);
-            if (requiredAbundancePoints < 0L) {
-                error(lines, counts, path + ".required-abundance-points: must not be negative");
-            }
-            if (!CraftingRecipeRequirements.isValid(hasInputs, requiredAbundancePoints)) {
-                error(lines, counts, path + ".inputs: "
-                        + CraftingRecipeRequirements.invalidReason(hasInputs, requiredAbundancePoints));
+            if (inputKeys.isEmpty()) {
+                error(lines, counts, path + ".inputs: recipe has no item inputs");
                 continue;
             }
             for (String ingredient : inputKeys) {
@@ -430,311 +416,26 @@ public final class ConfigDoctor {
                 if (data.isSet("selectedProfession") || data.isSet("unlockedWorlds") || data.isSet("clearedWorlds")) {
                     warning(lines, counts, "players/" + file.getName() + ": deprecated profession/world-lock fields remain readable but are excluded from new saves");
                 }
-                if (data.isConfigurationSection("farming")) {
-                    if (!data.isSet("farming.version")) warning(lines, counts, "players/" + file.getName() + ": farming.version is missing");
-                    if (!data.isString("farming.stage")) warning(lines, counts, "players/" + file.getName() + ": farming.stage is missing or not a string");
-                    if (data.get("farming.unlocked-crops") != null && !(data.get("farming.unlocked-crops") instanceof List<?>)) {
-                        error(lines, counts, "players/" + file.getName() + ": farming.unlocked-crops must be a list");
-                    }
-                }
+
             }
         }
         if (missingSchema > 0) warning(lines, counts, "players: " + missingSchema + "/" + total + " files missing schema-version");
         info(lines, counts, "players: " + total + " player files inspected");
     }
 
-    private void checkFarming(List<String> lines, int[] counts) {
-        lines.add("[ConfigDoctor/Farming]");
-        Map<String, FileConfiguration> configs = new HashMap<>();
-        for (String fileName : FARMING_FILES) {
-            String path = "farming/" + fileName;
-            File file = new File(plugin.getDataFolder(), path);
-            if (!file.isFile()) {
-                error(lines, counts, path + ": missing managed farming file");
-                continue;
-            }
-            FileConfiguration config = loadPath(path, lines, counts);
-            if (config != null) {
-                configs.put(fileName, config);
-                if (!config.isSet("schema-version")) warning(lines, counts, path + ": missing schema-version");
-                compareResourceContract(path, config, lines, counts, Set.of("schema-version"));
-            }
-        }
-        FileConfiguration crops = configs.get("crops.yml");
-        Set<String> cropIds = new HashSet<>();
-        if (crops == null || !crops.isConfigurationSection("crops")) {
-            error(lines, counts, "farming/crops.yml: missing crops section");
-        } else {
-            ConfigurationSection section = crops.getConfigurationSection("crops");
-            addKeys(cropIds, section);
-            for (String crop : List.of("corn", "onion", "chili", "garlic")) {
-                if (!cropIds.contains(crop)) error(lines, counts, "farming/crops.yml: missing canonical crop '" + crop + "'");
-            }
-            FileConfiguration items = load("items.yml", lines, counts);
-            Set<String> itemIds = items == null ? Set.of() : itemIds(items);
-            for (String crop : cropIds) {
-                String seed = normalize(crops.getString("crops." + crop + ".seed-item-id", ""));
-                String result = normalize(crops.getString("crops." + crop + ".crop-item-id", ""));
-                if (seed.isBlank() || !itemIds.contains(seed)) error(lines, counts, "farming/crops.yml: missing seed item-id '" + seed + "' for " + crop);
-                if (result.isBlank() || !itemIds.contains(result)) error(lines, counts, "farming/crops.yml: missing crop item-id '" + result + "' for " + crop);
-            }
-        }
-        FileConfiguration growth = configs.get("growth.yml");
-        if (growth == null || !growth.isConfigurationSection("crops")) error(lines, counts, "farming/growth.yml: missing crops growth section");
-        FileConfiguration processing = configs.get("processing.yml");
-        if (processing == null || !"crafting.yml".equalsIgnoreCase(processing.getString("authoritative-source", ""))) {
-            error(lines, counts, "farming/processing.yml: authoritative-source must be crafting.yml");
-        }
-        FileConfiguration farmingCrafting = load("crafting.yml", lines, counts);
-        ConfigurationSection craftingRecipes = farmingCrafting == null
-                ? null : farmingCrafting.getConfigurationSection("crafting-recipes");
-        if (craftingRecipes != null) {
-            for (String recipe : craftingRecipes.getKeys(false)) {
-                String type = normalize(farmingCrafting.getString("crafting-recipes." + recipe + ".farming-type", ""));
-                if (!type.equals("processing")) continue;
-                ConfigurationSection inputs = farmingCrafting.getConfigurationSection("crafting-recipes." + recipe + ".inputs");
-                if (inputs == null || inputs.getKeys(false).size() != 1
-                        || inputs.getInt(inputs.getKeys(false).iterator().next(), 0) != 20) {
-                    error(lines, counts, "crafting.yml: processing recipe must use a 20:1 input ratio: " + recipe);
-                }
-            }
-        }
-        FileConfiguration harvest = configs.get("harvest.yml");
-        if (harvest == null || harvest.getLong("direct.abundance-points", 0L) < 1L) {
-            error(lines, counts, "farming/harvest.yml: direct.abundance-points must be positive; run migrate farming --apply");
-        }
-        FileConfiguration progression = configs.get("progression.yml");
-        if (progression == null || !progression.isConfigurationSection("promotion")) {
-            error(lines, counts, "farming/progression.yml: missing promotion section");
-        } else {
-            ConfigurationSection promotion = progression.getConfigurationSection("promotion");
-            for (String stage : promotion.getKeys(false)) {
-                String unlock = normalize(progression.getString("promotion." + stage + ".unlock-crop", ""));
-                if (!unlock.isBlank() && !cropIds.contains(unlock)) {
-                    error(lines, counts, "farming/progression.yml: promotion " + stage + " unlocks unknown crop '" + unlock + "'");
-                }
-            }
-        }
-        FileConfiguration quality = configs.get("quality.yml");
-        if (quality == null || !quality.isConfigurationSection("quality")) {
-            warning(lines, counts, "farming/quality.yml: quality section is missing");
-        } else {
-            FileConfiguration items = load("items.yml", lines, counts);
-            Set<String> itemIds = items == null ? Set.of() : itemIds(items);
-            ConfigurationSection mappings = quality.getConfigurationSection("items");
-            if (mappings != null) for (String crop : mappings.getKeys(false)) {
-                ConfigurationSection levels = mappings.getConfigurationSection(crop);
-                if (levels == null) continue;
-                for (String level : levels.getKeys(false)) {
-                    String itemId = normalize(levels.getString(level, ""));
-                    if (!itemId.isBlank() && !itemIds.contains(itemId)) {
-                        error(lines, counts, "farming/quality.yml: missing quality item-id '" + itemId + "'");
-                    }
-                }
-            }
-            checkQualityDistribution(quality, lines, counts);
-        }
-        FileConfiguration hoeEnhancement = configs.get("hoe_enhancement.yml");
-        if (hoeEnhancement == null || !hoeEnhancement.isConfigurationSection("levels")) {
-            error(lines, counts, "farming/hoe_enhancement.yml: missing levels section");
-        } else {
-            for (String level : hoeEnhancement.getConfigurationSection("levels").getKeys(false)) {
-                if (!hoeEnhancement.isSet("levels." + level + ".durability-save-chance")) {
-                    error(lines, counts, "farming/hoe_enhancement.yml: missing durability-save-chance at " + level);
-                }
-                if (!hoeEnhancement.isSet("levels." + level + ".quality-sale-bonus")) {
-                    error(lines, counts, "farming/hoe_enhancement.yml: missing quality-sale-bonus at " + level);
-                }
-                for (String forbidden : List.of("quality-density-shift", "quality-score",
-                        "abundance-point-multiplier", "rare-seed-chance")) {
-                    if (hoeEnhancement.isSet("levels." + level + "." + forbidden)) {
-                        warning(lines, counts, "farming/hoe_enhancement.yml: legacy enhancement key requires migration: " + forbidden);
-                    }
-                }
-            }
-            if (!hoeEnhancement.isSet("limits.maximum-quality-sale-bonus")) {
-                error(lines, counts, "farming/hoe_enhancement.yml: missing limits.maximum-quality-sale-bonus");
-            }
-        }
-        FileConfiguration hoePromotion = configs.get("hoe_promotion.yml");
-        if (hoePromotion == null) {
-            error(lines, counts, "farming/hoe_promotion.yml: file is missing");
-        } else {
-            if (!hoePromotion.isConfigurationSection("tiers")) {
-                warning(lines, counts, "farming/hoe_promotion.yml: missing bundled section/key 'tiers'");
-            }
-            for (String forbidden : List.of("farming-stage-mapping", "levels")) {
-                if (hoePromotion.isSet(forbidden)) {
-                    warning(lines, counts, "farming/hoe_promotion.yml: legacy numerical promotion section is ignored: " + forbidden);
-                }
-            }
-            ConfigurationSection hoeTiers = hoePromotion.getConfigurationSection("tiers");
-            if (hoeTiers != null) {
-                for (String tier : hoeTiers.getKeys(false)) {
-                    ConfigurationSection stars = hoeTiers.getConfigurationSection(tier);
-                    if (stars == null) continue;
-                    for (String star : stars.getKeys(false)) {
-                        String path = "tiers." + tier + "." + star;
-                        for (String required : List.of("quality-density-shift",
-                                "abundance-point-multiplier", "rare-seed-chance")) {
-                            if (!hoePromotion.isSet(path + "." + required)) {
-                                error(lines, counts, "farming/hoe_promotion.yml: missing " + path + "." + required);
-                            }
-                        }
-                    }
-                }
-            }
-            info(lines, counts, "farming/hoe_promotion.yml: item-local fixed tier/star passives; player stage remains profile data");
-        }
-        FileConfiguration deliveries = configs.get("deliveries.yml");
-        if (deliveries == null || !deliveries.isConfigurationSection("definitions")) {
-            error(lines, counts, "farming/deliveries.yml: missing definitions section");
-        } else {
-            if (deliveries.getLong("refresh-seconds", 0L) <= 0L) {
-                error(lines, counts, "farming/deliveries.yml: refresh-seconds must be positive");
-            }
-            if (deliveries.getLong("time-limit-seconds", 0L) <= 0L) {
-                error(lines, counts, "farming/deliveries.yml: time-limit-seconds must be positive");
-            }
-            if (!deliveries.isConfigurationSection("reward")) {
-                warning(lines, counts, "farming/deliveries.yml: missing bundled section/key 'reward'");
-            }
-            for (String definition : deliveries.getConfigurationSection("definitions").getKeys(false)) {
-                String provider = normalize(deliveries.getString("definitions." + definition + ".provider", ""));
-                if (!Set.of("farmer", "alchemist", "estate_reserved").contains(provider)) {
-                    error(lines, counts, "farming/deliveries.yml: unknown provider '" + provider + "'");
-                }
-                if (!provider.equals("estate_reserved")
-                        && deliveries.getStringList("definitions." + definition + ".item-families").isEmpty()) {
-                    error(lines, counts, "farming/deliveries.yml: active definition has no item-families: " + definition);
-                }
-            }
-            info(lines, counts, "farming/deliveries.yml: delivery definitions inspected");
-        }
-        FileConfiguration essence = configs.get("essence.yml");
-        if (essence == null || !essence.getBoolean("enabled", false)) {
-            warning(lines, counts, "farming/essence.yml: essence crafting is disabled or missing");
-        } else {
-            boolean legacyEssenceKeys = essence.isSet("item-id")
-                    || essence.isSet("required-farming-stage")
-                    || essence.isSet("output-amount")
-                    || essence.isSet("tradeable");
-            if (legacyEssenceKeys) {
-                warning(lines, counts, "farming/essence.yml: legacy essence keys remain; run migrate farming --apply");
-            }
-            String essenceItem = normalize(firstNonBlank(
-                    essence.getString("result-item-id", ""),
-                    essence.getString("item-id", "")));
-            String requiredStage = normalize(firstNonBlank(
-                    essence.getString("unlock-stage", ""),
-                    essence.getString("required-farming-stage", "")));
-            long requiredPoints = essence.getLong("required-abundance-points", 0L);
-            int resultCount = Math.max(1, essence.getInt("result-count",
-                    essence.getInt("output-amount", 1)));
-            int maxStack = Math.min(64, Math.max(1, essence.getInt("max-stack", 64)));
-            FileConfiguration items = load("items.yml", lines, counts);
-            Set<String> itemIds = items == null ? Set.of() : itemIds(items);
-            if (essenceItem.isBlank() || !itemIds.contains(essenceItem)) {
-                error(lines, counts, "farming/essence.yml: missing result-item-id '" + essenceItem + "'");
-            }
-            if (!requiredStage.equals("expert")) {
-                error(lines, counts, "farming/essence.yml: unlock-stage must be expert");
-            }
-            if (requiredPoints < 1L) {
-                error(lines, counts, "farming/essence.yml: required-abundance-points must be positive");
-            }
-            if (resultCount < 1 || resultCount > maxStack) {
-                error(lines, counts, "farming/essence.yml: result-count must be between 1 and max-stack");
-            }
-            Set<String> usageTags = new HashSet<>();
-            for (String tag : essence.getStringList("usage-tags")) usageTags.add(normalize(tag));
-            Set<String> requiredUsageTags = Set.of(
-                    "alchemy", "stat-token", "elemental-equipment", "endgame-equipment");
-            if (!usageTags.containsAll(requiredUsageTags)) {
-                error(lines, counts, "farming/essence.yml: usage-tags must include " + requiredUsageTags);
-            }
-            if (essence.getBoolean("sellable", false)) {
-                error(lines, counts, "farming/essence.yml: abundance essence must not be sellable");
-            }
-            if (essence.getBoolean("reverse-conversion", false)) {
-                error(lines, counts, "farming/essence.yml: abundance essence reverse conversion must be disabled");
-            }
-            if (essence.isSet("material-tag") || essence.isSet("required-material-amount")) {
-                error(lines, counts, "farming/essence.yml: legacy supreme-material requirement remains; run migrate farming --apply");
-            }
-            FileConfiguration crafting = load("crafting.yml", lines, counts);
-            String recipePath = "crafting-recipes.abundance_essence";
-            if (crafting == null || !crafting.isConfigurationSection(recipePath)) {
-                error(lines, counts, "crafting.yml: missing abundance_essence recipe");
-            } else {
-                long recipePoints = crafting.getLong(recipePath + ".required-abundance-points", 0L);
-                if (recipePoints != requiredPoints) {
-                    error(lines, counts, "crafting.yml: abundance_essence point requirement does not match farming/essence.yml");
-                }
-                String recipeItem = normalize(crafting.getString(recipePath + ".output.item-id", ""));
-                int recipeCount = Math.max(1, crafting.getInt(recipePath + ".output.amount", 1));
-                String recipeStage = normalize(crafting.getString(recipePath + ".required-farming-stage", ""));
-                if (!recipeItem.equals(essenceItem) || recipeCount != resultCount
-                        || !recipeStage.equals(requiredStage)) {
-                    error(lines, counts, "crafting.yml: abundance_essence output does not match farming/essence.yml");
-                }
-                ConfigurationSection inputs = crafting.getConfigurationSection(recipePath + ".inputs");
-                if (!CraftingRecipeRequirements.inputKeys(inputs).isEmpty()) {
-                    error(lines, counts, "crafting.yml: abundance_essence must not require item inputs");
-                }
-            }
-        }
-        FileConfiguration statTokens = configs.get("stat_tokens.yml");
-        if (statTokens == null || !statTokens.isConfigurationSection("tokens")) {
-            error(lines, counts, "farming/stat_tokens.yml: missing tokens section");
-        } else {
-            FileConfiguration items = load("items.yml", lines, counts);
-            Set<String> itemIds = items == null ? Set.of() : itemIds(items);
-            for (String token : statTokens.getConfigurationSection("tokens").getKeys(false)) {
-                String itemId = normalize(statTokens.getString("tokens." + token + ".item-id", ""));
-                int maxUses = statTokens.getInt("tokens." + token + ".maximum-uses", 0);
-                if (itemId.isBlank() || !itemIds.contains(itemId)) {
-                    error(lines, counts, "farming/stat_tokens.yml: missing token item-id '" + itemId + "'");
-                }
-                if (maxUses < 1) error(lines, counts, "farming/stat_tokens.yml: invalid maximum-uses for " + token);
-            }
-        }
-        info(lines, counts, "farming: managed files=" + FARMING_FILES.size() + ", crops=" + cropIds);
-        if (new File(plugin.getDataFolder(), "farming/cooking.yml").isFile()) {
-            warning(lines, counts, "farming/cooking.yml: legacy/inactive file is present; Prompt 11 does not load or migrate it");
-        }
-        checkFarmingPlayerData(lines, counts);
-    }
 
-    private void checkQualityDistribution(FileConfiguration quality, List<String> lines, int[] counts) {
-        ConfigurationSection distribution = quality.getConfigurationSection("base-distribution");
-        if (distribution == null) {
-            error(lines, counts, "farming/quality.yml: missing base-distribution");
-            return;
-        }
-        double total = 0.0D;
-        for (String key : distribution.getKeys(false)) {
-            double value = distribution.getDouble(key, Double.NaN);
-            if (!Double.isFinite(value) || value < 0.0D) {
-                error(lines, counts, "farming/quality.yml: invalid or negative probability at " + key);
-            }
-            total += Double.isFinite(value) ? value : 0.0D;
-        }
-        if (Math.abs(total - 100.0D) > 0.000001D) {
-            error(lines, counts, "farming/quality.yml: base-distribution total must be 100 (actual=" + total + ")");
-        }
-    }
+
+
 
     private void checkAlchemy(List<String> lines, int[] counts) {
         FileConfiguration effects = load("alchemy/effects.yml", lines, counts);
         FileConfiguration components = load("alchemy/components.yml", lines, counts);
         FileConfiguration conflicts = load("alchemy/conflicts.yml", lines, counts);
         FileConfiguration scaling = load("alchemy/scaling.yml", lines, counts);
-        FileConfiguration abundance = load("alchemy/abundance.yml", lines, counts);
         FileConfiguration potions = load("alchemy/potions.yml", lines, counts);
         FileConfiguration recipes = load("alchemy/recipes.yml", lines, counts);
         if (effects == null || components == null || conflicts == null || scaling == null
-                || abundance == null || potions == null || recipes == null) return;
+                || potions == null || recipes == null) return;
         ConfigurationSection definitions = effects.getConfigurationSection("effects");
         if (definitions == null) {
             error(lines, counts, "alchemy/effects.yml: missing effects section");
@@ -760,8 +461,7 @@ public final class ConfigDoctor {
         info(lines, counts, "alchemy: effects=" + definitions.getKeys(false).size()
                 + ", components=" + (components.getConfigurationSection("components") != null)
                 + ", potions=" + (potions.getConfigurationSection("potions") == null ? 0 : potions.getConfigurationSection("potions").getKeys(false).size())
-                + ", recipes=" + (recipes.getConfigurationSection("recipes") == null ? 0 : recipes.getConfigurationSection("recipes").getKeys(false).size())
-                + ", abundance=" + abundance.getBoolean("enabled", false));
+                + ", recipes=" + (recipes.getConfigurationSection("recipes") == null ? 0 : recipes.getConfigurationSection("recipes").getKeys(false).size()));
         if (plugin instanceof com.hyunseo.hyunseorpg.HyunseoRPGPlugin rpg) {
             var potionRegistry = rpg.getPotionRegistry();
             var recipeRegistry = rpg.getAlchemyRecipeRegistry();
@@ -790,53 +490,12 @@ public final class ConfigDoctor {
         }
     }
 
-    private void checkFarmingPlayerData(List<String> lines, int[] counts) {
-        File directory = new File(plugin.getDataFolder(), "players");
-        File[] files = directory.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
-        if (files == null) return;
-        for (File file : files) {
-            FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-            if (!data.isConfigurationSection("farming")) {
-                warning(lines, counts, "players/" + file.getName() + ": farming profile missing; migration required");
-                continue;
-            }
-            int version = data.getInt("farming.version", 1);
-            if (version < 3) warning(lines, counts, "players/" + file.getName() + ": farming.version=" + version + " (migration required)");
-            long points = data.getLong("farming.abundance-points", 0L);
-            if (points < 0L) error(lines, counts, "players/" + file.getName() + ": abundance-points is negative");
-            ConfigurationSection favor = data.getConfigurationSection("farming.favor");
-            if (favor != null) {
-                for (String provider : favor.getKeys(false)) {
-                    long value = favor.getLong(provider, 0L);
-                    if (value < 0L) error(lines, counts, "players/" + file.getName() + ": negative favor for " + provider);
-                    FileConfiguration favorConfig = load("farming/favor.yml", lines, counts);
-                    long max = favorConfig == null ? Long.MAX_VALUE
-                            : favorConfig.getLong("providers." + provider + ".max-favor", Long.MAX_VALUE);
-                    if (value > max) warning(lines, counts, "players/" + file.getName() + ": favor exceeds configured cap for " + provider);
-                }
-            }
-            ConfigurationSection deliveries = data.getConfigurationSection("farming.deliveries");
-            if (deliveries != null) {
-                for (String provider : deliveries.getKeys(false)) {
-                    String id = data.getString("farming.deliveries." + provider + ".active-delivery-id", "");
-                    String status = normalize(data.getString("farming.deliveries." + provider + ".status", "active"));
-                    long expires = data.getLong("farming.deliveries." + provider + ".expires-at", 0L);
-                    if (!id.isBlank() && !Set.of("active", "completed", "expired").contains(status)) {
-                        error(lines, counts, "players/" + file.getName() + ": invalid delivery status for " + provider);
-                    }
-                    if (status.equals("active") && !id.isBlank() && expires <= 0L) {
-                        warning(lines, counts, "players/" + file.getName() + ": active delivery has invalid expires-at for " + provider);
-                    }
-                }
-            }
-        }
-    }
+
 
     private void checkReloadReadiness(List<String> lines, int[] counts) {
         lines.add("[Reload readiness]");
         int groups = 0;
         groups += reloadGroup("items", lines, counts, this::checkItems);
-        groups += reloadGroup("farming", lines, counts, this::checkFarming);
         groups += reloadGroup("effects", lines, counts, this::checkAlchemy);
         int beforeRecipes = counts[2];
         checkRecipes(lines, counts);
