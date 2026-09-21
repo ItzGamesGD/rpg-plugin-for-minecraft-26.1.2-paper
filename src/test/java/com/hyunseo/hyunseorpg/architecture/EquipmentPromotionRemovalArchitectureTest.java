@@ -30,13 +30,11 @@ final class EquipmentPromotionRemovalArchitectureTest {
     void promotionItemsRecipesAndEquipmentConfigAreRetired() throws IOException {
         String growth = resource("equipment-growth.yml");
         String items = resource("items.yml");
-        String crafting = resource("crafting.yml");
         assertFalse(growth.contains("\npromotion:"));
         assertFalse(growth.contains("max-promotion-stage"));
         assertFalse(items.contains("basic_promotion_stone:"));
         assertFalse(items.contains("promotion_option_reroll_ticket:"));
-        assertFalse(crafting.contains("basic_promotion_stone"));
-        assertFalse(crafting.contains("promotion_option_reroll_ticket"));
+        assertFalse(Files.exists(ROOT.resolve("src/main/resources/crafting.yml")));
         assertFalse(Files.exists(ROOT.resolve("src/main/resources/equipment-support.yml")));
         assertFalse(Files.exists(ROOT.resolve("src/main/resources/equipment-options.yml")));
     }
