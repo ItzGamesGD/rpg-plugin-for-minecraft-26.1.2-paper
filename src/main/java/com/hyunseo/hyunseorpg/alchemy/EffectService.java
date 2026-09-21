@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Owns custom effect instances. No potion, farming, combat, or recipe code is called here. */
+/** Owns custom effect instances. No potion, combat, or recipe code is called here. */
 public final class EffectService implements Listener {
     private final JavaPlugin plugin;
     private final CustomEffectRegistry registry;

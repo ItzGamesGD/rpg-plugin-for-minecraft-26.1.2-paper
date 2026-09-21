@@ -19,7 +19,6 @@ public final class RPGMobKillEvent extends Event {
     private final boolean elite;
     private final long baseExpReward;
     private final long classExpReward;
-    private final long coinReward;
     private final MobData mobData;
     private final MonsterKillContext context;
 
@@ -32,11 +31,10 @@ public final class RPGMobKillEvent extends Event {
             boolean elite,
             long baseExpReward,
             long classExpReward,
-            long coinReward,
             MobData mobData
     ) {
         this(killer, defeated, mobId, mobLevel, boss, elite, baseExpReward, classExpReward,
-                coinReward, mobData, new MonsterKillContext(
+                mobData, new MonsterKillContext(
                         mobId, "", mobLevel, "", mobData == null ? "" : mobData.dropTableId(),
                         defeated.getType(), java.util.Set.of(), false, boss, elite));
     }
@@ -50,7 +48,6 @@ public final class RPGMobKillEvent extends Event {
             boolean elite,
             long baseExpReward,
             long classExpReward,
-            long coinReward,
             MobData mobData,
             MonsterKillContext context
     ) {
@@ -62,7 +59,6 @@ public final class RPGMobKillEvent extends Event {
         this.elite = elite;
         this.baseExpReward = baseExpReward;
         this.classExpReward = classExpReward;
-        this.coinReward = coinReward;
         this.mobData = mobData;
         this.context = context;
     }
@@ -99,9 +95,6 @@ public final class RPGMobKillEvent extends Event {
         return classExpReward;
     }
 
-    public long getCoinReward() {
-        return coinReward;
-    }
 
     public Optional<MobData> getMobData() {
         return Optional.ofNullable(mobData);

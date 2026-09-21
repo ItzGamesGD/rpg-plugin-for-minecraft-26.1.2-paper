@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.skill.swordmaster;
 
-import com.hyunseo.hyunseorpg.classsystem.ClassStatService;
 import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import net.kyori.adventure.text.Component;
@@ -43,7 +42,6 @@ public final class SwordmasterBladeService {
     private final JavaPlugin plugin;
     private final ConfigService configService;
     private final CombatService combatService;
-    private final ClassStatService classStatService;
     private final Map<UUID, List<BladeObject>> bladesByOwner = new ConcurrentHashMap<>();
     private final Set<ItemDisplay> temporaryDisplays = ConcurrentHashMap.newKeySet();
     private final Set<BukkitTask> temporaryTasks = ConcurrentHashMap.newKeySet();
@@ -51,11 +49,10 @@ public final class SwordmasterBladeService {
     private BukkitTask tickTask;
     private long currentTick;
 
-    public SwordmasterBladeService(JavaPlugin plugin, ConfigService configService, CombatService combatService, ClassStatService classStatService) {
+    public SwordmasterBladeService(JavaPlugin plugin, ConfigService configService, CombatService combatService) {
         this.plugin = plugin;
         this.configService = configService;
         this.combatService = combatService;
-        this.classStatService = classStatService;
     }
 
     public void start() {
@@ -99,7 +96,7 @@ public final class SwordmasterBladeService {
         List<BladeObject> ownerBlades = bladesByOwner.computeIfAbsent(player.getUniqueId(), ignored -> new ArrayList<>());
 
         long durationTicks = Math.max(1L, configService.getLong("swordmaster.blade-throw.duration-ticks", 200L));
-        durationTicks += Math.max(0L, Math.round(classStatService.getClassStatBonus(player, "blade_throw", "duration_seconds") * 20.0D));
+        durationTicks += Math.max(0L, Math.round(0.0D * 20.0D));
         double forwardOffset = configService.getDouble("swordmaster.blade-throw.forward-offset", 2.0D);
         double hitboxRadius = configService.getDouble("swordmaster.blade-throw.hitbox-radius", 0.8D);
         double minDamage = configService.getDouble("swordmaster.blade-throw.damage-min", 0.5D);
@@ -469,13 +466,13 @@ public final class SwordmasterBladeService {
             case 4 -> 16;
             default -> 20;
         };
-        int classStatBonus = (int) Math.round(classStatService.getClassStatBonus(player, "blade_throw", "blade_count"));
+        int classStatBonus = (int) Math.round(0.0D);
         return Math.max(1, baseCount + classStatBonus);
     }
 
     private int getMaxActiveThrows(Player player) {
         int base = (int) Math.max(1L, configService.getLong("swordmaster.blade-throw.max-active-throws", 3L));
-        int classStatBonus = (int) Math.round(classStatService.getClassStatBonus(player, "blade_throw", "active_throws"));
+        int classStatBonus = (int) Math.round(0.0D);
         return Math.max(1, base + classStatBonus);
     }
 
@@ -669,7 +666,7 @@ public final class SwordmasterBladeService {
     private void impactLightGreatsword(Player player, Location center, int skillLevel) {
         double radius = configService.getDouble("swordmaster.light-greatsword.radius", 10.0D);
         double damage = configService.getDouble("swordmaster.light-greatsword.damage", 20.0D)
-                + classStatService.getClassStatBonus(player, "light_greatsword", "damage");
+                + 0.0D;
         spawnUltimateGroundMark(center);
         center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
         center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(0.0D, 1.0D, 0.0D), 80, radius * 0.35D, 1.5D, radius * 0.35D, 0.03D);

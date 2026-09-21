@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.weapon;
 
-import com.hyunseo.hyunseorpg.classsystem.RPGClass;
 import org.bukkit.Material;
 
 import java.util.Arrays;
@@ -57,12 +56,4 @@ public enum WeaponType {
                 .findFirst();
     }
 
-    public static WeaponType fromLegacyClass(RPGClass legacyClass) {
-        return switch (legacyClass) {
-            case SWORDMASTER, ASSASSIN -> SWORD;
-            case BOWMASTER -> BOW;
-            case LANCER -> SPEAR;
-            case WIZARD -> MAGIC;
-        };
-    }
 }

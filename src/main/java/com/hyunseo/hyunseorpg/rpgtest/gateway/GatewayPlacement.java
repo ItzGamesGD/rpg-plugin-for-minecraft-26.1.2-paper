@@ -1,0 +1,70 @@
+package com.hyunseo.hyunseorpg.rpgtest.gateway;
+
+import org.bukkit.Location;
+import org.bukkit.util.Vector;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.random.RandomGenerator;
+import java.util.function.Predicate;
+
+public final class GatewayPlacement {
+    public static final double MIN_SPACING = 3.0;
+    public static final int ATTEMPTS_PER_GATEWAY = 32;
+
+    public List<Location> launcherLocations(Location snapshot, int count, double radius, double height,
+                                            RandomGenerator random, Predicate<Location> spaceValidator) {
+        return launcherLocations(snapshot, count, radius, height, MIN_SPACING, random, spaceValidator);
+    }
+
+    public List<Location> launcherLocations(Location snapshot, int count, double radius, double height, double minSpacing,
+                                            RandomGenerator random, Predicate<Location> spaceValidator) {
+        return launcherLocations(snapshot, count, radius * .62D, radius * 1.20D, height, minSpacing, random, spaceValidator);
+    }
+
+    public List<Location> launcherLocations(Location snapshot, int count, double minRadius, double maxRadius, double height,
+                                            double minSpacing, RandomGenerator random, Predicate<Location> spaceValidator) {
+        if (minRadius < 0 || maxRadius < minRadius) throw new IllegalArgumentException("Invalid gateway radial bounds");
+        List<Location> result = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            boolean accepted = false;
+            for (int attempt = 0; attempt < ATTEMPTS_PER_GATEWAY; attempt++) {
+                // Each portal owns an independently sampled position: this is intentionally
+                // not a rotated regular polygon around P0.
+                double angle = random.nextDouble() * Math.PI * 2.0;
+                double radial = minRadius + random.nextDouble() * (maxRadius - minRadius);
+                double y = height + random.nextDouble() * 5.0;
+                Location candidate = snapshot.clone().add(Math.cos(angle) * radial, y, Math.sin(angle) * radial);
+                boolean spaced = result.stream().allMatch(existing -> squaredDistance(existing, candidate) >= minSpacing * minSpacing);
+                if (spaced && spaceValidator.test(candidate)) {
+                    result.add(candidate);
+                    accepted = true;
+                    break;
+                }
+            }
+            if (!accepted) return List.of();
+        }
+        return result;
+    }
+
+    private double squaredDistance(Location left, Location right) {
+        double x = left.getX() - right.getX();
+        double y = left.getY() - right.getY();
+        double z = left.getZ() - right.getZ();
+        return x * x + y * y + z * z;
+    }
+
+    public List<Location> returnLocations(Location boss, int count) {
+        List<Location> result = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            double angle = Math.PI * 2.0 * index / count;
+            result.add(boss.clone().add(Math.cos(angle) * 2.5, 1.0 + (index % 2) * 0.8, Math.sin(angle) * 2.5));
+        }
+        return result;
+    }
+
+    public Vector snapshotForward(Location launcher, Location snapshot) {
+        Vector direction = snapshot.toVector().subtract(launcher.toVector());
+        return direction.lengthSquared() == 0.0 ? new Vector(0, -1, 0) : direction.normalize();
+    }
+}

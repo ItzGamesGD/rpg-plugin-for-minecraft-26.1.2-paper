@@ -4,7 +4,7 @@ public record LevelUpResult(
         int oldLevel,
         int newLevel,
         int levelsGained,
-        int statPointsGained,
+        int unusedLegacyReward,
         long remainingExp,
         long expRequiredForNextLevel
 ) {

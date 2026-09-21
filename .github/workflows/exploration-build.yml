@@ -1,14 +1,10 @@
-name: Exploration build and JUnit
+name: Build and JUnit
 
 on:
+  pull_request:
   push:
     branches:
-      - "codex/exploration-*"
-      - "fix/desert-pyramid-full-flow-reconciliation"
-  pull_request:
-    branches:
-      - "codex/exploration-*"
-      - "main"
+      - main
 
 jobs:
   build-and-test:
@@ -29,4 +25,4 @@ jobs:
       - name: Run clean build and JUnit
         run: |
           chmod +x ./gradlew
-          ./gradlew clean test --no-daemon
+          ./gradlew clean build --no-daemon

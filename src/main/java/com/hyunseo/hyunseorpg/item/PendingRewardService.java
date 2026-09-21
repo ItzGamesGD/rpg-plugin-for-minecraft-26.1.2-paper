@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.item;
 
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.NamespacedKey;
@@ -23,10 +22,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-/** Persistent overflow queue for item and coin rewards. All Bukkit inventory access stays on the main thread. */
+/** Persistent overflow queue for physical item rewards. Legacy currency entries are ignored on load. */
 public final class PendingRewardService {
     private final JavaPlugin plugin;
-    private final CoinService coins;
     private final File file;
     private final Map<UUID, List<PendingReward>> pending = new LinkedHashMap<>();
     /** Idempotent mailbox tokens survive claim/removal; normal random rewards are not recorded here. */
@@ -39,9 +37,8 @@ public final class PendingRewardService {
     private Consumer<ItemStack> itemNormalizer = item -> { };
     private boolean dirty;
 
-    public PendingRewardService(JavaPlugin plugin, CoinService coins) {
+    public PendingRewardService(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.coins = coins;
         this.file = new File(plugin.getDataFolder(), "pending-rewards.yml");
         this.deliveryTokenKey = new NamespacedKey(plugin, "pending_reward_token");
         load();
@@ -85,10 +82,6 @@ public final class PendingRewardService {
         return add(uuid, PendingReward.item(token, uuid, item, cause));
     }
 
-    public synchronized void queueCoins(UUID uuid, long amount, String cause) {
-        if (uuid == null || amount <= 0L) return;
-        add(uuid, PendingReward.coins(UUID.randomUUID(), uuid, amount, cause));
-    }
 
     public synchronized int claim(Player player) {
         if (player == null) return 0;
@@ -98,11 +91,6 @@ public final class PendingRewardService {
         int claimed = 0;
         List<PendingReward> remaining = new ArrayList<>();
         for (PendingReward reward : rewards) {
-            if (reward.coins() > 0L) {
-                coins.addCoins(player, reward.coins());
-                claimed++;
-                continue;
-            }
             ItemStack item = reward.item();
             if (item == null) continue;
             if (deterministic(reward)
@@ -181,7 +169,6 @@ public final class PendingRewardService {
                 yaml.set(root + ".id", reward.id().toString());
                 yaml.set(root + ".cause", reward.cause());
                 yaml.set(root + ".created-at", reward.createdAt());
-                yaml.set(root + ".coins", reward.coins());
                 if (reward.item() != null) yaml.set(root + ".item", reward.item().serialize());
             }
         }
@@ -308,7 +295,7 @@ public final class PendingRewardService {
                     }
                     pending.computeIfAbsent(uuid, ignored -> new ArrayList<>()).add(new PendingReward(
                             parseUuid(section.getString("id")), uuid, section.getLong("created-at", System.currentTimeMillis()),
-                            section.getString("cause", "unknown"), section.getLong("coins", 0L), item));
+                            section.getString("cause", "unknown"), item));
                 }
             } catch (IllegalArgumentException ignored) {
                 plugin.getLogger().warning("Ignoring invalid pending reward player UUID: " + rawUuid);
@@ -320,15 +307,12 @@ public final class PendingRewardService {
         try { return UUID.fromString(raw); } catch (Exception ignored) { return UUID.randomUUID(); }
     }
 
-    private record PendingReward(UUID id, UUID playerUuid, long createdAt, String cause, long coins, ItemStack item) {
+    private record PendingReward(UUID id, UUID playerUuid, long createdAt, String cause, ItemStack item) {
         static PendingReward item(UUID id, UUID uuid, ItemStack item, String cause) {
-            return new PendingReward(id, uuid, System.currentTimeMillis(), cause == null ? "unknown" : cause, 0L, item.clone());
-        }
-        static PendingReward coins(UUID id, UUID uuid, long amount, String cause) {
-            return new PendingReward(id, uuid, System.currentTimeMillis(), cause == null ? "unknown" : cause, amount, null);
+            return new PendingReward(id, uuid, System.currentTimeMillis(), cause == null ? "unknown" : cause, item.clone());
         }
         PendingReward withItem(ItemStack replacement) {
-            return new PendingReward(id, playerUuid, createdAt, cause, coins, replacement.clone());
+            return new PendingReward(id, playerUuid, createdAt, cause, replacement.clone());
         }
     }
 }

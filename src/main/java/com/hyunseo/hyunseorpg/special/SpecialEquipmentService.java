@@ -1,14 +1,8 @@
 package com.hyunseo.hyunseorpg.special;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
-import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
-import com.hyunseo.hyunseorpg.economy.CoinService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
-import com.hyunseo.hyunseorpg.equipment.EquipmentGrade;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import com.hyunseo.hyunseorpg.player.PlayerDataService;
@@ -22,6 +16,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -37,8 +32,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Owns late-game equipment identity, unlock checks, recipes, and per-item soul progress. */
+/** Owns late-game equipment identity, unlock checks, and per-item soul progress. */
 public final class SpecialEquipmentService {
+    public static final String POSEIDON_ID = "poseidon_spear";
+    private static final String LEGACY_POSEIDON_ID = "poseidons_spear";
     private final JavaPlugin plugin;
     private final ConfigService config;
     private final SpecialEquipmentRegistry registry;
@@ -46,17 +43,13 @@ public final class SpecialEquipmentService {
     private final PlayerDataService playerDataService;
     private final InventoryDeliveryService delivery;
     private final EquipmentEnhancementService enhancement;
-    private final EquipmentPromotionService promotion;
     private final NamespacedKey specialIdKey;
     private final NamespacedKey schemaKey;
     private final Set<UUID> unlockBypass = ConcurrentHashMap.newKeySet();
-    private CraftingTransactionService craftingTransactions;
-    private CraftingRecipeRegistry craftingRecipes;
 
     public SpecialEquipmentService(JavaPlugin plugin, ConfigService config, SpecialEquipmentRegistry registry,
                                    RPGItemService itemService, PlayerDataService playerDataService,
-                                   InventoryDeliveryService delivery, EquipmentEnhancementService enhancement,
-                                   EquipmentPromotionService promotion) {
+                                   InventoryDeliveryService delivery, EquipmentEnhancementService enhancement) {
         this.plugin = plugin;
         this.config = config;
         this.registry = registry;
@@ -64,25 +57,12 @@ public final class SpecialEquipmentService {
         this.playerDataService = playerDataService;
         this.delivery = delivery;
         this.enhancement = enhancement;
-        this.promotion = promotion;
         this.specialIdKey = new NamespacedKey(plugin, "special_equipment_id");
         this.schemaKey = new NamespacedKey(plugin, "special_equipment_schema");
     }
 
     public SpecialEquipmentRegistry registry() {
         return registry;
-    }
-
-    /** Connects special-equipment output tagging to the canonical crafting transaction. */
-    public void setCraftingTransactionService(CraftingTransactionService transactions,
-                                              CraftingRecipeRegistry recipes) {
-        this.craftingTransactions = transactions;
-        this.craftingRecipes = recipes;
-        transactions.setOutputFactory(this::createCraftingOutput);
-    }
-
-    public ItemStack createRecipeOutput(CraftingRecipeData recipe) {
-        return createCraftingOutput(null, recipe);
     }
 
     public ItemStack create(String id, int amount) {
@@ -92,16 +72,10 @@ public final class SpecialEquipmentService {
         if (item == null) return null;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
-        meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, data.id());
+        meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, canonicalId(data));
         meta.getPersistentDataContainer().set(schemaKey, PersistentDataType.INTEGER, 1);
-        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "equipment_grade"),
-                PersistentDataType.INTEGER, data.grade());
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "enhancement_level"),
                 PersistentDataType.INTEGER, 0);
-        if (data.customEnchantSlots() > 0) {
-            meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "unlocked_enchant_slots"),
-                    PersistentDataType.INTEGER, data.customEnchantSlots());
-        }
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "special_equipment"),
                 PersistentDataType.BYTE, (byte) 1);
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "equipment_element"),
@@ -112,9 +86,9 @@ public final class SpecialEquipmentService {
             // Special weapons and equipment are intentionally not part of the durability economy.
             meta.setUnbreakable(true);
         }
-        if (data.id().equals("poseidons_spear")) {
+        if (data.itemId().equals(POSEIDON_ID)) {
             // Poseidon's physical throw/retrieval contract is vanilla Trident + Loyalty.
-            meta.addEnchant(Enchantment.LOYALTY, 1, true);
+            meta.addEnchant(Enchantment.LOYALTY, 3, true);
         }
         if (data.id().equals("flowing_water_sword")) {
             meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
@@ -122,11 +96,19 @@ public final class SpecialEquipmentService {
                     "hyunseorpg_flowing_water_speed", 0.75D,
                     AttributeModifier.Operation.MULTIPLY_SCALAR_1));
         }
+        if (data.id().equals("moonlit_afterglow")) {
+            double attackSpeed = Math.max(0.1D, config.getSpecialEquipmentDouble(
+                    "special-equipment.items.moonlit_afterglow.abilities.base-attack-speed", 6.4D));
+            meta.addAttributeModifier(Attribute.ATTACK_SPEED, new AttributeModifier(
+                    UUID.fromString("b99bb286-d005-4baa-9364-caa975b299ae"),
+                    // Swords contribute -2.4 to the player's 4.0 base (effective 1.6).
+                    "hyunseorpg_moonlit_afterglow_speed", attackSpeed - 1.6D,
+                    AttributeModifier.Operation.ADD_NUMBER, EquipmentSlot.HAND));
+        }
+        int enhancementCap = enhancement.getMaximumLevel(item);
         EquipmentLoreBuilder lore = EquipmentLoreBuilder.from(meta)
                 .add(Component.text("Special equipment: " + data.element(), NamedTextColor.LIGHT_PURPLE))
-                .add(Component.text("Equipment grade: " + data.grade(), NamedTextColor.LIGHT_PURPLE))
-                .add(Component.text("Enhancement: unavailable", NamedTextColor.GRAY))
-                .add(Component.text("Promotion: unavailable", NamedTextColor.GRAY))
+                .add(Component.text(enhancementCapabilityText(enhancementCap), NamedTextColor.GRAY))
                 .add(Component.text("Custom enchantment: " + (data.allowCustomEnchants() ? "available" : "unavailable"), NamedTextColor.AQUA))
                 .add(Component.text("Final equipment material: " + (data.finalGearMaterialAllowed() ? "allowed" : "not allowed"), NamedTextColor.GRAY));
         data.abilities().values().forEach(ability -> lore
@@ -136,7 +118,23 @@ public final class SpecialEquipmentService {
                 .add(Component.text("Growth is controlled by special-equipment.yml", NamedTextColor.DARK_GRAY))
                 .build());
         item.setItemMeta(meta);
+        ensureRuntimeComponents(item);
         return item;
+    }
+
+    static String enhancementCapabilityText(int maximumLevel) {
+        return maximumLevel > 0
+                ? "Enhancement: available (max +" + maximumLevel + ")"
+                : "Enhancement: unavailable";
+    }
+
+    /** Normalizes legacy identities and use components on both new and pre-existing special items. */
+    public void ensureRuntimeComponents(ItemStack item) {
+        String id = getSpecialId(item);
+        if (id.equals(POSEIDON_ID)) {
+            normalizePoseidon(item);
+            return;
+        }
     }
 
     private boolean isDurabilityEquipment(SpecialEquipmentData data) {
@@ -147,17 +145,48 @@ public final class SpecialEquipmentService {
     public String getSpecialId(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return "";
         String marker = item.getItemMeta().getPersistentDataContainer().get(specialIdKey, PersistentDataType.STRING);
-        if (marker != null && registry.get(marker).isPresent()) return marker.toLowerCase(Locale.ROOT);
-        String itemId = itemService.getItemId(item).orElse("");
-        return registry.get(itemId).map(SpecialEquipmentData::id).orElseGet(() -> registry.getAll().stream()
-                .filter(data -> data.itemId().equalsIgnoreCase(itemId))
-                .map(SpecialEquipmentData::id)
-                .findFirst().orElse(""));
+        String resolved;
+        if (marker != null && (registry.get(marker).isPresent() || canonicalId(marker).equals(POSEIDON_ID))) {
+            resolved = canonicalId(marker);
+        } else {
+            String itemId = itemService.getItemId(item).orElse("");
+            resolved = registry.get(itemId).map(this::canonicalId).orElseGet(() -> registry.getAll().stream()
+                    .filter(data -> data.itemId().equalsIgnoreCase(itemId))
+                    .map(this::canonicalId)
+                    .findFirst().orElse(""));
+        }
+        if (resolved.equals(POSEIDON_ID)) normalizePoseidon(item);
+        return resolved;
+    }
+
+    private void normalizePoseidon(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        String marker = meta.getPersistentDataContainer().get(specialIdKey, PersistentDataType.STRING);
+        boolean changed = !POSEIDON_ID.equals(marker);
+        if (changed) meta.getPersistentDataContainer().set(specialIdKey, PersistentDataType.STRING, POSEIDON_ID);
+        if (meta.getEnchantLevel(Enchantment.LOYALTY) != 3) {
+            meta.addEnchant(Enchantment.LOYALTY, 3, true);
+            changed = true;
+        }
+        if (changed) item.setItemMeta(meta);
+    }
+
+    private String canonicalId(SpecialEquipmentData data) {
+        return canonicalId(data.itemId().equalsIgnoreCase(POSEIDON_ID) ? POSEIDON_ID : data.id());
+    }
+
+    static String canonicalId(String id) {
+        String normalized = id == null ? "" : id.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals(LEGACY_POSEIDON_ID) ? POSEIDON_ID : normalized;
     }
 
     public SpecialEquipmentData getData(ItemStack item) {
         String id = getSpecialId(item);
-        return id.isBlank() ? null : registry.get(id).orElse(null);
+        if (id.isBlank()) return null;
+        return registry.get(id).orElseGet(() -> registry.getAll().stream()
+                .filter(data -> canonicalId(data).equals(id))
+                .findFirst().orElse(null));
     }
 
     public boolean isSpecial(ItemStack item) {
@@ -200,34 +229,9 @@ public final class SpecialEquipmentService {
             if (current < entry.getValue()) missing.add(entry.getKey() + " x" + entry.getValue() + " (current " + current + ")");
         }
         if (!data.requiredEquipmentId().isBlank() && !hasRequiredEquipment(player, data)) {
-            missing.add("equipment " + data.requiredEquipmentId() + " +" + data.minimumEnhancementLevel()
-                    + " promotion " + data.minimumPromotionStage());
+            missing.add("equipment " + data.requiredEquipmentId() + " +" + data.minimumEnhancementLevel());
         }
         return missing;
-    }
-
-    public boolean craft(Player player, String id) {
-        if (craftingTransactions == null || craftingRecipes == null) return false;
-        String recipeId = craftingRecipes.specialRecipeId(id).orElse(null);
-        if (recipeId == null) {
-            player.sendMessage(Component.text("Special equipment recipe is not available.", NamedTextColor.RED));
-            return false;
-        }
-        CraftingTransactionService.Result result = craftingTransactions.craft(player, recipeId, false);
-        if (result.success()) return true;
-        player.sendMessage(Component.text(result.status() == CraftingTransactionService.Status.MISSING_INGREDIENTS
-                ? "Materials are insufficient." : "Special equipment could not be crafted.", NamedTextColor.RED));
-        return false;
-    }
-
-    private ItemStack createCraftingOutput(Player player, CraftingRecipeData recipe) {
-        String specialId = craftingRecipes.specialEquipmentIdForRecipe(recipe.id()).orElse(null);
-        if (specialId != null) return create(specialId, recipe.outputAmount());
-        if (recipe.outputId().startsWith("vanilla:")) {
-            Material material = Material.matchMaterial(recipe.outputId().substring("vanilla:".length()).toUpperCase(Locale.ROOT));
-            return material == null ? null : new ItemStack(material, recipe.outputAmount());
-        }
-        return itemService.create(recipe.outputId(), recipe.outputAmount()).orElse(null);
     }
 
     public long getSoul(ItemStack item, String mobId) {
@@ -263,7 +267,6 @@ public final class SpecialEquipmentService {
             boolean materialMatch = item.getType().name().equalsIgnoreCase(data.requiredEquipmentId());
             if (!idMatch && !materialMatch) continue;
             if (enhancement.getLevel(item) < data.minimumEnhancementLevel()) continue;
-            if (promotionStageRank(promotion.getStage(item)) < data.minimumPromotionStage()) continue;
             return true;
         }
         return false;
@@ -317,16 +320,5 @@ public final class SpecialEquipmentService {
         return new NamespacedKey(plugin, "special_soul_" + safe);
     }
 
-    private int promotionStageRank(String stage) {
-        if (stage == null || stage.isBlank()) return 0;
-        String[] parts = stage.split("-", 2);
-        if (parts.length != 2) return 0;
-        try {
-            int gradeOrder = config.getEquipmentGrowthInt("promotion.grades." + parts[0] + ".order", 0);
-            int star = Integer.parseInt(parts[1]);
-            return gradeOrder <= 0 ? 0 : (gradeOrder - 1) * 5 + star;
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
-    }
+
 }

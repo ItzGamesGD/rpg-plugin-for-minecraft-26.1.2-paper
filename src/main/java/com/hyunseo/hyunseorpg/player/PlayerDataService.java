@@ -144,7 +144,6 @@ public final class PlayerDataService {
 
         try {
             repository.save(data);
-            data.setFarmingDataMigrationRequired(false);
             data.setAlchemyDataMigrationRequired(false);
             return true;
         } catch (IOException exception) {
@@ -169,7 +168,7 @@ public final class PlayerDataService {
     }
 
     private synchronized void markMigrationDirty(PlayerRPGData data) {
-        if (data.isFarmingDataMigrationRequired() || data.isAlchemyDataMigrationRequired()) {
+        if (data.isAlchemyDataMigrationRequired()) {
             dirtyPlayers.add(data.getUuid());
         }
     }

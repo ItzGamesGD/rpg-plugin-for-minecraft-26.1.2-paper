@@ -1,0 +1,39 @@
+name: HyunseoRPG
+version: 0.1.0-SNAPSHOT
+main: com.hyunseo.hyunseorpg.HyunseoRPGPlugin
+bootstrapper: com.hyunseo.hyunseorpg.enchant.nativeapi.HyunseoRPGPluginBootstrap
+api-version: '26.1.2'
+author: Hyunseo
+description: HyunseoRPG vanilla-plus progression plugin
+dependencies:
+  server:
+    MythicMobs:
+      load: BEFORE
+      required: false
+      join-classpath: true
+
+permissions:
+  hyunseorpg.item.give:
+    description: Allows custom item commands
+    default: op
+  hyunseorpg.admin.test:
+    description: Allows test commands
+    default: op
+  hyunseorpg.admin.vanilla-anvil:
+    description: Allows vanilla anvil use
+    default: false
+  hyunseorpg.admin:
+    description: Allows admin commands
+    default: op
+  hyunseorpg.special.admin:
+    description: Allows special equipment administration and testing
+    default: op
+  hyunseorpg.mob.spawn:
+    description: Allows RPG mob spawning
+    default: op
+  hyunseorpg.mob.info:
+    description: Allows RPG mob inspection
+    default: op
+  hyunseorpg.mob.scaling:
+    description: Allows mob scaling changes
+    default: op

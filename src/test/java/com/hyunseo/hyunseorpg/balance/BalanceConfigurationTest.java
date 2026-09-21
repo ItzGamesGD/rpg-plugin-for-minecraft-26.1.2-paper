@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-/** Guards the non-final balance defaults and the canonical magic-stone recipe. */
+/** Guards the non-final balance defaults after the custom crafting surface is retired. */
 final class BalanceConfigurationTest {
     @Test
     void xpCurveRemainsNeutralUntilPlaytestTimingExists() {
@@ -18,16 +18,9 @@ final class BalanceConfigurationTest {
     }
 
     @Test
-    void canonicalMagicStoneRecipeUsesNineFragments() {
-        YamlConfiguration crafting = load("crafting.yml");
-        assertEquals(9, crafting.getInt("crafting-recipes.magic_stone_from_fragments.inputs.magic_stone_fragment"));
-        assertEquals("magic_stone", crafting.getString(
-                "crafting-recipes.magic_stone_from_fragments.output.item-id"));
-        assertEquals(1, crafting.getInt(
-                "crafting-recipes.magic_stone_from_fragments.output.amount"));
-        assertTrue(crafting.getStringList("crafting.categories.materials")
-                .contains("magic_stone_from_fragments"));
-        assertEquals(19, crafting.getInt("crafting.layout.materials.magic_stone_from_fragments"));
+    void customCraftingConfigurationIsRetired() {
+        Path crafting = Path.of(System.getProperty("user.dir"), "src", "main", "resources", "crafting.yml");
+        assertFalse(java.nio.file.Files.exists(crafting));
     }
 
     private YamlConfiguration load(String fileName) {

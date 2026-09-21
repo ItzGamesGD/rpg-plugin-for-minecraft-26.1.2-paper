@@ -1,7 +1,6 @@
 package com.hyunseo.hyunseorpg.equipment;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentGrowthProfileResolver;
 import com.hyunseo.hyunseorpg.enhancement.EnhancementRegistry;
 import com.hyunseo.hyunseorpg.item.RPGItemData;
 import com.hyunseo.hyunseorpg.item.RPGItemRegistry;
@@ -98,38 +97,22 @@ public final class EquipmentRegistry {
         String normalizedId = normalize(id);
         var profile = enhancement.findProfile(custom ? normalizedId : null, item.getType());
         boolean upgradeAllowed = profile.isPresent();
-        String promotionProfile = EquipmentGrowthProfileResolver.resolvePromotionProfile(
-                config, itemService, item, profile.orElse(""));
-        boolean promotionAllowed = profile.isPresent()
-                && config.getEquipmentGrowthKeys("promotion.profiles").contains(promotionProfile)
-                && tiers.getMaxPromotionStage(item) > 0;
-
         boolean special = false;
         SpecialEquipmentData specialData = specialEquipment.get(normalizedId).orElse(null);
         if (specialData != null) {
             special = true;
             upgradeAllowed = false;
-            promotionAllowed = false;
         }
         if (itemData != null && "SPECIAL_EQUIPMENT".equalsIgnoreCase(itemData.category())) special = true;
 
-        int configuredGrade = specialData == null
-                ? config.getEquipmentGrowthInt("equipment-registry." + normalizedId + ".grade", 0)
-                : specialData.grade();
-        if (configuredGrade <= 0 && special) configuredGrade = 4;
         boolean endgame = config.getEquipmentGrowthBoolean("equipment-registry." + normalizedId + ".endgame", false);
-        EquipmentGrade grade = EquipmentGrade.fromValue(configuredGrade);
-        if ((grade == EquipmentGrade.GRADE_4 && !special)
-                || grade == EquipmentGrade.GRADE_5 || endgame) {
+        if (endgame) {
             upgradeAllowed = false;
-            promotionAllowed = false;
         }
         definitions.put(normalizedId, new EquipmentDefinition(
                 normalizedId,
                 tiers.getCategory(item),
-                grade,
                 upgradeAllowed,
-                promotionAllowed,
                 special,
                 endgame
         ));

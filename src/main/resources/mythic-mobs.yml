@@ -12,16 +12,10 @@ mobs:
     display-name: "좀비 파편 병사"
     level: 1
     category: starter
-    coin-reward: 3
     exp-reward: 5
-    class-exp-reward: 0
     boss: false
     elite: false
     drops:
-      - item-id: basic_upgrade_fragment
-        chance: 0.35
-        min: 1
-        max: 2
       - item-id: zombie_fragment
         chance: 0.45
         min: 1
@@ -32,16 +26,10 @@ mobs:
     display-name: "스켈레톤 경비병"
     level: 1
     category: starter
-    coin-reward: 4
     exp-reward: 6
-    class-exp-reward: 0
     boss: false
     elite: false
     drops:
-      - item-id: basic_upgrade_fragment
-        chance: 0.25
-        min: 1
-        max: 2
       - item-id: skeleton_seal
         chance: 0.20
         min: 1
@@ -58,9 +46,7 @@ mobs:
     elite: false
     boss: false
     tags: [frost, ranged]
-    coin-reward: 12
     exp-reward: 24
-    class-exp-reward: 8
     stats:
       max-health: 40.0
       attack-damage: 3.0
@@ -113,9 +99,7 @@ mobs:
     elite: true
     boss: false
     tags: [elite, ranged]
-    coin-reward: 20
     exp-reward: 40
-    class-exp-reward: 12
     stats:
       max-health: 60.0
       attack-damage: 5.0
@@ -157,9 +141,7 @@ mobs:
     elite: true
     boss: false
     tags: [elite, melee]
-    coin-reward: 24
     exp-reward: 48
-    class-exp-reward: 14
     stats:
       max-health: 70.0
       attack-damage: 7.0

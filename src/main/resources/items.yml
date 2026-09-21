@@ -11,86 +11,10 @@ items:
   potion_bleed: { material: POTION, display-name: "출혈 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_vulnerability: { material: POTION, display-name: "취약 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
   potion_necrosis: { material: POTION, display-name: "괴사 물약", category: ALCHEMY_POTION, rarity: EPIC, tags: [alchemy-potion, non-sellable], lore: ["등록된 양조 효과를 전달합니다.", "효과 수치와 제작 비용은 밸런스 보류 상태입니다."] }
-  abundance_essence: { material: AMETHYST_SHARD, display-name: "풍요의 정수", category: FARMING_ESSENCE, rarity: LEGENDARY, tags: [farming-essence, "farming:abundance_essence", non-sellable, alchemy-catalyst], lore: ["후반 농사 합성 재료입니다.", "상점에 판매할 수 없습니다."] }
-  vitality_stat_token: { material: HEART_OF_THE_SEA, display-name: "생명의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
-  satiety_stat_token: { material: COOKIE, display-name: "포만의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
-  abundance_stat_token: { material: SUNFLOWER, display-name: "풍요의 증표", category: FARMING_STAT_TOKEN, rarity: EPIC, tags: [farming-stat-token, non-sellable, account-bound], lore: ["계정에 귀속되는 농사 성장 증표입니다."] }
-  cooked_corn_soup_normal: { material: BREAD, display-name: "옥수수 수프 - 일반", category: FARMING_COOKED, rarity: COMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 일반"] }
-  cooked_corn_soup_basic: { material: BREAD, display-name: "옥수수 수프 - 초급", category: FARMING_COOKED, rarity: UNCOMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 초급"] }
-  cooked_corn_soup_proficient: { material: BREAD, display-name: "옥수수 수프 - 중급", category: FARMING_COOKED, rarity: RARE, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 중급"] }
-  cooked_corn_soup_advanced: { material: BREAD, display-name: "옥수수 수프 - 고급", category: FARMING_COOKED, rarity: EPIC, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 고급"] }
-  cooked_corn_soup_supreme: { material: BREAD, display-name: "옥수수 수프 - 최고급", category: FARMING_COOKED, rarity: LEGENDARY, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 최고급"] }
-  cooked_garden_salad_normal: { material: BREAD, display-name: "정원 샐러드 - 일반", category: FARMING_COOKED, rarity: COMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 일반"] }
-  cooked_garden_salad_basic: { material: BREAD, display-name: "정원 샐러드 - 초급", category: FARMING_COOKED, rarity: UNCOMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 초급"] }
-  cooked_garden_salad_proficient: { material: BREAD, display-name: "정원 샐러드 - 중급", category: FARMING_COOKED, rarity: RARE, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 중급"] }
-  cooked_garden_salad_advanced: { material: BREAD, display-name: "정원 샐러드 - 고급", category: FARMING_COOKED, rarity: EPIC, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 고급"] }
-  cooked_garden_salad_supreme: { material: BREAD, display-name: "정원 샐러드 - 최고급", category: FARMING_COOKED, rarity: LEGENDARY, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 최고급"] }
-  cooked_harvest_medley_normal: { material: BREAD, display-name: "수확 모둠 요리 - 일반", category: FARMING_COOKED, rarity: COMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 일반"] }
-  cooked_harvest_medley_basic: { material: BREAD, display-name: "수확 모둠 요리 - 초급", category: FARMING_COOKED, rarity: UNCOMMON, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 초급"] }
-  cooked_harvest_medley_proficient: { material: BREAD, display-name: "수확 모둠 요리 - 중급", category: FARMING_COOKED, rarity: RARE, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 중급"] }
-  cooked_harvest_medley_advanced: { material: BREAD, display-name: "수확 모둠 요리 - 고급", category: FARMING_COOKED, rarity: EPIC, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 고급"] }
-  cooked_harvest_medley_supreme: { material: BREAD, display-name: "수확 모둠 요리 - 최고급", category: FARMING_COOKED, rarity: LEGENDARY, tags: [sellable, farming-cooked], lore: ["농사 재료로 만든 요리입니다.", "품질: 최고급"] }
-  seed_corn: { material: WHEAT_SEEDS, display-name: "옥수수 씨앗", category: FARMING_SEED, rarity: COMMON, lore: ["농사 작물을 심는 씨앗입니다."] }
-  seed_onion: { material: WHEAT_SEEDS, display-name: "양파 씨앗", category: FARMING_SEED, rarity: COMMON, lore: ["농사 작물을 심는 씨앗입니다."] }
-  seed_chili: { material: WHEAT_SEEDS, display-name: "고추 씨앗", category: FARMING_SEED, rarity: COMMON, lore: ["농사 작물을 심는 씨앗입니다."] }
-  seed_garlic: { material: WHEAT_SEEDS, display-name: "마늘 씨앗", category: FARMING_SEED, rarity: COMMON, lore: ["농사 작물을 심는 씨앗입니다."] }
-  crop_corn: { material: WHEAT, display-name: "옥수수", category: FARMING_CROP, rarity: COMMON, lore: ["수확한 농사 작물입니다."] }
-  crop_onion: { material: WHEAT, display-name: "양파", category: FARMING_CROP, rarity: COMMON, lore: ["수확한 농사 작물입니다."] }
-  crop_chili: { material: WHEAT, display-name: "고추", category: FARMING_CROP, rarity: COMMON, lore: ["수확한 농사 작물입니다."] }
-  crop_garlic: { material: WHEAT, display-name: "마늘", category: FARMING_CROP, rarity: COMMON, lore: ["수확한 농사 작물입니다."] }
-  crop_corn_quality_basic: { material: WHEAT, display-name: "초급 옥수수", category: FARMING_CROP_QUALITY, rarity: UNCOMMON, lore: ["작물: 옥수수", "품질: 초급"] }
-  crop_corn_quality_proficient: { material: WHEAT, display-name: "중급 옥수수", category: FARMING_CROP_QUALITY, rarity: RARE, lore: ["작물: 옥수수", "품질: 중급"] }
-  crop_corn_quality_advanced: { material: WHEAT, display-name: "고급 옥수수", category: FARMING_CROP_QUALITY, rarity: EPIC, lore: ["작물: 옥수수", "품질: 고급"] }
-  crop_corn_quality_supreme: { material: WHEAT, display-name: "최고급 옥수수", category: FARMING_CROP_QUALITY, rarity: LEGENDARY, tags: [farming-supreme-material], lore: ["작물: 옥수수", "품질: 최고급"] }
-  crop_onion_quality_basic: { material: WHEAT, display-name: "초급 양파", category: FARMING_CROP_QUALITY, rarity: UNCOMMON, lore: ["작물: 양파", "품질: 초급"] }
-  crop_onion_quality_proficient: { material: WHEAT, display-name: "중급 양파", category: FARMING_CROP_QUALITY, rarity: RARE, lore: ["작물: 양파", "품질: 중급"] }
-  crop_onion_quality_advanced: { material: WHEAT, display-name: "고급 양파", category: FARMING_CROP_QUALITY, rarity: EPIC, lore: ["작물: 양파", "품질: 고급"] }
-  crop_onion_quality_supreme: { material: WHEAT, display-name: "최고급 양파", category: FARMING_CROP_QUALITY, rarity: LEGENDARY, tags: [farming-supreme-material], lore: ["작물: 양파", "품질: 최고급"] }
-  crop_chili_quality_basic: { material: WHEAT, display-name: "초급 고추", category: FARMING_CROP_QUALITY, rarity: UNCOMMON, lore: ["작물: 고추", "품질: 초급"] }
-  crop_chili_quality_proficient: { material: WHEAT, display-name: "중급 고추", category: FARMING_CROP_QUALITY, rarity: RARE, lore: ["작물: 고추", "품질: 중급"] }
-  crop_chili_quality_advanced: { material: WHEAT, display-name: "고급 고추", category: FARMING_CROP_QUALITY, rarity: EPIC, lore: ["작물: 고추", "품질: 고급"] }
-  crop_chili_quality_supreme: { material: WHEAT, display-name: "최고급 고추", category: FARMING_CROP_QUALITY, rarity: LEGENDARY, tags: [farming-supreme-material], lore: ["작물: 고추", "품질: 최고급"] }
-  crop_garlic_quality_basic: { material: WHEAT, display-name: "초급 마늘", category: FARMING_CROP_QUALITY, rarity: UNCOMMON, lore: ["작물: 마늘", "품질: 초급"] }
-  crop_garlic_quality_proficient: { material: WHEAT, display-name: "중급 마늘", category: FARMING_CROP_QUALITY, rarity: RARE, lore: ["작물: 마늘", "품질: 중급"] }
-  crop_garlic_quality_advanced: { material: WHEAT, display-name: "고급 마늘", category: FARMING_CROP_QUALITY, rarity: EPIC, lore: ["작물: 마늘", "품질: 고급"] }
-  crop_garlic_quality_supreme: { material: WHEAT, display-name: "최고급 마늘", category: FARMING_CROP_QUALITY, rarity: LEGENDARY, tags: [farming-supreme-material], lore: ["작물: 마늘", "품질: 최고급"] }
-  processed_corn_starch_normal: { material: WHEAT, display-name: "옥수수 전분 - 일반", category: FARMING_PROCESSED, rarity: COMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 옥수수", "품질: 일반"] }
-  processed_corn_starch_basic: { material: WHEAT, display-name: "옥수수 전분 - 초급", category: FARMING_PROCESSED, rarity: UNCOMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 옥수수", "품질: 초급"] }
-  processed_corn_starch_proficient: { material: WHEAT, display-name: "옥수수 전분 - 중급", category: FARMING_PROCESSED, rarity: RARE, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 옥수수", "품질: 중급"] }
-  processed_corn_starch_advanced: { material: WHEAT, display-name: "옥수수 전분 - 고급", category: FARMING_PROCESSED, rarity: EPIC, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 옥수수", "품질: 고급"] }
-  processed_corn_starch_supreme: { material: WHEAT, display-name: "옥수수 전분 - 최고급", category: FARMING_PROCESSED, rarity: LEGENDARY, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed, farming-supreme-material], lore: ["농사 가공품입니다.", "작물: 옥수수", "품질: 최고급"] }
-  processed_onion_concentrate_normal: { material: WHEAT, display-name: "양파 농축액 - 일반", category: FARMING_PROCESSED, rarity: COMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 양파", "품질: 일반"] }
-  processed_onion_concentrate_basic: { material: WHEAT, display-name: "양파 농축액 - 초급", category: FARMING_PROCESSED, rarity: UNCOMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 양파", "품질: 초급"] }
-  processed_onion_concentrate_proficient: { material: WHEAT, display-name: "양파 농축액 - 중급", category: FARMING_PROCESSED, rarity: RARE, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 양파", "품질: 중급"] }
-  processed_onion_concentrate_advanced: { material: WHEAT, display-name: "양파 농축액 - 고급", category: FARMING_PROCESSED, rarity: EPIC, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 양파", "품질: 고급"] }
-  processed_onion_concentrate_supreme: { material: WHEAT, display-name: "양파 농축액 - 최고급", category: FARMING_PROCESSED, rarity: LEGENDARY, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed, farming-supreme-material], lore: ["농사 가공품입니다.", "작물: 양파", "품질: 최고급"] }
-  processed_chili_extract_normal: { material: WHEAT, display-name: "고추 추출액 - 일반", category: FARMING_PROCESSED, rarity: COMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 고추", "품질: 일반"] }
-  processed_chili_extract_basic: { material: WHEAT, display-name: "고추 추출액 - 초급", category: FARMING_PROCESSED, rarity: UNCOMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 고추", "품질: 초급"] }
-  processed_chili_extract_proficient: { material: WHEAT, display-name: "고추 추출액 - 중급", category: FARMING_PROCESSED, rarity: RARE, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 고추", "품질: 중급"] }
-  processed_chili_extract_advanced: { material: WHEAT, display-name: "고추 추출액 - 고급", category: FARMING_PROCESSED, rarity: EPIC, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 고추", "품질: 고급"] }
-  processed_chili_extract_supreme: { material: WHEAT, display-name: "고추 추출액 - 최고급", category: FARMING_PROCESSED, rarity: LEGENDARY, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed, farming-supreme-material], lore: ["농사 가공품입니다.", "작물: 고추", "품질: 최고급"] }
-  processed_garlic_concentrate_normal: { material: WHEAT, display-name: "마늘 농축액 - 일반", category: FARMING_PROCESSED, rarity: COMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 일반"] }
-  processed_garlic_concentrate_basic: { material: WHEAT, display-name: "마늘 농축액 - 초급", category: FARMING_PROCESSED, rarity: UNCOMMON, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 초급"] }
-  processed_garlic_concentrate_proficient: { material: WHEAT, display-name: "마늘 농축액 - 중급", category: FARMING_PROCESSED, rarity: RARE, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 중급"] }
-  processed_garlic_concentrate_advanced: { material: WHEAT, display-name: "마늘 농축액 - 고급", category: FARMING_PROCESSED, rarity: EPIC, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 고급"] }
-  processed_garlic_concentrate_supreme: { material: WHEAT, display-name: "마늘 농축액 - 최고급", category: FARMING_PROCESSED, rarity: LEGENDARY, tags: [sellable, farmer-delivery, alchemy-material, alchemist-delivery-candidate, farming-processed, farming-supreme-material], lore: ["농사 가공품입니다.", "작물: 마늘", "품질: 최고급"] }
-  enchant_extraction_ticket: { material: PAPER, display-name: "인챈트 추출권", category: SUPPORT, rarity: EPIC, custom-model-data: 23601, lore: ["장비에서 선택한 커스텀 인챈트를 추출합니다.", "장비 성장 메뉴에서 사용합니다."] }
-  promotion_option_reroll_ticket: { material: PAPER, display-name: "승급 옵션 초기화권", category: SUPPORT, rarity: EPIC, custom-model-data: 23602, lore: ["장비의 선택한 승급 옵션을 다시 결정합니다.", "현재 수치보다 낮아지지 않습니다."] }
   enchant_book_axe_heavy_strike: { material: ENCHANTED_BOOK, display-name: "강타 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22126, lore: ["도끼에 강타를 부여합니다."] }
   enchant_book_titans_wrath: { material: ENCHANTED_BOOK, display-name: "타이탄의 분노 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22127, lore: ["도끼에 타이탄의 분노를 부여합니다."] }
-  enchant_book_protection: { material: ENCHANTED_BOOK, display-name: "보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22130, lore: ["방어구에 보호를 부여합니다."] }
-  enchant_book_fire_protection: { material: ENCHANTED_BOOK, display-name: "화염 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22131, lore: ["방어구에 화염 보호를 부여합니다."] }
-  enchant_book_blast_protection: { material: ENCHANTED_BOOK, display-name: "폭발 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22132, lore: ["방어구에 폭발 보호를 부여합니다."] }
-  enchant_book_projectile_protection: { material: ENCHANTED_BOOK, display-name: "투사체 보호 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22133, lore: ["방어구에 투사체 보호를 부여합니다."] }
   enchant_book_skill_protection: { material: ENCHANTED_BOOK, display-name: "기술 보호 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22134, lore: ["방어구에 기술 보호를 부여합니다."] }
-  enchant_book_thorns: { material: ENCHANTED_BOOK, display-name: "가시 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22135, lore: ["방어구에 가시를 부여합니다."] }
   enchant_book_rolling_landing: { material: ENCHANTED_BOOK, display-name: "구르기 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22136, lore: ["부츠에 구르기를 부여합니다."] }
-  enchant_book_respiration: { material: ENCHANTED_BOOK, display-name: "호흡 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22137, lore: ["투구에 호흡을 부여합니다."] }
-  enchant_book_aqua_affinity: { material: ENCHANTED_BOOK, display-name: "친수성 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22138, lore: ["투구에 친수성을 부여합니다."] }
-  enchant_book_swift_sneak: { material: ENCHANTED_BOOK, display-name: "신속한 잠행 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22139, lore: ["레깅스에 신속한 잠행을 부여합니다."] }
-  enchant_book_depth_strider: { material: ENCHANTED_BOOK, display-name: "물갈퀴 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22140, lore: ["부츠에 물갈퀴를 부여합니다."] }
-  enchant_book_soul_speed: { material: ENCHANTED_BOOK, display-name: "영혼 가속 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22141, lore: ["부츠에 영혼 가속을 부여합니다."] }
-  enchant_book_frost_walker: { material: ENCHANTED_BOOK, display-name: "얼음 걸음 인챈트 북", category: ENCHANTMENT, rarity: RARE, custom-model-data: 22142, lore: ["부츠에 얼음 걸음을 부여합니다."] }
   enchant_book_wind_arrow: { material: ENCHANTED_BOOK, display-name: "바람 화살 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22144, lore: ["활에 바람 화살을 부여합니다."] }
   enchant_book_crossbow_barrage: { material: ENCHANTED_BOOK, display-name: "연발 사격 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22145, lore: ["쇠뇌에 연발 사격을 부여합니다."] }
   enchant_book_fire_arrow_rain: { material: ENCHANTED_BOOK, display-name: "불화살 비 인챈트 북", category: ENCHANTMENT, rarity: EPIC, custom-model-data: 22155, lore: ["활에 불화살 비를 부여합니다."] }
@@ -118,95 +42,42 @@ items:
   elite_zombie_core: { material: ECHO_SHARD, display-name: "엘리트 좀비 코어", category: MATERIAL, custom-model-data: 22002 }
   forest_fang: { material: BONE, display-name: "숲 늑대 송곳니", category: MATERIAL, custom-model-data: 22003 }
   guard_bone: { material: BONE, display-name: "경비병의 뼈", category: MATERIAL, custom-model-data: 22004 }
-  skeleton_king_sigil: { material: PAPER, display-name: "스켈레톤 킹 인장", category: QUEST, rarity: EPIC, custom-model-data: 22005 }
   basic_upgrade_stone: { material: AMETHYST_SHARD, display-name: "기본 강화석", category: ENHANCEMENT, custom-model-data: 22100 }
-  basic_upgrade_fragment:
-    material: IRON_NUGGET
-    display-name: "강화석 파편"
-    category: ENHANCEMENT_MATERIAL
-    custom-model-data: 22103
-    lore: ["10개를 모아 강화석으로 제작합니다.", "모루 > 강화에서 강화석을 사용합니다."]
-  basic_promotion_stone: { material: PRISMARINE_CRYSTALS, display-name: "기본 승급석", category: ENHANCEMENT, custom-model-data: 22101 }
-  magic_stone:
-    material: AMETHYST_BLOCK
-    display-name: "마석"
-    category: ENCHANTMENT
-    rarity: RARE
-    custom-model-data: 22102
-    lore: ["인챈트 북 구매에 사용하는 재화"]
-  magic_stone_fragment:
-    material: AMETHYST_SHARD
-    display-name: "마석 파편"
-    category: ENCHANTMENT_MATERIAL
-    rarity: COMMON
-    custom-model-data: 22104
-    lore: ["여러 개를 모아 마석으로 제작할 수 있습니다.", "Shift + F > 제작 메뉴에서 사용처를 확인하세요."]
-  wither_core:
-    material: NETHER_STAR
-    display-name: "위더의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24001
-  wither_fragment:
-    material: NETHER_STAR
-    display-name: "위더 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24002
-  dragon_core:
-    material: DRAGON_BREATH
-    display-name: "드래곤의 핵"
-    category: BOSS_MATERIAL
-    rarity: LEGENDARY
-    custom-model-data: 24003
-  dragon_fragment:
-    material: DRAGON_BREATH
-    display-name: "드래곤 파편"
-    category: BOSS_MATERIAL
-    rarity: EPIC
-    custom-model-data: 24004
   enchant_book_blade_throw:
     material: ENCHANTED_BOOK
     display-name: "검 투척 인챈트 북"
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22110
-    lore: ["검 장비에 장착하여 검 투척을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 검 투척을 사용합니다."]
   enchant_book_light_greatsword:
     material: ENCHANTED_BOOK
     display-name: "빛의 대검 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22111
-    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
+    lore: ["검 장비에 장착하여 빛의 대검을 사용합니다."]
   enchant_book_laser_arrow:
     material: ENCHANTED_BOOK
     display-name: "레이저 화살 인챈트 북"
     category: ENCHANTMENT
     rarity: RARE
     custom-model-data: 22112
-    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다.", "장비의 인챈트 슬롯이 필요합니다."]
-  enchant_book_durability_save_pickaxe:
-    material: ENCHANTED_BOOK
-    display-name: "곡괭이 보존 인챈트 북"
-    category: ENCHANTMENT
-    rarity: RARE
-    custom-model-data: 22120
-    lore: ["곡괭이의 내구도 감소를 완화하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["활 장비에 장착하여 레이저 화살을 사용합니다."]
   enchant_book_mining_bonus_drop:
     material: ENCHANTED_BOOK
     display-name: "광맥 추가 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22121
-    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["광석 채굴 시 추가 보상을 얻을 수 있는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   enchant_book_area_mining_pickaxe:
     material: ENCHANTED_BOOK
     display-name: "광역 채굴 인챈트 북"
     category: ENCHANTMENT
     rarity: EPIC
     custom-model-data: 22122
-    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "장비 성장 > 인챈트에서 적용할 수 있습니다."]
+    lore: ["연결된 광맥을 함께 채굴하는 도구 인챈트입니다.", "인챈팅 테이블과 바닐라 모루에서 사용합니다."]
   fire_sword: { material: GOLDEN_SWORD, display-name: "불타는 검", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23401, lore: ["불 원소의 기본 장비"] }
   fire_bow: { material: BOW, display-name: "불타는 활", category: ELEMENTAL_EQUIPMENT, rarity: RARE, custom-model-data: 23402, lore: ["불 원소의 기본 장비"] }
   fireball: { material: FIRE_CHARGE, display-name: "파이어볼", category: ELEMENTAL_CONSUMABLE, custom-model-data: 23403, lore: ["불 원소 소비 아이템"] }
@@ -230,6 +101,7 @@ items:
   blessing_of_earth: { material: EMERALD, display-name: "대지의 축복", category: SPECIAL_BUFF, rarity: RARE, custom-model-data: 23504, lore: ["사용 시 채집 활동 보조 효과를 얻습니다."] }
   burning_sword: { material: GOLDEN_SWORD, display-name: "불꽃검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23511, lore: ["불 속성 후반 장비", "연속 공격으로 화염 스택을 쌓습니다."] }
   flame_axe: { material: GOLDEN_AXE, display-name: "화염 도끼", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23517, lore: ["우클릭을 완전히 충전해 강공격합니다.", "F로 회전 도끼를 투척합니다."] }
+  thunder_gods_axe: { material: NETHERITE_AXE, display-name: "뇌신의 도끼", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23519, lore: ["낙뢰와 천뢰쇄로 전기를 전파합니다.", "우클릭 충전: 뇌신격", "F: 천뢰폭발"] }
   flowing_water_sword: { material: DIAMOND_SWORD, display-name: "흐르는 물의 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23512, lore: ["물 속성 후반 장비", "처치 시 회복과 속도 효과를 얻습니다."] }
   wind_cutting_sword: { material: IRON_SWORD, display-name: "바람을 가르는 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23513, lore: ["바람 속성 후반 장비", "공격 시 전방 검격을 발사합니다."] }
   earth_special_sword: { material: WOODEN_SWORD, display-name: "대지의 검", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23514, lore: ["땅 속성 후반 장비", "적을 둔화시키는 묵직한 검입니다."] }
@@ -240,3 +112,5 @@ items:
   earth_heavy_bow: { material: BOW, display-name: "대지의 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23523, lore: ["적을 둔화시키는 묵직한 화살입니다."] }
   freezing_bow: { material: BOW, display-name: "빙결의 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23524, lore: ["화살 적중 시 빙결 스택을 쌓습니다."] }
   dark_energy_bow: { material: BOW, display-name: "마기가 깃든 활", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23525, lore: ["화살 적중 시 약화와 위더를 부여합니다."] }
+  solaris: { material: GOLDEN_SWORD, display-name: "성검 · 솔라리스", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["Holy Sword: Solaris", "빛과 태양의 신성한 힘을 다룹니다."] }
+  moonlit_afterglow: { material: NETHERITE_SWORD, display-name: "월야잔광", category: SPECIAL_EQUIPMENT, rarity: LEGENDARY, custom-model-data: 23518, lore: ["달빛을 보는 순간 이미 늦었다.", "우클릭: 월섬 / F: 월영난무"] }

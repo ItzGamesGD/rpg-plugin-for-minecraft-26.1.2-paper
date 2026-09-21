@@ -21,7 +21,10 @@ import java.util.HashSet;
 public final class EnchantRegistry {
     private static final Set<String> RETIRED_ENCHANTS = Set.of(
             "spear_charge", "spear_throw", "lancer", "paladins_blessing",
-            "holy_counter", "homing_arrow", "hunters_mark");
+            "holy_counter", "homing_arrow", "hunters_mark",
+            "protection", "fire_protection", "blast_protection", "projectile_protection",
+            "thorns", "respiration", "aqua_affinity", "swift_sneak", "depth_strider",
+            "soul_speed", "frost_walker", "unbreaking");
     private static final Map<String, String> RETIRED_REASONS = Map.of(
             "spear_charge", "temporarily disabled: spear input implementation pending",
             "spear_throw", "temporarily disabled: spear input implementation pending",
@@ -130,6 +133,7 @@ public final class EnchantRegistry {
     public static boolean isRetiredBookItemId(String itemId) {
         if (itemId == null) return false;
         String normalized = itemId.trim().toLowerCase(Locale.ROOT);
+        if (normalized.equals("enchant_book_durability_save_pickaxe")) return true;
         return normalized.startsWith("enchant_book_")
                 && isRetiredId(normalized.substring("enchant_book_".length()));
     }

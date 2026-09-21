@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.special;
 
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -10,16 +9,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Shared FIRE damage and temporary flame-buff calculation for special equipment. */
 public final class FireElementDamageUtil {
-    private final EquipmentPromotionService promotion;
     private final Map<UUID, FlameBuff> buffs = new ConcurrentHashMap<>();
 
-    public FireElementDamageUtil(EquipmentPromotionService promotion) {
-        this.promotion = promotion;
-    }
+    public FireElementDamageUtil() { }
 
     public double boost(Player player, ItemStack item, double damage) {
         if (damage <= 0.0D) return 0.0D;
-        double bonus = promotion == null ? 0.0D : promotion.getLegacyOptionValue(item, "fire-damage-bonus-percent");
+        double bonus = 0.0D;
         FlameBuff buff = activeBuff(player);
         if (buff != null) bonus += buff.damageBonus();
         return damage * (1.0D + Math.max(0.0D, bonus));

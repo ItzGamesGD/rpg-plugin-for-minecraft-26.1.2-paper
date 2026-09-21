@@ -45,6 +45,17 @@ final class EnchantContentDataTest {
     }
 
     @Test
+    void delegatedNativeEnchantAbilitiesDeclareTheirRuntimeContract() {
+        YamlConfiguration enchants = load("enchants.yml");
+        assertEquals("swordmaster.light-greatsword", enchants.getString("enchants.light_greatsword.settings.delegated-runtime"));
+        assertEquals("bowmaster.laser-arrow", enchants.getString("enchants.laser_arrow.settings.delegated-runtime"));
+        assertEquals("bowmaster.arrow-rain", enchants.getString("enchants.fire_arrow_rain.settings.delegated-runtime"));
+        for (String id : List.of("light_greatsword", "laser_arrow", "fire_arrow_rain")) {
+            assertEquals("native-item-enchantment", enchants.getString("enchants." + id + ".settings.level-source"));
+        }
+    }
+
+    @Test
     void retiredEnchantDefinitionsAreNotRegistered() {
         YamlConfiguration enchants = load("enchants.yml");
         for (String retired : List.of(
@@ -65,7 +76,7 @@ final class EnchantContentDataTest {
         YamlConfiguration enchants = load("enchants.yml");
         YamlConfiguration items = load("items.yml");
         assertEquals(5, enchants.getInt("config-version"));
-        for (String id : List.of("fire_arrow_rain", "unbreaking", "mining_bonus_drop",
+        for (String id : List.of("fire_arrow_rain", "skill_protection", "mining_bonus_drop",
                 "area_excavation", "chain_logging")) {
             assertTrue(enchants.isConfigurationSection("enchants." + id), id);
         }
@@ -152,17 +163,7 @@ final class EnchantContentDataTest {
     }
 
     @Test
-    void gatheringPromotionPoolsExcludeCombatOnlyOptions() {
-        YamlConfiguration growth = load("equipment-growth.yml");
-        for (String profile : List.of("pickaxe", "shovel", "hoe", "axe")) {
-            Set<String> options = new LinkedHashSet<>();
-            options.addAll(growth.getStringList("promotion.profiles." + profile + ".general-option-pool"));
-            options.addAll(growth.getStringList("promotion.profiles." + profile + ".special-option-pool"));
-            assertFalse(options.contains("skill-damage"), profile);
-            assertFalse(options.contains("weapon-skill-damage"), profile);
-            assertFalse(options.contains("bleed-chance"), profile);
-        }
-    }
+
 
     private YamlConfiguration load(String resource) {
         Path path = Path.of(System.getProperty("user.dir"), "src", "main", "resources", resource);

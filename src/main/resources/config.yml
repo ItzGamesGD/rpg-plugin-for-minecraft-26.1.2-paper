@@ -5,27 +5,9 @@ persistence:
   max-dirty-players-per-batch: 50
   retry-on-failure: true
 
-class-weapons:
-  command-enabled: true
-
-economy:
-  coin-display:
-    enabled: true
-    interval-ticks: 40
-
-mana:
-  regen-interval-ticks: 20
-  base-regen-per-second: 1.0
-  stat-max-mana-bonus: 10.0
-  stat-regen-bonus-per-second: 0.5
-
-enhancement:
-  block-vanilla-enchanting: true
-
 resource-pack:
   enabled: false
   custom-model-data-ranges:
-    class-weapons: "20001-20999"
     skill-visuals: "21001-21999"
     mob-visuals: "22001-22999"
   skill-models:
@@ -128,62 +110,9 @@ bowmaster:
     ceiling-search-up-blocks: 14
     invalid-point-retries: 5
 
-lancer:
-  spear-throw:
-    enabled: true
-    speed: 2.5
-    lifetime-ticks: 60
-    damage: 12.5
-    hitbox-radius: 1.0
-  charge:
-    enabled: true
-    distance: 10.0
-    duration-ticks: 8
-    damage: 10.0
-    hitbox-radius: 1.4
-  spear-breakthrough:
-    enabled: true
-    pre-delay-ticks: 20
-    spear-count: 10
-    spear-speed: 2.0
-    spear-damage: 5.0
-    charge-damage: 10.0
-
-skill-input:
-  enabled: true
-  legacy-class-skills: false
-  debug-messages: true
-  cooldown-messages: true
-
 enchant-runtime-debug:
   enabled: false
-  cancel-vanilla-action: true
-  wizard-basic-fire-damage: 2.0
-  cooldowns:
-    swordmaster:
-      offhand-quick: 1.0
-      right-click: 20.0
-      drop-key: 60.0
-    bowmaster:
-      offhand-quick: 10.0
-      left-click: 20.0
-      shift-left-click: 60.0
-    lancer:
-      offhand-quick: 3.0
-      right-click: 6.0
-      drop-key: 60.0
-    assassin:
-      offhand-quick: 10.0
-      right-click: 30.0
-    wizard:
-      left-click: 0.5
-      offhand-quick: 3.0
-      right-click: 8.0
-      shift-left-click: 15.0
 
-# Drop protection is deliberately restricted to Shift+Drop. Normal Drop remains
-# available for enchantment skills that use DROP_KEY. Tools can be protected later
-# without changing the listener by enabling protect-tools.
 item-drop-protection:
   enabled: true
   require-shift: true
@@ -191,7 +120,6 @@ item-drop-protection:
 
 repair:
   enabled: true
-  currency: COIN
   # The legacy per-durability formula remains the neutral baseline. The
   # following factors are deliberately configurable and default to neutral.
   base-cost: 0
@@ -207,38 +135,6 @@ repair:
     tier-5: 1.80
   enhancement:
     multiplier-per-progress: 0.50
-  promotion-multipliers:
-    default: 1.0
-    normal-1: 1.02
-    normal-2: 1.04
-    normal-3: 1.06
-    normal-4: 1.08
-    normal-5: 1.10
-    advanced-1: 1.13
-    advanced-2: 1.16
-    advanced-3: 1.19
-    advanced-4: 1.22
-    advanced-5: 1.25
-    rare-1: 1.29
-    rare-2: 1.33
-    rare-3: 1.37
-    rare-4: 1.41
-    rare-5: 1.45
-    heroic-1: 1.50
-    heroic-2: 1.55
-    heroic-3: 1.60
-    heroic-4: 1.65
-    heroic-5: 1.70
-    legendary-1: 1.76
-    legendary-2: 1.82
-    legendary-3: 1.88
-    legendary-4: 1.94
-    legendary-5: 2.00
-    mythic-1: 2.08
-    mythic-2: 2.16
-    mythic-3: 2.24
-    mythic-4: 2.32
-    mythic-5: 2.40
   cost-per-durability: 3
   minimum-cost: 50
   max-repair-percent: 100
@@ -254,16 +150,6 @@ equipment-effects:
   damage-indicator-radius: 0.65
   damage-indicator-min-height: 1.0
   damage-indicator-max-height: 1.7
-
-vanilla-enchants:
-  enabled: false
-  block-enchanting-table: true
-  block-anvil-enchants: true
-  strip-loot-enchants: true
-  strip-mob-drop-enchants: true
-  strip-fishing-enchants: true
-  block-villager-enchanted-trades: true
-  sanitize-custom-equipment: true
 
 # Only simple vanilla items in the code allow-list can use this policy.
 # HyunseoRPG items, PDC-tagged items, equipment, durability items, and containers

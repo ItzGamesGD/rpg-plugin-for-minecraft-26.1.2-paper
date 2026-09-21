@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "hyunseorpg:skill_protection",
+    "hyunseorpg:rolling_landing",
+    "hyunseorpg:wind_arrow",
+    "hyunseorpg:mining_bonus_drop",
+    "hyunseorpg:auto_replant",
+    "hyunseorpg:auto_smelt",
+    "hyunseorpg:chain_logging",
+    "hyunseorpg:treasure_finder",
+    "hyunseorpg:multi_catch"
+  ]
+}

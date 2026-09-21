@@ -84,7 +84,6 @@ public final class MobRegistry {
                 parseAttributes(path),
                 Math.max(0L, getInt(path, "exp", "base-exp", configService.getMobsInt(path + "expReward", 0))),
                 Math.max(0L, configService.getMobsInt(path + "class-exp", 0)),
-                Math.max(0L, getInt(path, "coin", "money-reward", configService.getMobsInt(path + "moneyReward", 0))),
                 configService.getMobsString(path + "drop-table", configService.getMobsString(path + "dropTable", "")),
                 configService.getMobsString(path + "region", ""),
                 boss,

@@ -4,28 +4,21 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RPGGiveCommandCompletionTest {
     @Test
     void exposesPendingAndClaimCompletions() {
         assertTrue(RPGGiveCommand.rootCompletion("").contains("pending"));
-        assertTrue(RPGGiveCommand.rootCompletion("").contains("farming"));
-        assertTrue(RPGGiveCommand.rootCompletion("").contains("exploration"));
+        assertFalse(RPGGiveCommand.rootCompletion("").contains("farming"));
+        assertFalse(RPGGiveCommand.rootCompletion("").contains("exploration"));
         assertTrue(RPGGiveCommand.pendingCompletion("").contains("claim"));
     }
 
     @Test
-    void exposesExplorationDiagnosticsCompletions() {
-        assertTrue(RPGGiveCommand.explorationActionCompletion("").containsAll(
-                List.of("status", "inspect", "complete", "choose")));
-    }
-
-    @Test
-    void exposesFarmingReloadAndFarmingSeedIds() {
-        assertTrue(RPGGiveCommand.reloadCompletion("farm", new String[]{"all", "farming"}).contains("farming"));
-        List<String> seeds = List.of("seed_corn", "seed_onion", "seed_chili", "seed_garlic");
-        assertTrue(RPGGiveCommand.giveCompletion("seed_", seeds).containsAll(seeds));
+    void retiredFarmingReloadIsNotSuggested() {
+        assertFalse(RPGGiveCommand.reloadCompletion("farm", new String[]{"all", "alchemy"}).contains("farming"));
     }
 
     @Test
@@ -36,6 +29,7 @@ class RPGGiveCommandCompletionTest {
     @Test
     void exposesMobMigrationTarget() {
         assertTrue(RPGGiveCommand.migrationTargetCompletion("").contains("mobs"));
+        assertFalse(RPGGiveCommand.migrationTargetCompletion("").contains("exploration"));
     }
 
     @Test
@@ -44,15 +38,6 @@ class RPGGiveCommandCompletionTest {
                 List.of("list", "apply", "remove", "clear", "debug", "reload")));
     }
 
-    @Test
-    void exposesStage9FarmingAdminActions() {
-        List<String> actions = RPGGiveCommand.farmingActionCompletion("");
-        assertTrue(actions.containsAll(List.of(
-                "status", "unlock", "lock", "setstage", "setharvests", "addharvests",
-                "setpoints", "addpoints", "setfavor", "addfavor", "reset", "give", "giveprocessed",
-                "giveessence", "givetoken", "settokens", "debugharvest", "debugquality", "debugdelivery", "repairchunk",
-                "recalculate", "reloadplayer", "delivery")));
-    }
 
     @Test
     void potionIdsRequireCanonicalFactoryPath() {

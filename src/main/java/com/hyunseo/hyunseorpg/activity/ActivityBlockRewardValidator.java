@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
  */
 public final class ActivityBlockRewardValidator {
     private final ActivityBlockRepository placedBlocks;
-    private final ConfigService config;
     private final Set<BlockBreakEvent> placedEventCache =
             Collections.newSetFromMap(new WeakHashMap<>());
     private final Set<BlockBreakEvent> claimedBonusEvents =
@@ -31,7 +30,6 @@ public final class ActivityBlockRewardValidator {
 
     public ActivityBlockRewardValidator(ActivityBlockRepository placedBlocks, ConfigService config) {
         this.placedBlocks = placedBlocks;
-        this.config = config;
     }
 
     public boolean isPlayerPlaced(BlockBreakEvent event) {
@@ -56,32 +54,15 @@ public final class ActivityBlockRewardValidator {
         if (event == null || event.isCancelled() || event.getPlayer() == null || isSynthetic(event)) return false;
         if (isPlayerPlaced(event)) return false;
         Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.SURVIVAL
-                && !(player.getGameMode() == GameMode.ADVENTURE
-                && config.getProgressionLoopBoolean(
-                "activity-coins.activities." + activity + ".allow-adventure", true))) {
-            return false;
-        }
-        Set<String> allowedWorlds = config.getProgressionLoopStringList(
-                        "activity-coins.activities." + activity + ".allowed-worlds")
-                .stream().map(value -> value.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-        return allowedWorlds.isEmpty()
-                || allowedWorlds.contains(player.getWorld().getName().toLowerCase(Locale.ROOT));
+        return player.getGameMode() == GameMode.SURVIVAL;
     }
 
     /** Crop rewards require a configured crop and a mature growth state. */
     public boolean isMatureAllowedCrop(Block block) {
         if (block == null || !isCrop(block.getType())) return false;
-        Set<String> configured = config.getProgressionLoopStringList(
-                        "activity-coins.activities.FARMING.allowed-crops")
-                .stream().map(value -> value.toUpperCase(Locale.ROOT)).collect(Collectors.toSet());
-        if (configured.isEmpty()) {
-            configured = Set.of("WHEAT", "CARROTS", "POTATOES", "BEETROOTS", "NETHER_WART",
-                    "COCOA", "MELON", "PUMPKIN", "SUGAR_CANE", "CACTUS");
-        }
+        Set<String> configured = Set.of("WHEAT", "CARROTS", "POTATOES", "BEETROOTS", "NETHER_WART",
+                "COCOA", "MELON", "PUMPKIN", "SUGAR_CANE", "CACTUS");
         if (!configured.contains(block.getType().name())) return false;
-        if (!config.getProgressionLoopBoolean(
-                "activity-coins.activities.FARMING.require-mature-crop", true)) return true;
         return !(block.getBlockData() instanceof Ageable ageable)
                 || ageable.getAge() >= ageable.getMaximumAge();
     }

@@ -8,23 +8,17 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WaterTridentStateTest {
-    @Test void landWaterLandWaterTransitionsControlOnlyCurrentEffects() {
+    @Test void outwardCurrentEffectsWorkOnLandAndInWater() {
         assertTrue(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.OUTWARD),
                 "ordinary direct impact remains legal on land");
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
-                "land prohibits current damage and pull");
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
-                "entering water activates current damage and pull");
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, false),
-                "leaving water immediately deactivates both effects");
-        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD, true),
-                "re-entering water activates them again");
+        assertTrue(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.OUTWARD),
+                "outward flight keeps current damage and pull in both land and water");
     }
 
     @Test void loyaltyReturnNeverReactivatesCurrentDamage() {
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.RETURNING, true));
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.RETURNING));
         assertFalse(WaterTridentState.directHitMayAttack(WaterTridentState.FlightPhase.RETURNING));
-        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.REMOVED, true));
+        assertFalse(WaterTridentState.currentMayAttack(WaterTridentState.FlightPhase.REMOVED));
     }
 
     @Test void thirdConsecutiveHitBurstsThenResets() {

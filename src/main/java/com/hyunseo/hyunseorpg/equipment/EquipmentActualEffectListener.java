@@ -1,10 +1,8 @@
 package com.hyunseo.hyunseorpg.equipment;
 
-import com.hyunseo.hyunseorpg.activity.ActivityBlockRewardValidator;
 import com.hyunseo.hyunseorpg.combat.CombatService;
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
-import com.hyunseo.hyunseorpg.enhancement.EquipmentPromotionService;
 import com.hyunseo.hyunseorpg.item.RPGItemService;
 import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
@@ -44,37 +42,25 @@ import java.util.function.Predicate;
 public final class EquipmentActualEffectListener implements Listener {
     private static final UUID TOOL_SPEED_MODIFIER = UUID.fromString("2bd8ac2e-3e0e-4f6a-8d9a-6f80b5aa2c01");
     private static final UUID ARMOR_HEALTH_MODIFIER = UUID.fromString("7b47e3ae-b5c5-4fc3-9c3e-2bcb0d104a02");
-    private static final UUID[] ARMOR_HEALTH_ITEM_MODIFIERS = {
-            UUID.fromString("7b47e3ae-b5c5-4fc3-9c3e-2bcb0d104a11"),
-            UUID.fromString("7b47e3ae-b5c5-4fc3-9c3e-2bcb0d104a12"),
-            UUID.fromString("7b47e3ae-b5c5-4fc3-9c3e-2bcb0d104a13"),
-            UUID.fromString("7b47e3ae-b5c5-4fc3-9c3e-2bcb0d104a14")
-    };
     private static final String TOOL_SPEED_NAME = "hyunseorpg_tool_block_speed";
     private static final String ARMOR_HEALTH_NAME = "hyunseorpg_armor_health";
     private final ConfigService config;
     private final EquipmentTierService tiers;
     private final EquipmentEnhancementService enhancement;
-    private final EquipmentPromotionService promotion;
     private final CombatService combat;
     private final RPGItemService itemService;
-    private final ActivityBlockRewardValidator blockRewards;
     private final ToolDurabilityService toolDurability;
     private final Predicate<ItemStack> nativeTridentOwner;
 
     public EquipmentActualEffectListener(ConfigService config, EquipmentTierService tiers, EquipmentEnhancementService enhancement,
-                                          EquipmentPromotionService promotion, CombatService combat,
-                                          RPGItemService itemService,
-                                          ActivityBlockRewardValidator blockRewards,
+                                          CombatService combat, RPGItemService itemService,
                                           ToolDurabilityService toolDurability,
                                           Predicate<ItemStack> nativeTridentOwner) {
         this.config = config;
         this.tiers = tiers;
         this.enhancement = enhancement;
-        this.promotion = promotion;
         this.combat = combat;
         this.itemService = itemService;
-        this.blockRewards = blockRewards;
         this.toolDurability = toolDurability;
         this.nativeTridentOwner = nativeTridentOwner == null ? item -> false : nativeTridentOwner;
     }
@@ -105,7 +91,6 @@ public final class EquipmentActualEffectListener implements Listener {
         double reduction = 0.0D;
         for (ItemStack armor : player.getInventory().getArmorContents()) {
             reduction += enhancement.getDamageReductionBonus(armor);
-            reduction += promotion.getOptionValue(armor, "damage-reduction");
         }
         double cap = Math.max(0.0D, Math.min(1.0D,
                 config.getDouble("equipment-effects.damage-reduction-cap", 0.8D)));
@@ -116,7 +101,6 @@ public final class EquipmentActualEffectListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         refreshToolEffect(event.getPlayer(), event.getBlock());
-        applyToolBonusDrop(event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -209,16 +193,9 @@ public final class EquipmentActualEffectListener implements Listener {
 
     private void applyOffensiveGrowth(EntityDamageByEntityEvent event, ItemStack item, boolean projectile) {
         if (item == null) return;
-        double flat = enhancement.getAttackBonus(item) + promotion.getWeaponDamageBonus(item);
+        double flat = enhancement.getAttackBonus(item);
         if (isAxe(item)) flat += enhancement.getAxeAttackBonus(item);
-        if (projectile) flat += promotion.getOptionValue(item, "projectile-damage");
-        if (tiers.getCategory(item) == EquipmentTierService.Category.SPEAR) {
-            flat += promotion.getOptionValue(item, "thrust-damage");
-        }
-        double multiplier = 1.0D;
-        double criticalChance = promotion.getOptionValue(item, "critical-chance");
-        if (criticalChance > 0.0D && ThreadLocalRandom.current().nextDouble() < criticalChance) multiplier *= 1.5D;
-        event.setDamage(Math.max(0.0D, (event.getDamage() + flat) * multiplier));
+        event.setDamage(Math.max(0.0D, event.getDamage() + flat));
     }
 
     private void refreshToolEffect(Player player, org.bukkit.block.Block targetBlock) {
@@ -232,45 +209,13 @@ public final class EquipmentActualEffectListener implements Listener {
         ItemStack held = player.getInventory().getItemInMainHand();
         removeManagedItemAttribute(held, Attribute.BLOCK_BREAK_SPEED, TOOL_SPEED_NAME, TOOL_SPEED_MODIFIER);
         if (tiers.getCategory(held) != EquipmentTierService.Category.TOOL) return;
-        double bonus = enhancement.getToolEfficiencyBonus(held) + promotionToolSpeed(held, targetBlock);
+        double bonus = enhancement.getToolEfficiencyBonus(held);
         double perPoint = Math.max(0.0D, config.getDouble("equipment-effects.tool-block-break-speed-per-point", 0.1D));
         updatePlayerAttribute(player, Attribute.BLOCK_BREAK_SPEED, TOOL_SPEED_NAME, TOOL_SPEED_MODIFIER,
                 Math.max(0.0D, bonus) * perPoint);
     }
 
-    private double promotionToolSpeed(ItemStack tool, org.bukkit.block.Block targetBlock) {
-        String material = tool.getType().name();
-        if (material.endsWith("_PICKAXE")) return promotion.getOptionValue(tool, "mining-speed");
-        if (material.endsWith("_AXE")) {
-            return targetBlock == null || isLog(targetBlock) ? promotion.getOptionValue(tool, "logging-speed") : 0.0D;
-        }
-        if (material.endsWith("_SHOVEL")) {
-            return targetBlock == null || isExcavatable(targetBlock)
-                    ? promotion.getOptionValue(tool, "excavation-speed") : 0.0D;
-        }
-        return 0.0D;
-    }
 
-    private void applyToolBonusDrop(BlockBreakEvent event) {
-        String blockType = event.getBlock().getType().name();
-        String activity = blockType.contains("LOG") || blockType.contains("WOOD")
-                || blockType.contains("STEM") || blockType.contains("HYPHAE")
-                ? "LOGGING" : "MINING";
-        if (!blockRewards.isValidRewardBreak(event, activity)
-                || (blockRewards.isCropBlock(event.getBlock())
-                && !blockRewards.isMatureAllowedCrop(event.getBlock()))
-                || !blockRewards.claimBonusDrop(event)) return;
-        ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
-        if (tiers.getCategory(tool) != EquipmentTierService.Category.TOOL) return;
-        double chance = Math.max(0.0D, Math.min(1.0D, promotion.getOptionValue(tool, "bonus-drop-chance")));
-        if (chance <= 0.0D || ThreadLocalRandom.current().nextDouble() >= chance) return;
-        if (!event.getBlock().isPreferredTool(tool)) return;
-        for (ItemStack drop : event.getBlock().getDrops(tool, event.getPlayer())) {
-            if (drop != null && !drop.getType().isAir() && drop.getAmount() > 0) {
-                event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), drop.clone());
-            }
-        }
-    }
 
     private boolean isLog(org.bukkit.block.Block block) {
         String type = block.getType().name();
@@ -285,15 +230,6 @@ public final class EquipmentActualEffectListener implements Listener {
 
     private void refreshArmorHealth(Player player) {
         removeLegacyArmorHealthModifier(player);
-        ItemStack[] armorContents = player.getInventory().getArmorContents();
-        for (int index = 0; index < armorContents.length && index < ARMOR_HEALTH_ITEM_MODIFIERS.length; index++) {
-            ItemStack armor = armorContents[index];
-            double bonus = promotion.getOptionValue(armor, "max-health-bonus");
-            updateItemAttribute(armor, Attribute.MAX_HEALTH, ARMOR_HEALTH_NAME,
-                    ARMOR_HEALTH_ITEM_MODIFIERS[index], Math.max(0.0D, bonus));
-        }
-        player.getInventory().setArmorContents(armorContents);
-
         AttributeInstance health = player.getAttribute(Attribute.MAX_HEALTH);
         if (health == null) return;
         if (player.getHealth() > health.getValue()) player.setHealth(health.getValue());

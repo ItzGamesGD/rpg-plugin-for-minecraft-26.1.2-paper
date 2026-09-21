@@ -31,11 +31,6 @@ public final class SpecialEquipmentRegistry {
             ConfigurationSection crafting = section.getConfigurationSection("crafting");
             ConfigurationSection growth = section.getConfigurationSection("growth");
             boolean allowCustomEnchants = growth == null || growth.getBoolean("allow-custom-enchants", true);
-            int customEnchantSlots = growth == null
-                    ? (allowCustomEnchants ? 1 : 0)
-                    : Math.max(0, growth.getInt("custom-enchant-slots", allowCustomEnchants ? 1 : 0));
-            int grade = section.getInt("grade", 4);
-            boolean ordinaryGrowthAllowed = grade < 4;
             entries.put(id, new SpecialEquipmentData(
                     id,
                     itemId,
@@ -50,18 +45,12 @@ public final class SpecialEquipmentRegistry {
                     readIntMap(unlock == null ? null : unlock.getConfigurationSection("required-items")),
                     normalize(unlock == null ? "" : unlock.getString("required-equipment.item-id", "")),
                     unlock == null ? 0 : unlock.getInt("required-equipment.minimum-upgrade-level", 0),
-                    unlock == null ? 0 : unlock.getInt("required-equipment.minimum-promotion-stage", 0),
                     crafting != null && crafting.getBoolean("enabled", true),
                     readIntMap(crafting == null ? null : crafting.getConfigurationSection("inputs")),
                     crafting == null ? 1 : crafting.getInt("amount", 1),
-                    grade,
                     section.getBoolean("final-gear-material-allowed", false),
-                    false,
-                    ordinaryGrowthAllowed && growth != null && growth.getBoolean("enhancement-enabled", false),
-                    ordinaryGrowthAllowed && growth != null && growth.getBoolean("promotion-enabled", false),
                     growth == null || growth.getBoolean("allow-vanilla-enchants", false),
                     allowCustomEnchants,
-                    customEnchantSlots,
                     growth != null && growth.getBoolean("unbreakable", true),
                     readAbilities(section.getConfigurationSection("abilities"), id)
             ));
