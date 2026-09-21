@@ -1,6 +1,5 @@
 package com.hyunseo.hyunseorpg.core.config;
 
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRequirements;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -48,7 +47,7 @@ public final class ConfigMigrationService {
     );
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "exp.yml", "weapons.yml",
-            "items.yml", "crafting.yml", "equipment-growth.yml",
+            "items.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml", "hunting-grounds.yml",
             "worlds.yml", "special-equipment.yml"
@@ -97,8 +96,7 @@ public final class ConfigMigrationService {
                 migrateEnchants(lines, changedFiles);
                 migrateItems(lines, changedFiles);
                 migrateLegacyItemReferences(lines, changedFiles);
-                migrateRetiredSpecialRecipes(lines, changedFiles);
-            }
+                    }
             if (normalized.equals("mobs")) {
                 migrateMobDefinitions(lines, changedFiles);
             }
@@ -111,8 +109,7 @@ public final class ConfigMigrationService {
             boolean archiveLegacy = normalized.equals("legacy") || normalized.equals("cleanup") || normalized.equals("all");
             if (archiveLegacy && !normalized.equals("all")) {
                 migrateItems(lines, changedFiles);
-                migrateLegacyProfessionRecipes(lines, changedFiles);
-            }
+                    }
             if (!List.of("configs", "items", "mobs", "players", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
@@ -159,7 +156,6 @@ public final class ConfigMigrationService {
         migrateSpecialEquipment(lines, changedFiles);
         migrateEquipmentGrowth(lines, changedFiles);
         migrateLegacyProfessionRecipes(lines, changedFiles);
-        migrateCraftingAmounts(lines, changedFiles);
         migrateVanillaStacking(lines, changedFiles);
         migrateMobAndPersistence(lines, changedFiles);
         migrateLegacyItemReferences(lines, changedFiles);
@@ -219,26 +215,6 @@ public final class ConfigMigrationService {
         List<String> catalysts = List.of("redstone", "glowstone_dust", "gunpowder", "dragon_breath",
                 "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge");
         activateEntries("alchemy/catalysts.yml", "catalysts", catalysts, "enabled", true, lines, changedFiles);
-        FileConfiguration crafting = loadLive("crafting.yml");
-        if (crafting == null) return;
-        boolean changed = false;
-        for (String id : potions) {
-            String path = "crafting-recipes." + id + ".enabled";
-            if (crafting.isSet(path) && !crafting.getBoolean(path, true)) {
-                crafting.set(path, true);
-                changed = true;
-                lines.add("crafting.yml: activated production alchemy recipe " + id);
-            }
-        }
-        String corrosionPath = "crafting-recipes.corrosion_essence.enabled";
-        if (crafting.isSet(corrosionPath) && !crafting.getBoolean(corrosionPath, true)) {
-            crafting.set(corrosionPath, true);
-            changed = true;
-            lines.add("crafting.yml: activated production alchemy essence recipe corrosion_essence");
-        }
-        if (changed) mark(crafting, "crafting.yml", changedFiles, lines, "alchemy production activation staged");
-    }
-
     private void migrateAlchemyItems(List<String> potions, List<String> lines, List<File> changedFiles) {
         FileConfiguration target = loadLive("items.yml");
         FileConfiguration defaults = loadResource("items.yml");
@@ -370,12 +346,6 @@ public final class ConfigMigrationService {
             legacyFiles.add(legacyActivityDb);
             lines.add("placed-job-blocks.db: active activity ledger exists; safe to archive");
         }
-        if (legacyFiles.stream().anyMatch(file -> file.getName().equalsIgnoreCase("professions.yml"))) {
-            FileConfiguration crafting = YamlConfiguration.loadConfiguration(new File(dataFolder, "crafting.yml"));
-            if (!crafting.isConfigurationSection("crafting-recipes")) {
-                throw new IOException("Cannot archive professions.yml before crafting.yml contains crafting-recipes");
-            }
-        }
         if (legacyFiles.isEmpty()) {
             lines.add("No legacy live-root files found.");
             return null;
@@ -442,7 +412,7 @@ public final class ConfigMigrationService {
 
     private void migrateLegacyItemReferences(List<String> lines, List<File> changedFiles) {
         Map<String, String> aliases = Map.of();
-        for (String fileName : List.of("mythic-mobs.yml", "mobs.yml", "crafting.yml",
+        for (String fileName : List.of("mythic-mobs.yml", "mobs.yml",
                 "equipment-growth.yml", "enchants.yml")) {
             FileConfiguration target = loadLive(fileName);
             if (target == null) continue;
@@ -452,38 +422,6 @@ public final class ConfigMigrationService {
                 mark(target, fileName, changedFiles, lines, "legacy item IDs normalized");
             }
         }
-    }
-
-    private void migrateRetiredSpecialRecipes(List<String> lines, List<File> changedFiles) {
-        FileConfiguration target = loadLive("crafting.yml");
-        if (target == null) return;
-        boolean changed = false;
-        if (target.isConfigurationSection("craft2")) {
-            target.set("craft2", null);
-            lines.add("crafting.yml: removed disabled legacy craft2 section");
-            changed = true;
-        }
-        ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
-        if (recipes != null) {
-            for (String rawId : new ArrayList<>(recipes.getKeys(false))) {
-                String output = normalize(recipes.getString(rawId + ".output.item-id", ""));
-                if (!RETIRED_SPECIAL_ITEM_IDS.contains(normalize(rawId))
-                        && !RETIRED_SPECIAL_ITEM_IDS.contains(output)) continue;
-                recipes.set(rawId, null);
-                lines.add("crafting.yml: removed retired special recipe " + rawId);
-                changed = true;
-            }
-        }
-        for (String path : List.of("craft2.recipes", "crafting.categories.materials",
-                "crafting.categories.equipment")) {
-            List<String> values = new ArrayList<>(target.getStringList(path));
-            if (values.removeIf(value -> RETIRED_SPECIAL_ITEM_IDS.contains(normalize(value)))) {
-                target.set(path, values);
-                lines.add("crafting.yml: removed retired special recipes from " + path);
-                changed = true;
-            }
-        }
-        if (changed) mark(target, "crafting.yml", changedFiles, lines, "retired special recipes removed");
     }
 
     private int replaceLegacyValues(ConfigurationSection section, Map<String, String> aliases) {
@@ -960,40 +898,6 @@ public final class ConfigMigrationService {
 
 
 
-    private void migrateCraftingAmounts(List<String> lines, List<File> changedFiles) {
-        String fileName = "crafting.yml";
-        FileConfiguration target = loadLive(fileName);
-        FileConfiguration defaults = loadResource(fileName);
-        if (target == null) return;
-        boolean changed = false;
-        ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
-        if (recipes == null) return;
-        for (String recipe : recipes.getKeys(false)) {
-            String root = "crafting-recipes." + recipe;
-            changed |= normalizeAmount(target, root + ".output.amount", lines);
-            ConfigurationSection inputs = target.getConfigurationSection(root + ".inputs");
-            for (String ingredient : CraftingRecipeRequirements.inputKeys(inputs)) {
-                changed |= normalizeAmount(target, root + ".inputs." + ingredient, lines);
-            }
-            if (recipe.toLowerCase(java.util.Locale.ROOT).startsWith("process_") && inputs != null) {
-                for (String ingredient : inputs.getKeys(false)) {
-                    Object value = inputs.get(ingredient);
-                    if (value instanceof Number number && number.intValue() == 1) {
-                        target.set(root + ".inputs." + ingredient, 20);
-                        lines.add("crafting.yml: processing ratio normalized to 20:1 for " + recipe);
-                        changed = true;
-                    }
-                }
-            }
-        }
-        if (target.getInt("schema-version", 0) < 2) {
-            target.set("schema-version", 2);
-            lines.add("crafting.yml: schema-version -> 2");
-            changed = true;
-        }
-        if (changed) mark(target, fileName, changedFiles, lines, "recipe amount migration staged");
-    }
-
     /** Applies the approved economy policy without replacing unrelated operator settings. */
     private boolean activeEnchantBook(String itemId) {
         return switch (normalize(itemId)) {
@@ -1010,102 +914,11 @@ public final class ConfigMigrationService {
         };
     }
 
-    private boolean setRecipe(FileConfiguration configuration, String id, Map<String, Integer> inputs, String output) {
-        String root = "crafting-recipes." + id;
-        boolean changed = false;
-        for (Map.Entry<String, Integer> input : inputs.entrySet()) {
-            changed |= setIfDifferent(configuration, root + ".inputs." + input.getKey(), input.getValue());
-        }
-        ConfigurationSection current = configuration.getConfigurationSection(root + ".inputs");
-        if (current != null) {
-            for (String key : new ArrayList<>(current.getKeys(false))) {
-                if (!inputs.containsKey(key)) {
-                    configuration.set(root + ".inputs." + key, null);
-                    changed = true;
-                }
-            }
-        }
-        changed |= setIfDifferent(configuration, root + ".output.item-id", output);
-        changed |= setIfDifferent(configuration, root + ".output.amount", 1);
-        return changed;
-    }
-
     private boolean setIfDifferent(FileConfiguration configuration, String path, Object value) {
         Object current = configuration.get(path);
         if (value == null ? current == null : value.equals(current)) return false;
         configuration.set(path, value);
         return true;
-    }
-
-    private boolean appendMissingCraftingEntry(FileConfiguration target, FileConfiguration defaults,
-                                               String path, String value) {
-        if (target == null || !target.isSet(path)) return false;
-        List<String> values = new ArrayList<>(target.getStringList(path));
-        if (values.stream().anyMatch(entry -> entry.equalsIgnoreCase(value))) return false;
-        if (defaults == null || !defaults.getStringList(path).stream().anyMatch(entry -> entry.equalsIgnoreCase(value))) return false;
-        values.add(value);
-        target.set(path, values);
-        return true;
-    }
-
-    private boolean normalizeAmount(FileConfiguration target, String path, List<String> lines) {
-        Object raw = target.get(path);
-        if (!(raw instanceof String value)) return false;
-        if (value.equalsIgnoreCase("1s")) {
-            target.set(path, 1);
-            lines.add("crafting.yml: corrected " + path + " from 1s to 1");
-            return true;
-        }
-        return false;
-    }
-
-    private void migrateLegacyProfessionRecipes(List<String> lines, List<File> changedFiles) {
-        FileConfiguration legacy = loadLive("professions.yml");
-        FileConfiguration target = loadLive("crafting.yml");
-        if (target == null) return;
-        Set<String> legacyItemIds = collectLegacyProfessionItemIds(loadLive("items.yml"));
-        Set<String> removedRecipeIds = new HashSet<>(LEGACY_PROFESSION_IDS);
-        ConfigurationSection source = legacy == null ? null : legacy.getConfigurationSection("crafting-recipes");
-        boolean changed = false;
-        if (source != null) {
-            for (String recipe : source.getKeys(false)) {
-                if (isLegacyProfessionRecipe(source.getConfigurationSection(recipe), recipe, legacyItemIds)) {
-                    lines.add("professions.yml: retained legacy profession recipe outside canonical crafting: " + recipe);
-                    continue;
-                }
-                String path = "crafting-recipes." + recipe;
-                if (!target.isConfigurationSection(path)) {
-                    copyTree(target, legacy, path);
-                    lines.add("crafting.yml: migrated legacy recipe " + recipe);
-                    changed = true;
-                }
-            }
-        }
-        ConfigurationSection recipes = target.getConfigurationSection("crafting-recipes");
-        if (recipes != null) {
-            for (String recipe : new ArrayList<>(recipes.getKeys(false))) {
-                ConfigurationSection definition = recipes.getConfigurationSection(recipe);
-                if (!isLegacyProfessionRecipe(definition, recipe, legacyItemIds)) continue;
-                String path = "crafting-recipes." + recipe;
-                target.set(path, null);
-                lines.add("crafting.yml: removed inactive profession recipe " + recipe);
-                removedRecipeIds.add(normalize(recipe));
-                changed = true;
-            }
-        }
-        for (String listPath : List.of("craft2.recipes", "crafting.categories.materials", "crafting.categories.equipment")) {
-            List<String> recipeList = new ArrayList<>(target.getStringList(listPath));
-            if (recipeList.removeIf(recipe -> removedRecipeIds.contains(normalize(recipe)))) {
-                target.set(listPath, recipeList);
-                lines.add("crafting.yml: removed inactive profession recipes from " + listPath);
-                changed = true;
-            }
-        }
-        if (!target.isSet("schema-version")) {
-            target.set("schema-version", 1);
-            changed = true;
-        }
-        if (changed) mark(target, "crafting.yml", changedFiles, lines, "legacy profession recipes migrated");
     }
 
     private Set<String> collectLegacyProfessionItemIds(FileConfiguration configuration) {
@@ -1138,22 +951,6 @@ public final class ConfigMigrationService {
             if (definition.isSet(key)) return true;
         }
         return false;
-    }
-
-    private boolean isLegacyProfessionRecipe(ConfigurationSection definition, String rawId,
-                                              Set<String> legacyItemIds) {
-        if (legacyItemIds.contains(normalize(rawId))) return true;
-        if (definition == null) return false;
-        String output = normalize(definition.getString("output.item-id", ""));
-        if (legacyItemIds.contains(output)) return true;
-        ConfigurationSection inputs = definition.getConfigurationSection("inputs");
-        if (CraftingRecipeRequirements.inputKeys(inputs).stream()
-                .map(ConfigMigrationService::normalize)
-                .anyMatch(legacyItemIds::contains)) return true;
-        String id = normalize(rawId);
-        return id.contains("profession") || id.contains("job") || id.contains("miner")
-                || id.contains("mining") || id.contains("lumberjack") || id.contains("farmer")
-                || id.contains("hunter");
     }
 
     private void migratePlayers(List<String> lines, List<File> changedFiles) {
