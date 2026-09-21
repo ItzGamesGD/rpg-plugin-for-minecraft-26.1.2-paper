@@ -132,6 +132,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private WeaponItemService weaponItemService;
     private RPGItemRegistry itemRegistry;
     private RPGItemService itemService;
+    private InventoryDeliveryService inventoryDeliveryService;
     private PendingRewardService pendingRewardService;
     private NaturalDiscoveryService naturalDiscoveryService;
     private RPGReloadService reloadService;
