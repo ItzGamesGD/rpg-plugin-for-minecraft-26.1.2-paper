@@ -1,9 +1,6 @@
 package com.hyunseo.hyunseorpg.special;
 
 import com.hyunseo.hyunseorpg.core.config.ConfigService;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
-import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
 import com.hyunseo.hyunseorpg.enhancement.EquipmentEnhancementService;
 import com.hyunseo.hyunseorpg.equipment.EquipmentLoreBuilder;
 import com.hyunseo.hyunseorpg.item.InventoryDeliveryService;
@@ -35,7 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Owns late-game equipment identity, unlock checks, recipes, and per-item soul progress. */
+/** Owns late-game equipment identity, unlock checks, and per-item soul progress. */
 public final class SpecialEquipmentService {
     public static final String POSEIDON_ID = "poseidon_spear";
     private static final String LEGACY_POSEIDON_ID = "poseidons_spear";
@@ -49,8 +46,6 @@ public final class SpecialEquipmentService {
     private final NamespacedKey specialIdKey;
     private final NamespacedKey schemaKey;
     private final Set<UUID> unlockBypass = ConcurrentHashMap.newKeySet();
-    private CraftingTransactionService craftingTransactions;
-    private CraftingRecipeRegistry craftingRecipes;
 
     public SpecialEquipmentService(JavaPlugin plugin, ConfigService config, SpecialEquipmentRegistry registry,
                                    RPGItemService itemService, PlayerDataService playerDataService,
@@ -68,18 +63,6 @@ public final class SpecialEquipmentService {
 
     public SpecialEquipmentRegistry registry() {
         return registry;
-    }
-
-    /** Connects special-equipment output tagging to the canonical crafting transaction. */
-    public void setCraftingTransactionService(CraftingTransactionService transactions,
-                                              CraftingRecipeRegistry recipes) {
-        this.craftingTransactions = transactions;
-        this.craftingRecipes = recipes;
-        transactions.setOutputFactory(this::createCraftingOutput);
-    }
-
-    public ItemStack createRecipeOutput(CraftingRecipeData recipe) {
-        return createCraftingOutput(null, recipe);
     }
 
     public ItemStack create(String id, int amount) {
@@ -249,30 +232,6 @@ public final class SpecialEquipmentService {
             missing.add("equipment " + data.requiredEquipmentId() + " +" + data.minimumEnhancementLevel());
         }
         return missing;
-    }
-
-    public boolean craft(Player player, String id) {
-        if (craftingTransactions == null || craftingRecipes == null) return false;
-        String recipeId = craftingRecipes.specialRecipeId(id).orElse(null);
-        if (recipeId == null) {
-            player.sendMessage(Component.text("Special equipment recipe is not available.", NamedTextColor.RED));
-            return false;
-        }
-        CraftingTransactionService.Result result = craftingTransactions.craft(player, recipeId, false);
-        if (result.success()) return true;
-        player.sendMessage(Component.text(result.status() == CraftingTransactionService.Status.MISSING_INGREDIENTS
-                ? "Materials are insufficient." : "Special equipment could not be crafted.", NamedTextColor.RED));
-        return false;
-    }
-
-    private ItemStack createCraftingOutput(Player player, CraftingRecipeData recipe) {
-        String specialId = craftingRecipes.specialEquipmentIdForRecipe(recipe.id()).orElse(null);
-        if (specialId != null) return create(specialId, recipe.outputAmount());
-        if (recipe.outputId().startsWith("vanilla:")) {
-            Material material = Material.matchMaterial(recipe.outputId().substring("vanilla:".length()).toUpperCase(Locale.ROOT));
-            return material == null ? null : new ItemStack(material, recipe.outputAmount());
-        }
-        return itemService.create(recipe.outputId(), recipe.outputAmount()).orElse(null);
     }
 
     public long getSoul(ItemStack item, String mobId) {

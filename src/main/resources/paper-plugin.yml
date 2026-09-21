@@ -19,12 +19,6 @@ permissions:
   hyunseorpg.admin.test:
     description: Allows test commands
     default: op
-  hyunseorpg.quest:
-    description: Allows quest commands
-    default: true
-  hyunseorpg.crafting.admin:
-    description: Allows crafting menu editing
-    default: op
   hyunseorpg.admin.vanilla-anvil:
     description: Allows vanilla anvil use
     default: false

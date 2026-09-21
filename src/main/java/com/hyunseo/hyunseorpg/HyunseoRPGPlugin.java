@@ -93,9 +93,6 @@ import com.hyunseo.hyunseorpg.alchemy.recipe.AlchemyRecipeRegistry;
 import com.hyunseo.hyunseorpg.alchemy.recipe.YamlAlchemyRecipeRegistry;
 import com.hyunseo.hyunseorpg.activity.MiningActivityListener;
 import com.hyunseo.hyunseorpg.activity.MiningActivityService;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeData;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRegistry;
-import com.hyunseo.hyunseorpg.crafting.CraftingTransactionService;
 import com.hyunseo.hyunseorpg.crafting.SoulboundItemService;
 import com.hyunseo.hyunseorpg.skill.CooldownCleanupListener;
 import com.hyunseo.hyunseorpg.skill.CooldownService;
@@ -165,8 +162,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
     private MythicMobRegistry mythicMobRegistry;
     private MythicMobIntegrationService mythicMobIntegrationService;
     private MythicCustomMobService mythicCustomMobService;
-    private CraftingRecipeRegistry craftingRecipeRegistry;
-    private CraftingTransactionService craftingTransactionService;
     private VanillaStackingService vanillaStackingService;
     private ActivityBlockRepository activityBlockRepository;
     private ActivityBlockRewardValidator activityBlockRewardValidator;
@@ -259,14 +254,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.weaponService = new WeaponService(this);
         this.weaponItemService = new WeaponItemService(configService, weaponService, itemService);
         this.soulboundItemService = new SoulboundItemService(this, itemService);
-        this.craftingRecipeRegistry = new CraftingRecipeRegistry(configService, itemService);
-        if (!this.craftingRecipeRegistry.load()) {
-            getLogger().warning("Unable to load canonical crafting recipes; continuing with the last valid snapshot.");
-        }
-        this.craftingTransactionService = new CraftingTransactionService(craftingRecipeRegistry, itemService,
-                soulboundItemService, vanillaStackingService, naturalDiscoveryService::discoverDeliveredItem);
-        this.craftingTransactionService.setDynamicOutputResolver((player, recipe) ->
-                potionFactory.create(recipe.outputId(), recipe.outputAmount()));
         try {
             this.activityBlockRepository = new ActivityBlockRepository(this);
             this.activityBlockRewardValidator = new ActivityBlockRewardValidator(
@@ -299,7 +286,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         this.equipmentRegistry.load();
         this.specialEquipmentService = new SpecialEquipmentService(this, configService, specialEquipmentRegistry,
                 itemService, playerDataService, inventoryDeliveryService, equipmentEnhancementService);
-        this.specialEquipmentService.setCraftingTransactionService(craftingTransactionService, craftingRecipeRegistry);
         this.requirementChecker = new RequirementChecker(playerDataService);
         this.dimensionVisitTracker = new DimensionVisitTracker(playerDataService);
         this.combatService = new CombatService();
@@ -555,9 +541,7 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             configService.reloadSpecialEquipmentConfig();
             specialEquipmentRegistry.load();
             equipmentRegistry.load();
-            if (specialEquipmentRegistry.getAll().isEmpty()) return false;
-            return craftingRecipeRegistry.load()
-                    && !specialEquipmentRegistry.getAll().isEmpty();
+            return !specialEquipmentRegistry.getAll().isEmpty();
         });
         reloadService.registerDetailed("items", () -> {
             configService.reloadItemsConfig();
@@ -580,18 +564,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
             mobRegistry.load();
             mobDropRegistry.load();
             return true;
-        });
-        reloadService.registerDetailed("crafting", () -> {
-            configService.reloadCraftingConfig();
-            if (!craftingRecipeRegistry.load()) {
-                return new RPGReloadService.ReloadOutcome(false, java.util.List.of(
-                        RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors()))));
-            }
-            return RPGReloadService.ReloadOutcome.pass("crafting-recipes");
-        });
-        reloadService.register("recipes", () -> {
-            configService.reloadCraftingConfig();
-            return craftingRecipeRegistry.load();
         });
         reloadService.register("mobs", () -> {
             configService.reloadMobsConfig();
@@ -662,7 +634,6 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         configService.reloadEquipmentGrowthConfig();
         configService.reloadItemsConfig();
         configService.reloadMobsConfig();
-        configService.reloadCraftingConfig();
         configService.reloadAlchemyEffectsConfigs();
         itemRegistry.load();
         equipmentRegistry.load();
@@ -700,12 +671,8 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
         details.add(!catalystsOk ? RPGReloadService.ReloadDetail.skip("special-catalysts", "SKIPPED due to catalyst dependency failure")
                 : specialCatalystsOk ? RPGReloadService.ReloadDetail.pass("special-catalysts")
                 : RPGReloadService.ReloadDetail.fail("special-catalysts", "special catalyst registry rejected candidate"));
-        boolean recipesOk = craftingRecipeRegistry.load();
-        details.add(recipesOk
-                ? RPGReloadService.ReloadDetail.pass("crafting-recipes")
-                : RPGReloadService.ReloadDetail.fail("crafting-recipes", String.join("; ", craftingRecipeRegistry.lastErrors())));
         if (!effectsOk || !potionsOk || !alchemyRecipesOk || !catalystsOk
-                || !specialCatalystsOk || !recipesOk) {
+                || !specialCatalystsOk) {
             return new RPGReloadService.ReloadOutcome(false, details);
         }
         effectService.commitReload();
@@ -716,10 +683,9 @@ public final class HyunseoRPGPlugin extends JavaPlugin {
 
     private java.util.List<RPGReloadService.ReloadDetail> reloadDetailsFromDoctor(ConfigDoctor.DoctorReport report) {
         java.util.List<RPGReloadService.ReloadDetail> details = new java.util.ArrayList<>();
-        for (String group : java.util.List.of("items", "effects", "crafting-recipes")) {
+        for (String group : java.util.List.of("items", "effects")) {
             java.util.List<String> errors = report.lines().stream()
-                    .filter(line -> line.startsWith("ERROR") && (line.contains(group)
-                            || (group.equals("crafting-recipes") && line.contains("crafting.yml"))))
+                    .filter(line -> line.startsWith("ERROR") && line.contains(group))
                     .toList();
             if (errors.isEmpty()) {
                 details.add(RPGReloadService.ReloadDetail.pass(group));

@@ -1,17 +1,10 @@
-name: Exploration build and JUnit
+name: Build and JUnit
 
 on:
+  pull_request:
   push:
     branches:
-      - "codex/exploration-*"
-      - "fix/desert-pyramid-full-flow-reconciliation"
-  pull_request:
-    branches:
-      - "codex/exploration-*"
-      - "main"
-      - "codex/gateway-boss-authoritative-second-pass"
-      - "codex/refactor-custom-enchant-system-integration"
-      - "codex/refactor-custom-enchant-system-integration-lqumyi"
+      - main
 
 jobs:
   build-and-test:

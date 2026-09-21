@@ -10,7 +10,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.hyunseo.hyunseorpg.item.VanillaStackingPolicy;
 import com.hyunseo.hyunseorpg.enchant.EnchantRegistry;
 import com.hyunseo.hyunseorpg.core.BuildInfo;
-import com.hyunseo.hyunseorpg.crafting.CraftingRecipeRequirements;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,11 +30,11 @@ import java.util.Set;
 /** Read-only diagnostics for live HyunseoRPG data files. */
 public final class ConfigDoctor {
     private static final Set<String> VALID_SECTIONS = Set.of(
-            "all", "configs", "items", "recipes", "equipment", "mobs", "players",
-            "quests", "stacking", "vanilla-stacking", "enchants", "alchemy", "effects", "reload");
+            "all", "configs", "items", "equipment", "mobs", "players",
+            "stacking", "vanilla-stacking", "enchants", "alchemy", "effects", "reload");
     private static final List<String> MANAGED_FILES = List.of(
             "config.yml", "exp.yml", "weapons.yml",
-            "items.yml", "crafting.yml", "equipment-growth.yml",
+            "items.yml", "equipment-growth.yml",
             "equipment-inputs.yml", "enchants.yml",
             "mobs.yml", "monster-spawns.yml", "mythic-mobs.yml",
             "special-equipment.yml"
@@ -77,9 +76,6 @@ public final class ConfigDoctor {
         if (section.isBlank() || section.equals("all") || section.equals("items")) {
             checkItems(lines, counts);
         }
-        if (section.isBlank() || section.equals("all") || section.equals("recipes")) {
-            checkRecipes(lines, counts);
-        }
         if (section.isBlank() || section.equals("all") || section.equals("equipment")) {
             checkEquipment(lines, counts);
         }
@@ -88,8 +84,6 @@ public final class ConfigDoctor {
         }
         if (section.isBlank() || section.equals("all") || section.equals("players")) {
             checkPlayers(lines, counts);
-        }
-        if (section.isBlank() || section.equals("all") || section.equals("quests")) {
         }
         if (section.isBlank() || section.equals("all") || section.equals("stacking")
                 || section.equals("vanilla-stacking")) {
@@ -231,50 +225,6 @@ public final class ConfigDoctor {
         }
         info(lines, counts, "enchants.yml: " + valid + "/" + definitions.getKeys(false).size()
                 + " definitions have valid handlers; books=" + books.size());
-    }
-
-    private void checkRecipes(List<String> lines, int[] counts) {
-        FileConfiguration crafting = load("crafting.yml", lines, counts);
-        FileConfiguration items = load("items.yml", lines, counts);
-        if (crafting == null || items == null) return;
-        ConfigurationSection recipes = crafting.getConfigurationSection("crafting-recipes");
-        if (recipes == null) {
-            error(lines, counts, "crafting.yml: missing crafting-recipes section");
-            return;
-        }
-        Set<String> itemIds = itemIds(items);
-        Set<String> recipeIds = new HashSet<>();
-        for (String recipeId : recipes.getKeys(false)) {
-            String path = "crafting-recipes." + recipeId;
-            if (!recipeIds.add(recipeId.toLowerCase(Locale.ROOT))) {
-                error(lines, counts, path + ": duplicate recipe-id");
-            }
-            String outputId = normalize(crafting.getString(path + ".output.item-id", ""));
-            int outputAmount = strictAmount(crafting.get(path + ".output.amount"));
-            if (!itemIds.contains(outputId)) error(lines, counts, path + ".output.item-id: unknown item '" + outputId + "'");
-            if (outputAmount < 1) error(lines, counts, path + ".output.amount: expected positive integer");
-            ConfigurationSection inputs = crafting.getConfigurationSection(path + ".inputs");
-            Set<String> inputKeys = CraftingRecipeRequirements.inputKeys(inputs);
-            boolean hasInputs = !inputKeys.isEmpty();
-            for (String ingredient : inputKeys) {
-                int amount = strictAmount(inputs.get(ingredient));
-                if (amount < 1) error(lines, counts, path + ".inputs." + ingredient + ": invalid amount '" + inputs.get(ingredient) + "'");
-                String normalized = normalize(ingredient);
-                if (normalized.startsWith("vanilla:")) {
-                    if (Material.matchMaterial(normalized.substring("vanilla:".length()).toUpperCase(Locale.ROOT)) == null) {
-                        error(lines, counts, path + ".inputs." + ingredient + ": unknown vanilla material");
-                    }
-                } else if (!itemIds.contains(normalized)) {
-                    warning(lines, counts, path + ".inputs." + ingredient + ": item is not defined in items.yml");
-                }
-            }
-        }
-        if (crafting != null) {
-            checkRecipeList(crafting.getStringList("crafting.categories.materials"), recipeIds, "crafting.categories.materials", lines, counts);
-            checkRecipeList(crafting.getStringList("crafting.categories.equipment"), recipeIds, "crafting.categories.equipment", lines, counts);
-            checkRecipeList(crafting.getStringList("craft2.recipes"), recipeIds, "craft2.recipes", lines, counts);
-        }
-        info(lines, counts, "recipes: " + recipeIds.size() + " canonical crafting recipes inspected");
     }
 
     private void checkVanillaStacking(List<String> lines, int[] counts) {
@@ -490,20 +440,10 @@ public final class ConfigDoctor {
         int groups = 0;
         groups += reloadGroup("items", lines, counts, this::checkItems);
         groups += reloadGroup("effects", lines, counts, this::checkAlchemy);
-        int beforeRecipes = counts[2];
-        checkRecipes(lines, counts);
-        boolean recipesOk = counts[2] == beforeRecipes;
-        lines.add("crafting-recipes: " + (recipesOk ? "PASS" : "FAIL"));
-        if (!recipesOk) {
-            lines.add("crafting-layout: SKIPPED due to dependency failure");
-            groups++;
-        } else {
-            lines.add("crafting-layout: PASS");
-        }
-        if (groups == 0 && recipesOk) {
+        if (groups == 0) {
             lines.add("Reload readiness: PASS");
         } else {
-            lines.add("Reload readiness: FAILED (" + (groups + (recipesOk ? 0 : 1)) + " error groups)");
+            lines.add("Reload readiness: FAILED (" + groups + " error groups)");
         }
     }
 
@@ -568,12 +508,6 @@ public final class ConfigDoctor {
             return YamlConfiguration.loadConfiguration(reader);
         } catch (IOException exception) {
             return null;
-        }
-    }
-
-    private void checkRecipeList(List<String> ids, Set<String> recipes, String path, List<String> lines, int[] counts) {
-        for (String id : ids) {
-            if (!recipes.contains(normalize(id))) warning(lines, counts, path + ": unknown recipe-id '" + id + "'");
         }
     }
 

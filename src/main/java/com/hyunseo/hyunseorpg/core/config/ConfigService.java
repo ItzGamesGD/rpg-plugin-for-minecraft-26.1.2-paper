@@ -30,7 +30,6 @@ public final class ConfigService {
     private FileConfiguration equipmentGrowthConfig;
     private FileConfiguration enchantsConfig;
     private FileConfiguration equipmentInputsConfig;
-    private FileConfiguration craftingConfig;
     private FileConfiguration mythicMobsConfig;
     private FileConfiguration gatewayBossConfig;
     private FileConfiguration monsterSpawnsConfig;
@@ -65,7 +64,6 @@ public final class ConfigService {
         this.equipmentGrowthConfig = loadManagedConfig("equipment-growth.yml");
         this.enchantsConfig = loadManagedConfig("enchants.yml");
         this.equipmentInputsConfig = loadManagedConfig("equipment-inputs.yml");
-        this.craftingConfig = loadManagedConfig("crafting.yml");
         this.mythicMobsConfig = loadManagedConfig("mythic-mobs.yml");
         this.gatewayBossConfig = loadManagedConfig("gateway-boss.yml");
         this.monsterSpawnsConfig = loadManagedConfig("monster-spawns.yml");
@@ -292,40 +290,6 @@ public final class ConfigService {
     public String getWeaponsString(String path, String defaultValue) {
         return weaponsConfig.getString(path, defaultValue);
     }
-
-    public String getCraftingString(String path, String defaultValue) {
-        return craftingConfig.getString(path, defaultValue);
-    }
-
-    public boolean getCraftingBoolean(String path, boolean defaultValue) {
-        return craftingConfig.getBoolean(path, defaultValue);
-    }
-
-    public int getCraftingInt(String path, int defaultValue) {
-        return craftingConfig.getInt(path, defaultValue);
-    }
-
-    public ConfigurationSection getCraftingSection(String path) {
-        return craftingConfig.getConfigurationSection(path);
-    }
-
-    public List<String> getCraftingStringList(String path) {
-        return craftingConfig.getStringList(path);
-    }
-
-    public Set<String> getCraftingKeys(String path) {
-        return getKeys(craftingConfig, path);
-    }
-
-
-
-
-
-    /** Writes a validated layout atomically without mutating the live configuration on failure. */
-public void reloadCraftingConfig() {
-        this.craftingConfig = loadManagedConfig("crafting.yml");
-    }
-
 
 
     public Set<String> getItemsKeys(String path) {
