@@ -11,6 +11,7 @@ permissions:
 
 env:
   RELEASE_TAG: v0.1.0-dev.1
+  TEST_GUIDE: RELEASE_TEST_GUIDE-v0.1.0-dev.1.md
 
 jobs:
   build-and-release:
@@ -48,19 +49,25 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Create GitHub pre-release and attach JAR
+      - name: Fetch release test guide from CI branch
+        run: |
+          git fetch origin ci/build-plugin-artifact
+          git show origin/ci/build-plugin-artifact:"$TEST_GUIDE" > "$TEST_GUIDE"
+
+      - name: Create or update GitHub pre-release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           MAIN_SHA="$(git rev-parse HEAD)"
           JAR_PATH="$(find build/libs -maxdepth 1 -type f -name 'HyunseoRPG-*.jar' | head -n 1)"
           test -n "$JAR_PATH"
+          test -s "$TEST_GUIDE"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$JAR_PATH" --clobber
+            gh release upload "$RELEASE_TAG" "$JAR_PATH" "$TEST_GUIDE" --clobber
           else
-            gh release create "$RELEASE_TAG" "$JAR_PATH" \
+            gh release create "$RELEASE_TAG" "$JAR_PATH" "$TEST_GUIDE" \
               --target "$MAIN_SHA" \
               --title "HyunseoRPG $RELEASE_TAG" \
-              --notes "Development pre-release built and verified automatically from main. Intended for live validation before a stable release." \
+              --notes "Development pre-release built and verified automatically from main. Includes a live-test command guide." \
               --prerelease
           fi
