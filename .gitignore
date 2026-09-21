@@ -1,13 +1,51 @@
 .gradle/
 .gradle-user-home/
 build/
+out/
 tools/
 .agents/
 .codex/
 
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Java / build output
 *.class
 *.log
 
 # Generated plugin artifacts are kept locally under builds/.
 builds/**/*.jar
 builds/**/*.zip
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.*
+local.properties
+
+# Local Paper/server runtime
+server/
+run/
+plugins/
+logs/
+crash-reports/
+world/
+world_nether/
+world_the_end/
+*.sqlite
+*.sqlite3
+*.db
+
+# OS metadata
+.DS_Store
+Thumbs.db
