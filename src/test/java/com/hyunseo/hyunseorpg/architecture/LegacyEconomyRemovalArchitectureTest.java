@@ -32,12 +32,11 @@ class LegacyEconomyRemovalArchitectureTest {
     }
 
     @Test
-    void upgradeStoneIsPhysicalAndAnvilPolicyConsumesExactlyOne() throws Exception {
-        String crafting = Files.readString(MAIN.resolve("resources/crafting.yml"));
-        assertTrue(crafting.contains("vanilla:DIAMOND: 1"));
-        assertTrue(crafting.contains("vanilla:REDSTONE: 4"));
-        assertTrue(crafting.contains("vanilla:LAPIS_LAZULI: 4"));
-        assertFalse(crafting.contains("basic_upgrade_fragment"));
+    void upgradeStoneRemainsPhysicalWhileCustomCraftingConfigIsRetired() throws Exception {
+        String items = Files.readString(MAIN.resolve("resources/items.yml"));
+        assertTrue(items.contains("basic_upgrade_stone:"));
+        assertFalse(items.contains("basic_upgrade_fragment:"));
+        assertFalse(Files.exists(MAIN.resolve("resources/crafting.yml")));
         assertEquals(1, VanillaAnvilEnhancementListener.stoneCost());
     }
 
