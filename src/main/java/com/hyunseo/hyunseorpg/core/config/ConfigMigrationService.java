@@ -96,7 +96,7 @@ public final class ConfigMigrationService {
                 migrateEnchants(lines, changedFiles);
                 migrateItems(lines, changedFiles);
                 migrateLegacyItemReferences(lines, changedFiles);
-                    }
+            }
             if (normalized.equals("mobs")) {
                 migrateMobDefinitions(lines, changedFiles);
             }
@@ -109,7 +109,7 @@ public final class ConfigMigrationService {
             boolean archiveLegacy = normalized.equals("legacy") || normalized.equals("cleanup") || normalized.equals("all");
             if (archiveLegacy && !normalized.equals("all")) {
                 migrateItems(lines, changedFiles);
-                    }
+            }
             if (!List.of("configs", "items", "mobs", "players", "alchemy", "legacy", "cleanup", "all").contains(normalized)) {
                 lines.add("ERROR unknown migration target: " + normalized);
                 return new MigrationReport(false, lines, null);
@@ -155,11 +155,9 @@ public final class ConfigMigrationService {
         migrateEnchants(lines, changedFiles);
         migrateSpecialEquipment(lines, changedFiles);
         migrateEquipmentGrowth(lines, changedFiles);
-        migrateLegacyProfessionRecipes(lines, changedFiles);
         migrateVanillaStacking(lines, changedFiles);
         migrateMobAndPersistence(lines, changedFiles);
         migrateLegacyItemReferences(lines, changedFiles);
-        migrateRetiredSpecialRecipes(lines, changedFiles);
     }
 
     private void migrateAlchemy(List<String> lines, List<File> changedFiles) {
@@ -215,6 +213,8 @@ public final class ConfigMigrationService {
         List<String> catalysts = List.of("redstone", "glowstone_dust", "gunpowder", "dragon_breath",
                 "fermented_spider_eye", "sculk", "echo_shard", "slime", "wind_charge");
         activateEntries("alchemy/catalysts.yml", "catalysts", catalysts, "enabled", true, lines, changedFiles);
+    }
+
     private void migrateAlchemyItems(List<String> potions, List<String> lines, List<File> changedFiles) {
         FileConfiguration target = loadLive("items.yml");
         FileConfiguration defaults = loadResource("items.yml");
