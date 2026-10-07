@@ -1,4 +1,4 @@
-> Canonical MoreMinecrafts design record: https://github.com/ItzGamesGD/MoreMinecrafts-Beta/pull/70 (documentation PR; merge pending). This handoff copy is included in the Paper source archive for continuity.
+> Canonical MoreMinecrafts design record: https://github.com/ItzGamesGD/MoreMinecrafts-Beta/pull/70 (merged to MoreMinecrafts-Beta main as 03fefe149d60767200d9e413f60f81ae326518e7). This handoff copy is included in the Paper source archive for continuity.
 
 # MoreMinecrafts 설계 이어가기 기록 — 2026-10-07
 
